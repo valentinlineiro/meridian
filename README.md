@@ -1,6 +1,6 @@
 # Meridian
 
-A personal analytics system that turns repeated observations of an account's activity into **historical memory**: snapshots, temporal comparisons, change detection and auditable trajectory findings — on Cloudflare Workers + D1.
+**Meridian is a personal longitudinal analytics system** that turns repeated observations of an account's activity into **historical memory**: snapshots, temporal comparisons, change detection and auditable trajectory findings — on Cloudflare Workers + D1.
 
 > **Independent personal project. Not affiliated with, sponsored by, or endorsed by Duolingo.**
 > It was built around one learner's own activity data; this repository ships with synthetic data only.
