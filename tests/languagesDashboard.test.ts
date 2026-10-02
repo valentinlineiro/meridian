@@ -91,7 +91,7 @@ describe("languages dashboard - factual invariants", () => {
 
 describe("languages dashboard - route serving", () => {
   it("shouldServeDashboardHtmlOnLanguagesRoute", async () => {
-    const req = new Request("https://longitudinal-analytics.local/languages", { method: "GET" });
+    const req = new Request("https://meridian.local/languages", { method: "GET" });
     const res = await worker.fetch(req, { DB: { prepare: () => null } } as any);
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toContain("text/html");

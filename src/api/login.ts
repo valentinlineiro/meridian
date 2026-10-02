@@ -18,12 +18,12 @@ export const safeNext = (next: string | null | undefined): string =>
 
 export function loginPage(next: string, error?: string, status = 200): Response {
   const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Acceso · Longitudinal Stats</title>
+<title>Acceso · Meridian</title>
 <style>:root{color-scheme:light dark}body{font-family:system-ui,sans-serif;max-width:22rem;margin:12vh auto;padding:0 16px}
 h1{font-size:1.2rem}label{display:block;margin:.8rem 0 .2rem;font-size:.9rem}
 input{width:100%;box-sizing:border-box;padding:.6rem;font-size:1rem}button{margin-top:1rem;width:100%;padding:.7rem;font-size:1rem}
 .err{color:#b42318;margin-top:.8rem}</style></head><body>
-<h1>Longitudinal Stats</h1>
+<h1>Meridian</h1>
 <form method="post" action="/login">
 <input type="hidden" name="next" value="${esc(next)}">
 <label for="email">Email</label><input id="email" name="email" type="email" autocomplete="username" required autofocus>

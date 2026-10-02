@@ -1,4 +1,4 @@
-# Longitudinal Stats
+# Meridian
 
 A personal analytics system that turns repeated observations of an account's activity into **historical memory**: snapshots, temporal comparisons, change detection and auditable trajectory findings — on Cloudflare Workers + D1.
 
@@ -97,7 +97,7 @@ python3 scripts/check_architecture_boundaries.py
 ## Run the demo locally
 
 ```bash
-npx wrangler d1 migrations apply longitudinal-analytics --local
+npx wrangler d1 migrations apply meridian --local
 npx wrangler dev src/dev.ts --port 8787 --var IMPORT_TOKEN:dev-token
 npm run demo:seed          # 60 invented matches + two language observations
 ```
@@ -114,4 +114,4 @@ The ingestion boundary preserves source-specific field names where they are requ
 
 ## License
 
-MIT for the original code and documentation in this repository (see `LICENSE`). This license applies only to original code and documentation in this repository. It does not grant rights to third-party trademarks, data, content, or services referenced by the project.
+MIT for the original code and documentation in this repository (see `LICENSE`). The license applies only to original code and documentation. It does not grant rights to third-party trademarks, data, content, or services referenced by the project.

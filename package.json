@@ -1,5 +1,5 @@
 {
-  "name": "longitudinal-analytics",
+  "name": "meridian",
   "version": "0.2.1",
   "private": true,
   "type": "module",
@@ -7,8 +7,8 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "test": "vitest run",
-    "migrate:local": "wrangler d1 migrations apply longitudinal-analytics --local",
-    "migrate:remote": "wrangler d1 migrations apply longitudinal-analytics --remote",
+    "migrate:local": "wrangler d1 migrations apply meridian --local",
+    "migrate:remote": "wrangler d1 migrations apply meridian --remote",
     "types": "wrangler types",
     "typecheck": "tsc --noEmit",
     "demo:seed": "node --experimental-strip-types demo/seed.ts"

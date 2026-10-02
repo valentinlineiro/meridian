@@ -1,5 +1,5 @@
 // Seeds a locally running dev worker with the demo dataset:
-//   npx wrangler d1 migrations apply longitudinal-analytics --local
+//   npx wrangler d1 migrations apply meridian --local
 //   npx wrangler dev src/dev.ts --port 8787 --var IMPORT_TOKEN:dev-token
 //   npm run demo:seed
 // All snapshots are stamped with the current time: the seed shows the dashboards, while the historical

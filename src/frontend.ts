@@ -1,5 +1,5 @@
 export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Longitudinal Stats</title><style>
+<title>Meridian</title><style>
 *{box-sizing:border-box}body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;margin:0;background:#0e141c;color:#e6edf3;line-height:1.4}
 a{color:#7aa7e6;text-decoration:none}a:hover{text-decoration:underline}
 header{position:sticky;top:0;z-index:10;background:#111d2e;border-bottom:1px solid #1e2e44;display:flex;justify-content:space-between;align-items:center;padding:14px 20px;gap:16px;flex-wrap:wrap}
@@ -82,7 +82,7 @@ svg text{font-family:system-ui,sans-serif}
 }
 </style></head><body>
 <header>
-  <div class="h-left"><h1>Longitudinal Stats</h1><small id="syncMeta">—</small></div>
+  <div class="h-left"><h1>Meridian</h1><small id="syncMeta">—</small></div>
   <div class="h-right">
    <div class="elo-hero"><b id="eloHero">—</b><span id="eloSub">ELO</span></div>
     <form method="post" action="/logout" style="margin:0"><button class="btn btn-g" type="submit">Salir</button></form>
@@ -2006,7 +2006,7 @@ function renderWhatChanged(data){
 init();
 </script></body></html>`;
 
-export const RAW_HTML = `<!doctype html><html><head><meta charset="utf-8"><title>Raw · Longitudinal Stats</title><style>body{font-family:monospace;background:#0e141c;color:#e6edf3;padding:24px}pre{background:#131f33;padding:12px;border-radius:8px;overflow:auto;border:1px solid #1e2e44}a{color:#7aa7e6}</style></head><body>
+export const RAW_HTML = `<!doctype html><html><head><meta charset="utf-8"><title>Raw · Meridian</title><style>body{font-family:monospace;background:#0e141c;color:#e6edf3;padding:24px}pre{background:#131f33;padding:12px;border-radius:8px;overflow:auto;border:1px solid #1e2e44}a{color:#7aa7e6}</style></head><body>
 <p><a href="/">← Volver al dashboard</a></p><h1>Raw snapshots · debug</h1><div id="l"></div><pre id="d">selecciona un snapshot…</pre><script>
 async function init(){const d=await (await fetch('/api/snapshots')).json();
 document.querySelector('#l').innerHTML=d.snapshots.map(s=>{const countLabel=s.games_count!=null?(s.games_count+' games'):(s.source==='duolingo-lang'?'languages':s.source); return '<div><button onclick="show(\\''+s.id+'\\')" style="background:#1e2e44;color:#e6edf3;border:1px solid #2a3d56;border-radius:6px;padding:4px 8px;cursor:pointer;margin:2px">'+s.created_at.slice(0,19)+' · '+countLabel+' · '+s.checksum.slice(0,12)+'</button> '+s.source+'</div>';}).join('');}

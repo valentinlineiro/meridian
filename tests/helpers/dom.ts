@@ -147,7 +147,7 @@ export function createDashboardRuntime(initialPath = "/languages"): DashboardRun
       hash: "",
       search: "",
       get href() {
-        return "https://longitudinal-analytics.local" + this.pathname + (this.search || "") + (this.hash || "");
+        return "https://meridian.local" + this.pathname + (this.search || "") + (this.hash || "");
       },
     },
     localStorage: {
