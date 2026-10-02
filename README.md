@@ -63,6 +63,8 @@ Concretely: raw observations are stored once and never rewritten; metrics are de
 | **XP summary** | Daily account-level activity, primary key `(user, date)`, idempotent under re-ingestion. |
 | **User state** | Latest observed account state; auxiliary captures never overwrite the active course. |
 
+The domain models observations independently of their source. `MeasureSpec` defines the unit and whether higher or lower values represent improvement, while `windowDelta` compares two observation windows without source-specific branching. Tests exercise it on chess win rate (higher is better) and on a synthetic daily-puzzle solve time (lower is better).
+
 ## Analytics
 
 - **Chess** — results, colour split, opponent segmentation (bot / human), openings and game phases, streaks, timeline.
