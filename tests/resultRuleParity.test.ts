@@ -6,11 +6,11 @@ import { setupTestDb } from "./helpers/testDb.ts";
 const RESULTS: Array<[string | null, string | null]> = [
   ["win", null], ["victory", null], ["won", null], // wins
   ["defeat", null],                                // loss
-  ["tie", null],                                   // draw
+  ["tie", null], ["stalemate", null],              // draws
   [null, "win"],                                   // result missing, outcome decides
   ["garbage", null], [null, null],                 // unknown
 ];
-const EXPECTED = { games: 8, wins: 4, losses: 1, draws: 1, unknown: 2, winRate: 4 / 6, scoreRate: 4.5 / 6 };
+const EXPECTED = { games: 9, wins: 4, losses: 1, draws: 2, unknown: 2, decided: 7, winRate: 4 / 7, scoreRate: 5 / 7 };
 
 async function seed() {
   const { db, d1 } = setupTestDb();
@@ -38,6 +38,6 @@ describe("result rule parity", () => {
     const c = (await get(d1, "color")).groups.find((g: any) => g.key === "white");
     const o = (await get(d1, "openings")).white[0];
     const p = (await get(d1, "phases")).phases[0];
-    for (const g of [c, o, p]) expect({ wins: g.wins, losses: g.losses, draws: g.draws, unknown: g.unknown, winRate: g.winRate, scoreRate: g.scoreRate }).toEqual({ wins: 4, losses: 1, draws: 1, unknown: 2, winRate: 4 / 6, scoreRate: 4.5 / 6 });
+    for (const g of [c, o, p]) expect(g).toMatchObject(EXPECTED);
   });
 });
