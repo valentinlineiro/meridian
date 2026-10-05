@@ -1,16 +1,20 @@
 export interface ChessPointInTime {
   rating: number | null;
-  lifetimeGames: number;
+  lifetimeGames: number; // observed
+  lifetimeDecided: number; // win + loss + draw: the denominator of lifetime rates
   lifetimeWins: number;
   observedAt: string;
 }
 
 export interface ChessIntervalData {
-  gamesCount: number;
+  gamesCount: number; // observed
+  decidedCount: number; // win + loss + draw: usable evidence and denominator of the rates
   wins: number;
   whiteGames: number;
+  whiteDecided: number;
   whiteWins: number;
   blackGames: number;
+  blackDecided: number;
   blackWins: number;
   latestRating: number | null;
 }

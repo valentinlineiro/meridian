@@ -1,4 +1,3 @@
-import type { MatchRow } from "../types.ts";
 
 export type EloStats = { count: number; min: number | null; max: number | null; avg: number | null; median: number | null; buckets: Record<string, number> };
 
@@ -25,24 +24,7 @@ export function eloStats(elos: Array<number | null | undefined>): EloStats {
   return { count: known.length, min: sorted[0]!, max: sorted[sorted.length - 1]!, avg: sum / known.length, median, buckets };
 }
 
-export function resultOf(m: Partial<Pick<MatchRow, "result" | "outcome">>): "win" | "loss" | "draw" | "unknown" {
-  const r = (m.result ?? m.outcome ?? "").toLowerCase();
-  if (r.includes("win") || r.includes("victor") || r === "won") return "win";
-  if (r.includes("los") || r.includes("defeat")) return "loss";
-  if (r.includes("draw") || r.includes("tie") || r.includes("stalemate")) return "draw";
-  return "unknown";
-}
-
-export function summarize(rows: Array<Pick<MatchRow, "result" | "outcome" | "user_color" | "opponent_type" | "opponent_elo" | "reviewed">>) {
-  let wins = 0, losses = 0, draws = 0;
-  for (const m of rows) {
-    const r = resultOf(m);
-    if (r === "win") wins++; else if (r === "loss") losses++; else if (r === "draw") draws++;
-  }
-  const games = rows.length;
-  const decided = wins + losses + draws;
-  return { games, wins, losses, draws, winRate: games ? wins / games : null, scoreRate: games ? (wins + 0.5 * draws) / games : null, decided };
-}
+export { resultOf, summarize } from "../domain/result.ts";
 
 // Streaks over canonical chronological order (ordered by played_at ASC via allMatches).
 export function streaks(results: Array<"win" | "loss" | "draw" | "unknown">) {

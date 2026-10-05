@@ -24,6 +24,8 @@ export interface WhatChangedResult {
   };
   chess: {
     gamesCount: number;
+    decidedCount: number;
+    unknownCount: number;
     ratingDelta: number | null;
     baselineRating: number | null;
     currentRating: number | null;
@@ -95,18 +97,19 @@ export async function getWhatChangedUseCase(
     ratingDelta = chessInt.gamesCount === 0 ? 0 : currentRating - baselineRating;
   }
 
+  // Rates are over decided games: an unknown result is neither a win nor a loss.
   const intervalWinRate =
-    chessInt.gamesCount > 0 ? (chessInt.wins / chessInt.gamesCount) * 100 : null;
+    chessInt.decidedCount > 0 ? (chessInt.wins / chessInt.decidedCount) * 100 : null;
   const whiteWinRate =
-    chessInt.whiteGames > 0 ? (chessInt.whiteWins / chessInt.whiteGames) * 100 : null;
+    chessInt.whiteDecided > 0 ? (chessInt.whiteWins / chessInt.whiteDecided) * 100 : null;
   const blackWinRate =
-    chessInt.blackGames > 0 ? (chessInt.blackWins / chessInt.blackGames) * 100 : null;
+    chessInt.blackDecided > 0 ? (chessInt.blackWins / chessInt.blackDecided) * 100 : null;
 
   const lifetimePriorWinRate =
     chessBase.status === "exactOrPrevious" &&
     chessBase.data &&
-    chessBase.data.lifetimeGames > 0
-      ? (chessBase.data.lifetimeWins / chessBase.data.lifetimeGames) * 100
+    chessBase.data.lifetimeDecided > 0
+      ? (chessBase.data.lifetimeWins / chessBase.data.lifetimeDecided) * 100
       : null;
   const historicalWinRateDelta =
     intervalWinRate !== null && lifetimePriorWinRate !== null
@@ -164,6 +167,7 @@ export async function getWhatChangedUseCase(
   const deltas: WhatChangedDeltas = {
     chess: {
       gamesCount: chessInt.gamesCount,
+      decidedCount: chessInt.decidedCount,
       ratingDelta,
       baselineRating,
       currentRating,
@@ -211,6 +215,8 @@ export async function getWhatChangedUseCase(
     },
     chess: {
       gamesCount: chessInt.gamesCount,
+      decidedCount: chessInt.decidedCount,
+      unknownCount: chessInt.gamesCount - chessInt.decidedCount,
       ratingDelta,
       baselineRating,
       currentRating,

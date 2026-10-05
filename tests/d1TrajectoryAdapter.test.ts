@@ -69,8 +69,8 @@ describe("d1TrajectoryAdapter", () => {
       expect(chessData.whiteWins).toBe(0);
       expect(chessData.blackGames).toBe(0);
       expect(chessData.blackWins).toBe(0);
-      expect(chessData.h1).toEqual({ whiteGames: 0, whiteWins: 0, blackGames: 0, blackWins: 0 });
-      expect(chessData.h2).toEqual({ whiteGames: 0, whiteWins: 0, blackGames: 0, blackWins: 0 });
+      expect(chessData.h1).toEqual({ whiteGames: 0, whiteDecided: 0, whiteWins: 0, blackGames: 0, blackDecided: 0, blackWins: 0 });
+      expect(chessData.h2).toEqual({ whiteGames: 0, whiteDecided: 0, whiteWins: 0, blackGames: 0, blackDecided: 0, blackWins: 0 });
     });
   });
 

@@ -15,6 +15,8 @@ export interface OpeningStat {
   wins: number;
   losses: number;
   draws: number;
+  unknown: number;
+  decided: number;
   winRate: number | null;
   scoreRate: number | null;
 }
@@ -26,6 +28,8 @@ export interface PhaseStat {
   wins: number;
   losses: number;
   draws: number;
+  unknown: number;
+  decided: number;
   winRate: number | null;
   scoreRate: number | null;
 }
@@ -50,6 +54,13 @@ async function getMatchPopulation(db: D1Database, userId: string | null): Promis
   const hydrated = (await hydratedStmt.first<{ c: number }>())?.c ?? 0;
 
   return { hydrated, totalMatches };
+}
+
+// Groups rows by `key` and tallies each group with `summarize`, the one result classifier and denominator shared by every route.
+function summarizeBy<T extends { result: unknown; outcome: unknown }>(rows: T[], key: (r: T) => string) {
+  const groups = new Map<string, T[]>();
+  for (const r of rows) { const k = key(r); (groups.get(k) ?? groups.set(k, []).get(k)!).push(r); }
+  return [...groups.entries()].map(([k, v]) => ({ k, rows: v, ...summarize(v as any) }));
 }
 
 const num = (v: unknown) => (typeof v === "number" ? v : v == null ? null : Number(v));
@@ -132,9 +143,9 @@ export async function handleStats(db: D1Database, kind: string, url: URL): Promi
       return json({
         ...sum,
         percentages: {
-          win: sum.games ? sum.wins / sum.games : null,
-          loss: sum.games ? sum.losses / sum.games : null,
-          draw: sum.games ? sum.draws / sum.games : null,
+          win: sum.decided ? sum.wins / sum.decided : null,
+          loss: sum.decided ? sum.losses / sum.decided : null,
+          draw: sum.decided ? sum.draws / sum.decided : null,
         },
         endConditions,
       });
@@ -207,22 +218,17 @@ export async function handleStatsOpenings(db: D1Database, url: URL): Promise<Res
   const population = await getMatchPopulation(db, userId);
 
   const q = `
-    SELECT 
-      md.opening_key,
-      m.user_color,
-      COUNT(*) AS games,
-      SUM(CASE WHEN m.result = 'win' THEN 1 ELSE 0 END) AS wins,
-      SUM(CASE WHEN m.result = 'loss' THEN 1 ELSE 0 END) AS losses,
-      SUM(CASE WHEN m.result = 'draw' THEN 1 ELSE 0 END) AS draws
+    SELECT md.opening_key, m.user_color, m.result, m.outcome
     FROM matches m
     JOIN match_details md ON m.match_id = md.match_id
     WHERE md.opening_key IS NOT NULL
     ${userId ? "AND m.user_id = ?" : ""}
-    GROUP BY md.opening_key, m.user_color
-    ORDER BY games DESC;
   `;
   const stmt = userId ? db.prepare(q).bind(userId) : db.prepare(q);
-  const rows = ((await stmt.all<any>()).results ?? []) as any[];
+  const raw = ((await stmt.all<any>()).results ?? []) as any[];
+  const rows = summarizeBy(raw, (r) => `${r.opening_key}\u0000${r.user_color ?? ""}`)
+    .map((g) => ({ ...g, opening_key: g.rows[0].opening_key, user_color: g.rows[0].user_color }))
+    .sort((a, b) => b.games - a.games);
 
   const white: OpeningStat[] = [];
   const black: OpeningStat[] = [];
@@ -230,12 +236,7 @@ export async function handleStatsOpenings(db: D1Database, url: URL): Promise<Res
   for (const r of rows) {
     const color = String(r.user_color ?? "").toLowerCase();
     const key = String(r.opening_key);
-    const games = Number(r.games) || 0;
-    const wins = Number(r.wins) || 0;
-    const losses = Number(r.losses) || 0;
-    const draws = Number(r.draws) || 0;
-    const winRate = games > 0 ? wins / games : null;
-    const scoreRate = games > 0 ? (wins + 0.5 * draws) / games : null;
+    const { games, wins, losses, draws, unknown, decided, winRate, scoreRate } = r;
 
     let name = "Sin datos";
     let notation = "-";
@@ -255,7 +256,7 @@ export async function handleStatsOpenings(db: D1Database, url: URL): Promise<Res
         name = key;
         notation = "-";
       }
-      white.push({ key, name, notation, games, wins, losses, draws, winRate, scoreRate });
+      white.push({ key, name, notation, games, wins, losses, draws, unknown, decided, winRate, scoreRate });
     } else if (color === "black") {
       const match = BLACK_OPENINGS[key];
       if (match) {
@@ -271,7 +272,7 @@ export async function handleStatsOpenings(db: D1Database, url: URL): Promise<Res
         name = key;
         notation = "-";
       }
-      black.push({ key, name, notation, games, wins, losses, draws, winRate, scoreRate });
+      black.push({ key, name, notation, games, wins, losses, draws, unknown, decided, winRate, scoreRate });
     }
   }
 
@@ -290,20 +291,14 @@ export async function handleStatsPhases(db: D1Database, url: URL): Promise<Respo
   const population = await getMatchPopulation(db, userId);
 
   const q = `
-    SELECT 
-      md.phase_key,
-      COUNT(*) AS games,
-      SUM(CASE WHEN m.result = 'win' THEN 1 ELSE 0 END) AS wins,
-      SUM(CASE WHEN m.result = 'loss' THEN 1 ELSE 0 END) AS losses,
-      SUM(CASE WHEN m.result = 'draw' THEN 1 ELSE 0 END) AS draws
+    SELECT md.phase_key, m.result, m.outcome
     FROM matches m
     JOIN match_details md ON m.match_id = md.match_id
     WHERE md.phase_key IS NOT NULL
     ${userId ? "AND m.user_id = ?" : ""}
-    GROUP BY md.phase_key;
   `;
   const stmt = userId ? db.prepare(q).bind(userId) : db.prepare(q);
-  const phaseRows = ((await stmt.all<any>()).results ?? []) as any[];
+  const phaseRows = summarizeBy(((await stmt.all<any>()).results ?? []) as any[], (r) => String(r.phase_key));
 
   const pliesSql = `
     SELECT md.ply_count 
@@ -319,25 +314,9 @@ export async function handleStatsPhases(db: D1Database, url: URL): Promise<Respo
 
   const CANONICAL_PHASES: PhaseKey[] = ["opening", "middlegame", "endgame", "unknown"];
   const phases: PhaseStat[] = phaseRows
-    .map((r) => {
-      const key = r.phase_key as PhaseKey;
-      const games = Number(r.games) || 0;
-      const wins = Number(r.wins) || 0;
-      const losses = Number(r.losses) || 0;
-      const draws = Number(r.draws) || 0;
-      const winRate = games > 0 ? wins / games : null;
-      const scoreRate = games > 0 ? (wins + 0.5 * draws) / games : null;
-      const label = PHASE_META[key]?.label ?? key;
-      return {
-        key,
-        label,
-        games,
-        wins,
-        losses,
-        draws,
-        winRate,
-        scoreRate,
-      };
+    .map(({ k, rows: _rows, ...stat }) => {
+      const key = k as PhaseKey;
+      return { key, label: PHASE_META[key]?.label ?? key, ...stat };
     })
     .sort((a, b) => {
       const ai = CANONICAL_PHASES.indexOf(a.key);

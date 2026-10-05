@@ -5,7 +5,8 @@ export interface FindingContext {
 }
 
 export interface ChessDeltas {
-  gamesCount: number;
+  gamesCount: number; // observed
+  decidedCount: number; // usable evidence: the sample the thresholds below refer to
   ratingDelta: number | null;
   baselineRating: number | null;
   currentRating: number | null;
@@ -79,9 +80,9 @@ export function evaluateSignificantChanges(
     });
   }
 
-  // 2. Chess color asymmetry (games >= 10 and |white - black| >= 15 pp)
+  // 2. Chess color asymmetry (decided games >= 10 and |white - black| >= 15 pp)
   if (
-    deltas.chess.gamesCount >= 10 &&
+    deltas.chess.decidedCount >= 10 &&
     deltas.chess.intervalWhiteWinRate !== null &&
     deltas.chess.intervalBlackWinRate !== null
   ) {
@@ -96,7 +97,7 @@ export function evaluateSignificantChanges(
         category: "chess",
         title: "Asimetría por color",
         claim: `Rendimiento significativamente superior jugando con ${better} (${diff.toFixed(1)} pp de diferencia).`,
-        evidence: `Blancas: ${deltas.chess.intervalWhiteWinRate.toFixed(1)}% · Negras: ${deltas.chess.intervalBlackWinRate.toFixed(1)}% en ${deltas.chess.gamesCount} partidas.`,
+        evidence: `Blancas: ${deltas.chess.intervalWhiteWinRate.toFixed(1)}% · Negras: ${deltas.chess.intervalBlackWinRate.toFixed(1)}% en ${deltas.chess.decidedCount} partidas decididas.`,
         baselineAt: context.baselineAt,
         until: context.until,
         metrics: {

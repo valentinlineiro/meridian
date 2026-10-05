@@ -11,12 +11,12 @@ function createEmptyInput(): TrajectoryInput {
       endedAt: null,
       totalGames: 0,
       activeDays: 0,
-      whiteGames: 0,
+      whiteGames: 0, whiteDecided: 0,
       whiteWins: 0,
-      blackGames: 0,
+      blackGames: 0, blackDecided: 0,
       blackWins: 0,
-      h1: { whiteGames: 0, whiteWins: 0, blackGames: 0, blackWins: 0 },
-      h2: { whiteGames: 0, blackGames: 0, whiteWins: 0, blackWins: 0 },
+      h1: { whiteGames: 0, whiteDecided: 0, whiteWins: 0, blackGames: 0, blackDecided: 0, blackWins: 0 },
+      h2: { whiteGames: 0, whiteDecided: 0, blackGames: 0, blackDecided: 0, whiteWins: 0, blackWins: 0 },
     },
     languages: {
       startedAt: null,
@@ -38,20 +38,20 @@ describe("trajectoryHeuristics", () => {
         endedAt: "2026-09-01T00:00:00.000Z", // 123 days span
         totalGames: 160,
         activeDays: 75,
-        whiteGames: 80,
+        whiteGames: 80, whiteDecided: 80,
         whiteWins: 60, // 75%
-        blackGames: 80,
+        blackGames: 80, blackDecided: 80,
         blackWins: 40, // 50%
         h1: {
-          whiteGames: 40,
+          whiteGames: 40, whiteDecided: 40,
           whiteWins: 30, // 75%
-          blackGames: 40,
+          blackGames: 40, blackDecided: 40,
           blackWins: 20, // 50% (+25 pp)
         },
         h2: {
-          whiteGames: 40,
+          whiteGames: 40, whiteDecided: 40,
           whiteWins: 30, // 75%
-          blackGames: 40,
+          blackGames: 40, blackDecided: 40,
           blackWins: 20, // 50% (+25 pp)
         },
       };
@@ -62,7 +62,7 @@ describe("trajectoryHeuristics", () => {
       expect(f.type).toBe("CHESS_COLOR_ASYMMETRY_LONGITUDINAL");
       expect(f.category).toBe("chess");
       expect(f.temporalSpan.totalDays).toBeGreaterThanOrEqual(60);
-      expect(f.sample).toEqual({ gamesCount: 160 });
+      expect(f.sample).toEqual({ gamesCount: 160, decidedCount: 160 });
       if ("diffPp" in f.metrics) {
         expect(f.metrics.diffPp).toBe(25);
         expect(f.metrics.dominantColor).toBe("white");
@@ -78,20 +78,20 @@ describe("trajectoryHeuristics", () => {
         endedAt: "2026-09-01T00:00:00.000Z",
         totalGames: 160,
         activeDays: 75,
-        whiteGames: 80,
+        whiteGames: 80, whiteDecided: 80,
         whiteWins: 40, // 50%
-        blackGames: 80,
+        blackGames: 80, blackDecided: 80,
         blackWins: 60, // 75% -> black +25 pp
         h1: {
-          whiteGames: 40,
+          whiteGames: 40, whiteDecided: 40,
           whiteWins: 20, // 50%
-          blackGames: 40,
+          blackGames: 40, blackDecided: 40,
           blackWins: 30, // 75% -> -25 pp
         },
         h2: {
-          whiteGames: 40,
+          whiteGames: 40, whiteDecided: 40,
           whiteWins: 20, // 50%
-          blackGames: 40,
+          blackGames: 40, blackDecided: 40,
           blackWins: 30, // 75% -> -25 pp
         },
       };
@@ -117,20 +117,20 @@ describe("trajectoryHeuristics", () => {
         endedAt: "2026-09-01T00:00:00.000Z",
         totalGames: 160,
         activeDays: 75,
-        whiteGames: 80,
+        whiteGames: 80, whiteDecided: 80,
         whiteWins: 56, // 70%
-        blackGames: 80,
+        blackGames: 80, blackDecided: 80,
         blackWins: 40, // 50% -> global +20 pp
         h1: {
-          whiteGames: 40,
+          whiteGames: 40, whiteDecided: 40,
           whiteWins: 21, // 52.5%
-          blackGames: 40,
+          blackGames: 40, blackDecided: 40,
           blackWins: 20, // 50.0% -> +2.5 pp (< 10 pp)
         },
         h2: {
-          whiteGames: 40,
+          whiteGames: 40, whiteDecided: 40,
           whiteWins: 35, // 87.5%
-          blackGames: 40,
+          blackGames: 40, blackDecided: 40,
           blackWins: 20, // 50.0% -> +37.5 pp
         },
       };
@@ -147,20 +147,20 @@ describe("trajectoryHeuristics", () => {
         endedAt: "2026-09-01T00:00:00.000Z",
         totalGames: 160,
         activeDays: 70,
-        whiteGames: 80,
+        whiteGames: 80, whiteDecided: 80,
         whiteWins: 52, // 65%
-        blackGames: 80,
+        blackGames: 80, blackDecided: 80,
         blackWins: 38, // 47.5% -> global +17.5 pp
         h1: {
-          whiteGames: 40,
+          whiteGames: 40, whiteDecided: 40,
           whiteWins: 18, // 45%
-          blackGames: 40,
+          blackGames: 40, blackDecided: 40,
           blackWins: 24, // 60% -> -15 pp (inverted)
         },
         h2: {
-          whiteGames: 40,
+          whiteGames: 40, whiteDecided: 40,
           whiteWins: 34, // 85%
-          blackGames: 40,
+          blackGames: 40, blackDecided: 40,
           blackWins: 14, // 35% -> +50 pp
         },
       };
@@ -177,12 +177,12 @@ describe("trajectoryHeuristics", () => {
         endedAt: "2026-08-01T00:00:00.000Z",
         totalGames: 50,
         activeDays: 65,
-        whiteGames: 25,
+        whiteGames: 25, whiteDecided: 25,
         whiteWins: 20,
-        blackGames: 25,
+        blackGames: 25, blackDecided: 25,
         blackWins: 10,
-        h1: { whiteGames: 12, whiteWins: 10, blackGames: 12, blackWins: 5 },
-        h2: { whiteGames: 13, whiteWins: 10, blackGames: 13, blackWins: 5 },
+        h1: { whiteGames: 12, whiteDecided: 12, whiteWins: 10, blackGames: 12, blackDecided: 12, blackWins: 5 },
+        h2: { whiteGames: 13, whiteDecided: 13, whiteWins: 10, blackGames: 13, blackDecided: 13, blackWins: 5 },
       };
 
       const findings = evaluateTrajectoryPatterns(input);
@@ -197,12 +197,12 @@ describe("trajectoryHeuristics", () => {
         endedAt: "2026-05-15T00:00:00.000Z",
         totalGames: 100,
         activeDays: 15,
-        whiteGames: 50,
+        whiteGames: 50, whiteDecided: 50,
         whiteWins: 40,
-        blackGames: 50,
+        blackGames: 50, blackDecided: 50,
         blackWins: 20,
-        h1: { whiteGames: 25, whiteWins: 20, blackGames: 25, blackWins: 10 },
-        h2: { whiteGames: 25, whiteWins: 20, blackGames: 25, blackWins: 10 },
+        h1: { whiteGames: 25, whiteDecided: 25, whiteWins: 20, blackGames: 25, blackDecided: 25, blackWins: 10 },
+        h2: { whiteGames: 25, whiteDecided: 25, whiteWins: 20, blackGames: 25, blackDecided: 25, blackWins: 10 },
       };
 
       const findings = evaluateTrajectoryPatterns(input);
