@@ -1,10 +1,23 @@
 import type { D1Database } from "@cloudflare/workers-types";
 import type { TrajectoryPort } from "../../ports/trajectoryPort.ts";
+import { summarize } from "../../domain/result.ts";
 import type {
   ChessTrajectoryInput,
+  ColorTally,
   LanguagesTrajectoryInput,
 } from "../../domain/trajectory.ts";
 import { resolveUserIdWithD1 } from "./userIdResolution.ts";
+
+const NO_GAMES: ColorTally = { whiteGames: 0, whiteDecided: 0, whiteWins: 0, blackGames: 0, blackDecided: 0, blackWins: 0 };
+
+type PlayedRow = { played_at: number; user_color: string; result: string | null; outcome: string | null };
+
+// Tally of one population, classified with the same rule as every other route.
+function tally(rows: PlayedRow[]): ColorTally {
+  const w = summarize(rows.filter((r) => r.user_color === "white"));
+  const b = summarize(rows.filter((r) => r.user_color === "black"));
+  return { whiteGames: w.games, whiteDecided: w.decided, whiteWins: w.wins, blackGames: b.games, blackDecided: b.decided, blackWins: b.wins };
+}
 
 export function createD1TrajectoryAdapter(db: D1Database): TrajectoryPort {
   return {
@@ -46,12 +59,9 @@ export function createD1TrajectoryAdapter(db: D1Database): TrajectoryPort {
           endedAt: null,
           totalGames: 0,
           activeDays: 0,
-          whiteGames: 0,
-          whiteWins: 0,
-          blackGames: 0,
-          blackWins: 0,
-          h1: { whiteGames: 0, whiteWins: 0, blackGames: 0, blackWins: 0 },
-          h2: { whiteGames: 0, whiteWins: 0, blackGames: 0, blackWins: 0 },
+          ...NO_GAMES,
+          h1: NO_GAMES,
+          h2: NO_GAMES,
         };
       }
 
@@ -60,87 +70,26 @@ export function createD1TrajectoryAdapter(db: D1Database): TrajectoryPort {
       const tMidSec = Math.floor(tStartSec + (tEndSec - tStartSec) / 2);
 
       // 2. Global, H1 [tStartSec, tMidSec), H2 [tMidSec, tEndSec]
-      const [globalRow, h1Row, h2Row] = await Promise.all([
-        db
-          .prepare(`
-            SELECT 
-              SUM(CASE WHEN user_color = 'white' THEN 1 ELSE 0 END) as white_games,
-              SUM(CASE WHEN user_color = 'white' AND result = 'win' THEN 1 ELSE 0 END) as white_wins,
-              SUM(CASE WHEN user_color = 'black' THEN 1 ELSE 0 END) as black_games,
-              SUM(CASE WHEN user_color = 'black' AND result = 'win' THEN 1 ELSE 0 END) as black_wins
-            FROM matches
-            WHERE user_id = ?
-              AND user_color IN ('white', 'black')
-              AND played_at IS NOT NULL
-          `)
-          .bind(userId)
-          .first<{
-            white_games: number | null;
-            white_wins: number | null;
-            black_games: number | null;
-            black_wins: number | null;
-          }>(),
-        db
-          .prepare(`
-            SELECT 
-              SUM(CASE WHEN user_color = 'white' THEN 1 ELSE 0 END) as white_games,
-              SUM(CASE WHEN user_color = 'white' AND result = 'win' THEN 1 ELSE 0 END) as white_wins,
-              SUM(CASE WHEN user_color = 'black' THEN 1 ELSE 0 END) as black_games,
-              SUM(CASE WHEN user_color = 'black' AND result = 'win' THEN 1 ELSE 0 END) as black_wins
-            FROM matches
-            WHERE user_id = ?
-              AND user_color IN ('white', 'black')
-              AND played_at >= ? AND played_at < ?
-          `)
-          .bind(userId, tStartSec, tMidSec)
-          .first<{
-            white_games: number | null;
-            white_wins: number | null;
-            black_games: number | null;
-            black_wins: number | null;
-          }>(),
-        db
-          .prepare(`
-            SELECT 
-              SUM(CASE WHEN user_color = 'white' THEN 1 ELSE 0 END) as white_games,
-              SUM(CASE WHEN user_color = 'white' AND result = 'win' THEN 1 ELSE 0 END) as white_wins,
-              SUM(CASE WHEN user_color = 'black' THEN 1 ELSE 0 END) as black_games,
-              SUM(CASE WHEN user_color = 'black' AND result = 'win' THEN 1 ELSE 0 END) as black_wins
-            FROM matches
-            WHERE user_id = ?
-              AND user_color IN ('white', 'black')
-              AND played_at >= ? AND played_at <= ?
-          `)
-          .bind(userId, tMidSec, tEndSec)
-          .first<{
-            white_games: number | null;
-            white_wins: number | null;
-            black_games: number | null;
-            black_wins: number | null;
-          }>(),
-      ]);
+      const { results } = await db
+        .prepare(`
+          SELECT played_at, user_color, result, outcome
+          FROM matches
+          WHERE user_id = ?
+            AND user_color IN ('white', 'black')
+            AND played_at IS NOT NULL
+        `)
+        .bind(userId)
+        .all<PlayedRow>();
+      const rows = results ?? [];
 
       return {
         startedAt: new Date(tStartSec * 1000).toISOString(),
         endedAt: new Date(tEndSec * 1000).toISOString(),
         totalGames: Number(spanRow.total_games ?? 0),
         activeDays: Number(spanRow.active_days ?? 0),
-        whiteGames: Number(globalRow?.white_games ?? 0),
-        whiteWins: Number(globalRow?.white_wins ?? 0),
-        blackGames: Number(globalRow?.black_games ?? 0),
-        blackWins: Number(globalRow?.black_wins ?? 0),
-        h1: {
-          whiteGames: Number(h1Row?.white_games ?? 0),
-          whiteWins: Number(h1Row?.white_wins ?? 0),
-          blackGames: Number(h1Row?.black_games ?? 0),
-          blackWins: Number(h1Row?.black_wins ?? 0),
-        },
-        h2: {
-          whiteGames: Number(h2Row?.white_games ?? 0),
-          whiteWins: Number(h2Row?.white_wins ?? 0),
-          blackGames: Number(h2Row?.black_games ?? 0),
-          blackWins: Number(h2Row?.black_wins ?? 0),
-        },
+        ...tally(rows),
+        h1: tally(rows.filter((r) => r.played_at >= tStartSec && r.played_at < tMidSec)),
+        h2: tally(rows.filter((r) => r.played_at >= tMidSec && r.played_at <= tEndSec)),
       };
     },
 

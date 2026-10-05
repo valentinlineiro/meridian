@@ -5,6 +5,8 @@ export type TrajectoryFindingType =
 export interface ChessColorAsymmetryMetrics {
   globalWhiteGames: number;
   globalBlackGames: number;
+  globalWhiteDecided: number; // denominators of the win rates below
+  globalBlackDecided: number;
   globalWhiteWinRate: number;
   globalBlackWinRate: number;
   diffPp: number;
@@ -37,31 +39,27 @@ export interface TrajectoryFinding {
     activeDays: number;
   };
   // pattern-specific evidence volume: games for chess, XP for languages
-  sample: { gamesCount: number } | { xpTotal: number };
+  sample: { gamesCount: number; decidedCount: number } | { xpTotal: number };
   metrics: ChessColorAsymmetryMetrics | LanguageFocusShiftMetrics;
 }
 
-export interface ChessTrajectoryInput {
+// Games per colour: `*Games` observed, `*Decided` (win + loss + draw) the evidence and denominator of the rates.
+export interface ColorTally {
+  whiteGames: number;
+  whiteDecided: number;
+  whiteWins: number;
+  blackGames: number;
+  blackDecided: number;
+  blackWins: number;
+}
+
+export interface ChessTrajectoryInput extends ColorTally {
   startedAt: string | null;
   endedAt: string | null;
   totalGames: number;
   activeDays: number;
-  whiteGames: number;
-  whiteWins: number;
-  blackGames: number;
-  blackWins: number;
-  h1: {
-    whiteGames: number;
-    whiteWins: number;
-    blackGames: number;
-    blackWins: number;
-  };
-  h2: {
-    whiteGames: number;
-    whiteWins: number;
-    blackGames: number;
-    blackWins: number;
-  };
+  h1: ColorTally;
+  h2: ColorTally;
 }
 
 export interface LanguageEraCourseActivity {
@@ -94,13 +92,13 @@ export function evaluateTrajectoryPatterns(input: TrajectoryInput): TrajectoryFi
   if (
     chess.startedAt &&
     chess.endedAt &&
-    chess.whiteGames >= 40 &&
-    chess.blackGames >= 40 &&
+    chess.whiteDecided >= 40 &&
+    chess.blackDecided >= 40 &&
     chess.activeDays >= 60 &&
-    chess.h1.whiteGames > 0 &&
-    chess.h1.blackGames > 0 &&
-    chess.h2.whiteGames > 0 &&
-    chess.h2.blackGames > 0
+    chess.h1.whiteDecided > 0 &&
+    chess.h1.blackDecided > 0 &&
+    chess.h2.whiteDecided > 0 &&
+    chess.h2.blackDecided > 0
   ) {
     const totalDays = Math.max(
       0,
@@ -111,16 +109,16 @@ export function evaluateTrajectoryPatterns(input: TrajectoryInput): TrajectoryFi
     );
 
     if (totalDays >= 60) {
-      const globalWhiteWR = (chess.whiteWins / chess.whiteGames) * 100;
-      const globalBlackWR = (chess.blackWins / chess.blackGames) * 100;
+      const globalWhiteWR = (chess.whiteWins / chess.whiteDecided) * 100;
+      const globalBlackWR = (chess.blackWins / chess.blackDecided) * 100;
       const globalDiff = globalWhiteWR - globalBlackWR;
 
-      const h1WhiteWR = (chess.h1.whiteWins / chess.h1.whiteGames) * 100;
-      const h1BlackWR = (chess.h1.blackWins / chess.h1.blackGames) * 100;
+      const h1WhiteWR = (chess.h1.whiteWins / chess.h1.whiteDecided) * 100;
+      const h1BlackWR = (chess.h1.blackWins / chess.h1.blackDecided) * 100;
       const h1Diff = h1WhiteWR - h1BlackWR;
 
-      const h2WhiteWR = (chess.h2.whiteWins / chess.h2.whiteGames) * 100;
-      const h2BlackWR = (chess.h2.blackWins / chess.h2.blackGames) * 100;
+      const h2WhiteWR = (chess.h2.whiteWins / chess.h2.whiteDecided) * 100;
+      const h2BlackWR = (chess.h2.blackWins / chess.h2.blackDecided) * 100;
       const h2Diff = h2WhiteWR - h2BlackWR;
 
       if (Math.abs(globalDiff) >= 15.0) {
@@ -140,10 +138,13 @@ export function evaluateTrajectoryPatterns(input: TrajectoryInput): TrajectoryFi
             },
             sample: {
               gamesCount: chess.whiteGames + chess.blackGames,
+              decidedCount: chess.whiteDecided + chess.blackDecided,
             },
             metrics: {
               globalWhiteGames: chess.whiteGames,
               globalBlackGames: chess.blackGames,
+              globalWhiteDecided: chess.whiteDecided,
+              globalBlackDecided: chess.blackDecided,
               globalWhiteWinRate: globalWhiteWR,
               globalBlackWinRate: globalBlackWR,
               diffPp: Math.abs(globalDiff),
