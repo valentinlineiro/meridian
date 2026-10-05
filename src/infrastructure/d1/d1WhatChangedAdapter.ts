@@ -6,6 +6,7 @@ import type {
   LanguagesPointInTime,
   LanguagesIntervalData,
 } from "../../ports/whatChangedPort.ts";
+import { summarize } from "../../domain/result.ts";
 
 export function createD1WhatChangedAdapter(db: D1Database): WhatChangedPort {
   return {
@@ -76,12 +77,10 @@ export function createD1WhatChangedAdapter(db: D1Database): WhatChangedPort {
         .first<{ rating: number | null; observed_at: number }>();
 
       if (row && row.observed_at !== null) {
-        // Lifetime counts up to that point
-        const counts = await db
+        // Lifetime tally up to that point, classified with the same rule as every other route.
+        const prior = await db
           .prepare(`
-            SELECT 
-              COUNT(*) as total_games,
-              SUM(CASE WHEN m.result = 'win' THEN 1 ELSE 0 END) as total_wins
+            SELECT m.result, m.outcome
             FROM matches m
             WHERE m.user_id = ?
               AND m.user_color IN ('white', 'black')
@@ -89,14 +88,16 @@ export function createD1WhatChangedAdapter(db: D1Database): WhatChangedPort {
               AND m.played_at <= ?
           `)
           .bind(userId, sinceSec)
-          .first<{ total_games: number; total_wins: number }>();
+          .all<{ result: string | null; outcome: string | null }>();
+        const lifetime = summarize(prior.results ?? []);
 
         return {
           status: "exactOrPrevious",
           data: {
             rating: row.rating,
-            lifetimeGames: Number(counts?.total_games ?? 0),
-            lifetimeWins: Number(counts?.total_wins ?? 0),
+            lifetimeGames: lifetime.games,
+            lifetimeDecided: lifetime.decided,
+            lifetimeWins: lifetime.wins,
             observedAt: new Date(row.observed_at * 1000).toISOString(),
           },
         };
@@ -126,6 +127,7 @@ export function createD1WhatChangedAdapter(db: D1Database): WhatChangedPort {
           data: {
             rating: firstRow.rating,
             lifetimeGames: 0,
+            lifetimeDecided: 0,
             lifetimeWins: 0,
             observedAt: new Date(firstRow.observed_at * 1000).toISOString(),
           },
@@ -143,15 +145,9 @@ export function createD1WhatChangedAdapter(db: D1Database): WhatChangedPort {
       const sinceSec = Math.floor(new Date(since).getTime() / 1000);
       const untilSec = Math.floor(new Date(until).getTime() / 1000);
 
-      const stats = await db
+      const played = await db
         .prepare(`
-          SELECT 
-            COUNT(*) as games_count,
-            SUM(CASE WHEN m.result = 'win' THEN 1 ELSE 0 END) as wins,
-            SUM(CASE WHEN m.user_color = 'white' THEN 1 ELSE 0 END) as white_games,
-            SUM(CASE WHEN m.user_color = 'white' AND m.result = 'win' THEN 1 ELSE 0 END) as white_wins,
-            SUM(CASE WHEN m.user_color = 'black' THEN 1 ELSE 0 END) as black_games,
-            SUM(CASE WHEN m.user_color = 'black' AND m.result = 'win' THEN 1 ELSE 0 END) as black_wins
+          SELECT m.user_color, m.result, m.outcome
           FROM matches m
           WHERE m.user_id = ?
             AND m.user_color IN ('white', 'black')
@@ -159,14 +155,11 @@ export function createD1WhatChangedAdapter(db: D1Database): WhatChangedPort {
             AND m.played_at > ? AND m.played_at <= ?
         `)
         .bind(userId, sinceSec, untilSec)
-        .first<{
-          games_count: number;
-          wins: number;
-          white_games: number;
-          white_wins: number;
-          black_games: number;
-          black_wins: number;
-        }>();
+        .all<{ user_color: string; result: string | null; outcome: string | null }>();
+      const rows = played.results ?? [];
+      const all = summarize(rows);
+      const white = summarize(rows.filter((r) => r.user_color === "white"));
+      const black = summarize(rows.filter((r) => r.user_color === "black"));
 
       const latest = await db
         .prepare(`
@@ -185,12 +178,15 @@ export function createD1WhatChangedAdapter(db: D1Database): WhatChangedPort {
         .first<{ rating: number | null }>();
 
       return {
-        gamesCount: Number(stats?.games_count ?? 0),
-        wins: Number(stats?.wins ?? 0),
-        whiteGames: Number(stats?.white_games ?? 0),
-        whiteWins: Number(stats?.white_wins ?? 0),
-        blackGames: Number(stats?.black_games ?? 0),
-        blackWins: Number(stats?.black_wins ?? 0),
+        gamesCount: all.games,
+        decidedCount: all.decided,
+        wins: all.wins,
+        whiteGames: white.games,
+        whiteDecided: white.decided,
+        whiteWins: white.wins,
+        blackGames: black.games,
+        blackDecided: black.decided,
+        blackWins: black.wins,
         latestRating: latest?.rating ?? null,
       };
     },

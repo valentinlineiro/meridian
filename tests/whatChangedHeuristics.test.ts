@@ -11,6 +11,7 @@ describe("What Changed Domain Heuristics", () => {
   const emptyDeltas: WhatChangedDeltas = {
     chess: {
       gamesCount: 0,
+      decidedCount: 0,
       ratingDelta: 0,
       baselineRating: 800,
       currentRating: 800,
@@ -51,6 +52,7 @@ describe("What Changed Domain Heuristics", () => {
       chess: {
         ...emptyDeltas.chess,
         gamesCount: 8,
+        decidedCount: 8,
         ratingDelta: 35,
         baselineRating: 800,
         currentRating: 835,
@@ -71,6 +73,7 @@ describe("What Changed Domain Heuristics", () => {
       chess: {
         ...emptyDeltas.chess,
         gamesCount: 12,
+        decidedCount: 12,
         intervalWhiteWinRate: 75.0,
         intervalBlackWinRate: 40.0,
       },
