@@ -348,8 +348,8 @@ describe("dashboard UX-PR2 hierarchy and reading", () => {
 
   it("shouldExpressRecentFormDifferenceInPercentagePoints", () => {
     const formBody = DASHBOARD_HTML.match(/function renderForm\(r\)\{([\s\S]*?)\n\}/)?.[1] ?? "";
-    expect(formBody).toMatch(/pp\s+WR\s+vs\s+hist/);
-    expect(formBody).toMatch(/pp\s+score\s+vs\s+hist/);
+    expect(formBody).toMatch(/pp\s+WR\s+vs\s+anteriores/);
+    expect(formBody).toMatch(/pp\s+score\s+vs\s+anteriores/);
   });
 
   it("shouldOnlyRenderRecentColorSplitIfBothColorsHaveGames", () => {

@@ -90,10 +90,12 @@ export async function handleStats(db: D1Database, kind: string, url: URL): Promi
       const n = Math.min(Math.max(Number.isFinite(raw) ? raw : 50, 1), 200);
       const slice = rows.slice(-n);
       const s = summarize(slice as any);
+      // The games before the window: the baseline the window is compared with. It never overlaps the window.
+      const before = summarize(rows.slice(0, rows.length - slice.length) as any);
       const m = new Map<string, any[]>();
       for (const r of slice) { const k = String((r as any).user_color ?? "unknown").toLowerCase(); if (!m.has(k)) m.set(k, []); m.get(k)!.push(r); }
       const colorGroups = [...m.entries()].map(([k, v]) => ({ key: k, ...summarize(v as any) }));
-      return json({ limit: n, games: s.games, wins: s.wins, losses: s.losses, draws: s.draws, winRate: s.winRate, scoreRate: s.scoreRate, colorGroups });
+      return json({ limit: n, games: s.games, wins: s.wins, losses: s.losses, draws: s.draws, unknown: s.unknown, decided: s.decided, winRate: s.winRate, scoreRate: s.scoreRate, colorGroups, before });
     }
     case "summary": {
       const snapStmt = userId

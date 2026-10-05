@@ -1532,17 +1532,17 @@ function fmtDelta(a,b){ if(a==null||b==null) return '—'; const d=a-b; return (
 function arrow(a,b){ if(a==null||b==null) return ''; return a>b?' ↑':a<b?' ↓':' ·'; }
 async function setRecent(n){ recentN=n; for(const k of [20,50,100]){ const el=q('#b'+k); if(el){ el.className=n===k?'btn btn-p':'btn btn-g'; } } const r=await j('/api/stats/recent?limit='+n); lastRecent=r; renderForm(r); renderChessView({ recent: r }, lastRows); }
 function renderForm(r){
- if(!hist) return;
- const hr=hist;
+ if(!r.before) return;
+ const hr=r.before; // games before the window: the window is never part of its own baseline
  const pctR=v=>v!=null?(v*100).toFixed(1)+'%':'—';
  const dWr = (r.winRate!=null && hr.winRate!=null) ? ((r.winRate - hr.winRate)*100).toFixed(1) : null;
  const dScore = (r.scoreRate!=null && hr.scoreRate!=null) ? ((r.scoreRate - hr.scoreRate)*100).toFixed(1) : null;
  const sign=v=>parseFloat(v)>0?'+'+v:v;
 
  q('#form').innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center">'
-  +'<div><div class="muted" style="font-size:11px;letter-spacing:.04em;text-transform:uppercase">Últimas '+r.limit+'</div><div style="font-weight:700">'+pctR(r.winRate)+' WR</div><div class="muted">'+pctR(r.scoreRate)+' score · '+r.wins+'W '+r.losses+'L '+r.draws+'D</div>'+(dWr!=null?'<div class="muted" style="margin-top:4px;font-size:11px">'+sign(dWr)+' pp WR vs hist.</div>':'')+'</div>'
-  +'<div style="border-left:1px solid #1e2e44;padding-left:8px"><div class="muted" style="font-size:11px;letter-spacing:.04em;text-transform:uppercase">Histórico</div><div style="font-weight:700">'+pctR(hr.winRate)+' WR</div><div class="muted">'+pctR(hr.scoreRate)+' score · '+hr.wins+'W '+hr.losses+'L '+hr.draws+'D</div></div>'
-  +'<div style="border-left:1px solid #1e2e44;padding-left:8px"><div class="muted" style="font-size:11px;letter-spacing:.04em;text-transform:uppercase">Score reciente</div><div style="font-weight:700">'+pctR(r.scoreRate)+'</div>'+(dScore!=null?'<div class="muted" style="margin-top:4px;font-size:11px">'+sign(dScore)+' pp score vs hist.</div>':'')+'</div>'
+  +'<div><div class="muted" style="font-size:11px;letter-spacing:.04em;text-transform:uppercase">Últimas '+r.limit+'</div><div style="font-weight:700">'+pctR(r.winRate)+' WR</div><div class="muted">'+pctR(r.scoreRate)+' score · '+r.wins+'W '+r.losses+'L '+r.draws+'D</div>'+(dWr!=null?'<div class="muted" style="margin-top:4px;font-size:11px">'+sign(dWr)+' pp WR vs anteriores</div>':'')+'</div>'
+  +'<div style="border-left:1px solid #1e2e44;padding-left:8px"><div class="muted" style="font-size:11px;letter-spacing:.04em;text-transform:uppercase">Anteriores · '+hr.games+'</div><div style="font-weight:700">'+pctR(hr.winRate)+' WR</div><div class="muted">'+pctR(hr.scoreRate)+' score · '+hr.wins+'W '+hr.losses+'L '+hr.draws+'D</div></div>'
+  +'<div style="border-left:1px solid #1e2e44;padding-left:8px"><div class="muted" style="font-size:11px;letter-spacing:.04em;text-transform:uppercase">Score reciente</div><div style="font-weight:700">'+pctR(r.scoreRate)+'</div>'+(dScore!=null?'<div class="muted" style="margin-top:4px;font-size:11px">'+sign(dScore)+' pp score vs anteriores</div>':'')+'</div>'
   +'</div>';
 
  if(r.colorGroups && r.colorGroups.length){
