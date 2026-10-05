@@ -41,7 +41,8 @@ export function summarize(rows: Array<Pick<MatchRow, "result" | "outcome" | "use
   }
   const games = rows.length;
   const decided = wins + losses + draws;
-  return { games, wins, losses, draws, winRate: games ? wins / games : null, scoreRate: games ? (wins + 0.5 * draws) / games : null, decided };
+  // Rates use decided games only: an unknown result is not a loss, so it stays out of the denominator and is reported apart.
+  return { games, wins, losses, draws, unknown: games - decided, winRate: decided ? wins / decided : null, scoreRate: decided ? (wins + 0.5 * draws) / decided : null, decided };
 }
 
 // Streaks over canonical chronological order (ordered by played_at ASC via allMatches).

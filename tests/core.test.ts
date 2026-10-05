@@ -34,6 +34,22 @@ describe("stats", () => {
     const s = summarize(rows as any);
     expect(s.wins + s.losses + s.draws).toBe(s.games);
   });
+
+  it("shouldExcludeUnknownFromDenominatorWhenResultsAreMissing", () => {
+    const rows = [...Array(3).fill({ result: "win" }), { result: "loss" }, { result: null, outcome: null }];
+    const s = summarize(rows as any);
+    expect(s.games).toBe(5);
+    expect(s.unknown).toBe(1);
+    expect(s.winRate).toBe(0.75);
+    expect(s.scoreRate).toBe(0.75);
+  });
+
+  it("shouldReturnNullRatesWhenEveryResultIsUnknown", () => {
+    const s = summarize([{ result: null, outcome: null }] as any);
+    expect(s.unknown).toBe(1);
+    expect(s.winRate).toBeNull();
+    expect(s.scoreRate).toBeNull();
+  });
 });
 
 describe("idempotency", () => {
