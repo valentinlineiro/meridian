@@ -40,4 +40,10 @@ describe("result rule parity", () => {
     const p = (await get(d1, "phases")).phases[0];
     for (const g of [c, o, p]) expect(g).toMatchObject(EXPECTED);
   });
+
+  it("shouldComputeResultsPercentagesOverDecidedGamesWhenUnknownsPresent", async () => {
+    const r = await get(await seed(), "results");
+    expect(r.percentages).toEqual({ win: 4 / 7, loss: 1 / 7, draw: 2 / 7 });
+    expect(r.percentages.win).toBe(r.winRate); // same denominator as the rest of the routes
+  });
 });

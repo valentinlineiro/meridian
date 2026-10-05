@@ -143,9 +143,9 @@ export async function handleStats(db: D1Database, kind: string, url: URL): Promi
       return json({
         ...sum,
         percentages: {
-          win: sum.games ? sum.wins / sum.games : null,
-          loss: sum.games ? sum.losses / sum.games : null,
-          draw: sum.games ? sum.draws / sum.games : null,
+          win: sum.decided ? sum.wins / sum.decided : null,
+          loss: sum.decided ? sum.losses / sum.decided : null,
+          draw: sum.decided ? sum.draws / sum.decided : null,
         },
         endConditions,
       });
