@@ -84,6 +84,7 @@ svg text{font-family:system-ui,sans-serif}
   <div class="h-left"><h1>Meridian</h1><small id="syncMeta">—</small></div>
   <div class="h-right">
    <div class="elo-hero"><b id="eloHero">—</b><span id="eloSub">ELO</span></div>
+    <button id="syncBtn" class="btn btn-p" onclick="doSync()">Sincronizar</button>
     <form method="post" action="/logout" style="margin:0"><button class="btn btn-g" type="submit">Salir</button></form>
   </div>
 </header>
@@ -608,6 +609,43 @@ window.fetch=async(...a)=>{const r=await _fetch(...a); if(r.status===401) locati
 const j=async u=>(await fetch(u)).json();
 const fmt=n=>n==null?'—':String(n);
 const pct=(a,b)=>b? (a/b*100).toFixed(1)+'%':'—';
+async function doSync(){
+ const btn=q('#syncBtn'); if(!btn) return;
+ btn.textContent='⟳ Sincronizando…'; btn.disabled=true;
+ try{
+  const r=await fetch('/api/me/sync',{method:'POST'});
+  const jr=await r.json();
+  if(!r.ok) throw new Error(jr.error||r.status);
+  const runId=jr.runId;
+  if(!runId) throw new Error('no runId');
+  for(let i=0;i<20;i++){
+   await new Promise(res=>setTimeout(res,3000));
+   const s=await (await fetch('/api/me/sync/status?runId='+runId)).json();
+   if(s.status==='completed'){
+     if(s.conclusion==='success'){
+      btn.textContent='✓ Sincronizado';
+      try{ await loadChessDashboard(); loadM(0); }catch(e){ console.error(e); }
+      try{ await loadLanguagesDashboard(); }catch(e){ const lang=await j('/api/me/stats/lang').catch(()=>j('/api/stats/lang')); if(lang && !lang.error) renderLang(lang); }
+      try{ await loadOverviewDashboard(); }catch(e){ console.error(e); }
+     setTimeout(()=>{btn.textContent='Sincronizar'; btn.disabled=false;},3000);
+     return;
+    } else if(s.conclusion==='skipped' || s.conclusion==='cancelled'){
+     btn.textContent='✓ Sin cambios';
+     setTimeout(()=>{btn.textContent='Sincronizar'; btn.disabled=false;},3000);
+     return;
+    } else {
+     throw new Error(s.conclusion||'failed');
+    }
+   }
+  }
+  btn.textContent='✓ Disparado';
+  setTimeout(()=>{btn.textContent='Sincronizar'; btn.disabled=false;},3000);
+ }catch(e){
+  btn.textContent='✕ Error';
+  console.error(e);
+  setTimeout(()=>{btn.textContent='Sincronizar'; btn.disabled=false;},3000);
+ }
+}
 
 function kpi(label,val,sub){return '<div class="kpi"><label>'+label+'</label><b>'+val+'</b><small>'+(sub||'')+'</small></div>'}
 

@@ -25,7 +25,7 @@ const HTML_READS = ["/", "/index.html", "/overview", "/chess", "/languages", "/l
 const API_READS = [
   "/api/stats/summary", "/api/stats/recent", "/api/stats/lang", "/api/languages", "/api/languages/xp", "/api/languages/analytics",
   "/api/languages/courses", "/api/languages/courses/X", "/api/matches", "/api/snapshots", "/api/snapshots/abc?raw=1",
-  "/api/what-changed", "/api/trajectory", "/api/chess/matches/m1/detail", "/api/me/stats/lang",
+  "/api/what-changed", "/api/trajectory", "/api/chess/matches/m1/detail", "/api/me/stats/lang", "/api/me/sync/status",
   "/api/some/route/nobody/wrote", "/anything-else",
 ];
 const USER_READS = [...HTML_READS, ...API_READS];
@@ -103,7 +103,7 @@ describe("access policy (table-driven over the audit matrix)", () => {
     });
   });
 
-  describe.each(["/logout"])("identity write POST %s", (path) => {
+  describe.each(["/api/me/sync", "/logout"])("identity write POST %s", (path) => {
     it("shouldReturn401WithoutASession", async () => expect((await call("POST", path, SAME)).status).toBe(401));
     it("shouldReturn401WithImportTokenOnly", async () => {
       expect((await call("POST", path, { authorization: "Bearer secret", ...SAME })).status).toBe(401);
@@ -122,6 +122,12 @@ describe("access policy (table-driven over the audit matrix)", () => {
     it("shouldRefuseAForeignOriginHeader", async () => {
       expect((await call("POST", path, { cookie: await cookieFor(), origin: "https://evil.example" })).status).toBe(403);
     });
+  });
+
+  it("shouldReachTheMeSyncHandlerWithASameOriginOwnerSession", async () => {
+    const res = await call("POST", "/api/me/sync", { cookie: await cookieFor(), ...SAME });
+    expect(res.status).toBe(404); // identity ok, but no provider account in the empty test DB
+    expect(((await res.json()) as any).code).toBe("NO_PROVIDER_ACCOUNT");
   });
 
   it("shouldClearTheSessionCookieOnLogout", async () => {
