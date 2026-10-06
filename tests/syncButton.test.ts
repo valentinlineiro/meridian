@@ -173,3 +173,26 @@ describe("status of a run that is not the collector's", () => {
     expect((await status(".github/workflows/collector.yml@refs/heads/main")).status).toBe(200);
   });
 });
+
+describe("dispatch target", () => {
+  const dispatchBody = async (ref: string | null | undefined) => {
+    let body = "";
+    const f = async (url: string, init: any) => {
+      if (url.includes("dispatches")) { body = init.body; return { ok: true, status: 204, text: async () => "" } as any; }
+      return { ok: true, json: async () => ({ workflow_runs: [{ id: 1, status: "queued", event: "workflow_dispatch", created_at: new Date().toISOString() }] }) } as any;
+    };
+    const res = await handleMeSync(stubDb("18352137"), "valen@example.com", f as any, "ghp_xxx", REPO, ref as any);
+    return { res, body: body ? JSON.parse(body) : null };
+  };
+  it("shouldDispatchOnTheConfiguredBranch", async () => {
+    expect((await dispatchBody("private/operational")).body.ref).toBe("private/operational");
+  });
+  it("shouldDefaultToMainWhenNoBranchIsConfigured", async () => {
+    expect((await dispatchBody(null)).body.ref).toBe("main");
+  });
+  it.each(["", "../x", "a..b", "-x", "x y"])("shouldRefuseToDispatchWhenTheBranchIs %j", async (ref) => {
+    const { res, body } = await dispatchBody(ref);
+    expect(res.status).toBe(500);
+    expect(body).toBeNull();
+  });
+});

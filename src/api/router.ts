@@ -165,7 +165,7 @@ app.get("/api/languages/courses/:courseId", (c) =>
 
 app.get("/api/me/stats/lang", (c) => handleMeStats(c.env.DB, new URL(c.req.url), emailOf(c)));
 app.post("/api/me/sync", (c) =>
-  handleMeSync(c.env.DB, emailOf(c), fetch, c.env.GITHUB_ACTIONS_TOKEN ?? null, c.env.COLLECTOR_REPO ?? null));
+  handleMeSync(c.env.DB, emailOf(c), fetch, c.env.GITHUB_ACTIONS_TOKEN ?? null, c.env.COLLECTOR_REPO ?? null, c.env.COLLECTOR_REF ?? null));
 app.get("/api/me/sync/status", (c) =>
   handleMeSyncStatus(c.env.DB, emailOf(c), new URL(c.req.url), fetch, c.env.GITHUB_ACTIONS_TOKEN ?? null, c.env.COLLECTOR_REPO ?? null));
 
