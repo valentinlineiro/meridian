@@ -3,6 +3,8 @@ import { resolveProviderUserId } from "../db/users.ts";
 import { handleLangStats } from "./stats.ts";
 
 // The collector is a GitHub Actions workflow (collector.yml) in COLLECTOR_REPO ("owner/name"); "Sincronizar" dispatches it.
+const CLOCK_SKEW_MS = 10_000; // GitHub stamps created_at with its own clock
+const WORKFLOW_PATH = ".github/workflows/collector.yml";
 const REPO_RE = /^[A-Za-z0-9][A-Za-z0-9-]*\/(?!\.{1,2}$)[\w.-]+$/;
 
 
@@ -41,14 +43,16 @@ export async function handleMeSync(
   let runId: number | null = null;
   for (let attempt = 0; attempt < 3; attempt++) {
     if (attempt > 0) await new Promise((r) => setTimeout(r, 700));
-    const r = await fetcher(`https://api.github.com/repos/${repo}/actions/workflows/collector.yml/runs?per_page=5`, {
+    const r = await fetcher(`https://api.github.com/repos/${repo}/actions/workflows/collector.yml/runs?event=workflow_dispatch&per_page=5`, {
       headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json", "User-Agent": "meridian-worker" },
     });
     if (!r.ok) break;
     const j: any = await r.json().catch(() => null);
     const runs: any[] = j?.workflow_runs ?? [];
-    const after = runs.filter((x) => !x.created_at || x.created_at >= dispatchedAt);
-    const candidate = after.find((x) => x.status !== "completed") ?? after[0];
+    // Only a dispatched run that exists and was created after our dispatch (minus clock skew) can be the one we started.
+    // A run without created_at is never a candidate; the list is newest first.
+    const since = new Date(Date.parse(dispatchedAt) - CLOCK_SKEW_MS).toISOString();
+    const candidate = runs.find((x) => x.event === "workflow_dispatch" && typeof x.created_at === "string" && x.created_at >= since);
     if (candidate?.id) { runId = candidate.id; break; }
   }
   if (!runId) return json({ ok: false, error: "workflow run not found after dispatch", code: "RUN_NOT_FOUND" }, 502);
@@ -80,6 +84,8 @@ export async function handleMeSyncStatus(
       return json({ ok: false, error: `status failed ${r.status} ${String(txt).slice(0, 80)}` }, 502);
     }
     const j: any = await r.json();
+    // /actions/runs/:id answers for any run in the repo: only the collector's are ours to report.
+    if (String(j?.path ?? "").split("@")[0] !== WORKFLOW_PATH) return json({ ok: false, error: "run does not belong to the collector workflow", code: "RUN_NOT_COLLECTOR" }, 404);
     return json({ status: j.status, conclusion: j.conclusion, runId: j.id, htmlUrl: j.html_url, providerUserId });
   }
   const r = await fetcher(`https://api.github.com/repos/${repo}/actions/workflows/collector.yml/runs?per_page=5`, {

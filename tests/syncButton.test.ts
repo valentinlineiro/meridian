@@ -29,7 +29,7 @@ describe("POST /api/me/sync", () => {
         return { ok: true, status: 204, text: async () => "" } as any;
       }
       // run correlation: return queued run
-      return { ok: true, json: async () => ({ workflow_runs: [{ id: 123, status: "queued", conclusion: null, name: "collector", created_at: new Date().toISOString() }] }) } as any;
+      return { ok: true, json: async () => ({ workflow_runs: [{ id: 123, status: "queued", conclusion: null, name: "collector", event: "workflow_dispatch", created_at: new Date().toISOString() }] }) } as any;
     };
     const res = await handleMeSync(db, "valen@example.com", fakeFetch as any, "ghp_xxx", REPO);
     const body: any = await res.json();
@@ -76,7 +76,7 @@ describe("POST /api/me/sync", () => {
 describe("GET /api/me/sync/status", () => {
   const fakeRun = (status: string, conclusion: string | null, id = 123) => ({
     ok: true,
-    json: async () => ({ id, status, conclusion, html_url: "https://x" }),
+    json: async () => ({ id, status, conclusion, html_url: "https://x", path: ".github/workflows/collector.yml" }),
   } as any);
   it("shouldReturnQueuedWhenRunQueued", async () => {
     const res = await handleMeSyncStatus(stubDb("18352137"), "valen@example.com", new URL("http://x/api/me/sync/status?runId=123"), async () => fakeRun("queued", null), "ghp_xxx", REPO);
@@ -123,5 +123,53 @@ describe("collector repo configuration", () => {
   it("shouldRefuseToReadStatusWhenCollectorRepoIsNotSet", async () => {
     const res = await handleMeSyncStatus(stubDb("18352137"), "valen@example.com", new URL("http://x/api/me/sync/status"), never, "ghp_xxx", null);
     expect(res.status).toBe(500);
+  });
+});
+
+describe("run correlation after dispatch", () => {
+  const dispatchThen = (runs: any[]) => (async (url: string) =>
+    url.includes("dispatches") ? ({ ok: true, status: 204, text: async () => "" } as any) : ({ ok: true, json: async () => ({ workflow_runs: runs }) } as any)) as any;
+  const sync = (runs: any[]) => handleMeSync(stubDb("18352137"), "valen@example.com", dispatchThen(runs), "ghp_xxx", REPO);
+  const now = () => new Date().toISOString();
+  const ago = (ms: number) => new Date(Date.now() - ms).toISOString();
+  const run = (o: any) => ({ id: 1, status: "queued", name: "collector", event: "workflow_dispatch", created_at: now(), ...o });
+
+  it("shouldNeverSelectARunWithoutCreatedAt", async () => {
+    const res = await sync([run({ id: 7, created_at: undefined })]);
+    expect(res.status).toBe(502);
+    expect(((await res.json()) as any).code).toBe("RUN_NOT_FOUND");
+  });
+  it("shouldNeverSelectARunCreatedBeforeTheDispatch", async () => {
+    expect((await sync([run({ id: 8, created_at: ago(3_600_000) })])).status).toBe(502);
+  });
+  it("shouldNeverSelectAScheduledRunEvenIfItIsRecent", async () => {
+    expect((await sync([run({ id: 9, event: "schedule" })])).status).toBe(502);
+  });
+  it("shouldAcceptARunStampedSlightlyBeforeTheDispatchBecauseOfClockSkew", async () => {
+    const res = await sync([run({ id: 10, created_at: ago(3_000) })]);
+    expect(((await res.json()) as any).runId).toBe(10);
+  });
+  it("shouldPickTheNewestDispatchedRunWhenOldOnesAreListedToo", async () => {
+    const res = await sync([run({ id: 12, status: "in_progress" }), run({ id: 11, status: "completed", created_at: ago(3_600_000) })]);
+    expect(((await res.json()) as any).runId).toBe(12);
+  });
+  it("shouldAskGitHubOnlyForDispatchedRunsOfTheCollectorWorkflow", async () => {
+    const urls: string[] = [];
+    await handleMeSync(stubDb("18352137"), "valen@example.com", (async (url: string) => { urls.push(url); return url.includes("dispatches") ? ({ ok: true, status: 204, text: async () => "" } as any) : ({ ok: true, json: async () => ({ workflow_runs: [run({})] }) } as any); }) as any, "ghp_xxx", REPO);
+    expect(urls.find((u) => u.includes("/runs"))).toBe("https://api.github.com/repos/owner/collector-repo/actions/workflows/collector.yml/runs?event=workflow_dispatch&per_page=5");
+  });
+});
+
+describe("status of a run that is not the collector's", () => {
+  const other = (path: any) => (async () => ({ ok: true, json: async () => ({ id: 5, status: "completed", conclusion: "success", html_url: "https://x", path }) } as any)) as any;
+  const status = (path: any) => handleMeSyncStatus(stubDb("18352137"), "valen@example.com", new URL("http://x/api/me/sync/status?runId=5"), other(path), "ghp_xxx", REPO);
+
+  it.each([".github/workflows/ci.yml", undefined, null, "collector.yml", ".github/workflows/collector.yml.bak"])("shouldRefuseToReportARunWhosePathIs %s", async (path) => {
+    const res = await status(path);
+    expect(res.status).toBe(404);
+    expect(((await res.json()) as any).code).toBe("RUN_NOT_COLLECTOR");
+  });
+  it("shouldReportARunWhosePathCarriesAnRefSuffix", async () => {
+    expect((await status(".github/workflows/collector.yml@refs/heads/main")).status).toBe(200);
   });
 });
