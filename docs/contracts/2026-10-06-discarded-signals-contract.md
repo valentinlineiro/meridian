@@ -1,7 +1,7 @@
 # Contrato: señales descartadas (evaluaciones de hallazgo)
 
 **Fecha:** 2026-10-06
-**Estado:** 📝 **DRAFT, sin implementar.** Decisiones D1–D8 (§7) en revisión una a una: D1, D6 y D7 aprobadas; D5 y D8 salen del contrato; D2, D3 y D4 pendientes. Hasta cerrarlas no hay congelación ni código.
+**Estado:** 🔒 **CONGELADO (2026-10-06), sin implementar.** D1–D4, D6 y D7 aprobadas; D5 y D8 fuera de este contrato (§7). `LANG_FOCUS_SHIFT_LONGITUDINAL` pendiente de un contrato propio. Cualquier cambio posterior entra por enmienda explícita.
 **Origen:** hoy un hallazgo cuya evidencia no basta **desaparece**: What-changed y Trayectoria solo devuelven lo que se emite. Tras P1.5 eso oculta la distinción más útil: *"no hay señal"* frente a *"hay indicio, pero los datos no permiten afirmarlo"*. Es también el requisito previo de cualquier capa de interpretación (LLM): esta no debe decidir qué se descartó ni por qué.
 
 **Principio:** *Insufficient evidence no significa ausencia de señal.* Meridian decide, de forma determinista, qué se afirma, qué queda inconcluso y por qué. Nada de esto lo decide un modelo.
@@ -49,7 +49,8 @@ Reglas:
 
 1. **Se informan todas las condiciones que fallan**, no solo la primera. Si dos fallan, hay dos motivos.
 2. Una condición que no puede evaluarse por falta de datos es `data_unavailable`, **nunca** un fallo del umbral.
-3. `effect_below_threshold` **no** afirma ausencia de efecto: el IC puede contener el umbral. Meridian no ofrece un resultado "no hay efecto" (eso exigiría equivalencia estadística; fuera de alcance).
+3. **Los motivos describen condiciones evaluadas por la regla, no etapas de un algoritmo secuencial.** El orden de evaluación no decide qué motivos existen: una implementación con cortocircuitos debe poder producir, p. ej., `[insufficient_sample, data_unavailable, persistence_not_met]`. El conjunto es estable para tests y consumidores; **no hay orden semántico entre motivos**.
+4. `effect_below_threshold` **no** afirma ausencia de efecto: el IC puede contener el umbral. Meridian no ofrece un resultado "no hay efecto" (eso exigiría equivalencia estadística; fuera de alcance).
 
 ### 3.1 Qué condición cae en qué motivo
 
@@ -114,14 +115,14 @@ Se derivan **solo de la evaluación transportada** (`status`, `reasons` y `metri
 - UI del *Evidence Brief*; aquí solo el contrato de datos.
 - Semántica del ELO (`elo_after` vs `elo_observations`): `CHESS_RATING_JUMP` queda **provisional** hasta P1.3-ELO/P2; sus evaluaciones heredarán esa semántica.
 
-## 7. Decisiones abiertas
+## 7. Decisiones
 
 | ID | Pregunta | Propuesta |
 |---|---|---|
 | **D1** | ¿Dos estados o tres? | ✅ **Aprobada.** Dos estados; "inconcluso" se deriva solo de `status` + `reasons` + `metrics` transportados (§4). |
-| **D2** | ¿El enumerado de §3 es completo? | 🔍 **En revisión.** Propuesta: aprobar los seis motivos con las definiciones de §3.1; `LANG_FOCUS_SHIFT_LONGITUDINAL` fuera. |
-| **D3** | ¿Todos los fallos o solo el primero? | Propuesta: **todos** (regla 1 de §3). Probablemente aprobada. |
-| **D4** | ¿Qué `kind` generan evaluación? | 🔍 **En revisión.** `statistical` y `threshold`; `event` no. Los `threshold` no son homogéneos: §3.1 muestra que XP-aceleración y salto de ELO caben en el enumerado; foco de idioma no. |
+| **D2** | ¿El enumerado de §3 es completo? | ✅ **Aprobada.** Seis motivos con las definiciones de §3.1; `LANG_FOCUS_SHIFT_LONGITUDINAL` fuera, pendiente de contrato propio. |
+| **D3** | ¿Todos los fallos o solo el primero? | ✅ **Aprobada.** Todos (regla 1 de §3). Amplía la explicación; no cambia el conjunto de hallazgos emitidos. |
+| **D4** | ¿Qué `kind` generan evaluación? | ✅ **Aprobada.** `statistical` y `threshold`; `event` no. Los `threshold` no son homogéneos: §3.1 muestra que XP-aceleración y salto de ELO caben en el enumerado; foco de idioma no. |
 | **D5** | Formato del `evidenceId` | ⚠️ **Retirada de este contrato:** se decide en el contrato de salida estructurada. |
 | **D6** | ¿Campo aditivo `evaluations`? | ✅ **Aprobada.** Aditivo (§5). |
 | **D7** | ¿Qué superficies y en qué orden? | ✅ **Aprobada.** What-changed primero; Trayectoria en otro PR. |
@@ -134,3 +135,5 @@ Se derivan **solo de la evaluación transportada** (`status`, `reasons` y `metri
 - Conjunto *Inconcluso* = hallazgos eliminados por A(b): 5 vs 5 con +40 pp → inconcluso con `interval_includes_zero`; 9 decididas con +30 pp → `insufficient_sample` e inconcluso solo si el resto de condiciones pasan.
 - `data_unavailable` nunca se confunde con `effect_below_threshold`.
 - Ninguna evaluación de tipo `event`.
+- **Invariante de oro (D3):** para los mismos inputs, `findings` es idéntico antes y después (mismo contenido, mismo orden); evaluar todas las condiciones solo amplía `evaluations`.
+- Los motivos no dependen del orden en que se evalúan las condiciones.
