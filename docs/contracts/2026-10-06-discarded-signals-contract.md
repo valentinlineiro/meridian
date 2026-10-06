@@ -1,7 +1,7 @@
 # Contrato: señales descartadas (evaluaciones de hallazgo)
 
 **Fecha:** 2026-10-06
-**Estado:** 🔒 **CONGELADO (2026-10-06), sin implementar.** D1–D4, D6 y D7 aprobadas; D5 y D8 fuera de este contrato (§7). `LANG_FOCUS_SHIFT_LONGITUDINAL` pendiente de un contrato propio. Cualquier cambio posterior entra por enmienda explícita.
+**Estado:** 🔒 **CONGELADO (2026-10-06), sin implementar.** D1–D4, D6 y D7 aprobadas; D5 y D8 fuera de este contrato (§7). `LANG_FOCUS_SHIFT_LONGITUDINAL` pendiente de un contrato propio. Cualquier cambio posterior entra por enmienda explícita. **Enmienda 2026-10-06:** el invariante de trazabilidad de §4 pasa de igualdad a inclusión (*Inconcluso* ⊇ eliminados por IC); la definición operativa y §8 no cambian.
 **Origen:** hoy un hallazgo cuya evidencia no basta **desaparece**: What-changed y Trayectoria solo devuelven lo que se emite. Tras P1.5 eso oculta la distinción más útil: *"no hay señal"* frente a *"hay indicio, pero los datos no permiten afirmarlo"*. Es también el requisito previo de cualquier capa de interpretación (LLM): esta no debe decidir qué se descartó ni por qué.
 
 **Principio:** *Insufficient evidence no significa ausencia de señal.* Meridian decide, de forma determinista, qué se afirma, qué queda inconcluso y por qué. Nada de esto lo decide un modelo.
@@ -100,7 +100,7 @@ Se derivan **solo de la evaluación transportada** (`status`, `reasons` y `metri
 | **Inconcluso** | `not_emitted` y el efecto observado alcanza el umbral, y solo fallan `insufficient_sample` y/o `interval_includes_zero` | "Hay indicio, los datos no permiten afirmarlo" |
 | **Sin indicio** | cualquier otro `not_emitted` | No se muestra por defecto |
 
-**Invariante de trazabilidad:** el conjunto *Inconcluso* de What-changed son exactamente los hallazgos que el comportamiento anterior a P1.5b habría emitido y la regla A(b) elimina. Es comprobable por test.
+**Invariante de trazabilidad:** todo hallazgo que el comportamiento anterior a P1.5b habría emitido y la condición de IC de la regla A(b) elimina es *Inconcluso* (con `interval_includes_zero`). El recíproco **no** se exige: *Inconcluso* también puede existir donde la regla nunca habría emitido un hallazgo, p. ej. por `insufficient_sample` con efecto observado sobre el umbral (9 decididas con +30 pp). La clasificación se determina solo desde la evaluación transportada (`salience`). Es comprobable por test.
 
 ## 5. Compatibilidad
 
@@ -132,7 +132,7 @@ Se derivan **solo de la evaluación transportada** (`status`, `reasons` y `metri
 
 - Cada motivo puede aparecer **solo** (una condición falla, las demás pasan) y combinado.
 - `emitted` ⇔ el hallazgo existe hoy: la lista de hallazgos es idéntica antes y después.
-- Conjunto *Inconcluso* = hallazgos eliminados por A(b): 5 vs 5 con +40 pp → inconcluso con `interval_includes_zero`; 9 decididas con +30 pp → `insufficient_sample` e inconcluso solo si el resto de condiciones pasan.
+- *Inconcluso* ⊇ hallazgos eliminados por la condición de IC de A(b): 5 vs 5 con +40 pp → inconcluso con `interval_includes_zero`; 9 decididas con +30 pp → `insufficient_sample` e inconcluso solo si el resto de condiciones pasan.
 - `data_unavailable` nunca se confunde con `effect_below_threshold`.
 - Ninguna evaluación de tipo `event`.
 - **Invariante de oro (D3):** para los mismos inputs, `findings` es idéntico antes y después (mismo contenido, mismo orden); evaluar todas las condiciones solo amplía `evaluations`.
