@@ -1,7 +1,7 @@
 # Contrato: señales descartadas (evaluaciones de hallazgo)
 
 **Fecha:** 2026-10-06
-**Estado:** 📝 **DRAFT, sin implementar.** Las decisiones D1–D8 (§7) están abiertas; hasta aprobarlas una a una no hay congelación ni código.
+**Estado:** 📝 **DRAFT, sin implementar.** Decisiones D1–D8 (§7) en revisión una a una: D1, D6 y D7 aprobadas; D5 y D8 salen del contrato; D2, D3 y D4 pendientes. Hasta cerrarlas no hay congelación ni código.
 **Origen:** hoy un hallazgo cuya evidencia no basta **desaparece**: What-changed y Trayectoria solo devuelven lo que se emite. Tras P1.5 eso oculta la distinción más útil: *"no hay señal"* frente a *"hay indicio, pero los datos no permiten afirmarlo"*. Es también el requisito previo de cualquier capa de interpretación (LLM): esta no debe decidir qué se descartó ni por qué.
 
 **Principio:** *Insufficient evidence no significa ausencia de señal.* Meridian decide, de forma determinista, qué se afirma, qué queda inconcluso y por qué. Nada de esto lo decide un modelo.
@@ -22,6 +22,7 @@ Evaluation {
 }
 ```
 
+- La clasificación *Inconcluso* se reproduce solo con la evaluación transportada (sin datos ni reglas).
 - `emitted` ⇔ el hallazgo existe hoy con el mismo contenido. **El conjunto de hallazgos emitidos no cambia** respecto al comportamiento vigente; esto es una vista añadida, no una regla nueva.
 - Un hallazgo emitido se identifica igual que ahora; las `not_emitted` no se presentan como hallazgos.
 
@@ -30,7 +31,7 @@ Evaluation {
 | `kind` | Reglas actuales | Descartes |
 |---|---|---|
 | `statistical` | `CHESS_COLOR_ASYMMETRY`, `CHESS_COLOR_ASYMMETRY_LONGITUDINAL` | **Sí**: comparan proporciones con n, umbral e IC |
-| `threshold` | `CHESS_RATING_JUMP`, `LANG_XP_ACCELERATION`, `LANG_FOCUS_SHIFT_LONGITUDINAL` | **Sí, sin incertidumbre**: cumplen o no un umbral determinista; no hay IC y no se inventa |
+| `threshold` | `CHESS_RATING_JUMP`, `LANG_XP_ACCELERATION` (`LANG_FOCUS_SHIFT_LONGITUDINAL` queda fuera, §3.1) | **Sí, sin incertidumbre**: cumplen o no un umbral determinista; no hay IC y no se inventa |
 | `event` | `LANG_ACTIVE_COURSE_SWITCH`, `STREAK_MILESTONE`, `STREAK_BROKEN` | **No**: el evento ocurrió o no; no ocurrir no es una señal descartada |
 
 ## 3. Motivos de no emisión (enumerado cerrado)
@@ -50,9 +51,47 @@ Reglas:
 2. Una condición que no puede evaluarse por falta de datos es `data_unavailable`, **nunca** un fallo del umbral.
 3. `effect_below_threshold` **no** afirma ausencia de efecto: el IC puede contener el umbral. Meridian no ofrece un resultado "no hay efecto" (eso exigiría equivalencia estadística; fuera de alcance).
 
+### 3.1 Qué condición cae en qué motivo
+
+Tres fallos distintos, que no se mezclan:
+
+| Motivo | Criterio operativo |
+|---|---|
+| `insufficient_sample` | La cantidad está **definida** pero su **recuento** (decididas, XP, días con actividad) queda bajo el mínimo |
+| `span_too_short` | Solo **longitud calendario** de la ventana (días entre extremos) bajo el mínimo; no cuenta actividad |
+| `data_unavailable` | Una magnitud necesaria **no está definida** (sin baseline, grupo con 0 decididas, tasa histórica 0, extremos temporales ausentes). Nunca cuenta como efecto bajo el umbral |
+
+Si el efecto no es calculable (`data_unavailable`), la evaluación **no puede ser inconclusa**: no hay efecto observado que alcance el umbral.
+
+Correspondencia con las reglas vigentes (comprobada contra el código):
+
+| Regla | Condición | Motivo |
+|---|---|---|
+| `CHESS_COLOR_ASYMMETRY` | decididas ≥ 10 | `insufficient_sample` |
+| | ambos colores con decididas | `data_unavailable` |
+| | \|blancas − negras\| ≥ 15 pp | `effect_below_threshold` |
+| | IC95 excluye 0 | `interval_includes_zero` (`data_unavailable` si no hay IC) |
+| `CHESS_COLOR_ASYMMETRY_LONGITUDINAL` | decididas ≥ 40 por color | `insufficient_sample` |
+| | días con actividad ≥ 60 | `insufficient_sample` |
+| | días calendario ≥ 60 | `span_too_short` |
+| | cada era con ambos colores decididos | `data_unavailable` |
+| | \|diferencia global\| ≥ 15 pp | `effect_below_threshold` |
+| | IC95 de la diferencia global excluye 0 | `interval_includes_zero` |
+| | ≥ 10 pp y mismo signo en ambas eras | `persistence_not_met` |
+| `CHESS_RATING_JUMP` | ELO inicial y final disponibles | `data_unavailable` |
+| | \|Δ ELO\| ≥ 25 | `effect_below_threshold` |
+| `LANG_XP_ACCELERATION` | intervalo ≥ 3 días | `span_too_short` |
+| | XP ganado ≥ 200 | `insufficient_sample` |
+| | tasa histórica > 0 | `data_unavailable` |
+| | ritmo ≥ 1,3 × histórico | `effect_below_threshold` |
+
+**No representable con este enumerado: `LANG_FOCUS_SHIFT_LONGITUDINAL`.** Sus condiciones se evalúan sobre *candidatos* (cursos) y no sobre una sola magnitud: "curso dominante en H1 (≥ 60 % y ≥ 2000 XP)", "otro curso dominante en H2", "el anterior ≤ 25 % en H2", "el nuevo no era ya dominante en H1". Elegir qué candidato explica el descarte y cómo nombrar "el nuevo ya era dominante" (no es umbral de efecto ni persistencia) es una decisión propia. **Queda fuera de este contrato**: no genera evaluaciones hasta resolverla aparte.
+
+---
+
 ## 4. Niveles de saliencia (para el consumidor, no para el cálculo)
 
-Se derivan de la evaluación, sin lógica adicional:
+Se derivan **solo de la evaluación transportada** (`status`, `reasons` y `metrics`), sin volver a ejecutar la regla ni consultar datos. Por eso `metrics` de una evaluación `not_emitted` **debe conservar el efecto observado** (p. ej. `diffPp`, `ratingDelta`, ratio de ritmo) siempre que sea calculable: `insufficient_sample` por sí solo no dice si el efecto era +40 pp o +2 pp.
 
 | Nivel | Condición | Lectura |
 |---|---|---|
@@ -79,14 +118,14 @@ Se derivan de la evaluación, sin lógica adicional:
 
 | ID | Pregunta | Propuesta |
 |---|---|---|
-| **D1** | ¿Dos estados (`emitted`/`not_emitted`) o tres (con "inconcluso" como estado propio)? | **Dos**; "inconcluso" se deriva (§4), así no hay un tercer estado que mantener en sincronía con los motivos. |
-| **D2** | ¿El enumerado de §3 es completo y correcto? | Revisar uno a uno; en particular si `span_too_short` y `data_unavailable` son motivos distintos. |
-| **D3** | ¿Todos los fallos o solo el primero? | **Todos** (regla 1 de §3). |
-| **D4** | ¿Qué `kind` generan evaluación? | `statistical` y `threshold`; `event` no (§2). |
-| **D5** | Formato y estabilidad de un `evidenceId` por evaluación | Abierta. Candidato: id de la regla + intervalo de evaluación, determinista. Decidir en el contrato de salida LLM, no aquí. |
-| **D6** | ¿Campo aditivo `evaluations` o sustituir `findings`? | **Aditivo** (§5). |
-| **D7** | ¿Incluye Trayectoria o solo What-changed? | Ambos, en PRs separados: What-changed primero. |
-| **D8** | ¿Qué muestra por defecto el consumidor? | Hallazgos e inconclusos; "sin indicio" oculto. Es de presentación, no del contrato de datos. |
+| **D1** | ¿Dos estados o tres? | ✅ **Aprobada.** Dos estados; "inconcluso" se deriva solo de `status` + `reasons` + `metrics` transportados (§4). |
+| **D2** | ¿El enumerado de §3 es completo? | 🔍 **En revisión.** Propuesta: aprobar los seis motivos con las definiciones de §3.1; `LANG_FOCUS_SHIFT_LONGITUDINAL` fuera. |
+| **D3** | ¿Todos los fallos o solo el primero? | Propuesta: **todos** (regla 1 de §3). Probablemente aprobada. |
+| **D4** | ¿Qué `kind` generan evaluación? | 🔍 **En revisión.** `statistical` y `threshold`; `event` no. Los `threshold` no son homogéneos: §3.1 muestra que XP-aceleración y salto de ELO caben en el enumerado; foco de idioma no. |
+| **D5** | Formato del `evidenceId` | ⚠️ **Retirada de este contrato:** se decide en el contrato de salida estructurada. |
+| **D6** | ¿Campo aditivo `evaluations`? | ✅ **Aprobada.** Aditivo (§5). |
+| **D7** | ¿Qué superficies y en qué orden? | ✅ **Aprobada.** What-changed primero; Trayectoria en otro PR. |
+| **D8** | ¿Qué muestra por defecto el consumidor? | ⚠️ **Retirada de este contrato:** es presentación, no contrato de datos. |
 
 ## 8. Tests exigidos (cuando se congele)
 
