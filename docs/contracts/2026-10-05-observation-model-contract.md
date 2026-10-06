@@ -1,7 +1,7 @@
 # Contrato P2: modelo de observaciones (extraer → paridad → conmutar → compactar)
 
 **Fecha:** 2026-10-05
-**Estado:** 🟢 **CONGELADO el 2026-10-06** por el propietario. Todas las decisiones están tomadas (D1–D6 en §10, D-a…D-f en §7), §0 está resuelto (§0.1) y la revisión final de §12 está hecha. **Sin implementar:** no hay migración ni backfill. El orden es: **qué conocimiento histórico debe sobrevivir (§2b) → representación mínima que lo conserva (§3)**. Desde el congelado, cualquier cambio del modelo (§2b, §3, §4, §7, §10) entra solo por **enmienda explícita** de este documento, con su dato y su aprobación; no por el código ni por la migración.
+**Estado:** 🟢 **CONGELADO el 2026-10-06** por el propietario. Todas las decisiones están tomadas (D1–D6 en §10, D-a…D-f en §7), §0 está resuelto (§0.1) y la revisión final de §12 está hecha. **Sin implementar:** no hay migración ni backfill. El orden es: **qué conocimiento histórico debe sobrevivir (§2b) → representación mínima que lo conserva (§3)**. Desde el congelado, cualquier cambio del modelo (§2b, §3, §4, §7, §10) entra solo por **enmienda explícita** de este documento, con su dato y su aprobación; no por el código ni por la migración. **Enmiendas: A1 (2026-10-06, §13): persistencia de K5.**
 **Origen:** auditoría de utilidad analítica (hallazgo: las series longitudinales dependen de parsear `snapshots.raw_json`).
 
 **Pregunta rectora de cada campo:** qué observación histórica representa, de qué snapshot procede y si puede reconstruirse de forma determinista desde el `raw_json` actual.
@@ -165,6 +165,7 @@ snapshots (id, created_at, source, user_id, checksum, raw_json, …)
    └── elo_observations       PK (snapshot_id)                         K3   chess
 
 ESTADO
+   ├── course_path_state      PK (user_id, course_id)                  K5   nueva (A1: puntero + tree_hash)
    ├── course_path_units      PK (user_id, course_id, unit_index)      K5   nueva
    (las secciones de K5 NO tienen tabla propia: se leen de section_observations, §3.2; `course_sections` queda fuera de P2, D5)
    ├── course_path_levels     PK (user_id, course_id, unit_index, level_ordinal)  K5  nueva
@@ -202,7 +203,7 @@ Cada columna sale de un campo que `parseCourseProgress` ya modela; **no se añad
 | `cefr_level` | `cefrLevel` | Etiqueta gruesa de la fuente (`"Intro"`, `"A1"`…), distinta de `section.cefr`. nullable |
 | `is_unlocked` | `isUnlocked` | **Bandera cruda**, nullable. Observada `false` incluso en unidades completadas: no es progreso (comentario en `courseProgress.ts`). |
 | `levels_captured` | `levels != null` | **Distingue "no capturado" de "capturado y vacío"**. El payload solo trae `levels` de algunas secciones (el fixture: la activa y la 0). |
-| `snapshot_id` | origen | Snapshot del que procede el árbol. |
+| ~~`snapshot_id`~~ | — | **Retirada por A1 (§13)**: el puntero al snapshot de origen vive en `course_path_state`. |
 
 **`course_path_levels`** (una fila por `CourseLevel`; solo si `levels_captured`):
 
@@ -217,10 +218,10 @@ Cada columna sale de un campo que `parseCourseProgress` ya modela; **no se añad
 
 **Semántica de estado (paridad con hoy):**
 
-1. **Reemplazo por curso.** Al ingerir un snapshot con Path de un curso, se borran las filas `course_path_units`/`course_path_levels` de ese `(user, course)` y se insertan las del snapshot, en el mismo `db.batch`, **solo si** su `observed_at` es mayor que el del árbol almacenado. Es lo que hoy ocurre en `courseProgress` (R6): solo el árbol del último snapshot.
+1. **Reemplazo por curso** *(semántica vigente; la persistencia la define A1, §13)*. Al ingerir un snapshot con Path de un curso, se borran las filas `course_path_units`/`course_path_levels` de ese `(user, course)` y se insertan las del snapshot, en el mismo `db.batch`, **solo si** su `observed_at` es mayor que el del árbol almacenado. Es lo que hoy ocurre en `courseProgress` (R6): solo el árbol del último snapshot.
 2. **Sin fusión.** Si el snapshot nuevo trae `levels` para otra sección distinta de la anterior, los niveles de la sección que ya no se capturó **se pierden del estado** (quedan en el archivo, K6). Esa es la conducta actual; una fusión por sección sería una mejora, no paridad (D6).
 3. **Un solo curso servido.** R6 sirve `courseProgress` únicamente del `currentCourse` del **último snapshot de idiomas**; si ese snapshot no trae `currentCourse`, es `null`. La paridad exige leer el estado de ese curso **y** comprobar que su `snapshot_id` coincide con el último snapshot. Mantener el árbol por curso es un superconjunto natural, no un requisito de R6.
-4. **Puntero implícito.** `course_path_units.snapshot_id` identifica de qué snapshot procede el árbol. El árbol solo se sirve como `courseProgress` si ese `snapshot_id` es el del **último snapshot de idiomas** y su `path_observations.format_error` es `null`; si el último snapshot trae `format_error`, se sirve el error y no el árbol (paridad con hoy). Un snapshot con `format_error` **no** toca `course_path_units`/`course_path_levels`.
+4. **Puntero** *(movido por A1 a `course_path_state.snapshot_id`)*. Antes de A1: `course_path_units.snapshot_id` identificaba de qué snapshot procede el árbol. El árbol solo se sirve como `courseProgress` si ese `snapshot_id` es el del **último snapshot de idiomas** y su `path_observations.format_error` es `null`; si el último snapshot trae `format_error`, se sirve el error y no el árbol (paridad con hoy). Un snapshot con `format_error` **no** toca `course_path_units`/`course_path_levels`.
 5. **Un único extractor.** K4 y K5 se extraen **llamando a `parseCourseProgress`** (no a un parser nuevo), de modo que los criterios de `required` y de `CourseProgressFormatError` son idénticos.
 
 ### 3.3 Tamaño (por medir)
@@ -465,3 +466,33 @@ Nunca se combinan con `COALESCE`. Si la cobertura de `elo_after` (Q1) es insufic
     - ninguna lectura se conmuta sin su paridad aprobada (§7); ninguna compactación sin §8.1.
 
 Cerradas: D1, D2, D3, D4/D4.1, D5, D6, D-f (A). Aprobadas: D-a, D-b, D-c+D-e (con condición de paridad, §7.3), D-d, D-f (A). No queda ninguna decisión de §7 abierta.
+
+---
+
+## 13. Enmiendas
+
+### A1 (2026-10-06): persistencia de K5 (estado del árbol)
+
+**Estado:** aprobada por el propietario el 2026-10-06. Cambia **cómo se persiste** el estado del árbol, **no su semántica observable** (§3.2.1 a §3.2.5 y D6 siguen vigentes): lo que se sirve como `courseProgress` es el árbol del último snapshot de idiomas, sin fusión entre secciones.
+
+**Dato que la motiva** (snapshot real de producción, 2026-10-06): un Path trae 311 unidades y 65 niveles (solo la sección 0 trae `levels`). Con el reemplazo total de §3.2.1 se borran e insertan unas 376 filas por snapshot (clave primaria, 2 escrituras por fila: ~750), y el `snapshot_id` por fila de §3.2.4 cambia en cada snapshot, de modo que **toda** fila habría que reescribirla aunque el árbol no cambiara. Con 40 a 110 snapshots con Path al día son **30.000 a 83.000 filas escritas al día**, frente al límite gratuito de 100.000 y al presupuesto de la pieza.
+
+**Cambios**
+1. **Nueva tabla `course_path_state`** (`WITHOUT ROWID`): `user_id, course_id, snapshot_id, observed_at, tree_hash`, PK `(user_id, course_id)`. Una fila por curso. Es el **puntero** de §3.2.4: `snapshot_id` es el snapshot de origen del árbol y `observed_at` su `created_at`.
+2. **`course_path_units` y `course_path_levels` pierden `snapshot_id`.** Su contenido es el árbol que describe `course_path_state`.
+3. **`tree_hash`** = SHA-256 de la serialización canónica de **solo lo que K5 persiste y sirve**, en orden: por cada unidad (en el orden del payload) `section_index, unit_index, teaching_objective, cefr_level, is_unlocked, levels_captured`; por cada nivel (en el orden del array) `level_ordinal, state, finished_sessions, total_sessions, skill_id, crown_level_index, tree_id, reached_score, learning_score, reached_progress, completed_progress`. **Excluye** `snapshot_id`, `section_id` (los UUID rotan, migración `0009`), marcas de tiempo y cualquier otro campo del payload: un cambio irrelevante no reconstruye el árbol.
+4. **Regla de escritura** (un snapshot con Path válido de un curso; todo en el mismo `db.batch`):
+   - Si su `observed_at` **no es mayor** que el de `course_path_state`: no se escribe nada.
+   - Si el `tree_hash` **coincide**: solo se actualiza `course_path_state` (`snapshot_id`, `observed_at`).
+   - Si **difiere** (o no hay estado): se lee el árbol almacenado y se escribe **solo la diferencia por fila**: se insertan las filas nuevas, se actualizan las que cambian y se borran las que ya no están (unidades o niveles ausentes); después se actualiza `course_path_state`. No se reemplaza el árbol entero.
+   - Un snapshot con `format_error` **no escribe nada en el estado** (ni `course_path_state`): no destruye ni adelanta el estado válido anterior (§3.2.4).
+5. **Lectura:** el árbol se sirve como `courseProgress` solo si `course_path_state.snapshot_id` es el del **último snapshot de idiomas** y su `path_observations.format_error` es `null`; si el último snapshot trae `format_error`, se sirve el error y no el árbol. Sin cambios respecto a §3.2.4.
+
+**Gates (añaden a los de §12.10)**
+- **Presupuesto:** K5 no pasa a producción si la medición real demuestra **más de +5.000 filas escritas al día** atribuibles a K5 (`course_path_state`, `course_path_units`, `course_path_levels`). Es un tope de aceptación, no un objetivo.
+- **Cero pérdida de cambios reales:** un cambio en cualquier campo del `tree_hash` (incluida la posición) debe quedar reflejado en el estado servido; un cambio solo en campos excluidos no reescribe filas y no altera lo servido.
+- **Paridad:** una reconstrucción pura del `CourseProgress` desde las tablas debe ser igual a `parseCourseProgress` sobre el payload, con datos de prueba **y** con un snapshot real de producción.
+- **`format_error`:** test explícito de que no modifica `course_path_state` ni las filas.
+- **Sin cambio de lecturas** en la pieza que la implementa; la conmutación sigue exigiendo su paridad (§7).
+
+**Orden:** K7 (`xp_summaries.daily_goal_xp`, sin enmienda) se implementa antes y por separado (pieza 2a); K5 con esta enmienda es la pieza 2b. Ninguna se implementa ni despliega hasta cerrar el gate de escrituras de la pieza 1.
