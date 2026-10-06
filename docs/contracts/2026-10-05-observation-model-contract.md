@@ -1,7 +1,7 @@
 # Contrato P2: modelo de observaciones (extraer → paridad → conmutar → compactar)
 
 **Fecha:** 2026-10-05
-**Estado:** 🟡 **DRAFT: sin implementar y sin congelar.** No hay migración ni backfill. Todas las decisiones están tomadas (D1–D6 en §10, D-a…D-f en §7) y §0 está resuelto (§0.1); el contrato no se congela hasta pasar la revisión final de §12. El orden es: **qué conocimiento histórico debe sobrevivir (§2b) → representación mínima que lo conserva (§3)**. El esquema de §3 es provisional y deriva de §2b, no al revés.
+**Estado:** 🟢 **CONGELADO el 2026-10-06** por el propietario. Todas las decisiones están tomadas (D1–D6 en §10, D-a…D-f en §7), §0 está resuelto (§0.1) y la revisión final de §12 está hecha. **Sin implementar:** no hay migración ni backfill. El orden es: **qué conocimiento histórico debe sobrevivir (§2b) → representación mínima que lo conserva (§3)**. Desde el congelado, cualquier cambio del modelo (§2b, §3, §4, §7, §10) entra solo por **enmienda explícita** de este documento, con su dato y su aprobación; no por el código ni por la migración.
 **Origen:** auditoría de utilidad analítica (hallazgo: las series longitudinales dependen de parsear `snapshots.raw_json`).
 
 **Pregunta rectora de cada campo:** qué observación histórica representa, de qué snapshot procede y si puede reconstruirse de forma determinista desde el `raw_json` actual.
@@ -398,7 +398,7 @@ Deben cumplirse **todos**:
 
 ## 10. Decisiones
 
-Estado: **decididas, pendientes de revisión (§12)**. Cada una se toma sobre §2b (qué sobrevive), no sobre el esquema.
+Estado: **decididas y congeladas (2026-10-06)**. Cada una se toma sobre §2b (qué sobrevive), no sobre el esquema.
 
 | ID | Decisión | Resolución | Notas y evidencia |
 |---|---|---|---|
@@ -456,8 +456,12 @@ Nunca se combinan con `COALESCE`. Si la cobertura de `elo_after` (Q1) es insufic
 5. ~~**Q1, Q2, Q3a, Q3b, Q3c**~~ ejecutadas (§0.1). La enmienda de la Invariante 9 **no se propone** y D-c+D-e quedó aprobada sin ella (§7.2).
 6. ~~Comprobar si el cliente externo depende de `courseProgress`, `dailyGoalXp` o `summaries`. Solo cambia el contrato si hay un consumidor real o una obligación contractual.~~ Hecho (§7.1): el colector real no los lee.
 7. Aprobar **D-a…D-f** una a una contra datos reales. Hecho: D-a, D-b, D-c+D-e (con condición), D-d, D-f.
-8. Revisión final de este apartado.
-9. **Congelar.**
-10. Solo entonces migración + backfill.
+8. ~~Revisión final de este apartado~~ hecha el 2026-10-06 (#20, texto alineado con las decisiones).
+9. ~~**Congelar.**~~ **Congelado el 2026-10-06.**
+10. Solo ahora, migración + backfill, con estos **gates de implementación** (no forman parte del congelado):
+    - test de fixture de paridad de R4: la variante ingenua debe fallar y la de inicio contractual pasar, para un `end` dado (§7.3);
+    - paridad ingesta/backfill por el extractor único (§4.7);
+    - informe de cobertura del backfill y segunda ejecución con diferencia cero (§6.4);
+    - ninguna lectura se conmuta sin su paridad aprobada (§7); ninguna compactación sin §8.1.
 
 Cerradas: D1, D2, D3, D4/D4.1, D5, D6, D-f (A). Aprobadas: D-a, D-b, D-c+D-e (con condición de paridad, §7.3), D-d, D-f (A). No queda ninguna decisión de §7 abierta.
