@@ -104,6 +104,8 @@ npm run demo:seed          # 60 invented matches + two language observations
 
 To deploy your own instance, create a D1 database and put its id in `wrangler.jsonc`.
 
+The CI workflow deploys every push to `main` that passes the tests: it applies the D1 migrations (`--remote`) and runs `wrangler deploy`. The repo keeps a placeholder `database_id`; the workflow swaps in the real one from the `D1_DATABASE_ID` Actions secret. It also needs `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
+
 `src/dev.ts` is a loopback-only entry point that fixes the owner identity in code; it is never the deployed entry.
 
 ## Data
