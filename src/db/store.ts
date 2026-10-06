@@ -9,6 +9,10 @@ export async function insertSnapshot(db: D1Database, s: { id: string; createdAt:
 // per-match upsert cost 2 rows and a match_snapshots row (4 with indexes) per match on every ingest. The one change a known
 // match can still receive is a different `played_at`. `last_seen_at` and the snapshot membership of
 // known matches are no longer recorded (nothing reads them; `matches.snapshot_id` keeps the first sighting).
+// So `match_snapshots` now means "snapshot of first observation", not "observed in this snapshot".
+// Overlapping ingests stay safe because every write is atomic on its own: a match two ingests both saw as new is still an
+// INSERT … ON CONFLICT DO UPDATE (never a failed insert), and a known match gets a single-row UPDATE. The prior SELECT only
+// decides what to skip; it never makes a write depend on stale state beyond last-write-wins, as before.
 export async function upsertMatches(db: D1Database, items: Array<{ row: MatchRow; raw: any }>, snapshotId: string, now: string): Promise<{ added: number }> {
   // One entry per match: its first occurrence supplies the stored values, the last non-null `played_at` wins (as the old upsert did).
   const byId = new Map<string, { first: { row: MatchRow; raw: any }; playedAt: number | null }>();

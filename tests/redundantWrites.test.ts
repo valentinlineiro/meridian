@@ -159,3 +159,41 @@ describe("schema_observations: only new paths are written", () => {
     expect(read(a.db)).toEqual(read(b.db));
   });
 });
+
+// Two ingests can overlap. The check "is it known?" is a read; what keeps writes safe is that each write is itself atomic.
+describe("matches: overlapping ingests", () => {
+  it("shouldUpsertWithoutFailingWhenTwoIngestsBothSeeAMatchAsNew", async () => {
+    for (const store of [upsertMatches, legacyUpsertMatches]) {
+      const { db, d1 } = setupTestDb();
+      const [a, b] = await Promise.all([store(d1, [row("m1", { played_at: 100 })], "sA", NOW(1)), store(d1, [row("m1", { played_at: 200 })], "sB", NOW(2))]);
+      expect([a.added, b.added]).toEqual([1, 1]); // both classified it as new: the race was really exercised
+      expect(db.prepare("SELECT COUNT(*) c FROM matches").get().c).toBe(1);
+      expect([100, 200]).toContain(db.prepare("SELECT played_at FROM matches WHERE match_id='m1'").get().played_at);
+    }
+  });
+
+  it("shouldNeverLoseTheRowWhenTwoIngestsLearnTheSameDateAtOnce", async () => {
+    const { db, d1 } = setupTestDb();
+    await upsertMatches(d1, [row("m1", { played_at: null })], "s0", NOW(1));
+    await Promise.all([upsertMatches(d1, [row("m1", { played_at: 200 })], "sA", NOW(2)), upsertMatches(d1, [row("m1", { played_at: 300 })], "sB", NOW(3))]);
+    expect(db.prepare("SELECT COUNT(*) c FROM matches").get().c).toBe(1);
+    expect([200, 300]).toContain(db.prepare("SELECT played_at FROM matches WHERE match_id='m1'").get().played_at); // last write wins, as before
+  });
+
+  it("shouldStayConsistentWhenManyOverlappingIngestsResendTheSameHistory", async () => {
+    const { db, d1 } = setupTestDb();
+    const history = Array.from({ length: 120 }, (_, i) => row(`m${i}`, { played_at: i + 1 }));
+    await Promise.all(Array.from({ length: 5 }, (_, k) => upsertMatches(d1, history, `s${k}`, NOW(k + 1))));
+    expect(db.prepare("SELECT COUNT(*) c FROM matches").get().c).toBe(120);
+    expect(db.prepare("SELECT COUNT(DISTINCT match_id) c FROM match_snapshots").get().c).toBe(120);
+    expect(db.prepare("SELECT COUNT(*) c FROM matches WHERE played_at IS NULL").get().c).toBe(0);
+  });
+
+  it("shouldMeanSnapshotOfFirstObservationNotObservedInThisSnapshot", async () => {
+    const { db, d1 } = setupTestDb();
+    await upsertMatches(d1, [row("m1")], "first", NOW(1));
+    await upsertMatches(d1, [row("m1")], "later", NOW(2));
+    expect(db.prepare("SELECT snapshot_id FROM match_snapshots WHERE match_id='m1'").all()).toEqual([{ snapshot_id: "first" }]);
+    expect(db.prepare("SELECT snapshot_id FROM matches WHERE match_id='m1'").get().snapshot_id).toBe("first"); // same fact as matches.snapshot_id
+  });
+});
