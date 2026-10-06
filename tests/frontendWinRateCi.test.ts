@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { summarize } from "../src/domain/result.ts";
 import { DASHBOARD_HTML } from "../src/frontend.ts";
 
 const fn = (name: string) => DASHBOARD_HTML.match(new RegExp(`function ${name}\\([^)]*\\)\\{[\\s\\S]*?\\n\\}`))![0];
@@ -27,7 +28,16 @@ describe("renderCompare", () => {
   it("shouldSizeBarsOverDecidedGamesAndLeaveUnknownsOut", () => {
     const html = renderCompare([group({ games: 10, wins: 2, losses: 2, draws: 1, unknown: 5, decided: 5, winRate: 0.4 })], 10);
     expect(widths(html)).toEqual([40, 40, 20]); // over 5 decided, not 10 games
+    expect(html).toMatch(/barra sobre 5 decididas/);
     expect(html).toMatch(/5 sin resultado/);
+  });
+
+  it("shouldStateDecidedBasisForRealSummarizeOutput", () => {
+    const s = summarize("wwldu".split("").map((c) => ({ result: { w: "win", l: "loss", d: "draw", u: "garbage" }[c] })).concat(Array(5).fill({ result: null })));
+    const html = renderCompare([{ key: "white", ...s }], s.games);
+    expect(widths(html)).toEqual([50, 25, 25]);
+    expect(html).toMatch(/barra sobre 4 decididas/);
+    expect(html).toContain("[");
   });
 
   it("shouldDrawEmptyBarsWhenNothingDecided", () => {
