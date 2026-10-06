@@ -5,6 +5,7 @@ import { handleLangStats } from "./stats.ts";
 // The collector is a GitHub Actions workflow (collector.yml) in COLLECTOR_REPO ("owner/name"); "Sincronizar" dispatches it.
 const CLOCK_SKEW_MS = 10_000; // GitHub stamps created_at with its own clock
 const WORKFLOW_PATH = ".github/workflows/collector.yml";
+const REF_RE = /^[\w][\w./-]*$/; // a branch or tag name; the dispatch targets it
 const REPO_RE = /^[A-Za-z0-9][A-Za-z0-9-]*\/(?!\.{1,2}$)[\w.-]+$/;
 
 
@@ -23,17 +24,20 @@ export async function handleMeSync(
   fetcher: typeof fetch,
   token: string | null,
   repo: string | null,
+  ref: string | null = null,
 ): Promise<Response> {
   if (!email) return json({ ok: false, error: "unauthorized", code: "UNAUTHORIZED" }, 401);
   const providerUserId = await resolveProviderUserId(db, email, "duolingo");
   if (!providerUserId) return json({ ok: false, error: "no provider account", code: "NO_PROVIDER_ACCOUNT" }, 404);
   if (!token) return json({ ok: false, error: "GITHUB_ACTIONS_TOKEN not set" }, 500);
   if (!repo || !REPO_RE.test(repo)) return json({ ok: false, error: "COLLECTOR_REPO not set" }, 500);
+  const branch = ref ?? "main"; // the repo's default branch is configurable: the collector's is not "main"
+  if (!REF_RE.test(branch) || branch.includes("..")) return json({ ok: false, error: "COLLECTOR_REF invalid" }, 500);
   const dispatchedAt = new Date().toISOString();
   const res = await fetcher(`https://api.github.com/repos/${repo}/actions/workflows/collector.yml/dispatches`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json", "Content-Type": "application/json", "User-Agent": "meridian-worker" },
-    body: JSON.stringify({ ref: "main", inputs: { provider_user_id: providerUserId } }),
+    body: JSON.stringify({ ref: branch, inputs: { provider_user_id: providerUserId } }),
   });
   if (!res.ok) {
     const txt = await (res as any).text?.().catch(() => "") ?? "";

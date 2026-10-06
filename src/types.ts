@@ -7,6 +7,7 @@ export interface Env {
   SESSION_SECRET?: string;      // >= 32 bytes, signs the session cookie
   GITHUB_ACTIONS_TOKEN?: string; // dispatches the collector workflow ("Sincronizar")
   COLLECTOR_REPO?: string;       // "owner/name" of the repo that holds collector.yml
+  COLLECTOR_REF?: string;        // branch to dispatch it on (default "main")
 }
 
 export interface MatchRow {
