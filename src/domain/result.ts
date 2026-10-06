@@ -1,3 +1,5 @@
+import { wilson } from "./proportion.ts";
+
 // What a match result means. One classifier and one denominator for every route that talks about wins.
 
 type RawResult = { result?: string | null; outcome?: string | null };
@@ -18,6 +20,7 @@ export function summarize(rows: readonly RawResult[]) {
   }
   const games = rows.length;
   const decided = wins + losses + draws;
+  const ci = wilson(wins, decided);
   // Rates use decided games only: an unknown result is not a loss, so it stays out of the denominator and is reported apart.
-  return { games, wins, losses, draws, unknown: games - decided, winRate: decided ? wins / decided : null, scoreRate: decided ? (wins + 0.5 * draws) / decided : null, decided };
+  return { games, wins, losses, draws, unknown: games - decided, winRate: decided ? wins / decided : null, winRateCi: ci ? { lower: ci.lower, upper: ci.upper } : null, scoreRate: decided ? (wins + 0.5 * draws) / decided : null, decided };
 }

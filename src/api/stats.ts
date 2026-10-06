@@ -18,6 +18,7 @@ export interface OpeningStat {
   unknown: number;
   decided: number;
   winRate: number | null;
+  winRateCi: { lower: number; upper: number } | null;
   scoreRate: number | null;
 }
 
@@ -31,6 +32,7 @@ export interface PhaseStat {
   unknown: number;
   decided: number;
   winRate: number | null;
+  winRateCi: { lower: number; upper: number } | null;
   scoreRate: number | null;
 }
 
@@ -95,7 +97,7 @@ export async function handleStats(db: D1Database, kind: string, url: URL): Promi
       const m = new Map<string, any[]>();
       for (const r of slice) { const k = String((r as any).user_color ?? "unknown").toLowerCase(); if (!m.has(k)) m.set(k, []); m.get(k)!.push(r); }
       const colorGroups = [...m.entries()].map(([k, v]) => ({ key: k, ...summarize(v as any) }));
-      return json({ limit: n, games: s.games, wins: s.wins, losses: s.losses, draws: s.draws, unknown: s.unknown, decided: s.decided, winRate: s.winRate, scoreRate: s.scoreRate, colorGroups, before });
+      return json({ limit: n, games: s.games, wins: s.wins, losses: s.losses, draws: s.draws, unknown: s.unknown, decided: s.decided, winRate: s.winRate, winRateCi: s.winRateCi, scoreRate: s.scoreRate, colorGroups, before });
     }
     case "summary": {
       const snapStmt = userId
@@ -110,7 +112,7 @@ export async function handleStats(db: D1Database, kind: string, url: URL): Promi
       const explicitBots = by((r) => String(r.opponent_type ?? "").toLowerCase() === "bot").length;
       const pvp = rows.length - explicitBots;
       const reviewed = by((r) => r.reviewed === 1).length;
-      return json({ games: sum.games, wins: sum.wins, losses: sum.losses, draws: sum.draws, winRate: sum.winRate, scoreRate: sum.scoreRate,
+      return json({ games: sum.games, wins: sum.wins, losses: sum.losses, draws: sum.draws, winRate: sum.winRate, winRateCi: sum.winRateCi, scoreRate: sum.scoreRate,
         currentElo: latestElo, firstElo, latestElo, bots: explicitBots || bots, pvp, reviewed,
         knownOpponentElo: elo.count, opponentEloMin: elo.min, opponentEloMax: elo.max, opponentEloAvg: elo.avg,
         currentStreak: st.currentStreak, currentStreakKind: st.currentKind, longestWin: st.longestWin, longestLoss: st.longestLoss });
@@ -238,7 +240,7 @@ export async function handleStatsOpenings(db: D1Database, url: URL): Promise<Res
   for (const r of rows) {
     const color = String(r.user_color ?? "").toLowerCase();
     const key = String(r.opening_key);
-    const { games, wins, losses, draws, unknown, decided, winRate, scoreRate } = r;
+    const { games, wins, losses, draws, unknown, decided, winRate, winRateCi, scoreRate } = r;
 
     let name = "Sin datos";
     let notation = "-";
@@ -258,7 +260,7 @@ export async function handleStatsOpenings(db: D1Database, url: URL): Promise<Res
         name = key;
         notation = "-";
       }
-      white.push({ key, name, notation, games, wins, losses, draws, unknown, decided, winRate, scoreRate });
+      white.push({ key, name, notation, games, wins, losses, draws, unknown, decided, winRate, winRateCi, scoreRate });
     } else if (color === "black") {
       const match = BLACK_OPENINGS[key];
       if (match) {
@@ -274,7 +276,7 @@ export async function handleStatsOpenings(db: D1Database, url: URL): Promise<Res
         name = key;
         notation = "-";
       }
-      black.push({ key, name, notation, games, wins, losses, draws, unknown, decided, winRate, scoreRate });
+      black.push({ key, name, notation, games, wins, losses, draws, unknown, decided, winRate, winRateCi, scoreRate });
     }
   }
 

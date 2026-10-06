@@ -1531,6 +1531,7 @@ function populateOpeningFilter(op){
 function fmtDelta(a,b){ if(a==null||b==null) return '—'; const d=a-b; return (d>0?'+':'')+d; }
 function arrow(a,b){ if(a==null||b==null) return ''; return a>b?' ↑':a<b?' ↓':' ·'; }
 async function setRecent(n){ recentN=n; for(const k of [20,50,100]){ const el=q('#b'+k); if(el){ el.className=n===k?'btn btn-p':'btn btn-g'; } } const r=await j('/api/stats/recent?limit='+n); lastRecent=r; renderForm(r); renderChessView({ recent: r }, lastRows); }
+function pctCi(rate,ci){ return rate!=null?(rate*100).toFixed(1)+'%'+(ci?' ['+Math.round(ci.lower*100)+'–'+Math.round(ci.upper*100)+']':''):'—'; }
 function renderForm(r){
  if(!r.before) return;
  const hr=r.before; // games before the window: the window is never part of its own baseline
@@ -1540,8 +1541,8 @@ function renderForm(r){
  const sign=v=>parseFloat(v)>0?'+'+v:v;
 
  q('#form').innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center">'
-  +'<div><div class="muted" style="font-size:11px;letter-spacing:.04em;text-transform:uppercase">Últimas '+r.limit+'</div><div style="font-weight:700">'+pctR(r.winRate)+' WR</div><div class="muted">'+pctR(r.scoreRate)+' score · '+r.wins+'W '+r.losses+'L '+r.draws+'D</div>'+(dWr!=null?'<div class="muted" style="margin-top:4px;font-size:11px">'+sign(dWr)+' pp WR vs anteriores</div>':'')+'</div>'
-  +'<div style="border-left:1px solid #1e2e44;padding-left:8px"><div class="muted" style="font-size:11px;letter-spacing:.04em;text-transform:uppercase">Anteriores · '+hr.games+'</div><div style="font-weight:700">'+pctR(hr.winRate)+' WR</div><div class="muted">'+pctR(hr.scoreRate)+' score · '+hr.wins+'W '+hr.losses+'L '+hr.draws+'D</div></div>'
+  +'<div><div class="muted" style="font-size:11px;letter-spacing:.04em;text-transform:uppercase">Últimas '+r.limit+'</div><div style="font-weight:700">'+pctCi(r.winRate,r.winRateCi)+' WR</div><div class="muted">'+pctR(r.scoreRate)+' score · '+r.wins+'W '+r.losses+'L '+r.draws+'D</div>'+(dWr!=null?'<div class="muted" style="margin-top:4px;font-size:11px">'+sign(dWr)+' pp WR vs anteriores</div>':'')+'</div>'
+  +'<div style="border-left:1px solid #1e2e44;padding-left:8px"><div class="muted" style="font-size:11px;letter-spacing:.04em;text-transform:uppercase">Anteriores · '+hr.games+'</div><div style="font-weight:700">'+pctCi(hr.winRate,hr.winRateCi)+' WR</div><div class="muted">'+pctR(hr.scoreRate)+' score · '+hr.wins+'W '+hr.losses+'L '+hr.draws+'D</div></div>'
   +'<div style="border-left:1px solid #1e2e44;padding-left:8px"><div class="muted" style="font-size:11px;letter-spacing:.04em;text-transform:uppercase">Score reciente</div><div style="font-weight:700">'+pctR(r.scoreRate)+'</div>'+(dScore!=null?'<div class="muted" style="margin-top:4px;font-size:11px">'+sign(dScore)+' pp score vs anteriores</div>':'')+'</div>'
   +'</div>';
 
@@ -1600,11 +1601,11 @@ function renderCompare(groups, totalGames){
  // groups: [{key,games,wins,losses,draws,winRate,scoreRate}]
  const segLabels={noisy_neural:'Noisy Neural',neural:'Neural',blended:'Blended',stockfish:'Stockfish',pvp:'PvP',bot:'Bots',white:'Blancas',black:'Negras'};
  return groups.map(g=>{
-  const w=Math.round((g.wins/g.games*100)||0), l=Math.round((g.losses/g.games*100)||0), d=100-w-l;
+  const dec=g.decided||0, w=dec?Math.round(g.wins/dec*100):0, l=dec?Math.round(g.losses/dec*100):0, d=dec?100-w-l:0; // bars are shares of decided games; unknowns are reported apart
   const pctGames=totalGames? (g.games/totalGames*100).toFixed(1):'0';
   const label=g.label||segLabels[g.key]||g.key;
   const slim=g.games/totalGames<0.05||g.key==='pvp'||g.games<50;
-  return '<div class="row" style="'+(slim?'opacity:.95':'')+'"><div style="flex:1"><div style="display:flex;justify-content:space-between;align-items:baseline"><b>'+label+'</b><span class="muted">'+g.games+' · '+pctGames+'%</span></div><div class="bar" style="margin-top:6px;display:flex"><i class="bar-win" style="width:'+w+'%"></i><i class="bar-loss" style="width:'+l+'%"></i><i class="bar-draw" style="width:'+d+'%"></i></div><div class="muted" style="margin-top:4px;display:flex;gap:10px;flex-wrap:wrap"><span>Win '+(g.winRate!=null?(g.winRate*100).toFixed(1)+'%':'—')+'</span><span>Score '+(g.scoreRate!=null?(g.scoreRate*100).toFixed(1)+'%':'—')+'</span>'+(slim?'<span>· n='+g.games+' · muestra pequeña</span>':'')+'</div></div></div>';
+  return '<div class="row" style="'+(slim?'opacity:.95':'')+'"><div style="flex:1"><div style="display:flex;justify-content:space-between;align-items:baseline"><b>'+label+'</b><span class="muted">'+g.games+' · '+pctGames+'%</span></div><div class="bar" style="margin-top:6px;display:flex"><i class="bar-win" style="width:'+w+'%"></i><i class="bar-loss" style="width:'+l+'%"></i><i class="bar-draw" style="width:'+d+'%"></i></div><div class="muted" style="margin-top:4px;display:flex;gap:10px;flex-wrap:wrap"><span>Win '+pctCi(g.winRate,g.winRateCi)+'</span><span>Score '+(g.scoreRate!=null?(g.scoreRate*100).toFixed(1)+'%':'—')+'</span>'+(g.unknown?'<span>· '+g.unknown+' sin resultado</span>':'')+(slim?'<span>· n='+g.games+' · muestra pequeña</span>':'')+'</div></div></div>';
  }).join('') || '<div class="muted">Sin datos</div>';
 }
 
