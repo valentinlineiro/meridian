@@ -82,6 +82,10 @@ Q2 se repite para detectar el factor de redundancia: `SUM(size_bytes)` frente a 
 | **Q3** | 9.792 entradas de curso en los payloads; 7.943 con `subject: language`. Sin `subject`: **16**, todas del 2026-09-23; **13** con prefijo `DUOLINGO_`. | Q3a > 0: por la regla de decisión no se amplía el predicado en silencio. **Se abre la enmienda de la Invariante 9** (D-e) con este dato. Q3b no se registró por separado en esta ejecución: repetirla antes de decidir el criterio amplio de R4. |
 | **Q4** | Entre 71 y 311 unidades y entre 6 y 197 niveles por snapshot de curso. | Tamaño de K5 acotado: cientos de filas por curso, no por snapshot. |
 | **Q5** | Todos los payloads traen la misma ventana de **91 días** (2026-07-08 a 2026-10-06). | La ventana del payload es fija (91 días). D-f sigue **abierta**: falta decidir cuál es el contrato (payload o tabla) y la comprobación del cliente externo. |
+| **Q3b** | Entradas con `learningLanguage` y `subject` distinto de `language`: **13**, todas con `subject = null`. Ninguna con otro subject. | El criterio amplio de R4 añade exactamente las 13 de Q3a; no hay otra población. |
+| **Q3c** (nueva) | Las 16 entradas sin `subject` están **todas en un único snapshot**: el primero de idiomas (`92f89377…`, 2026-09-23T12:18:12Z). 13 son `DUOLINGO_*` con `learningLanguage`; las otras 3 son `CHESS_CH`, `MUSIC_MT`, `MATH_BT`. | D-c y D-e son **la misma población**. Ese snapshot es el `start` que R4 usa hoy (primero, medio, último). |
+| **D-a** | 0 de 612 snapshots de idiomas traen `totalXp`/`streak` de nivel superior. | La aceptación de nivel superior no tiene respaldo en datos. |
+| **D-b** | 595 de 612 snapshots de idiomas **no** traen `user.currentCourseId`. Los 17 que traen datos de cuenta (`user.totalXp`, `streak` y `currentCourseId` a la vez) son: 3 el 09-23, 4 el 09-24, 2 el 09-25, 6 el 10-05 y 2 el 10-06. **Hueco de 9 días** (09-26 a 10-04) sin ninguna. 0 con ambos ids distintos. | Los snapshots por curso del colector son de **solo identidad**. La serie de cuenta es dispersa, con un hueco de 9 días. R3 hoy toma "el último snapshot `<= t`" sea cual sea y, sin `user.*`, cae a `currentCourse.id` del último snapshot por curso. |
 
 Las cifras de Q3 cuentan entradas en payloads (un mismo curso aparece en muchos snapshots), no cursos distintos.
 
@@ -280,7 +284,7 @@ Las diferencias D-a…D-f son **cambios de comportamiento**, no regresiones de p
 
 ---
 
-### 7.1 D-f: datos para decidir (**ABIERTA**)
+### 7.1 D-f: **DECIDIDA: opción A** (aprobada por el propietario el 2026-10-06)
 
 Qué expone hoy `/api/stats/lang` (verificado en código):
 
@@ -290,7 +294,7 @@ Qué expone hoy `/api/stats/lang` (verificado en código):
 
 Qué significa la tabla: `xp_summaries` acumula los días de **todos** los syncs (PK `(user,date)`, última escritura gana). Puede cubrir más de 90 días y sus filas coinciden con el payload del último sync solo dentro de la ventana de ese sync.
 
-Opciones (**ninguna elegida**):
+Opciones (**elegida: A**):
 
 | Opción | Efecto | Coste |
 |---|---|---|
@@ -319,9 +323,24 @@ Este contrato no añade ninguna otra inferencia sobre el cliente.
 - La afirmación de la auditoría de lectura ("ingest-client verify step") **no tiene respaldo** en el colector actual.
 - **Límite de la comprobación:** `/api/stats/lang` no exige autenticación, así que un consumidor fuera de estos repositorios (marcador, script ajeno) no es observable desde el código. No se ha demostrado su ausencia.
 
-Según la tabla de arriba, "no lee `summaries`" deja abiertas **A o C**. C obligaría además a reescribir el respaldo del dashboard, que sí consume `summaries`. **Recomendación (pendiente de aprobación):** A, con el cambio de conjunto de días aceptado como diferencia D-f. La decisión sigue **ABIERTA** hasta aprobarla.
+Según la tabla de arriba, "no lee `summaries`" deja abiertas **A o C**. C obligaría además a reescribir el respaldo del dashboard, que sí consume `summaries`. **Decisión (2026-10-06): A.** `summaries` y `totals` de `/api/stats/lang` salen de la tabla `xp_summaries`; el cambio de conjunto de días (más amplio que los 91 del payload) queda aceptado como diferencia D-f. `dailyGoalXp` se sirve de la columna nueva `xp_summaries.daily_goal_xp` (K7). Consecuencia: R6 deja de depender de `raw_json` por esta vía. Las opciones B y C quedan descartadas.
 
 Hasta decidir, la lectura R6 **debe seguir saliendo de `raw_json`** y por tanto R6 **bloquea** la compactación de snapshots de idiomas (§8.1).
+
+---
+
+### 7.2 Resolución propuesta de D-a…D-e (**PROPUESTA: ninguna aprobada**)
+
+Cada una se aprueba por separado (§7). La evidencia es la de §0.1.
+
+| ID | Propuesta | Efecto sobre lo que se ve hoy | Evidencia |
+|---|---|---|---|
+| **D-a** | El extractor de `account_observations` lee solo `user.*`. La aceptación de nivel superior de la normalización se deja como está y no se usa. | Ninguno (R3 ya lee solo `user.*`). | 0/612 snapshots con campos de nivel superior. |
+| **D-b** | Solo los snapshots que **traen datos de cuenta** (`user.totalXp`, `user.streak` o `user.currentCourseId`) generan fila en `account_observations`. Los snapshots por curso (solo identidad) **no** generan fila: ausencia de observación ≠ `null`. Se retiran `is_auxiliary` y `observed_course_id`: `declared_course_id` es lo único que la cuenta declara; el curso observado vive en `path_observations.course_id`. R3 lee la **última observación de cuenta `<= t`**, no el último snapshot. | R3 deja de devolver XP nulo y de deducir el curso activo a partir de un snapshot por curso. Para `t` anterior a 2026-09-23 pasa a "no disponible". Para `t` entre 09-26 y 10-04 la última observación tiene hasta 9 días de antigüedad: `observedAt` debe reflejarlo y la lectura no la presenta como actual. | 595/612 sin `user.currentCourseId`; cuenta en 17 snapshots, con un hueco 09-26…10-04. |
+| **D-c + D-e** | **Sin enmienda de la Invariante 9.** `isLanguageCourse` = `subject === 'language'`, estricto. Las 13 entradas `DUOLINGO_*` sin `subject` se guardan tal cual (`subject = null`). | R4 (Trayectoria): el `start` de idiomas deja de ser el primer snapshot (que no tiene `subject`) y pasa a ser el **primer snapshot que cumple el contrato**. Hay que medirlo en la paridad: cambia el inicio efectivo de la ventana en un día aproximadamente y puede mover el `startedAt` de idiomas. | Q3a/Q3b/Q3c: 13 entradas, un solo snapshot, ninguna otra población. |
+| **D-d** | Se conserva `null` en `completed_units`/`total_units` (observado ≠ interpretado). | R5 puede pasar un veredicto de `comparable` a `insufficient_observation` donde hoy un `null` cuenta como 0. | **Sin medir.** Se mide en la paridad antes de aprobar: número de secciones `learning` con contadores nulos. |
+
+Condición de la propuesta D-c + D-e: la paridad de R4 debe **demostrar** el efecto sobre el inicio de Trayectoria antes de aprobar. Si el desplazamiento no es aceptable, la alternativa es la enmienda explícita de la Invariante 9, no una inferencia silenciosa.
 
 ---
 
@@ -416,7 +435,7 @@ Nunca se combinan con `COALESCE`. Si la cobertura de `elo_after` (Q1) es insufic
 
 1. ~~**D5**~~ decidida: `course_sections` fuera de P2.
 2. ~~**D6**~~ decidida: reemplazo.
-3. **D-f** (§7.1): decidir A/B/C con el dato de Q5 y la comprobación del cliente externo.
+3. ~~**D-f**~~ decidida: A (§7.1).
 4. ~~**Q4**~~ ejecutada (§0.1): K5 acotado.
 5. ~~**Q1, Q2, Q3a**~~ ejecutadas (§0.1). Pendiente: repetir **Q3b** y resolver la enmienda de la Invariante 9 (D-e).
 6. Comprobar si el cliente externo depende de `courseProgress`, `dailyGoalXp` o `summaries`. Solo cambia el contrato si hay un consumidor real o una obligación contractual.
@@ -425,4 +444,4 @@ Nunca se combinan con `COALESCE`. Si la cobertura de `elo_after` (Q1) es insufic
 9. **Congelar.**
 10. Solo entonces migración + backfill.
 
-Cerradas: D1, D2, D3, D4/D4.1, D5, D6. Abierta: D-f.
+Cerradas: D1, D2, D3, D4/D4.1, D5, D6, D-f (A). Abiertas: D-a…D-e (§7.2).
