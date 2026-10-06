@@ -1,0 +1,161 @@
+import { describe, it, expect } from "vitest";
+import { setupTestDb } from "./helpers/testDb.ts";
+import { upsertMatches, recordObservations } from "../src/db/store.ts";
+import { upsertXpSummaries } from "../src/db/storeLanguages.ts";
+import { upsertMatches as legacyUpsertMatches, recordObservations as legacyObservations } from "./fixtures/legacyStore.ts"; // verbatim copies of main before this change
+import { upsertXpSummaries as legacyXp } from "./fixtures/legacyStoreLanguages.ts";
+import { handleStats, handleMatches } from "../src/api/stats.ts";
+import type { MatchRow } from "../src/types.ts";
+
+type Tally = Record<string, number>;
+// Rows changed per table by the statements that write it (SQLite `changes`: table rows, not index entries).
+function meter(db: any) {
+  const t: Tally = {};
+  const orig = db.prepare.bind(db);
+  db.prepare = (sql: string) => {
+    const st = orig(sql), run = st.run.bind(st);
+    const table = /^\s*(?:INSERT(?: OR \w+)?\s+INTO|UPDATE)\s+(\w+)/i.exec(sql)?.[1];
+    st.run = (...a: any[]) => { const r = run(...a); if (table && Number(r.changes) > 0) t[table] = (t[table] ?? 0) + Number(r.changes); return r; };
+    return st;
+  };
+  return { t, reset: () => { for (const k of Object.keys(t)) delete t[k]; } };
+}
+
+const row = (id: string, o: Partial<MatchRow> = {}): { row: MatchRow; raw: any } => ({
+  row: { match_id: id, user_id: "u1", opponent_id: "o", opponent_name: "n", opponent_type: "bot", opponent_elo: null, opponent_suspected_cheating: 0, user_color: "white", result: "win", outcome: "win", reviewed: 0, pvp_match_type: null, page_number: 1, index_in_page: 0, page_elo: null, played_at: 1000, ...o } as MatchRow,
+  raw: { id },
+});
+const NOW = (n: number) => `2026-10-0${n}T00:00:00.000Z`;
+
+// The same ingest sequence, run through either implementation, must leave the same state where anything reads it.
+async function sequence(store: { upsertMatches: typeof upsertMatches }, db: any, d1: any) {
+  const A = [row("m1", { played_at: 1 }), row("m2", { played_at: null }), row("m3", { played_at: 3 })];
+  await store.upsertMatches(d1, A, "s1", NOW(1));
+  await store.upsertMatches(d1, [...A, row("m4", { played_at: 4 })], "s2", NOW(2));          // 3 known + 1 new
+  await store.upsertMatches(d1, [row("m2", { played_at: 2 }), row("m1", { played_at: 99 })], "s3", NOW(3)); // m2 learns its date; m1 gets a different one, as the old upsert did
+  await store.upsertMatches(d1, [row("m5", { played_at: null }), row("m5", { played_at: 5 }), row("m5", { played_at: null })], "s4", NOW(4)); // duplicates inside one payload
+}
+const observable = (db: any) => ({
+  matches: db.prepare("SELECT match_id, user_id, snapshot_id, opponent_id, opponent_name, opponent_type, opponent_elo, user_color, result, outcome, reviewed, raw_json, first_seen_at, played_at FROM matches ORDER BY match_id").all(),
+});
+
+describe("matches: known matches are not rewritten", () => {
+  it("shouldLeaveEveryReadableColumnIdenticalToThePreviousImplementation", async () => {
+    const a = setupTestDb(), b = setupTestDb();
+    await sequence({ upsertMatches }, a.db, a.d1);
+    await sequence({ upsertMatches: legacyUpsertMatches }, b.db, b.d1);
+    expect(observable(a.db)).toEqual(observable(b.db));
+    expect(observable(a.db).matches.map((m: any) => [m.match_id, m.played_at, m.snapshot_id])).toEqual([["m1", 99, "s1"], ["m2", 2, "s1"], ["m3", 3, "s1"], ["m4", 4, "s2"], ["m5", 5, "s4"]]);
+  });
+
+  it("shouldReportTheSameNumberOfNewMatches", async () => {
+    const a = setupTestDb(), b = setupTestDb();
+    const items = [row("m1"), row("m2"), row("m1")];
+    expect((await upsertMatches(a.d1, items, "s1", NOW(1))).added).toBe((await legacyUpsertMatches(b.d1, items, "s1", NOW(1))).added);
+    expect((await upsertMatches(a.d1, items, "s2", NOW(2))).added).toBe(0);
+  });
+
+  it("shouldWriteNothingWhenEveryMatchIsKnownAndHasItsDate", async () => {
+    const { db, d1 } = setupTestDb();
+    const items = [row("m1"), row("m2"), row("m3")];
+    await upsertMatches(d1, items, "s1", NOW(1));
+    const m = meter(db);
+    await upsertMatches(d1, items, "s2", NOW(2));
+    expect(m.t).toEqual({}); // no matches update, no match_snapshots row
+  });
+
+  it("shouldWriteOnlyTheDateWhenAKnownMatchLearnsItsPlayedAt", async () => {
+    const { db, d1 } = setupTestDb();
+    await upsertMatches(d1, [row("m1", { played_at: null })], "s1", NOW(1));
+    const m = meter(db);
+    await upsertMatches(d1, [row("m1", { played_at: 7 })], "s2", NOW(2));
+    expect(m.t).toEqual({ matches: 1 });
+    expect(db.prepare("SELECT played_at FROM matches WHERE match_id='m1'").get().played_at).toBe(7);
+  });
+
+  it("shouldRecordMembershipOnlyForTheSnapshotThatFirstSawTheMatch", async () => {
+    const { db, d1 } = setupTestDb();
+    await upsertMatches(d1, [row("m1"), row("m2")], "s1", NOW(1));
+    await upsertMatches(d1, [row("m1"), row("m2"), row("m3")], "s2", NOW(2));
+    expect(db.prepare("SELECT match_id, snapshot_id FROM match_snapshots ORDER BY match_id").all()).toEqual([
+      { match_id: "m1", snapshot_id: "s1" }, { match_id: "m2", snapshot_id: "s1" }, { match_id: "m3", snapshot_id: "s2" },
+    ]);
+  });
+
+  it("shouldKeepEveryReadRouteUnchanged", async () => {
+    const a = setupTestDb(), b = setupTestDb();
+    await sequence({ upsertMatches }, a.db, a.d1);
+    await sequence({ upsertMatches: legacyUpsertMatches }, b.db, b.d1);
+    for (const kind of ["summary", "color", "recent", "results"]) {
+      const get = async (d1: any) => (await handleStats(d1, kind, new URL(`http://x/api/stats/${kind}`))).json();
+      expect(await get(a.d1)).toEqual(await get(b.d1));
+    }
+    const list = async (d1: any) => (await handleMatches(d1, new URL("http://x/api/matches"))).json();
+    expect(await list(a.d1)).toEqual(await list(b.d1));
+  });
+});
+
+describe("xp_summaries: unchanged days are not rewritten", () => {
+  const day = (date: number, gainedXp: number) => ({ userId: "u1", date, gainedXp, numSessions: 1, totalSessionTime: 60, streakExtended: 1, frozen: 0, repaired: 0 });
+  const days = (xp: number[]) => xp.map((x, i) => day(86400 * (i + 1), x));
+
+  it("shouldWriteOnlyTheDaysWhoseValuesChanged", async () => {
+    const { db, d1 } = setupTestDb();
+    await upsertXpSummaries(d1, days([10, 20, 30]), NOW(1));
+    const m = meter(db);
+    await upsertXpSummaries(d1, days([10, 25, 30, 40]), NOW(2)); // day 2 changed, day 4 is new
+    expect(m.t).toEqual({ xp_summaries: 2 });
+  });
+
+  it("shouldWriteNothingWhenNothingChanged", async () => {
+    const { db, d1 } = setupTestDb();
+    await upsertXpSummaries(d1, days([10, 20]), NOW(1));
+    const m = meter(db);
+    await upsertXpSummaries(d1, days([10, 20]), NOW(2));
+    expect(m.t).toEqual({});
+  });
+
+  it("shouldTreatNullFlagsAsEqualWhenComparing", async () => {
+    const { db, d1 } = setupTestDb();
+    const nul = [{ ...day(86400, 5), streakExtended: null, frozen: null, repaired: null }];
+    await upsertXpSummaries(d1, nul, NOW(1));
+    const m = meter(db);
+    await upsertXpSummaries(d1, nul, NOW(2));
+    expect(m.t).toEqual({});
+  });
+
+  it("shouldLeaveTheValuesIdenticalToThePreviousImplementationExceptUpdatedAtOfUnchangedDays", async () => {
+    const a = setupTestDb(), b = setupTestDb();
+    for (const [i, s] of [days([10, 20, 30]), days([10, 25, 30, 40])].entries()) {
+      await upsertXpSummaries(a.d1, s, NOW(i + 1));
+      await legacyXp(b.d1, s, NOW(i + 1));
+    }
+    const read = (db: any) => db.prepare("SELECT user_id, date, gained_xp, num_sessions, total_session_time, streak_extended, frozen, repaired FROM xp_summaries ORDER BY date").all();
+    expect(read(a.db)).toEqual(read(b.db));
+    // the one observable difference: updated_at now means "last time the day's values changed"
+    const upd = (db: any) => db.prepare("SELECT date, updated_at FROM xp_summaries ORDER BY date").all().map((r: any) => r.updated_at);
+    expect(upd(a.db)).toEqual([NOW(1), NOW(2), NOW(1), NOW(2)]);
+    expect(upd(b.db)).toEqual([NOW(2), NOW(2), NOW(2), NOW(2)]);
+  });
+});
+
+describe("schema_observations: only new paths are written", () => {
+  const obs = (...p: string[]) => p.map((path) => ({ path, valueType: "number", example: "1" }));
+
+  it("shouldWriteOnlyThePathsNeverSeenBefore", async () => {
+    const { db, d1 } = setupTestDb();
+    await recordObservations(d1, obs("$.a", "$.b"), NOW(1));
+    const m = meter(db);
+    await recordObservations(d1, obs("$.a", "$.b", "$.c"), NOW(2));
+    expect(m.t).toEqual({ schema_observations: 1 });
+    expect(db.prepare("SELECT path FROM schema_observations ORDER BY path").all().map((r: any) => r.path)).toEqual(["$.a", "$.b", "$.c"]);
+  });
+
+  it("shouldKeepTheSameSetOfPathsAndTypesAsThePreviousImplementation", async () => {
+    const a = setupTestDb(), b = setupTestDb();
+    const batches = [obs("$.a", "$.b"), [...obs("$.a"), { path: "$.a", valueType: "string", example: "x" }], obs("$.b", "$.c")];
+    for (const [i, o] of batches.entries()) { await recordObservations(a.d1, o, NOW(i + 1)); await legacyObservations(b.d1, o, NOW(i + 1)); }
+    const read = (db: any) => db.prepare("SELECT path, value_type, first_seen_at, example_value FROM schema_observations ORDER BY path, value_type").all();
+    expect(read(a.db)).toEqual(read(b.db));
+  });
+});

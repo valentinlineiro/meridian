@@ -126,7 +126,7 @@ describe("upsertMatches store persistence", () => {
 
     const row = db.prepare("SELECT match_id, played_at, last_seen_at FROM matches WHERE match_id = ?").get("bot|1766740707") as any;
     expect(row.played_at).toBe(1766740707);
-    expect(row.last_seen_at).toBe("2026-09-25T13:00:00Z");
+    expect(row.last_seen_at).toBe("2026-09-25T12:00:00Z"); // a known match is not rewritten: last_seen_at keeps the first sighting
   });
 
   it("shouldUpdatePlayedAtOnConflictWhenIncomingHasValueAndExistingIsNull", async () => {
@@ -139,6 +139,6 @@ describe("upsertMatches store persistence", () => {
 
     const row = db.prepare("SELECT match_id, played_at, last_seen_at FROM matches WHERE match_id = ?").get("bot|1766740707") as any;
     expect(row.played_at).toBe(1766740707);
-    expect(row.last_seen_at).toBe("2026-09-25T13:00:00Z");
+    expect(row.last_seen_at).toBe("2026-09-25T12:00:00Z"); // learning the date does not touch last_seen_at either
   });
 });
