@@ -2,7 +2,8 @@ import type { WhatChangedPort } from "../ports/whatChangedPort.ts";
 import { NotFoundError } from "./errors.ts";
 import { newcombeDiff, scaleDelta, type Delta } from "../domain/proportion.ts";
 import {
-  evaluateSignificantChanges,
+  evaluateChanges,
+  type Evaluation,
   type Finding,
   type WhatChangedDeltas,
 } from "../domain/whatChanged.ts";
@@ -54,6 +55,7 @@ export interface WhatChangedResult {
     streakMilestone: number | null;
   };
   findings: Finding[];
+  evaluations: Evaluation[];
 }
 
 export async function getWhatChangedUseCase(
@@ -210,7 +212,7 @@ export async function getWhatChangedUseCase(
     },
   };
 
-  const findings = evaluateSignificantChanges(deltas, {
+  const { findings, evaluations } = evaluateChanges(deltas, {
     userId,
     baselineAt: observedAt ?? input.since,
     until: input.until,
@@ -257,5 +259,6 @@ export async function getWhatChangedUseCase(
       streakMilestone,
     },
     findings,
+    evaluations,
   };
 }

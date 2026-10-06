@@ -59,59 +59,114 @@ export interface Finding {
   metrics: Record<string, number | string>;
 }
 
-export function evaluateSignificantChanges(
+// Why a rule did not emit. Reasons are the rule's evaluated conditions, not stages of an algorithm: all failing ones are reported,
+// always in this canonical order (no semantic order between them). See docs/contracts/2026-10-06-discarded-signals-contract.md.
+export const REASONS = [
+  "insufficient_sample",
+  "effect_below_threshold",
+  "interval_includes_zero",
+  "persistence_not_met",
+  "span_too_short",
+  "data_unavailable",
+] as const;
+export type Reason = (typeof REASONS)[number];
+
+export interface Evaluation {
+  id: string;
+  kind: "statistical" | "threshold";
+  status: "emitted" | "not_emitted";
+  reasons: Reason[];
+  metrics: Record<string, number | string>; // keeps the observed effect even when not emitted
+}
+
+// Derived from the evaluation alone: inconclusive = the effect was observed and reaches the threshold, and only the sample
+// and/or the interval stand in the way.
+export function salience(e: Evaluation): "finding" | "inconclusive" | "no_indication" {
+  if (e.status === "emitted") return "finding";
+  return e.reasons.length > 0 && e.reasons.every((r) => r === "insufficient_sample" || r === "interval_includes_zero")
+    ? "inconclusive"
+    : "no_indication";
+}
+
+const canonical = (rs: Set<Reason>): Reason[] => REASONS.filter((r) => rs.has(r));
+const numeric = (o: Record<string, number | string | null | undefined>) =>
+  Object.fromEntries(Object.entries(o).filter(([, v]) => v !== null && v !== undefined)) as Record<string, number | string>;
+
+export function evaluateSignificantChanges(deltas: WhatChangedDeltas, context: FindingContext): Finding[] {
+  return evaluateChanges(deltas, context).findings;
+}
+
+// One evaluation of every rule's conditions yields both the findings (exactly the emitted ones) and the evaluations.
+export function evaluateChanges(
   deltas: WhatChangedDeltas,
   context: FindingContext
-): Finding[] {
+): { findings: Finding[]; evaluations: Evaluation[] } {
   const findings: Finding[] = [];
+  const evaluations: Evaluation[] = [];
+
 
   // 1. Chess rating jump (|delta| >= 25)
-  if (deltas.chess.ratingDelta !== null && Math.abs(deltas.chess.ratingDelta) >= 25) {
-    const sign = deltas.chess.ratingDelta > 0 ? "+" : "";
-    findings.push({
-      id: "CHESS_RATING_JUMP",
-      category: "chess",
-      title: "Salto de ELO",
-      claim: `Tu ELO cambió ${sign}${deltas.chess.ratingDelta} puntos en el periodo.`,
-      evidence: `Inicial: ${deltas.chess.baselineRating ?? "—"} → Final: ${deltas.chess.currentRating ?? "—"} (${deltas.chess.gamesCount} partidas jugadas).`,
-      baselineAt: context.baselineAt,
-      until: context.until,
-      metrics: {
-        ratingDelta: deltas.chess.ratingDelta,
-        baselineRating: deltas.chess.baselineRating ?? 0,
-        currentRating: deltas.chess.currentRating ?? 0,
-        gamesCount: deltas.chess.gamesCount,
-      },
+  {
+    const delta = deltas.chess.ratingDelta;
+    const why = new Set<Reason>();
+    if (delta === null) why.add("data_unavailable");
+    else if (Math.abs(delta) < 25) why.add("effect_below_threshold");
+    const emitted = why.size === 0;
+    evaluations.push({
+      id: "CHESS_RATING_JUMP", kind: "threshold", status: emitted ? "emitted" : "not_emitted", reasons: canonical(why),
+      metrics: numeric({ ratingDelta: delta, baselineRating: deltas.chess.baselineRating, currentRating: deltas.chess.currentRating, gamesCount: deltas.chess.gamesCount }),
     });
+    if (emitted) {
+      const sign = delta! > 0 ? "+" : "";
+      findings.push({
+        id: "CHESS_RATING_JUMP",
+        category: "chess",
+        title: "Salto de ELO",
+        claim: `Tu ELO cambió ${sign}${delta} puntos en el periodo.`,
+        evidence: `Inicial: ${deltas.chess.baselineRating ?? "—"} → Final: ${deltas.chess.currentRating ?? "—"} (${deltas.chess.gamesCount} partidas jugadas).`,
+        baselineAt: context.baselineAt,
+        until: context.until,
+        metrics: {
+          ratingDelta: delta!,
+          baselineRating: deltas.chess.baselineRating ?? 0,
+          currentRating: deltas.chess.currentRating ?? 0,
+          gamesCount: deltas.chess.gamesCount,
+        },
+      });
+    }
   }
 
   // 2. Chess color asymmetry (decided games >= 10, |white - black| >= 15 pp, and the 95% interval of the difference excludes 0)
-  if (
-    deltas.chess.decidedCount >= 10 &&
-    distinguishable(deltas.chess.colorDelta) &&
-    deltas.chess.intervalWhiteWinRate !== null &&
-    deltas.chess.intervalBlackWinRate !== null
-  ) {
-    const diff = Math.abs(deltas.chess.intervalWhiteWinRate - deltas.chess.intervalBlackWinRate);
-    if (diff >= 15.0) {
-      const better =
-        deltas.chess.intervalWhiteWinRate > deltas.chess.intervalBlackWinRate
-          ? "blancas"
-          : "negras";
+  {
+    const c = deltas.chess, white = c.intervalWhiteWinRate, black = c.intervalBlackWinRate;
+    const why = new Set<Reason>();
+    if (c.decidedCount < 10) why.add("insufficient_sample");
+    const diff = white !== null && black !== null ? Math.abs(white - black) : null;
+    if (diff === null) why.add("data_unavailable");
+    else if (diff < 15.0) why.add("effect_below_threshold");
+    if (c.colorDelta === null) why.add("data_unavailable");
+    else if (!distinguishable(c.colorDelta)) why.add("interval_includes_zero");
+    const emitted = why.size === 0;
+    evaluations.push({
+      id: "CHESS_COLOR_ASYMMETRY", kind: "statistical", status: emitted ? "emitted" : "not_emitted", reasons: canonical(why),
+      metrics: numeric({ decidedCount: c.decidedCount, whiteWinRate: white, blackWinRate: black, diffPp: diff, diffCiLower: c.colorDelta?.lower, diffCiUpper: c.colorDelta?.upper }),
+    });
+    if (emitted) {
+      const better = white! > black! ? "blancas" : "negras";
       findings.push({
         id: "CHESS_COLOR_ASYMMETRY",
         category: "chess",
         title: "Asimetría por color",
-        claim: `Mayor tasa de victorias con ${better}: ${diff.toFixed(1)} pp de diferencia (IC95 [${deltas.chess.colorDelta!.lower.toFixed(0)}, ${deltas.chess.colorDelta!.upper.toFixed(0)}] pp, blancas − negras; excluye 0).`,
-        evidence: `Blancas: ${deltas.chess.intervalWhiteWinRate.toFixed(1)}% · Negras: ${deltas.chess.intervalBlackWinRate.toFixed(1)}% en ${deltas.chess.decidedCount} partidas decididas.`,
+        claim: `Mayor tasa de victorias con ${better}: ${diff!.toFixed(1)} pp de diferencia (IC95 [${c.colorDelta!.lower.toFixed(0)}, ${c.colorDelta!.upper.toFixed(0)}] pp, blancas − negras; excluye 0).`,
+        evidence: `Blancas: ${white!.toFixed(1)}% · Negras: ${black!.toFixed(1)}% en ${c.decidedCount} partidas decididas.`,
         baselineAt: context.baselineAt,
         until: context.until,
         metrics: {
-          whiteWinRate: deltas.chess.intervalWhiteWinRate,
-          blackWinRate: deltas.chess.intervalBlackWinRate,
-          diffPp: diff,
-          diffCiLower: deltas.chess.colorDelta!.lower,
-          diffCiUpper: deltas.chess.colorDelta!.upper,
+          whiteWinRate: white!,
+          blackWinRate: black!,
+          diffPp: diff!,
+          diffCiLower: c.colorDelta!.lower,
+          diffCiUpper: c.colorDelta!.upper,
         },
       });
     }
@@ -139,27 +194,35 @@ export function evaluateSignificantChanges(
   }
 
   // 4. Language XP acceleration (interval daily rate >= 1.3 * historical rate with min 200 XP and min 3 days duration)
-  if (
-    deltas.languages.intervalDays >= 3 &&
-    deltas.languages.xpGained >= 200 &&
-    deltas.languages.historicalDailyXpRate > 0 &&
-    deltas.languages.dailyXpRate >= 1.3 * deltas.languages.historicalDailyXpRate
-  ) {
-    const ratio = (deltas.languages.dailyXpRate / deltas.languages.historicalDailyXpRate).toFixed(1);
-    findings.push({
-      id: "LANG_XP_ACCELERATION",
-      category: "languages",
-      title: "Aceleración de ritmo",
-      claim: `Aceleración en tu ritmo de aprendizaje: creció ${ratio}x sobre tu media histórica.`,
-      evidence: `${Math.round(deltas.languages.dailyXpRate)} XP/día en el intervalo vs ${Math.round(deltas.languages.historicalDailyXpRate)} XP/día histórico (+${deltas.languages.xpGained} XP).`,
-      baselineAt: context.baselineAt,
-      until: context.until,
-      metrics: {
-        dailyRate: deltas.languages.dailyXpRate,
-        historicalRate: deltas.languages.historicalDailyXpRate,
-        xpGained: deltas.languages.xpGained,
-      },
+  {
+    const l = deltas.languages;
+    const why = new Set<Reason>();
+    if (l.intervalDays < 3) why.add("span_too_short");
+    if (l.xpGained < 200) why.add("insufficient_sample");
+    if (!(l.historicalDailyXpRate > 0)) why.add("data_unavailable");
+    else if (l.dailyXpRate < 1.3 * l.historicalDailyXpRate) why.add("effect_below_threshold");
+    const emitted = why.size === 0;
+    evaluations.push({
+      id: "LANG_XP_ACCELERATION", kind: "threshold", status: emitted ? "emitted" : "not_emitted", reasons: canonical(why),
+      metrics: numeric({ intervalDays: l.intervalDays, xpGained: l.xpGained, dailyRate: l.dailyXpRate, historicalRate: l.historicalDailyXpRate, ratio: l.historicalDailyXpRate > 0 ? l.dailyXpRate / l.historicalDailyXpRate : null }),
     });
+    if (emitted) {
+      const ratio = (l.dailyXpRate / l.historicalDailyXpRate).toFixed(1);
+      findings.push({
+        id: "LANG_XP_ACCELERATION",
+        category: "languages",
+        title: "Aceleración de ritmo",
+        claim: `Aceleración en tu ritmo de aprendizaje: creció ${ratio}x sobre tu media histórica.`,
+        evidence: `${Math.round(l.dailyXpRate)} XP/día en el intervalo vs ${Math.round(l.historicalDailyXpRate)} XP/día histórico (+${l.xpGained} XP).`,
+        baselineAt: context.baselineAt,
+        until: context.until,
+        metrics: {
+          dailyRate: l.dailyXpRate,
+          historicalRate: l.historicalDailyXpRate,
+          xpGained: l.xpGained,
+        },
+      });
+    }
   }
 
   // 5. Streak milestone
@@ -196,5 +259,5 @@ export function evaluateSignificantChanges(
     });
   }
 
-  return findings;
+  return { findings, evaluations };
 }
