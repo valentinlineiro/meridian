@@ -9,9 +9,9 @@
 
 ---
 
-## 0. Precondiciones de datos (NO ejecutadas)
+## 0. Precondiciones de datos (ejecutadas el 2026-10-06; resultados en §0.1)
 
-Estas dos consultas no se han podido ejecutar (el repo no contiene datos reales). El contrato no se congela sin sus resultados:
+Consultas de solo lectura sobre la base `meridian` de producción. Se conservan aquí tal como se ejecutaron:
 
 ```sql
 -- Q1: cobertura de elo_after (decide si el ELO por partida es una serie o un fragmento)
@@ -70,6 +70,20 @@ ORDER BY s.created_at DESC LIMIT 10;
 ```
 
 Q2 se repite para detectar el factor de redundancia: `SUM(size_bytes)` frente a `SUM(LENGTH(raw_json))` de la última fila por fuente.
+
+---
+
+### 0.1 Resultados (2026-10-06, producción, solo lectura)
+
+| Consulta | Resultado | Consecuencia |
+|---|---|---|
+| **Q1** | 1.507 partidas; **0** con `elo_after`; 1.507 con `page_elo`. | No existe serie de ELO por partida desde `match_details`. El ELO por partida solo sale de `page_elo`. Se aplica la regla de §4: lo que dependa de `elo_after` devuelve *Insufficient evidence*, sin `COALESCE`. |
+| **Q2** | Chess: 38 snapshots, 15 MB, ~400 KB cada uno. Idiomas (`duolingo-lang`): 612 snapshots, 45,6 MB, ~74 KB cada uno (~47 al día). | Idiomas aporta 45,6 MB frente a 15 MB de Chess, por número de snapshots, no por tamaño. Es el dato para dimensionar la compactación (bloqueada por §8.1). |
+| **Q3** | 9.792 entradas de curso en los payloads; 7.943 con `subject: language`. Sin `subject`: **16**, todas del 2026-09-23; **13** con prefijo `DUOLINGO_`. | Q3a > 0: por la regla de decisión no se amplía el predicado en silencio. **Se abre la enmienda de la Invariante 9** (D-e) con este dato. Q3b no se registró por separado en esta ejecución: repetirla antes de decidir el criterio amplio de R4. |
+| **Q4** | Entre 71 y 311 unidades y entre 6 y 197 niveles por snapshot de curso. | Tamaño de K5 acotado: cientos de filas por curso, no por snapshot. |
+| **Q5** | Todos los payloads traen la misma ventana de **91 días** (2026-07-08 a 2026-10-06). | La ventana del payload es fija (91 días). D-f sigue **abierta**: falta decidir cuál es el contrato (payload o tabla) y la comprobación del cliente externo. |
+
+Las cifras de Q3 cuentan entradas en payloads (un mismo curso aparece en muchos snapshots), no cursos distintos.
 
 ---
 
