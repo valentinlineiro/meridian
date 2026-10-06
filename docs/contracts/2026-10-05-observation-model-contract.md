@@ -1,7 +1,7 @@
 # Contrato P2: modelo de observaciones (extraer → paridad → conmutar → compactar)
 
 **Fecha:** 2026-10-05
-**Estado:** 🟡 **DRAFT: sin implementar y sin congelar.** No hay migración ni backfill. D1–D4 están decididas (§10), pero el contrato no se congela hasta resolver §0 (consultas de datos) y pasar la revisión de §12. El orden es: **qué conocimiento histórico debe sobrevivir (§2b) → representación mínima que lo conserva (§3)**. El esquema de §3 es provisional y deriva de §2b, no al revés.
+**Estado:** 🟡 **DRAFT: sin implementar y sin congelar.** No hay migración ni backfill. Todas las decisiones están tomadas (D1–D6 en §10, D-a…D-f en §7) y §0 está resuelto (§0.1); el contrato no se congela hasta pasar la revisión final de §12. El orden es: **qué conocimiento histórico debe sobrevivir (§2b) → representación mínima que lo conserva (§3)**. El esquema de §3 es provisional y deriva de §2b, no al revés.
 **Origen:** auditoría de utilidad analítica (hallazgo: las series longitudinales dependen de parsear `snapshots.raw_json`).
 
 **Pregunta rectora de cada campo:** qué observación histórica representa, de qué snapshot procede y si puede reconstruirse de forma determinista desde el `raw_json` actual.
@@ -109,7 +109,7 @@ Las cifras de Q3 cuentan entradas en payloads (un mismo curso aparece en muchos 
 | R3 | `d1WhatChangedAdapter` (baseline y target de idiomas) | `user.totalXp`, `user.streak`, `user.currentCourseId ?? currentCourse.id` del último snapshot `<= t` | Solo lee `user.*`; la normalización también acepta campos de nivel superior. |
 | R4 | `d1TrajectoryAdapter` (idiomas) | `courses[].xp` en 3 snapshots (primero, medio, último) | Su filtro de curso difiere del de la normalización. |
 | R5 | `api/languagesAnalytics.ts` `getCurriculumDeltas` | `currentCourse.id`, `pathSectioned[].index/completedUnits/totalUnits` de todos los snapshots que contengan `pathSectioned` (`LIKE`) | Aplica `?? 0` a `completedUnits` y `totalUnits`. |
-| R6 | `api/stats.ts` `/api/stats/lang` | **Payload completo** del último snapshot de idiomas: `totalXp`, `streak`, `courses`, `xp_summaries` (incl. `dailyGoalXp`), `currentCourse` con árbol de unidades y niveles | Lo consume también el cliente de ingesta (verificación). |
+| R6 | `api/stats.ts` `/api/stats/lang` | **Payload completo** del último snapshot de idiomas: `totalXp`, `streak`, `courses`, `xp_summaries` (incl. `dailyGoalXp`), `currentCourse` con árbol de unidades y niveles | Sin consumidor externo comprobado (§7.1); el respaldo del dashboard sí lo usa. Con D-f = A, `summaries` y `totals` salen de `xp_summaries`. |
 | R7 | `buildCourseProgressHistory` / `buildCourseProgressIndex` | `currentCourse` de los últimos 30 snapshots (`COURSE_HISTORY_LIMIT`) | Un Path por curso, del último snapshot que lo tuvo cargado. |
 | R8 | `/api/snapshots/:id?raw=1` y página `/raw` | Payload íntegro | Herramienta de depuración. |
 
@@ -123,7 +123,7 @@ Lo que **no** lee `raw_json` y no entra en el gate: `xp_summaries`, `courses`, `
 |---|---|---|---|
 | Resumen por sección (`index`, `type`, `cefr`, `completedUnits`, `totalUnits`), sección activa, CEFR actual, ratio | `courseProgressIndex`, `courseProgressHistory[].path` | **Sí** (`frontend.ts` ~706–760) | tests |
 | `xp` del curso en cada punto de historial, `capturedAt` | idem | **Sí** | tests |
-| Árbol completo `units[]` y `levels[]` (`teachingObjective`, `state`, `finishedSessions`, `reachedScore`, `crownLevelIndex`, …) | Solo el campo `courseProgress` del **último** snapshot (marcado "backward compat" en `lang.ts`) | **No** | `tests/courseProgress.test.ts`; cliente de ingesta externo: **no verificado** |
+| Árbol completo `units[]` y `levels[]` (`teachingObjective`, `state`, `finishedSessions`, `reachedScore`, `crownLevelIndex`, …) | Solo el campo `courseProgress` del **último** snapshot (marcado "backward compat" en `lang.ts`) | **No** | `tests/courseProgress.test.ts`; cliente de ingesta externo: **no lo lee** (comprobado, §7.1) |
 | `dailyGoalXp` por día | `summaries[]` de `/api/stats/lang` | **No** | cliente de ingesta externo: **no verificado** |
 | Historial de `levels` por snapshot | **Nadie lo sirve**: `buildCourseProgressHistory` reduce a resumen de sección | No | ninguno |
 
@@ -137,7 +137,7 @@ Se decide **antes** de diseñar tablas. "Sobrevivir" significa que existe una re
 
 | ID | Conocimiento | ¿Irreemplazable? | Lectura que lo usa | Decisión |
 |---|---|---|---|---|
-| K1 | Serie de estado de cuenta por snapshot (XP total, racha, curso declarado/observado, auxiliar) | Sí | R3 | **Sobrevive**, normalizado |
+| K1 | Serie de estado de cuenta por snapshot (XP total, racha, curso declarado), solo de snapshots que traen datos de cuenta (D-b) | Sí | R3 | **Sobrevive**, normalizado |
 | K2 | Serie de XP vitalicio por curso por snapshot | Sí | R4 | **Sobrevive**, normalizado |
 | K3 | Serie de ELO de nivel snapshot | Sí | R1, R2 | **Sobrevive**, normalizado |
 | K4 | Estructura de secciones observada por snapshot (unidades completadas/totales, CEFR), `null` preservado, incl. snapshots con `format_error` | Sí | R5, R7 | **Sobrevive**, normalizado |
@@ -177,7 +177,7 @@ K6 y K8 **no** tienen tabla: se conservan archivados.
 
 | Tabla | Columnas | Semántica |
 |---|---|---|
-| `account_observations` | `snapshot_id, user_id, observed_at, total_xp, streak, declared_course_id, observed_course_id, is_auxiliary, extractor_version` | Estado de **cuenta**. `declared_course_id` = `user.currentCourseId`; `observed_course_id` = `currentCourse.id`. Separados (hoy R3 los fusiona con `??`). |
+| `account_observations` | `snapshot_id, user_id, observed_at, total_xp, streak, declared_course_id, extractor_version` | Estado de **cuenta**, solo de snapshots que traen `user.totalXp`, `user.streak` o `user.currentCourseId` (D-b). `declared_course_id` = `user.currentCourseId`. El curso observado (`currentCourse.id`) **no** es estado de cuenta: vive en `path_observations.course_id`. Hoy R3 los fusiona con `??`; deja de hacerlo. |
 | `course_observations` | `snapshot_id, user_id, observed_at, course_id, subject, learning_language, from_language, title, xp, extractor_version` | Entrada observada de `courses[]` en el snapshot. `xp` es **vitalicio** (serie, no estado); sin `xp` numérico se guarda `null`, nunca `0`. Se guarda lo **observado**; la pertenencia a "curso de idiomas" se decide al leer (D4). `title` y `from_language` existen porque `courseProgress` (R6) los toma de `courses[]` **del mismo snapshot**, no del catálogo actual. |
 | `path_observations` | `snapshot_id, user_id, observed_at, course_id, active_section_id, format_error, extractor_version` | Un registro por snapshot que trae `currentCourse`. `format_error` conserva el texto de `CourseProgressFormatError` cuando la estructura no coincide (hoy se sirve como `courseProgressError` y `courseProgressHistory[].formatError`); en ese caso **no** hay filas de sección. |
 | `section_observations` | `snapshot_id, section_index, section_id, type, cefr_level, cefr_sublevel, completed_units, total_units` | Una fila por sección del Path (todas, incluidas las `daily_refresh`). `null` conservado. `section_id` se guarda porque la sección activa se identifica por `id === activeSectionId` **dentro del snapshot**; no es estable entre snapshots (la fuente rota los UUID, migración `0009`). |
@@ -235,10 +235,10 @@ El comentario de `stats.ts` sitúa el payload con niveles en ~100–200 KB por s
 
 1. **`observed_at` = `snapshots.created_at`**, texto ISO-8601 UTC. Es el instante de **registro**, no el de la fuente. Es comparable lexicográficamente (las lecturas actuales ya hacen `created_at <= ?`). Hoy `createdAt` puede venir suministrado en `IngestArgs`: ese campo es parte de la frontera de confianza y su efecto sobre el orden longitudinal debe quedar documentado, no asumido.
 2. **Ámbitos separados.** ACCOUNT (`account_observations`), COURSE (`course_observations`, `section_observations`), CHESS (`elo_observations`). Ninguna tabla mezcla ámbitos, y ninguna lectura puede etiquetar una como la otra.
-3. **Snapshot auxiliar** (`is_auxiliary = 1`, curso observado ≠ curso declarado):
-   - `account_observations`: se escribe, con `is_auxiliary = 1` y ambos ids. **Regla de lectura:** el estado de cuenta no se deduce del curso observado de un snapshot auxiliar.
+3. **Snapshot de solo identidad** (los que el colector emite por curso; no traen `user.totalXp`, `user.streak` ni `user.currentCourseId`; en producción, 595 de 612):
+   - `account_observations`: **no se escribe fila** (D-b). Que falte la observación no es lo mismo que `null`: la lectura de cuenta usa la **última observación de cuenta `<= t`** y devuelve su `observed_at`, sin presentarla como actual.
    - `course_observations`: válida (el catálogo `courses[]` es completo en cualquier snapshot).
-   - `section_observations`: válida solo para `observed_course_id`.
+   - `path_observations` / `section_observations`: válidas para el curso en `currentCourse.id` del snapshot.
 4. **Snapshot deduplicado** (`checksum` repetido): no genera filas nuevas. Una observación existe por snapshot, y un snapshot por checksum.
 5. **Atomicidad.** Hoy `ingestSnapshot` encadena `await`s sin transacción. La inserción de las filas de observación debe ir en el mismo `db.batch` que el snapshot, o el snapshot queda **sin observaciones** (defecto detectable, §6.4).
 6. **Valores ausentes:** `null`, nunca `0`. Un campo ausente en un payload antiguo es `null`.
@@ -271,7 +271,7 @@ Procedimiento: sobre el dataset demo **y** sobre una copia de producción, para 
 | Lectura | Nueva fuente | Diferencia conocida (debe aprobarse o corregirse) |
 |---|---|---|
 | R1, R2 | `elo_observations` | R1 deja de depender de la ausencia de `eloRating` en idiomas (filtro por fuente). R2 deja de listar filas de idiomas con `elo = null`: **el cliente debe tolerarlo**. |
-| R3 | `account_observations` | **D-a:** la normalización acepta `totalXp`/`streak` de nivel superior, R3 solo `user.*`. **D-b:** R3 fusiona `currentCourseId ?? currentCourse.id`; con snapshots auxiliares eso puede producir un falso `courseChanged`. La nueva lectura debe usar `declared_course_id`. |
+| R3 | `account_observations` | **D-a:** la normalización acepta `totalXp`/`streak` de nivel superior, R3 solo `user.*`. **D-b:** R3 fusiona `currentCourseId ?? currentCourse.id`; con snapshots auxiliares eso puede producir un falso `courseChanged`. La nueva lectura usa `declared_course_id` de la última observación de cuenta (D-b aprobada). |
 | R4 | `course_observations` + predicado de D4 | **D-c:** R4 acepta un curso por `subject==='language' \|\| learningLanguage \|\| id` con prefijo `DUOLINGO_`; el contrato congelado de ingesta (Invariante 9) exige `subject='language'`. Se adopta el predicado único de D4 y se **mide cuántas filas cambian** respecto al criterio amplio de R4. |
 | R5 | `section_observations` | **D-d:** R5 convierte `null` en `0` (`?? 0`); la nueva fuente conserva `null`, lo que puede mover un veredicto `comparable` a `insufficient_observation`. |
 | R6 | `account_observations` + `course_observations` + `path_observations` + K5 (§3.2) + `xp_summaries` (con `daily_goal_xp`) | `/api/stats/lang` debe ser **idéntica** campo a campo, incluidos `courseProgress` (solo del último snapshot) y `summaries[].dailyGoalXp`. **Ojo:** hoy `summaries` sale del `xp_summaries` **del payload** (ventana móvil del último sync), no de la tabla; leer de la tabla cambia el conjunto de días. Ver D-f. |
