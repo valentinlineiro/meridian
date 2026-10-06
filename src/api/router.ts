@@ -5,7 +5,7 @@ import type { Context } from "hono";
 import type { Env } from "../types.ts";
 import { handleImport, json } from "./import.ts";
 import { handleStats, handleLangStats, handleMatches, handleSnapshots } from "./stats.ts";
-import { handleMeStats } from "./me.ts";
+import { handleMeStats, handleMeSync, handleMeSyncStatus } from "./me.ts";
 import { handleSaveMatchDetail, handleGetMatchDetail, handleGetPendingMatchDetails } from "./chessDetail.ts";
 import { handleGetLanguages, handleGetLanguageCourse, handleGetLanguageXp } from "./languages.ts";
 import { handleGetLanguagesAnalytics } from "./languagesAnalytics.ts";
@@ -40,11 +40,11 @@ app.use("*", async (c, next) => {
 //   GET|HEAD /login, POST /login                -> public (the login itself; POST is same-origin + throttled)
 //   write (not GET/HEAD)                        -> IMPORT_TOKEN (machine)        [except identity writes below]
 //   machine read (pending-details)              -> IMPORT_TOKEN
-//   POST /logout                                -> owner session + same-origin (CSRF)
+//   POST /api/me/sync, POST /logout             -> owner session + same-origin (CSRF)
 //   everything else, incl. HTML + unknown       -> owner session cookie (HTML -> redirect to /login, API -> 401)
 // Identity is a signed session cookie issued by /login for ADMIN_EMAIL; nothing else is trusted.
 const MACHINE_READ = new Set(["/api/chess/matches/pending-details"]);
-const IDENTITY_WRITE = new Set(["/logout"]);
+const IDENTITY_WRITE = new Set(["/api/me/sync", "/logout"]);
 
 const sha256 = async (s: string) => new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)));
 
@@ -164,6 +164,10 @@ app.get("/api/languages/courses/:courseId", (c) =>
   handleGetLanguageCourse(c.env.DB, c.req.param("courseId"), new URL(c.req.url)));
 
 app.get("/api/me/stats/lang", (c) => handleMeStats(c.env.DB, new URL(c.req.url), emailOf(c)));
+app.post("/api/me/sync", (c) =>
+  handleMeSync(c.env.DB, emailOf(c), fetch, c.env.GITHUB_ACTIONS_TOKEN ?? null, c.env.COLLECTOR_REPO ?? null));
+app.get("/api/me/sync/status", (c) =>
+  handleMeSyncStatus(c.env.DB, emailOf(c), new URL(c.req.url), fetch, c.env.GITHUB_ACTIONS_TOKEN ?? null, c.env.COLLECTOR_REPO ?? null));
 
 app.get("/api/stats/lang", (c) => handleLangStats(c.env.DB, new URL(c.req.url)));
 app.get("/api/stats/*", (c) => {

@@ -7,6 +7,8 @@ export const envSchema = z.object({
   ADMIN_EMAIL: z.string().optional(),
   ADMIN_PASSWORD_HASH: z.string().optional(),
   SESSION_SECRET: z.string().optional(),
+  GITHUB_ACTIONS_TOKEN: z.string().optional(), // dispatches the collector workflow ("Sincronizar")
+  COLLECTOR_REPO: z.string().optional(),       // "owner/name" of the repo that holds collector.yml
 });
 
 export const importPayloadSchema = z.object({

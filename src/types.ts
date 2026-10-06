@@ -5,6 +5,8 @@ export interface Env {
   ADMIN_EMAIL?: string;         // the only identity allowed
   ADMIN_PASSWORD_HASH?: string; // pbkdf2-sha256$iterations$salt$hash (scripts/hash-password.mjs)
   SESSION_SECRET?: string;      // >= 32 bytes, signs the session cookie
+  GITHUB_ACTIONS_TOKEN?: string; // dispatches the collector workflow ("Sincronizar")
+  COLLECTOR_REPO?: string;       // "owner/name" of the repo that holds collector.yml
 }
 
 export interface MatchRow {
