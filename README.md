@@ -102,7 +102,11 @@ npx wrangler dev src/dev.ts --port 8787 --var IMPORT_TOKEN:dev-token
 npm run demo:seed          # 60 invented matches + two language observations
 ```
 
-To deploy your own instance, create a D1 database and put its id in `wrangler.jsonc`.
+The `database_id` in `wrangler.jsonc` is a deliberate placeholder: the repo is public and never carries the real one.
+
+**Meridian's own deployment is done by CI.** Every push to `main` that passes the tests applies the D1 migrations (`--remote`) and runs `wrangler deploy`, using a config generated at deploy time from the `D1_DATABASE_ID` Actions secret (plus `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`). Production is configured only through GitHub Actions; do not put its id in `wrangler.jsonc`.
+
+**To run your own instance**, create a D1 database and keep its id in a local, uncommitted copy of the config (for example `wrangler.production.jsonc`, which is git-ignored) and pass it with `--config`.
 
 `src/dev.ts` is a loopback-only entry point that fixes the owner identity in code; it is never the deployed entry.
 
