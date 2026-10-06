@@ -1,9 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { setupTestDb } from "./helpers/testDb.ts";
 import { upsertMatches, recordObservations } from "../src/db/store.ts";
-import { upsertXpSummaries } from "../src/db/storeLanguages.ts";
 import { upsertMatches as legacyUpsertMatches, recordObservations as legacyObservations } from "./fixtures/legacyStore.ts"; // verbatim copies of main before this change
-import { upsertXpSummaries as legacyXp } from "./fixtures/legacyStoreLanguages.ts";
 import { handleStats, handleMatches } from "../src/api/stats.ts";
 import type { MatchRow } from "../src/types.ts";
 
@@ -92,50 +90,6 @@ describe("matches: known matches are not rewritten", () => {
     }
     const list = async (d1: any) => (await handleMatches(d1, new URL("http://x/api/matches"))).json();
     expect(await list(a.d1)).toEqual(await list(b.d1));
-  });
-});
-
-describe("xp_summaries: unchanged days are not rewritten", () => {
-  const day = (date: number, gainedXp: number) => ({ userId: "u1", date, gainedXp, numSessions: 1, totalSessionTime: 60, streakExtended: 1, frozen: 0, repaired: 0 });
-  const days = (xp: number[]) => xp.map((x, i) => day(86400 * (i + 1), x));
-
-  it("shouldWriteOnlyTheDaysWhoseValuesChanged", async () => {
-    const { db, d1 } = setupTestDb();
-    await upsertXpSummaries(d1, days([10, 20, 30]), NOW(1));
-    const m = meter(db);
-    await upsertXpSummaries(d1, days([10, 25, 30, 40]), NOW(2)); // day 2 changed, day 4 is new
-    expect(m.t).toEqual({ xp_summaries: 2 });
-  });
-
-  it("shouldWriteNothingWhenNothingChanged", async () => {
-    const { db, d1 } = setupTestDb();
-    await upsertXpSummaries(d1, days([10, 20]), NOW(1));
-    const m = meter(db);
-    await upsertXpSummaries(d1, days([10, 20]), NOW(2));
-    expect(m.t).toEqual({});
-  });
-
-  it("shouldTreatNullFlagsAsEqualWhenComparing", async () => {
-    const { db, d1 } = setupTestDb();
-    const nul = [{ ...day(86400, 5), streakExtended: null, frozen: null, repaired: null }];
-    await upsertXpSummaries(d1, nul, NOW(1));
-    const m = meter(db);
-    await upsertXpSummaries(d1, nul, NOW(2));
-    expect(m.t).toEqual({});
-  });
-
-  it("shouldLeaveTheValuesIdenticalToThePreviousImplementationExceptUpdatedAtOfUnchangedDays", async () => {
-    const a = setupTestDb(), b = setupTestDb();
-    for (const [i, s] of [days([10, 20, 30]), days([10, 25, 30, 40])].entries()) {
-      await upsertXpSummaries(a.d1, s, NOW(i + 1));
-      await legacyXp(b.d1, s, NOW(i + 1));
-    }
-    const read = (db: any) => db.prepare("SELECT user_id, date, gained_xp, num_sessions, total_session_time, streak_extended, frozen, repaired FROM xp_summaries ORDER BY date").all();
-    expect(read(a.db)).toEqual(read(b.db));
-    // the one observable difference: updated_at now means "last time the day's values changed"
-    const upd = (db: any) => db.prepare("SELECT date, updated_at FROM xp_summaries ORDER BY date").all().map((r: any) => r.updated_at);
-    expect(upd(a.db)).toEqual([NOW(1), NOW(2), NOW(1), NOW(2)]);
-    expect(upd(b.db)).toEqual([NOW(2), NOW(2), NOW(2), NOW(2)]);
   });
 });
 

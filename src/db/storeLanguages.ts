@@ -206,7 +206,6 @@ export async function upsertCourseSections(
   return { count: sections.length };
 }
 
-// A day whose values did not change is not rewritten, so `updated_at` is the last time the day's values changed.
 export async function upsertXpSummaries(
   db: D1Database,
   summaries: StoredXpSummary[],
@@ -227,12 +226,6 @@ export async function upsertXpSummaries(
           frozen = excluded.frozen,
           repaired = excluded.repaired,
           updated_at = excluded.updated_at
-        WHERE xp_summaries.gained_xp IS NOT excluded.gained_xp
-           OR xp_summaries.num_sessions IS NOT excluded.num_sessions
-           OR xp_summaries.total_session_time IS NOT excluded.total_session_time
-           OR xp_summaries.streak_extended IS NOT excluded.streak_extended
-           OR xp_summaries.frozen IS NOT excluded.frozen
-           OR xp_summaries.repaired IS NOT excluded.repaired
       `).bind(
         s.userId,
         s.date,
