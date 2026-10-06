@@ -284,9 +284,9 @@ Las diferencias D-a…D-f son **cambios de comportamiento**, no regresiones de p
 
 Qué expone hoy `/api/stats/lang` (verificado en código):
 
-- `summaries` = el array `xp_summaries` / `xpSummaries` **del payload del último snapshot de idiomas** (`summarizeLang`), ordenado por fecha. Su longitud la fija la fuente en cada sync. El contrato de ingesta habla de un "bloque de 90 días" (Invariante 5); **no verificado en datos** (Q5).
+- `summaries` = el array `xp_summaries` / `xpSummaries` **del payload del último snapshot de idiomas** (`summarizeLang`), ordenado por fecha. Su longitud la fija la fuente en cada sync. El contrato de ingesta habla de un "bloque de 90 días" (Invariante 5); Q5 (§0.1) mide una ventana fija de 91 días.
 - `totals` (días, XP, sesiones, medias) se calculan sobre ese mismo array.
-- Consumidores conocidos: el dashboard **solo como respaldo** (`loadLanguagesDashboard`, cuando `/api/languages` viene vacío o falla) y `/api/me/stats/lang`; el cliente de ingesta externo lo usa en su paso de verificación (**no verificado**). El flujo principal del dashboard usa `/api/languages/xp?days=90`, que lee la **tabla** (contrato read-api: `days` defecto 90, máx 365).
+- Consumidores conocidos: el dashboard **solo como respaldo** (`loadLanguagesDashboard`, cuando `/api/languages` viene vacío o falla) y `/api/me/stats/lang`; el cliente de ingesta externo lo usaría en un paso de verificación según la auditoría de lectura; **comprobado el 2026-10-06 que el colector real no lo hace** (ver abajo). El flujo principal del dashboard usa `/api/languages/xp?days=90`, que lee la **tabla** (contrato read-api: `days` defecto 90, máx 365).
 
 Qué significa la tabla: `xp_summaries` acumula los días de **todos** los syncs (PK `(user,date)`, última escritura gana). Puede cubrir más de 90 días y sus filas coinciden con el payload del último sync solo dentro de la ventana de ese sync.
 
@@ -310,6 +310,16 @@ Opciones (**ninguna elegida**):
 | Depende de la ventana entregada por la fuente | B (la conservadora; suficiente solo si los límites guardados por `account_observation` bastan para reproducir el comportamiento) |
 
 Este contrato no añade ninguna otra inferencia sobre el cliente.
+
+**Comprobación del cliente externo (2026-10-06, código local).**
+
+- `meridian-collector`, rama `private/operational`, `scripts/`: `collector.sh` solo hace `POST /api/snapshot` (cuenta, cada curso, Chess) y llama a Duolingo; `hydrateChessDetails.mjs` solo usa `GET /api/chess/matches/pending-details` y `POST …/detail`. Ningún script lee `/api/stats/lang`, `/api/me/stats/lang`, `summaries`, `courseProgress` ni `dailyGoalXp`.
+- Los scripts de `duolingo-stats` y `longitudinal-analytics-staging` tampoco llaman a esas rutas (solo aparecen en tests).
+- El único consumidor en código es el respaldo del dashboard (`loadLanguagesDashboard`, `src/frontend.ts`): `renderLang(legacy)` cuando `/api/languages` viene vacío o falla.
+- La afirmación de la auditoría de lectura ("ingest-client verify step") **no tiene respaldo** en el colector actual.
+- **Límite de la comprobación:** `/api/stats/lang` no exige autenticación, así que un consumidor fuera de estos repositorios (marcador, script ajeno) no es observable desde el código. No se ha demostrado su ausencia.
+
+Según la tabla de arriba, "no lee `summaries`" deja abiertas **A o C**. C obligaría además a reescribir el respaldo del dashboard, que sí consume `summaries`. **Recomendación (pendiente de aprobación):** A, con el cambio de conjunto de días aceptado como diferencia D-f. La decisión sigue **ABIERTA** hasta aprobarla.
 
 Hasta decidir, la lectura R6 **debe seguir saliendo de `raw_json`** y por tanto R6 **bloquea** la compactación de snapshots de idiomas (§8.1).
 
