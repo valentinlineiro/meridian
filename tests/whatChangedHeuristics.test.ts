@@ -19,6 +19,8 @@ describe("What Changed Domain Heuristics", () => {
       intervalWhiteWinRate: null,
       intervalBlackWinRate: null,
       historicalWinRateDelta: null,
+      colorDelta: null,
+      historicalDelta: null,
     },
     languages: {
       intervalDays: 7,
@@ -76,6 +78,7 @@ describe("What Changed Domain Heuristics", () => {
         decidedCount: 12,
         intervalWhiteWinRate: 75.0,
         intervalBlackWinRate: 40.0,
+        colorDelta: { diff: 35, lower: 5, upper: 60 },
       },
     };
     const findings = evaluateSignificantChanges(deltas, baseContext);

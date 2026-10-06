@@ -1,3 +1,5 @@
+import { distinguishable, type Delta } from "./proportion.ts";
+
 export interface FindingContext {
   userId: string;
   baselineAt: string;
@@ -14,6 +16,9 @@ export interface ChessDeltas {
   intervalWhiteWinRate: number | null;
   intervalBlackWinRate: number | null;
   historicalWinRateDelta: number | null;
+  // Percent, with a 95% interval. colorDelta = white − black in the interval; historicalDelta = interval − lifetime before `since`.
+  colorDelta: Delta | null;
+  historicalDelta: Delta | null;
 }
 
 export interface LanguagesDeltas {
@@ -80,9 +85,10 @@ export function evaluateSignificantChanges(
     });
   }
 
-  // 2. Chess color asymmetry (decided games >= 10 and |white - black| >= 15 pp)
+  // 2. Chess color asymmetry (decided games >= 10, |white - black| >= 15 pp, and the 95% interval of the difference excludes 0)
   if (
     deltas.chess.decidedCount >= 10 &&
+    distinguishable(deltas.chess.colorDelta) &&
     deltas.chess.intervalWhiteWinRate !== null &&
     deltas.chess.intervalBlackWinRate !== null
   ) {
@@ -104,6 +110,8 @@ export function evaluateSignificantChanges(
           whiteWinRate: deltas.chess.intervalWhiteWinRate,
           blackWinRate: deltas.chess.intervalBlackWinRate,
           diffPp: diff,
+          diffCiLower: deltas.chess.colorDelta!.lower,
+          diffCiUpper: deltas.chess.colorDelta!.upper,
         },
       });
     }

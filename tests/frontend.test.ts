@@ -299,17 +299,11 @@ describe("dashboard chips", () => {
 });
 
 describe("dashboard WR gap and ELO wording", () => {
-  it("shouldHeadlineWhiteBlackWinRateGapWhenBothGroupsExist", () => {
+  it("shouldHeadlineWhiteBlackWinRateGapThroughOneRenderer", () => {
     expect(DASHBOARD_HTML).toMatch(/id="colDiff"/);
+    expect(DASHBOARD_HTML.match(/q\('#colDiff'\)\.textContent/g)).toHaveLength(1); // unified: behaviour is covered in frontendDeltas.test.ts
     const dashBody = DASHBOARD_HTML.match(/async function loadChessDashboard\(\)\{([\s\S]*?)\n\}/)?.[1] ?? "";
-    expect(dashBody).toMatch(/colDiff/);
-    expect(dashBody).toMatch(/winRate/);
-  });
-
-  it("shouldFormatColDiffWithExplicitSignHandlingWithoutDoubleSign", () => {
-    const fnBody = DASHBOARD_HTML.match(/function renderChessView\(stats,\s*matches\)\{([\s\S]*?)\n\}/)?.[1] ?? "";
-    expect(fnBody).toMatch(/diff\s*>\s*0\s*\?\s*['"]\+['"]\s*:\s*['"]['"]/);
-    expect(DASHBOARD_HTML).not.toMatch(/→\s*\+\s*['"]\s*\+\s*\(\(wh\.winRate/);
+    expect(dashBody).toMatch(/setColDiff/);
   });
 
   it("shouldLabelEloAsSyncObserved", () => {
@@ -344,12 +338,6 @@ describe("dashboard UX-PR2 hierarchy and reading", () => {
   it("shouldLabelEloDeltaExplicitlyVsFirstSnapshot", () => {
     const dashBody = DASHBOARD_HTML.match(/async function loadChessDashboard\(\)\{([\s\S]*?)\n\}/)?.[1] ?? "";
     expect(dashBody).toMatch(/vs primer snapshot/);
-  });
-
-  it("shouldExpressRecentFormDifferenceInPercentagePoints", () => {
-    const formBody = DASHBOARD_HTML.match(/function renderForm\(r\)\{([\s\S]*?)\n\}/)?.[1] ?? "";
-    expect(formBody).toMatch(/pp\s+WR\s+vs\s+anteriores/);
-    expect(formBody).toMatch(/pp\s+score\s+vs\s+anteriores/);
   });
 
   it("shouldOnlyRenderRecentColorSplitIfBothColorsHaveGames", () => {

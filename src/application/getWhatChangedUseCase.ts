@@ -1,5 +1,6 @@
 import type { WhatChangedPort } from "../ports/whatChangedPort.ts";
 import { NotFoundError } from "./errors.ts";
+import { newcombeDiff, scaleDelta, type Delta } from "../domain/proportion.ts";
 import {
   evaluateSignificantChanges,
   type Finding,
@@ -33,6 +34,8 @@ export interface WhatChangedResult {
     whiteWinRate: number | null;
     blackWinRate: number | null;
     historicalWinRateDelta: number | null;
+    colorDelta: Delta | null;
+    historicalDelta: Delta | null;
   };
   languages: {
     xpGained: number;
@@ -116,6 +119,14 @@ export async function getWhatChangedUseCase(
       ? intervalWinRate - lifetimePriorWinRate
       : null;
 
+  // 95% intervals (percent) of the same differences. Groups are disjoint, so Newcombe applies.
+  const colorDelta = scaleDelta(
+    newcombeDiff({ wins: chessInt.whiteWins, n: chessInt.whiteDecided }, { wins: chessInt.blackWins, n: chessInt.blackDecided }), 100);
+  const historicalDelta =
+    chessBase.status === "exactOrPrevious" && chessBase.data
+      ? scaleDelta(newcombeDiff({ wins: chessInt.wins, n: chessInt.decidedCount }, { wins: chessBase.data.lifetimeWins, n: chessBase.data.lifetimeDecided }), 100)
+      : null;
+
   // Languages calculations (symmetric point-in-time)
   const baselineCourseId = langBase.data?.activeCourseId ?? null;
   const currentCourseId =
@@ -175,6 +186,8 @@ export async function getWhatChangedUseCase(
       intervalWhiteWinRate: whiteWinRate,
       intervalBlackWinRate: blackWinRate,
       historicalWinRateDelta,
+      colorDelta,
+      historicalDelta,
     },
     languages: {
       intervalDays: durationDays,
@@ -224,6 +237,8 @@ export async function getWhatChangedUseCase(
       whiteWinRate,
       blackWinRate,
       historicalWinRateDelta,
+      colorDelta,
+      historicalDelta,
     },
     languages: {
       xpGained: langInt.xpGained,
