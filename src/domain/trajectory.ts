@@ -1,3 +1,5 @@
+import { distinguishable, newcombeDiff, scaleDelta, type Delta } from "./proportion.ts";
+
 export type TrajectoryFindingType =
   | "CHESS_COLOR_ASYMMETRY_LONGITUDINAL"
   | "LANG_FOCUS_SHIFT_LONGITUDINAL";
@@ -10,6 +12,7 @@ export interface ChessColorAsymmetryMetrics {
   globalWhiteWinRate: number;
   globalBlackWinRate: number;
   diffPp: number;
+  diffCi: Delta; // white − black over all decided games, percent, 95% interval
   h1WhiteWinRate: number;
   h1BlackWinRate: number;
   h1DiffPp: number;
@@ -121,7 +124,10 @@ export function evaluateTrajectoryPatterns(input: TrajectoryInput): TrajectoryFi
       const h2BlackWR = (chess.h2.blackWins / chess.h2.blackDecided) * 100;
       const h2Diff = h2WhiteWR - h2BlackWR;
 
-      if (Math.abs(globalDiff) >= 15.0) {
+      // The interval applies to the global difference only: per-era n is too small for it, and the eras are a persistence check.
+      const diffCi = scaleDelta(newcombeDiff({ wins: chess.whiteWins, n: chess.whiteDecided }, { wins: chess.blackWins, n: chess.blackDecided }), 100);
+
+      if (Math.abs(globalDiff) >= 15.0 && distinguishable(diffCi)) {
         const isWhiteFavored = globalDiff > 0;
         const h1Satisfied = isWhiteFavored ? h1Diff >= 10.0 : h1Diff <= -10.0;
         const h2Satisfied = isWhiteFavored ? h2Diff >= 10.0 : h2Diff <= -10.0;
@@ -148,6 +154,7 @@ export function evaluateTrajectoryPatterns(input: TrajectoryInput): TrajectoryFi
               globalWhiteWinRate: globalWhiteWR,
               globalBlackWinRate: globalBlackWR,
               diffPp: Math.abs(globalDiff),
+              diffCi: diffCi!,
               h1WhiteWinRate: h1WhiteWR,
               h1BlackWinRate: h1BlackWR,
               h1DiffPp: Math.abs(h1Diff),

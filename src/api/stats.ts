@@ -1,5 +1,6 @@
 import { json } from "./import.ts";
 import { eloStats, summarize, resultOf, streaks } from "../analytics/stats.ts";
+import { newcombeDiff } from "../domain/proportion.ts";
 import { summarizeLang } from "../analytics/lang.ts";
 import { buildCourseProgressHistory } from "../analytics/courseHistory.ts";
 import { classifyOpponentSegment, OPPONENT_SEGMENT_LABELS, type OpponentSegment } from "../analytics/opponent.ts";
@@ -97,7 +98,9 @@ export async function handleStats(db: D1Database, kind: string, url: URL): Promi
       const m = new Map<string, any[]>();
       for (const r of slice) { const k = String((r as any).user_color ?? "unknown").toLowerCase(); if (!m.has(k)) m.set(k, []); m.get(k)!.push(r); }
       const colorGroups = [...m.entries()].map(([k, v]) => ({ key: k, ...summarize(v as any) }));
-      return json({ limit: n, games: s.games, wins: s.wins, losses: s.losses, draws: s.draws, unknown: s.unknown, decided: s.decided, winRate: s.winRate, winRateCi: s.winRateCi, scoreRate: s.scoreRate, colorGroups, before });
+      // window − before, as a fraction with its 95% interval (the groups are disjoint)
+      const delta = newcombeDiff({ wins: s.wins, n: s.decided }, { wins: before.wins, n: before.decided });
+      return json({ limit: n, delta, games: s.games, wins: s.wins, losses: s.losses, draws: s.draws, unknown: s.unknown, decided: s.decided, winRate: s.winRate, winRateCi: s.winRateCi, scoreRate: s.scoreRate, colorGroups, before });
     }
     case "summary": {
       const snapStmt = userId
@@ -154,7 +157,13 @@ export async function handleStats(db: D1Database, kind: string, url: URL): Promi
         endConditions,
       });
     }
-    case "color": return json({ groups: grp((r) => String(r.user_color ?? "unknown").toLowerCase()) });
+    case "color": {
+      const groups = grp((r) => String(r.user_color ?? "unknown").toLowerCase());
+      const wh = groups.find((g) => g.key === "white"), bl = groups.find((g) => g.key === "black");
+      // white − black, a fraction with its 95% interval; null unless both colours have decided games
+      const difference = wh && bl ? newcombeDiff({ wins: wh.wins, n: wh.decided }, { wins: bl.wins, n: bl.decided }) : null;
+      return json({ groups, difference });
+    }
     case "opponents": {
       const q = `
         SELECT 

@@ -1420,13 +1420,7 @@ function renderChessView(stats, matches){
  const totalGames=s.games||1;
  if(colorGroups.length&&q('#col')){
   q('#col').innerHTML=renderCompare(colorGroups, totalGames);
-  const wh=colorGroups.find(g=>g.key==='white');
-  const bl=colorGroups.find(g=>g.key==='black');
-  if(wh&&bl&&wh.winRate!=null&&bl.winRate!=null&&q('#colDiff')){
-   const diff = (wh.winRate - bl.winRate) * 100;
-   const diffSign = diff > 0 ? '+' : '';
-   q('#colDiff').textContent='Blancas '+(wh.winRate*100).toFixed(1)+'% · Negras '+(bl.winRate*100).toFixed(1)+'% → '+diffSign+diff.toFixed(1)+' pp';
-  }
+  setColDiff({groups:colorGroups,difference:c.difference});
  }
 
  // 3. Partidas Recientes (subtitle / count update)
@@ -1531,19 +1525,26 @@ function populateOpeningFilter(op){
 function fmtDelta(a,b){ if(a==null||b==null) return '—'; const d=a-b; return (d>0?'+':'')+d; }
 function arrow(a,b){ if(a==null||b==null) return ''; return a>b?' ↑':a<b?' ↓':' ·'; }
 async function setRecent(n){ recentN=n; for(const k of [20,50,100]){ const el=q('#b'+k); if(el){ el.className=n===k?'btn btn-p':'btn btn-g'; } } const r=await j('/api/stats/recent?limit='+n); lastRecent=r; renderForm(r); renderChessView({ recent: r }, lastRows); }
+function fmtDelta(d){ // d in percentage points: {diff,lower,upper}. Never shown without its interval.
+ if(!d) return '—';
+ const sg=(v,dec)=>{ const t=Math.abs(v).toFixed(dec); return Number(t)===0?t:(v>0?'+':'−')+t; };
+ return sg(d.diff,1)+' pp · IC95 ['+sg(d.lower,0)+', '+sg(d.upper,0)+']'+(d.lower<=0&&d.upper>=0?' · sin evidencia suficiente':'');
+}
+function scaleDelta(d,k){ return d?{diff:d.diff*k,lower:d.lower*k,upper:d.upper*k}:null; }
+function setColDiff(c){ // the single renderer of the white-vs-black line
+ const g=c.groups||[], wh=g.find(x=>x.key==='white'), bl=g.find(x=>x.key==='black');
+ if(!(wh&&bl&&wh.winRate!=null&&bl.winRate!=null&&q('#colDiff'))) return;
+ q('#colDiff').textContent='Blancas '+(wh.winRate*100).toFixed(1)+'% · Negras '+(bl.winRate*100).toFixed(1)+'% → '+fmtDelta(scaleDelta(c.difference,100));
+}
 function pctCi(rate,ci){ return rate!=null?(rate*100).toFixed(1)+'%'+(ci?' ['+Math.round(ci.lower*100)+'–'+Math.round(ci.upper*100)+']':''):'—'; }
 function renderForm(r){
  if(!r.before) return;
  const hr=r.before; // games before the window: the window is never part of its own baseline
  const pctR=v=>v!=null?(v*100).toFixed(1)+'%':'—';
- const dWr = (r.winRate!=null && hr.winRate!=null) ? ((r.winRate - hr.winRate)*100).toFixed(1) : null;
- const dScore = (r.scoreRate!=null && hr.scoreRate!=null) ? ((r.scoreRate - hr.scoreRate)*100).toFixed(1) : null;
- const sign=v=>parseFloat(v)>0?'+'+v:v;
 
- q('#form').innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center">'
-  +'<div><div class="muted" style="font-size:11px;letter-spacing:.04em;text-transform:uppercase">Últimas '+r.limit+'</div><div style="font-weight:700">'+pctCi(r.winRate,r.winRateCi)+' WR</div><div class="muted">'+pctR(r.scoreRate)+' score · '+r.wins+'W '+r.losses+'L '+r.draws+'D</div>'+(dWr!=null?'<div class="muted" style="margin-top:4px;font-size:11px">'+sign(dWr)+' pp WR vs anteriores</div>':'')+'</div>'
+ q('#form').innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;text-align:center">'
+  +'<div><div class="muted" style="font-size:11px;letter-spacing:.04em;text-transform:uppercase">Últimas '+r.limit+'</div><div style="font-weight:700">'+pctCi(r.winRate,r.winRateCi)+' WR</div><div class="muted">'+pctR(r.scoreRate)+' score · '+r.wins+'W '+r.losses+'L '+r.draws+'D</div>'+(r.delta?'<div class="muted" style="margin-top:4px;font-size:11px">'+fmtDelta(scaleDelta(r.delta,100))+' vs anteriores</div>':'')+'</div>'
   +'<div style="border-left:1px solid #1e2e44;padding-left:8px"><div class="muted" style="font-size:11px;letter-spacing:.04em;text-transform:uppercase">Anteriores · '+hr.games+'</div><div style="font-weight:700">'+pctCi(hr.winRate,hr.winRateCi)+' WR</div><div class="muted">'+pctR(hr.scoreRate)+' score · '+hr.wins+'W '+hr.losses+'L '+hr.draws+'D</div></div>'
-  +'<div style="border-left:1px solid #1e2e44;padding-left:8px"><div class="muted" style="font-size:11px;letter-spacing:.04em;text-transform:uppercase">Score reciente</div><div style="font-weight:700">'+pctR(r.scoreRate)+'</div>'+(dScore!=null?'<div class="muted" style="margin-top:4px;font-size:11px">'+sign(dScore)+' pp score vs anteriores</div>':'')+'</div>'
   +'</div>';
 
  if(r.colorGroups && r.colorGroups.length){
@@ -1723,12 +1724,7 @@ async function loadChessDashboard(){
   // color / bots
   const totalGames=s.games||1;
    q('#col').innerHTML=renderCompare(c.groups, totalGames);
-   const wh=(c.groups||[]).find(g=>g.key==='white'), bl=(c.groups||[]).find(g=>g.key==='black');
-   if(wh && bl && wh.winRate!=null && bl.winRate!=null && q('#colDiff')){
-    const diff = (wh.winRate - bl.winRate) * 100;
-    const diffSign = diff > 0 ? '+' : '';
-    q('#colDiff').textContent = 'Blancas '+(wh.winRate*100).toFixed(1)+'% · Negras '+(bl.winRate*100).toFixed(1)+'% → '+diffSign+diff.toFixed(1)+' pp';
-   }
+   setColDiff(c);
   if(o.macro && o.macro.length && q('#oppMacro')){
    const b=o.macro.find(m=>m.key==='bot'), p=o.macro.find(m=>m.key==='pvp');
    if(b && p){
@@ -1964,7 +1960,7 @@ function renderWhatChanged(data){
   const intervalWrText = c.intervalWinRate !== null ? c.intervalWinRate.toFixed(1) + '%' : '—';
   const whiteWr = c.whiteWinRate !== null ? c.whiteWinRate.toFixed(1) + '%' : '—';
   const blackWr = c.blackWinRate !== null ? c.blackWinRate.toFixed(1) + '%' : '—';
-  const histWrDeltaText = c.historicalWinRateDelta !== null ? (c.historicalWinRateDelta > 0 ? '+' + c.historicalWinRateDelta.toFixed(1) : c.historicalWinRateDelta.toFixed(1)) + ' pp' : '—';
+  const histWrDeltaText = fmtDelta(c.historicalDelta);
 
   elChess.innerHTML = '<div class="card">'
    + '<h2>Ajedrez · Deltas</h2>'

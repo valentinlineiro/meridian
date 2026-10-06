@@ -53,4 +53,29 @@ describe("winRateCi on every win-rate route", () => {
     const { d1 } = setupTestDb();
     expect((await get(d1, "summary")).winRateCi).toBeNull();
   });
+
+  it("shouldExposeWindowMinusBeforeDeltaOnRecentAsFraction", async () => {
+    // Window (last 3): 0 wins of 1 decided. Before: 4 wins of 6 decided. diff = 0 − 4/6.
+    const r = await get(seed(), "recent", "?limit=3");
+    expect(r.delta.diff).toBeCloseTo(-4 / 6, 12);
+    expect(r.delta.lower).toBeLessThan(r.delta.diff);
+    expect(r.delta.upper).toBeGreaterThan(r.delta.diff);
+  });
+
+  it("shouldReturnNullRecentDeltaWhenEitherSideHasNoDecidedGames", async () => {
+    expect((await get(seed(), "recent", "?limit=50")).delta).toBeNull(); // before is empty
+  });
+
+  it("shouldExposeWhiteMinusBlackDifferenceOnColorAsFraction", async () => {
+    const { db, d1 } = setupTestDb();
+    const rows: Array<[string, string]> = [["white", "win"], ["white", "win"], ["white", "loss"], ["black", "loss"], ["black", "loss"], ["black", "win"]];
+    rows.forEach(([c, r], i) => db.prepare("INSERT INTO matches (match_id, user_id, snapshot_id, first_seen_at, last_seen_at, raw_json, played_at, result, user_color) VALUES (?, 'u1', 's1', 'x', 'x', '{}', ?, ?, ?)").run(`m${i}`, i, r, c));
+    const c = await get(d1, "color");
+    expect(c.difference.diff).toBeCloseTo(2 / 3 - 1 / 3, 12);
+    expect(c.difference.lower).toBeLessThan(0); // 3 vs 3 games: no evidence
+  });
+
+  it("shouldReturnNullColorDifferenceWhenOneColourIsMissing", async () => {
+    expect((await get(seed(), "color")).difference).toBeNull(); // seed() has white only
+  });
 });

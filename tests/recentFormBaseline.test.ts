@@ -45,8 +45,8 @@ describe("recent form rendering", () => {
   });
 
   it("shouldLabelTheDeltaAsVsPreviousGamesNotVsHistory", () => {
-    expect(form).toMatch(/pp\s+WR\s+vs\s+anteriores/);
-    expect(form).toMatch(/pp\s+score\s+vs\s+anteriores/);
+    expect(form).toMatch(/vs\s+anteriores/);
+    expect(form).not.toMatch(/score\s+vs\s+anteriores/); // scoreRate has no interval, so no delta
     expect(form).not.toMatch(/vs\s+hist/);
   });
 });

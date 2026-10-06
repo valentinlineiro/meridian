@@ -51,3 +51,44 @@ describe("summarize winRateCi", () => {
     expect(summarize(rows("garbage")).winRateCi).toBeNull();
   });
 });
+
+import { newcombeDiff, distinguishable, scaleDelta } from "../src/domain/proportion.ts";
+
+describe("newcombeDiff", () => {
+  const pp = (d: any) => [d.diff, d.lower, d.upper].map((v: number) => Math.round(v * 1000) / 10);
+
+  it.each([
+    ["what-changed 4/5 vs 2/5", { wins: 4, n: 5 }, { wins: 2, n: 5 }, [40, -16.3, 72.6]],
+    ["trajectory +25pp 30/40 vs 20/40", { wins: 30, n: 40 }, { wins: 20, n: 40 }, [25, 3.8, 43.3]],
+    ["trajectory +15pp 26/40 vs 20/40", { wins: 26, n: 40 }, { wins: 20, n: 40 }, [15, -6.4, 34.6]],
+    ["demo form 13/20 vs 25/40", { wins: 13, n: 20 }, { wins: 25, n: 40 }, [2.5, -23, 25.4]],
+  ] as Array<[string, any, any, [number, number, number]]>)("shouldMatchContractCase %s", (_n, a, b, [d, lo, hi]) => {
+    const r = pp(newcombeDiff(a as any, b as any));
+    expect(r[0]).toBeCloseTo(d, 1); expect(r[1]).toBeCloseTo(lo, 1); expect(r[2]).toBeCloseTo(hi, 1);
+  });
+
+  it("shouldBeAntisymmetricWhenGroupsAreSwapped", () => {
+    const ab = newcombeDiff({ wins: 7, n: 13 }, { wins: 30, n: 90 })!, ba = newcombeDiff({ wins: 30, n: 90 }, { wins: 7, n: 13 })!;
+    expect(ba.diff).toBeCloseTo(-ab.diff, 12); expect(ba.lower).toBeCloseTo(-ab.upper, 12); expect(ba.upper).toBeCloseTo(-ab.lower, 12);
+  });
+
+  it("shouldReturnNullWhenEitherGroupIsEmpty", () => {
+    expect(newcombeDiff({ wins: 0, n: 0 }, { wins: 1, n: 2 })).toBeNull();
+    expect(newcombeDiff({ wins: 1, n: 2 }, { wins: 0, n: 0 })).toBeNull();
+  });
+});
+
+describe("distinguishable", () => {
+  it("shouldRequireTheIntervalToExcludeZeroStrictly", () => {
+    expect(distinguishable({ diff: 1, lower: 0.1, upper: 2 })).toBe(true);
+    expect(distinguishable({ diff: -1, lower: -2, upper: -0.1 })).toBe(true);
+    expect(distinguishable({ diff: 1, lower: 0, upper: 2 })).toBe(false);
+    expect(distinguishable({ diff: 1, lower: -1, upper: 3 })).toBe(false);
+    expect(distinguishable(null)).toBe(false);
+  });
+
+  it("shouldScaleEveryFieldOfADelta", () => {
+    expect(scaleDelta({ diff: 0.1, lower: -0.2, upper: 0.3 }, 100)).toEqual({ diff: 10, lower: -20, upper: 30 });
+    expect(scaleDelta(null, 100)).toBeNull();
+  });
+});
