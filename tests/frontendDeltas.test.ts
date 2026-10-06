@@ -20,7 +20,20 @@ describe("fmtDelta", () => {
   });
   it("shouldNeverClaimNoDifference", () => expect(fmt({ diff: 0, lower: -5, upper: 5 })).not.toMatch(/sin diferencia/i));
   it("shouldShowDashWithoutDelta", () => expect(fmt(null)).toBe("—"));
-  it("shouldNotPrintSignedZero", () => expect(fmt({ diff: -0.04, lower: -0.3, upper: 0.2 })).toMatch(/^0\.0 pp · IC95 \[0, 0\]/));
+  it("shouldNotPrintSignedZeroForTheDiff", () => expect(fmt({ diff: -0.04, lower: -0.3, upper: 0.2 })).toMatch(/^0\.0 pp · IC95 \[−0, \+0\]/));
+});
+
+describe("fmtDelta rounding frontier", () => {
+  it("shouldKeepTheTrueSignOfALimitThatRoundsToZeroAndNotLabelIt", () => {
+    const t = fmt({ diff: 10, lower: 0.4, upper: 20 });
+    expect(t).toBe("+10.0 pp · IC95 [+0, +20]"); // excludes 0: no label, and the sign shows it
+  });
+  it("shouldLabelWhenALimitRoundsToZeroFromBelow", () => {
+    expect(fmt({ diff: 10, lower: -0.4, upper: 20 })).toBe("+10.0 pp · IC95 [−0, +20] · sin evidencia suficiente");
+  });
+  it("shouldLabelWhenALimitIsExactlyZero", () => {
+    expect(fmt({ diff: 10, lower: 0, upper: 20 })).toBe("+10.0 pp · IC95 [0, +20] · sin evidencia suficiente");
+  });
 });
 
 describe("color difference line", () => {

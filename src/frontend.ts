@@ -1527,8 +1527,8 @@ function arrow(a,b){ if(a==null||b==null) return ''; return a>b?' ↑':a<b?' ↓
 async function setRecent(n){ recentN=n; for(const k of [20,50,100]){ const el=q('#b'+k); if(el){ el.className=n===k?'btn btn-p':'btn btn-g'; } } const r=await j('/api/stats/recent?limit='+n); lastRecent=r; renderForm(r); renderChessView({ recent: r }, lastRows); }
 function fmtDelta(d){ // d in percentage points: {diff,lower,upper}. Never shown without its interval.
  if(!d) return '—';
- const sg=(v,dec)=>{ const t=Math.abs(v).toFixed(dec); return Number(t)===0?t:(v>0?'+':'−')+t; };
- return sg(d.diff,1)+' pp · IC95 ['+sg(d.lower,0)+', '+sg(d.upper,0)+']'+(d.lower<=0&&d.upper>=0?' · sin evidencia suficiente':'');
+ const sg=(v,dec,raw)=>{ const t=Math.abs(v).toFixed(dec); return v===0||(!raw&&Number(t)===0)?t:(v>0?'+':'−')+t; }; // raw: a limit keeps its true sign even when it rounds to 0, so [+0, …] reads as "excludes 0"
+ return sg(d.diff,1)+' pp · IC95 ['+sg(d.lower,0,1)+', '+sg(d.upper,0,1)+']'+(d.lower<=0&&d.upper>=0?' · sin evidencia suficiente':'');
 }
 function scaleDelta(d,k){ return d?{diff:d.diff*k,lower:d.lower*k,upper:d.upper*k}:null; }
 function setColDiff(c){ // the single renderer of the white-vs-black line
