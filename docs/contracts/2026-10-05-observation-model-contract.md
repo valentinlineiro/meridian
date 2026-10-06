@@ -407,8 +407,8 @@ Nunca se combinan con `COALESCE`. Si la cobertura de `elo_after` (Q1) es insufic
 1. ~~**D5**~~ decidida: `course_sections` fuera de P2.
 2. ~~**D6**~~ decidida: reemplazo.
 3. **D-f** (§7.1): decidir A/B/C con el dato de Q5 y la comprobación del cliente externo.
-4. **Q4**: tamaño real de K5.
-5. **Q1, Q2, Q3**: cobertura de `elo_after`, tamaño por `source`, evidencia sobre `DUOLINGO_`.
+4. ~~**Q4**~~ ejecutada (§0.1): K5 acotado.
+5. ~~**Q1, Q2, Q3a**~~ ejecutadas (§0.1). Pendiente: repetir **Q3b** y resolver la enmienda de la Invariante 9 (D-e).
 6. Comprobar si el cliente externo depende de `courseProgress`, `dailyGoalXp` o `summaries`. Solo cambia el contrato si hay un consumidor real o una obligación contractual.
 7. Aprobar **D-a…D-f** una a una contra datos reales.
 8. Revisión final de este apartado.
