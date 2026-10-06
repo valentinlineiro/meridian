@@ -102,7 +102,7 @@ export function evaluateSignificantChanges(
         id: "CHESS_COLOR_ASYMMETRY",
         category: "chess",
         title: "Asimetría por color",
-        claim: `Rendimiento significativamente superior jugando con ${better} (${diff.toFixed(1)} pp de diferencia).`,
+        claim: `Mayor tasa de victorias con ${better}: ${diff.toFixed(1)} pp de diferencia (IC95 [${deltas.chess.colorDelta!.lower.toFixed(0)}, ${deltas.chess.colorDelta!.upper.toFixed(0)}] pp, blancas − negras; excluye 0).`,
         evidence: `Blancas: ${deltas.chess.intervalWhiteWinRate.toFixed(1)}% · Negras: ${deltas.chess.intervalBlackWinRate.toFixed(1)}% en ${deltas.chess.decidedCount} partidas decididas.`,
         baselineAt: context.baselineAt,
         until: context.until,

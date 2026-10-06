@@ -465,10 +465,11 @@ describe("dashboard opponent segmentation and filter", () => {
     expect(dashBody).toMatch(/#oppMacro/);
   });
 
-  it("shouldIncludePvpSmallSampleSizeIndicatorInRenderCompare", () => {
+  it("shouldLeaveSmallSampleToTheIntervalInsteadOfAHeuristicLabel", () => {
     const oppBody = DASHBOARD_HTML.match(/function renderCompare\(groups, totalGames\)\{([\s\S]*?)\n\}/)?.[1] ?? "";
-    expect(oppBody).toMatch(/muestra pequeña/);
-    expect(oppBody).toMatch(/n=/);
+    expect(oppBody).not.toMatch(/muestra pequeña|slim/);
+    expect(oppBody).toMatch(/winRateCi/);
+    expect(oppBody).toMatch(/decididas/);
   });
 
   it("shouldIncludeOpponentFilterSelectWithOptions", () => {

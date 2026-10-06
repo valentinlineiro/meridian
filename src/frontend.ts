@@ -43,7 +43,6 @@ main{max-width:1120px;margin:0 auto;padding:20px 16px 40px}
 .hist-row{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:12px}
 .hist-row span:first-child{width:76px;color:#8ea0b8;text-align:right}
 .hist-row .bar{flex:1}
-.slim{opacity:.55}
 .filters{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
 .filters input,.filters select{background:#0e1a2b;color:#e6edf3;border:1px solid #2a3d56;border-radius:8px;padding:7px 9px;font-size:13px}
 .filters input{width:108px}.filters select{min-width:118px}
@@ -1543,7 +1542,7 @@ function renderForm(r){
  const pctR=v=>v!=null?(v*100).toFixed(1)+'%':'—';
 
  q('#form').innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;text-align:center">'
-  +'<div><div class="muted" style="font-size:11px;letter-spacing:.04em;text-transform:uppercase">Últimas '+r.limit+'</div><div style="font-weight:700">'+pctCi(r.winRate,r.winRateCi)+' WR</div><div class="muted">'+pctR(r.scoreRate)+' score · '+r.wins+'W '+r.losses+'L '+r.draws+'D</div>'+(r.delta?'<div class="muted" style="margin-top:4px;font-size:11px">'+fmtDelta(scaleDelta(r.delta,100))+' vs anteriores</div>':'')+'</div>'
+  +'<div><div class="muted" style="font-size:11px;letter-spacing:.04em;text-transform:uppercase">Últimas '+r.games+'</div><div style="font-weight:700">'+pctCi(r.winRate,r.winRateCi)+' WR</div><div class="muted">'+pctR(r.scoreRate)+' score · '+r.wins+'W '+r.losses+'L '+r.draws+'D</div>'+(r.delta?'<div class="muted" style="margin-top:4px;font-size:11px">'+fmtDelta(scaleDelta(r.delta,100))+' vs anteriores</div>':'')+'</div>'
   +'<div style="border-left:1px solid #1e2e44;padding-left:8px"><div class="muted" style="font-size:11px;letter-spacing:.04em;text-transform:uppercase">Anteriores · '+hr.games+'</div><div style="font-weight:700">'+pctCi(hr.winRate,hr.winRateCi)+' WR</div><div class="muted">'+pctR(hr.scoreRate)+' score · '+hr.wins+'W '+hr.losses+'L '+hr.draws+'D</div></div>'
   +'</div>';
 
@@ -1605,8 +1604,7 @@ function renderCompare(groups, totalGames){
   const dec=g.decided||0, w=dec?Math.round(g.wins/dec*100):0, l=dec?Math.round(g.losses/dec*100):0, d=dec?100-w-l:0; // bars are shares of decided games; unknowns are reported apart
   const pctGames=totalGames? (g.games/totalGames*100).toFixed(1):'0';
   const label=g.label||segLabels[g.key]||g.key;
-  const slim=g.games/totalGames<0.05||g.key==='pvp'||g.games<50;
-  return '<div class="row" style="'+(slim?'opacity:.95':'')+'"><div style="flex:1"><div style="display:flex;justify-content:space-between;align-items:baseline"><b>'+label+'</b><span class="muted">'+g.games+' · '+pctGames+'%</span></div><div class="bar" style="margin-top:6px;display:flex"><i class="bar-win" style="width:'+w+'%"></i><i class="bar-loss" style="width:'+l+'%"></i><i class="bar-draw" style="width:'+d+'%"></i></div><div class="muted" style="margin-top:4px;display:flex;gap:10px;flex-wrap:wrap"><span>Win '+pctCi(g.winRate,g.winRateCi)+'</span><span>Score '+(g.scoreRate!=null?(g.scoreRate*100).toFixed(1)+'%':'—')+'</span>'+'<span>· barra sobre '+dec+' decididas'+(g.unknown?' · '+g.unknown+' sin resultado':'')+'</span>'+(slim?'<span>· n='+g.games+' · muestra pequeña</span>':'')+'</div></div></div>';
+  return '<div class="row"><div style="flex:1"><div style="display:flex;justify-content:space-between;align-items:baseline"><b>'+label+'</b><span class="muted">'+g.games+' · '+pctGames+'%</span></div><div class="bar" style="margin-top:6px;display:flex"><i class="bar-win" style="width:'+w+'%"></i><i class="bar-loss" style="width:'+l+'%"></i><i class="bar-draw" style="width:'+d+'%"></i></div><div class="muted" style="margin-top:4px;display:flex;gap:10px;flex-wrap:wrap"><span>Win '+pctCi(g.winRate,g.winRateCi)+'</span><span>Score '+(g.scoreRate!=null?(g.scoreRate*100).toFixed(1)+'%':'—')+'</span>'+'<span>· barra sobre '+dec+' decididas'+(g.unknown?' · '+g.unknown+' sin resultado':'')+'</span>'+'</div></div></div>';
  }).join('') || '<div class="muted">Sin datos</div>';
 }
 
