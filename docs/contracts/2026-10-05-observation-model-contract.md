@@ -329,7 +329,7 @@ Hasta decidir, la lectura R6 **debe seguir saliendo de `raw_json`** y por tanto 
 
 ---
 
-### 7.2 Resolución de D-a…D-e (**D-a y D-b APROBADAS el 2026-10-06; D-c+D-e y D-d con evidencia, pendientes de aprobación**)
+### 7.2 Resolución de D-a…D-e (**TODAS APROBADAS el 2026-10-06**; D-c+D-e con condición de paridad)
 
 Cada una se aprueba por separado (§7). La evidencia es la de §0.1.
 
@@ -337,8 +337,8 @@ Cada una se aprueba por separado (§7). La evidencia es la de §0.1.
 |---|---|---|---|
 | **D-a ✅ aprobada** | El extractor de `account_observations` lee solo `user.*`. La aceptación de nivel superior de la normalización se deja como está y no se usa. | Ninguno (R3 ya lee solo `user.*`). | 0/612 snapshots con campos de nivel superior. |
 | **D-b ✅ aprobada** | Solo los snapshots que **traen datos de cuenta** (`user.totalXp`, `user.streak` o `user.currentCourseId`) generan fila en `account_observations`. Los snapshots por curso (solo identidad) **no** generan fila: ausencia de observación ≠ `null`. Se retiran `is_auxiliary` y `observed_course_id`: `declared_course_id` es lo único que la cuenta declara; el curso observado vive en `path_observations.course_id`. R3 lee la **última observación de cuenta `<= t`**, no el último snapshot. | R3 deja de devolver XP nulo y de deducir el curso activo a partir de un snapshot por curso. Para `t` anterior a 2026-09-23 pasa a "no disponible". Para `t` entre 09-26 y 10-04 la última observación tiene hasta 9 días de antigüedad: `observedAt` debe reflejarlo y la lectura no la presenta como actual. | 595/612 sin `user.currentCourseId`; cuenta en 17 snapshots, con un hueco 09-26…10-04. |
-| **D-c + D-e** (evidencia en §7.3) | **Sin enmienda de la Invariante 9.** `isLanguageCourse` = `subject === 'language'`, estricto. Las 13 entradas `DUOLINGO_*` sin `subject` se guardan tal cual (`subject = null`). **Condición obligatoria:** el `start` de R4 es el **primer snapshot cuyas observaciones cumplen el predicado**, no el primer snapshot cronológico. | Con la condición, el resultado de R4 es **idéntico** al actual (§7.3); `startedAt` de idiomas se desplaza 78 minutos. Sin la condición, el XP de H1 se multiplica por 120. | Q3a/Q3b/Q3c y paridad §7.3. |
-| **D-d** (evidencia en §7.3) | Se conserva `null` en `completed_units`/`total_units` (observado ≠ interpretado). | **Ninguno observable hoy:** 0 nulos. | 0 de 4.234 secciones `learning` (y 0 de 604 `daily_refresh`) con contadores nulos, en 604 snapshots. |
+| **D-c + D-e ✅ aprobada, con condición** (evidencia en §7.3) | **Sin enmienda de la Invariante 9.** `isLanguageCourse` = `subject === 'language'`, estricto. Las 13 entradas `DUOLINGO_*` sin `subject` se guardan tal cual (`subject = null`). **Condición obligatoria:** el `start` de R4 es el **primer snapshot cuyas observaciones cumplen el predicado**, no el primer snapshot cronológico. | Con la condición, el resultado de R4 es **idéntico** al actual (§7.3); `startedAt` de idiomas se desplaza 78 minutos. Sin la condición, el XP de H1 se multiplica por 120. | Q3a/Q3b/Q3c y paridad §7.3. |
+| **D-d ✅ aprobada** (evidencia en §7.3) | Se conserva `null` en `completed_units`/`total_units` (observado ≠ interpretado). | **Ninguno observable hoy:** 0 nulos. | 0 de 4.234 secciones `learning` (y 0 de 604 `daily_refresh`) con contadores nulos, en 604 snapshots. |
 
 ### 7.3 Paridad de R4 y medición de D-d (2026-10-06, producción, solo lectura)
 
@@ -354,7 +354,9 @@ R4 (`getLanguagesTrajectoryData`) toma tres snapshots: el primero, el último `<
 - **La variante con condición reproduce el resultado actual** campo a campo en los snapshots medidos. Límite: el punto medio se mantuvo fijo; con el `start` desplazado 78 minutos el medio se desplaza unos 39 y podría elegir otro snapshot. Esa comprobación forma parte del test de paridad de R4 antes de conmutar.
 - **D-d:** 0 de 4.234 secciones `learning` con `completedUnits` o `totalUnits` nulos (604 snapshots); conservar `null` en vez de convertirlo en 0 no cambia hoy ningún veredicto de R5.
 
-Condición de D-c + D-e: la paridad de R4 sigue siendo un **test obligatorio** (el caso ingenuo debe fallar y el condicionado pasar). Si el desplazamiento del medio no fuera aceptable, la alternativa es la enmienda explícita de la Invariante 9, no una inferencia silenciosa.
+**Comprobación del punto medio (2026-10-06).** Con el `end` real (2026-10-06T11:34:17Z) el medio es 2026-09-29T23:56:15Z con `start` cronológico y 2026-09-30T00:35:33Z con `start` contractual. Los snapshots de idiomas llegan en lotes: el último lote `<=` ambos medios termina en 2026-09-29T21:57:52Z (`7b9e0bd3`) y el siguiente empieza el 2026-09-30T04:17:22Z. Ambos medios caen en ese hueco, así que **eligen el mismo snapshot** y el resultado de H1/H2 es idéntico (§7.3, tercera fila). **La comprobación pasa.**
+
+Alcance de esa comprobación: es una medición sobre los datos de hoy, no una propiedad. El `end` avanza con cada sync y el medio con él; cuando el medio cruce el siguiente lote, el snapshot de medio cambiará con cualquiera de los dos `start`. Lo que debe cumplirse siempre es que, **para un `end` dado**, desplazar el `start` al primer snapshot contractual no altere el resultado salvo por esa selección. Por eso la paridad de R4 es un **test de fixture obligatorio** (el caso ingenuo debe fallar y el condicionado pasar), no esta medición puntual.
 
 ---
 
@@ -451,11 +453,11 @@ Nunca se combinan con `COALESCE`. Si la cobertura de `elo_after` (Q1) es insufic
 2. ~~**D6**~~ decidida: reemplazo.
 3. ~~**D-f**~~ decidida: A (§7.1).
 4. ~~**Q4**~~ ejecutada (§0.1): K5 acotado.
-5. ~~**Q1, Q2, Q3a, Q3b, Q3c**~~ ejecutadas (§0.1). La enmienda de la Invariante 9 **no se propone** (D-c+D-e, §7.2); pendiente de aprobación.
-6. Comprobar si el cliente externo depende de `courseProgress`, `dailyGoalXp` o `summaries`. Solo cambia el contrato si hay un consumidor real o una obligación contractual.
-7. Aprobar **D-a…D-f** una a una contra datos reales. Hecho: D-a, D-b, D-f. Falta: D-c+D-e, D-d.
+5. ~~**Q1, Q2, Q3a, Q3b, Q3c**~~ ejecutadas (§0.1). La enmienda de la Invariante 9 **no se propone** y D-c+D-e quedó aprobada sin ella (§7.2).
+6. ~~Comprobar si el cliente externo depende de `courseProgress`, `dailyGoalXp` o `summaries`. Solo cambia el contrato si hay un consumidor real o una obligación contractual.~~ Hecho (§7.1): el colector real no los lee.
+7. Aprobar **D-a…D-f** una a una contra datos reales. Hecho: D-a, D-b, D-c+D-e (con condición), D-d, D-f.
 8. Revisión final de este apartado.
 9. **Congelar.**
 10. Solo entonces migración + backfill.
 
-Cerradas: D1, D2, D3, D4/D4.1, D5, D6, D-f (A). Aprobadas: D-a, D-b. Con evidencia y pendientes de aprobar: D-c+D-e, D-d (§7.2, §7.3).
+Cerradas: D1, D2, D3, D4/D4.1, D5, D6, D-f (A). Aprobadas: D-a, D-b, D-c+D-e (con condición de paridad, §7.3), D-d, D-f (A). No queda ninguna decisión de §7 abierta.
