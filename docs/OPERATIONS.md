@@ -47,7 +47,9 @@ Hace lo mismo que la rutina anterior, pero en CI: typecheck, guarda y tests; gen
 
 - Secretos del repo: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `D1_DATABASE_ID`.
 - Variables del repo: `SYNC_REPO`, `SYNC_WORKFLOW`, `SYNC_REF` (sin ellas, un deploy apagaría Sincronizar: el workflow se niega) y `PROD_URL`.
-- Disparo manual (pestaña Actions, *Run workflow* sobre `main`): siempre permitido. Disparo en cada push a `main`: **apagado** hasta definir la variable `CD_AUTO_DEPLOY=true`.
+- Disparo manual (pestaña Actions, *Run workflow* sobre `main`): siempre permitido.
+- Disparo en cada push a `main`: **activo** mientras la variable `CD_AUTO_DEPLOY` valga `true` (desde 2026-10-08). Para apagarlo: `gh variable set CD_AUTO_DEPLOY --body false`.
+- Una migración nueva hay que aplicarla a mano **antes** de mergear su código: si no, el paso de migraciones pendientes falla y no se despliega (producción no cambia).
 
 
 ## 3. Si "Sincronizar" falla: qué mirar (todo de solo lectura)
