@@ -199,7 +199,7 @@ export function createD1WhatChangedAdapter(db: D1Database): WhatChangedPort {
       const snap = await db
         .prepare(`
           SELECT created_at, raw_json FROM snapshots
-          WHERE source = 'duolingo-lang' AND user_id = ? AND created_at <= ?
+          WHERE source = 'duolingo-lang' AND is_auxiliary = 0 AND user_id = ? AND created_at <= ?
           ORDER BY created_at DESC
           LIMIT 1
         `)
@@ -213,7 +213,7 @@ export function createD1WhatChangedAdapter(db: D1Database): WhatChangedPort {
             status: "exactOrPrevious",
             data: {
               totalXp: parsed.user?.totalXp ?? null,
-              activeCourseId: parsed.user?.currentCourseId ?? parsed.currentCourse?.id ?? null,
+              activeCourseId: parsed.user?.currentCourseId ?? null, // currentCourse.id is the observed course, not the account's
               streak: parsed.user?.streak ?? null,
               observedAt: snap.created_at,
             },
@@ -227,7 +227,7 @@ export function createD1WhatChangedAdapter(db: D1Database): WhatChangedPort {
       const firstSnap = await db
         .prepare(`
           SELECT created_at, raw_json FROM snapshots
-          WHERE source = 'duolingo-lang' AND user_id = ?
+          WHERE source = 'duolingo-lang' AND is_auxiliary = 0 AND user_id = ?
           ORDER BY created_at ASC
           LIMIT 1
         `)
@@ -241,7 +241,7 @@ export function createD1WhatChangedAdapter(db: D1Database): WhatChangedPort {
             status: "firstHistorical",
             data: {
               totalXp: parsed.user?.totalXp ?? null,
-              activeCourseId: parsed.user?.currentCourseId ?? parsed.currentCourse?.id ?? null,
+              activeCourseId: parsed.user?.currentCourseId ?? null, // currentCourse.id is the observed course, not the account's
               streak: parsed.user?.streak ?? null,
               observedAt: firstSnap.created_at,
             },
@@ -284,7 +284,7 @@ export function createD1WhatChangedAdapter(db: D1Database): WhatChangedPort {
       const snap = await db
         .prepare(`
           SELECT created_at, raw_json FROM snapshots
-          WHERE source = 'duolingo-lang' AND user_id = ? AND created_at <= ?
+          WHERE source = 'duolingo-lang' AND is_auxiliary = 0 AND user_id = ? AND created_at <= ?
           ORDER BY created_at DESC
           LIMIT 1
         `)
@@ -298,7 +298,7 @@ export function createD1WhatChangedAdapter(db: D1Database): WhatChangedPort {
             status: "exactOrPrevious",
             data: {
               totalXp: parsed.user?.totalXp ?? null,
-              activeCourseId: parsed.user?.currentCourseId ?? parsed.currentCourse?.id ?? null,
+              activeCourseId: parsed.user?.currentCourseId ?? null, // currentCourse.id is the observed course, not the account's
               streak: parsed.user?.streak ?? null,
               observedAt: snap.created_at,
             },

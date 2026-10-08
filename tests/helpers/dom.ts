@@ -116,10 +116,10 @@ export interface DashboardRuntime {
   renderOverviewLangCard: (langs: any, activeDetail: any) => void;
 }
 
-export function createDashboardRuntime(initialPath = "/languages"): DashboardRuntime {
-  const scriptMatch = DASHBOARD_HTML.match(/<script>([\s\S]*?)<\/script>/i);
+export function createDashboardRuntime(initialPath = "/languages", html: string = DASHBOARD_HTML): DashboardRuntime {
+  const scriptMatch = html.match(/<script>([\s\S]*?)<\/script>/i);
   if (!scriptMatch) {
-    throw new Error("Could not find script block in DASHBOARD_HTML");
+    throw new Error("Could not find script block in the page");
   }
   const scriptCode = scriptMatch[1] ?? "";
 

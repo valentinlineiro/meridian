@@ -5,9 +5,11 @@ export interface Env {
   ADMIN_EMAIL?: string;         // the only identity allowed
   ADMIN_PASSWORD_HASH?: string; // pbkdf2-sha256$iterations$salt$hash (scripts/hash-password.mjs)
   SESSION_SECRET?: string;      // >= 32 bytes, signs the session cookie
-  GITHUB_ACTIONS_TOKEN?: string; // dispatches the collector workflow ("Sincronizar")
-  COLLECTOR_REPO?: string;       // "owner/name" of the repo that holds collector.yml
-  COLLECTOR_REF?: string;        // branch to dispatch it on (default "main")
+  GITHUB_ACTIONS_TOKEN?: string; // dispatches the collector workflow (Sync now)
+  // Where that workflow lives. All three or Sync is off (a public deployment has no collector).
+  SYNC_REPO?: string;     // owner/repo
+  SYNC_WORKFLOW?: string; // workflow file name
+  SYNC_REF?: string;      // branch to dispatch on
 }
 
 export interface MatchRow {

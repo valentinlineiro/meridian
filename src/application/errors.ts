@@ -11,6 +11,12 @@ export class NotFoundError extends ApplicationError {
   }
 }
 
+export class InvalidCommandError extends ApplicationError {
+  constructor(detail: string) {
+    super("INVALID_COMMAND", detail);
+  }
+}
+
 export class OwnershipViolationError extends ApplicationError {
   constructor(detail: string) {
     super("OWNERSHIP_VIOLATION", detail);
@@ -26,5 +32,17 @@ export class InvalidCredentialsError extends ApplicationError {
 export class TooManyAttemptsError extends ApplicationError {
   constructor() {
     super("TOO_MANY_ATTEMPTS", "too many failed attempts");
+  }
+}
+
+export class SyncUnavailableError extends ApplicationError {
+  constructor(detail: string) {
+    super("SYNC_UNAVAILABLE", detail);
+  }
+}
+
+export class SyncAlreadyRunningError extends ApplicationError {
+  constructor(readonly runId: number) {
+    super("SYNC_IN_PROGRESS", "a sync is already running");
   }
 }

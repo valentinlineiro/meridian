@@ -7,12 +7,14 @@ Rules:
 4. Infrastructure (src/infrastructure) must not import from src/db — adapters implement ports directly.
 5. Domain and application must not import hono or zod.
 """
+import posixpath
 import re
 import sys
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
+REPO_ROOT = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else Path(__file__).resolve().parent.parent
 SRC_DIR = REPO_ROOT / "src"
+TESTS_DIR = REPO_ROOT / "tests"
 
 IMPORT_RE = re.compile(r'from\s+["\']([^"\']+)["\']')
 
@@ -51,10 +53,75 @@ def check_file(path: Path) -> list[str]:
     return violations
 
 
+# Vertical slices: src/slices/<slice>/{domain,ports,application,infrastructure,delivery} + module.ts (the slice's wiring).
+# Whitelist of what each layer may import, as (area, layer). "same" = this slice; a bare area is a top-level src/ directory.
+SLICE_ALLOWED = {
+    "domain": {("same", "domain"), "kernel", "domain"},
+    "ports": {("same", "domain"), ("same", "ports"), "kernel", "domain"},
+    "application": {("same", "domain"), ("same", "ports"), ("same", "application"), "kernel", "domain", "application"},
+    "infrastructure": {("same", "domain"), ("same", "ports"), ("same", "infrastructure"), "kernel", "domain"},
+    "delivery": {("same", "domain"), ("same", "application"), ("same", "delivery"), ("same", "root"), "kernel", "domain", "application"},
+    "root": {("same", "domain"), ("same", "ports"), ("same", "application"), ("same", "infrastructure"), ("same", "root"), "kernel", "domain", "composition"},
+}
+FRAMEWORK_FREE = {"domain", "ports", "application", "infrastructure"}
+
+
+def locate(rel: str):
+    parts = rel.split("/")
+    if parts[0] == "slices" and len(parts) >= 3:
+        return parts[1], (parts[2] if len(parts) > 3 else "root")
+    return None, parts[0]
+
+
+def check_slice_file(path: Path) -> list[str]:
+    rel = path.relative_to(SRC_DIR).as_posix()
+    slice_name, layer = locate(rel)
+    violations = []
+    for imp in IMPORT_RE.findall(path.read_text(encoding="utf-8")):
+        if not imp.startswith("."):
+            if imp.split("/")[0] in ("hono", "zod") and (slice_name is None and layer == "kernel" or layer in FRAMEWORK_FREE):
+                violations.append(f"{rel}: forbidden framework import '{imp}' ({layer} must not depend on hono/zod)")
+            continue
+        target = posixpath.normpath(posixpath.join(posixpath.dirname(rel), imp))
+        t_slice, t_layer = locate(target)
+        if slice_name is None:
+            if layer == "kernel" and not target.startswith("kernel/"):
+                violations.append(f"{rel}: forbidden kernel import '{imp}' (the kernel depends on nothing else)")
+            continue
+        if layer not in SLICE_ALLOWED:
+            continue
+        if t_slice is not None and t_slice != slice_name:
+            violations.append(f"{rel}: forbidden cross-slice import '{imp}' (slice '{slice_name}' must not import slice '{t_slice}')")
+            continue
+        key = ("same", t_layer) if t_slice == slice_name else t_layer
+        if key not in SLICE_ALLOWED[layer]:
+            violations.append(f"{rel}: forbidden import '{imp}' ({layer} of a slice cannot depend on {t_layer if t_slice else target.split('/')[0]})")
+    return violations
+
+
+TEST_TITLE_RE = re.compile(r"^\s*it(?:\.each\(.*\))?\(\s*[\"'`](.+?)[\"'`]")
+SHOULD_RE = re.compile(r"^should[A-Z]")
+
+
+def check_test_names(path: Path) -> list[str]:
+    rel = path.relative_to(REPO_ROOT).as_posix()
+    out = []
+    for n, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        m = TEST_TITLE_RE.match(line)
+        if m and not SHOULD_RE.match(m.group(1)):
+            out.append(f"{rel}:{n}: test name '{m.group(1)}' must follow shouldDoWhateverWhenInputIsWhatever")
+    return out
+
+
 def main() -> int:
     all_violations = []
     for file_path in SRC_DIR.glob("**/*.ts"):
         all_violations.extend(check_file(file_path))
+        if file_path.relative_to(SRC_DIR).parts[0] in ("slices", "kernel"):
+            all_violations.extend(check_slice_file(file_path))
+    for sub in ("slices", "kernel"):
+        for file_path in (TESTS_DIR / sub).glob("**/*.test.ts"):
+            all_violations.extend(check_test_names(file_path))
 
     if not all_violations:
         print("check_architecture_boundaries: OK (all boundaries intact)")

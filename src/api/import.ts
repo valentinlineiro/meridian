@@ -2,6 +2,10 @@ import { sha256Hex, stableStringify } from "../ingestion/hash.ts";
 import { extractMatches, collectPages } from "../normalization/matches.ts";
 import { normalizeLanguagePayload } from "../normalization/languages.ts";
 import { observeSchema } from "../ingestion/schemaObserve.ts";
+import { extractObservations } from "../normalization/observations.ts";
+import { extractPathTree } from "../normalization/pathTree.ts";
+import { applyPathState } from "../db/storePathState.ts";
+import { observationStatements } from "../db/storeObservations.ts";
 import { insertSnapshot, upsertMatches, recordObservations } from "../db/store.ts";
 import {
   insertLanguageSnapshot,
@@ -48,6 +52,8 @@ export async function ingestSnapshot(db: D1Database, args: IngestArgs): Promise<
   const id = crypto.randomUUID();
   const rawJson = JSON.stringify(data);
 
+  // The snapshot row carries the UNIQUE checksum that deduplicates retries, so it is written LAST: if anything before it
+  // fails, the identical retry is not mistaken for a duplicate and re-applies the (idempotent) derived state.
   if (source === "duolingo-lang") {
     const { userState, courses, sections, xpSummaries } = normalizeLanguagePayload({
       userId,
@@ -56,6 +62,18 @@ export async function ingestSnapshot(db: D1Database, args: IngestArgs): Promise<
       originalCourseId: args.originalCourseId,
       observedCourseId: args.observedCourseId,
     });
+
+    await upsertUserState(db, userState, now);
+    await upsertCourses(db, courses, now);
+    if (sections.length > 0) {
+      await upsertCourseSections(db, sections, now);
+    }
+    if (xpSummaries.length > 0) {
+      await upsertXpSummaries(db, xpSummaries, now);
+    }
+    await recordObservations(db, observeSchema(data), now);
+    const path = extractPathTree(data);
+    if (path) await applyPathState(db, { userId, snapshotId: id, observedAt: now, ...path }); // K5, idempotent like the writes above
 
     await insertLanguageSnapshot(db, {
       id,
@@ -71,17 +89,7 @@ export async function ingestSnapshot(db: D1Database, args: IngestArgs): Promise<
       isAuxiliary: userState.isAuxiliary,
       originalCourseId: userState.originalCourseId,
       observedCourseId: userState.observedCourseId,
-    });
-
-    await upsertUserState(db, userState, now);
-    await upsertCourses(db, courses, now);
-    if (sections.length > 0) {
-      await upsertCourseSections(db, sections, now);
-    }
-    if (xpSummaries.length > 0) {
-      await upsertXpSummaries(db, xpSummaries, now);
-    }
-    await recordObservations(db, observeSchema(data), now);
+    }, observationStatements(db, extractObservations(source, rawJson, { snapshotId: id, userId, observedAt: now, isAuxiliary: userState.isAuxiliary })));
 
     return {
       snapshotId: id,
@@ -101,10 +109,11 @@ export async function ingestSnapshot(db: D1Database, args: IngestArgs): Promise<
   // Chess snapshot ingestion
   const items = extractMatches(data, userId);
   const pages = collectPages(data).length;
-  await insertSnapshot(db, { id, createdAt: now, source, userId, rawJson, gamesCount: items.length, pagesCount: pages, checksum, sizeBytes: new TextEncoder().encode(rawJson).length });
   const { added } = await upsertMatches(db, items, id, now);
   const known = items.filter((i) => i.row.opponent_elo != null).length;
   await recordObservations(db, observeSchema(data), now);
+  await insertSnapshot(db, { id, createdAt: now, source, userId, rawJson, gamesCount: items.length, pagesCount: pages, checksum, sizeBytes: new TextEncoder().encode(rawJson).length },
+    observationStatements(db, extractObservations(source, rawJson, { snapshotId: id, userId, observedAt: now })));
   return { snapshotId: id, deduplicated: false, pages, matchesReceived: items.length, newMatches: added, existingMatches: items.length - added, knownOpponentElo: known, unknownOpponentElo: items.length - known };
 }
 

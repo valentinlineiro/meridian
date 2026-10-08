@@ -1,8 +1,11 @@
 import type { MatchRow } from "../types.ts";
 
-export async function insertSnapshot(db: D1Database, s: { id: string; createdAt: string; source: string; userId: string; rawJson: string; gamesCount: number; pagesCount: number; checksum: string; sizeBytes: number }) {
-  await db.prepare("INSERT INTO snapshots (id, created_at, source, user_id, raw_json, games_count, pages_count, checksum, size_bytes) VALUES (?,?,?,?,?,?,?,?,?)")
-    .bind(s.id, s.createdAt, s.source, s.userId, s.rawJson, s.gamesCount, s.pagesCount, s.checksum, s.sizeBytes).run();
+// `observations` (P2) are written in the same atomic batch, after the snapshot row.
+export async function insertSnapshot(db: D1Database, s: { id: string; createdAt: string; source: string; userId: string; rawJson: string; gamesCount: number; pagesCount: number; checksum: string; sizeBytes: number }, observations: D1PreparedStatement[] = []) {
+  const stmt = db.prepare("INSERT INTO snapshots (id, created_at, source, user_id, raw_json, games_count, pages_count, checksum, size_bytes) VALUES (?,?,?,?,?,?,?,?,?)")
+    .bind(s.id, s.createdAt, s.source, s.userId, s.rawJson, s.gamesCount, s.pagesCount, s.checksum, s.sizeBytes);
+  if (observations.length) await db.batch([stmt, ...observations]);
+  else await stmt.run();
 }
 
 // Writes only what is new. A match already stored is never rewritten: ingesting re-sends the whole history, and the old

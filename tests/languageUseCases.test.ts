@@ -17,6 +17,9 @@ describe("Language Application Use Cases", () => {
         streak: 15,
         current_course_id: "course-fr",
         updated_at: "2026-09-30T10:00:00Z",
+        total_xp_observed_at: "2026-09-30T10:00:00Z",
+        streak_observed_at: "2026-09-30T10:00:00Z",
+        current_course_observed_at: "2026-09-30T10:00:00Z",
       };
     },
     async getUserCourses(userId) {

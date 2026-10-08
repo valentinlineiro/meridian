@@ -3,7 +3,10 @@ export interface UserStateRow {
   total_xp: number | null;
   streak: number | null;
   current_course_id: string | null;
-  updated_at: string;
+  updated_at: string; // last time a snapshot was applied, NOT when the fields below were observed
+  total_xp_observed_at: string | null;
+  streak_observed_at: string | null;
+  current_course_observed_at: string | null;
 }
 
 export interface CourseRow {

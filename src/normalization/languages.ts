@@ -42,6 +42,7 @@ export interface NormalizedXpSummary {
   streakExtended: number | null;
   frozen: number | null;
   repaired: number | null;
+  dailyGoalXp: number | null;
 }
 
 const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
@@ -144,6 +145,7 @@ export function normalizeLanguagePayload(args: {
       streakExtended: boolToInt(s.streakExtended),
       frozen: boolToInt(s.frozen),
       repaired: boolToInt(s.repaired),
+      dailyGoalXp: num(s.dailyGoalXp),
     }))
     .filter((s) => s.date > 0);
 

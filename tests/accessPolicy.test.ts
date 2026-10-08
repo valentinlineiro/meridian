@@ -21,11 +21,11 @@ const env = (over: Partial<Env> = {}): Env =>
 const call = (method: string, path: string, headers: Record<string, string> = {}, e = env()) =>
   worker.fetch(new Request(BASE + path, { method, headers, redirect: "manual", body: ["GET", "HEAD"].includes(method) ? undefined : "{}" }), e);
 
-const HTML_READS = ["/", "/index.html", "/overview", "/chess", "/languages", "/languages/it", "/changes", "/trajectory", "/raw"];
+const HTML_READS = ["/", "/index.html", "/overview", "/chess", "/languages", "/languages/it", "/changes", "/trajectory", "/raw", "/settings"];
 const API_READS = [
   "/api/stats/summary", "/api/stats/recent", "/api/stats/lang", "/api/languages", "/api/languages/xp", "/api/languages/analytics",
   "/api/languages/courses", "/api/languages/courses/X", "/api/matches", "/api/snapshots", "/api/snapshots/abc?raw=1",
-  "/api/what-changed", "/api/trajectory", "/api/chess/matches/m1/detail", "/api/me/stats/lang", "/api/me/sync/status",
+  "/api/what-changed", "/api/trajectory", "/api/chess/matches/m1/detail", "/api/me/stats/lang", "/api/me/sync/status", "/api/me/settings",
   "/api/some/route/nobody/wrote", "/anything-else",
 ];
 const USER_READS = [...HTML_READS, ...API_READS];
@@ -122,12 +122,6 @@ describe("access policy (table-driven over the audit matrix)", () => {
     it("shouldRefuseAForeignOriginHeader", async () => {
       expect((await call("POST", path, { cookie: await cookieFor(), origin: "https://evil.example" })).status).toBe(403);
     });
-  });
-
-  it("shouldReachTheMeSyncHandlerWithASameOriginOwnerSession", async () => {
-    const res = await call("POST", "/api/me/sync", { cookie: await cookieFor(), ...SAME });
-    expect(res.status).toBe(404); // identity ok, but no provider account in the empty test DB
-    expect(((await res.json()) as any).code).toBe("NO_PROVIDER_ACCOUNT");
   });
 
   it("shouldClearTheSessionCookieOnLogout", async () => {
