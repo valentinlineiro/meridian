@@ -32,6 +32,7 @@ main{max-width:1120px;margin:0 auto;padding:20px 16px 40px}
 .pill-win{background:#12291e;border-color:#1f6b3a;color:#7ee2a0}
 .pill-loss{background:#2a1616;border-color:#7a2e2e;color:#e89a9a}
 .pill-draw{background:#1e2430;border-color:#3a4558;color:#b9c2d0}
+.pill-warn{background:#2b2210;border-color:#7a5a1e;color:#f0c674}
 .pill-selected{background:#1c2d42;border-color:#38577a;color:#9cc8ff}
 .pill-scope{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 6px;border-radius:999px;border:1px solid #2a3d56;color:#8ea0b8;background:#101a27}
 .bar{height:8px;background:#1e2e44;border-radius:999px;overflow:hidden}
@@ -1916,6 +1917,7 @@ async function fetchTrajectory(){
   elEmpty.textContent = 'Error al cargar tu trayectoria.';
  }
 }
+function fmtWhen(iso){ const t = new Date(iso); return isNaN(t.getTime()) ? String(iso) : t.toISOString().slice(0, 10) + ' ' + t.toISOString().slice(11, 16) + ' UTC'; }
 async function fetchWhatChanged(sinceOverride){
  const now = new Date();
  let since = sinceOverride;
@@ -1942,7 +1944,7 @@ async function fetchWhatChanged(sinceOverride){
    + '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'
    + '<div>'
    + '<h2 style="margin:0;font-size:18px">¿Qué ha cambiado?</h2>'
-   + '<div class="muted" style="font-size:12px;margin-top:2px">Mostrando cambios entre ' + esc(since) + ' y ' + esc(until) + '</div>'
+   + '<div class="muted" style="font-size:12px;margin-top:2px">Mostrando cambios entre ' + esc(fmtWhen(since)) + ' y ' + esc(fmtWhen(until)) + '</div>'
    + '</div>'
    + '<button class="btn btn-p" id="btnMarkSeen" onclick="markChangesAsSeenNow()">Marcar como visto ahora</button>'
    + '</div>'
@@ -1989,6 +1991,96 @@ function setChangesInterval(days){
  }
 }
 
+// Epistemic status of one evaluation, derived from the evaluation alone. AFIRMADO and INDICIO follow salience() in
+// src/domain/whatChanged.ts; unlike it, any limit on the evidence (sample, span, missing data) makes the evaluation INSUFICIENTE
+// even if the effect is also below the criterion: "SIN INDICIO" must never read as "checked, nothing changed".
+function evalState(e){
+ if(e.status === 'emitted') return 'AFIRMADO';
+ const rs = e.reasons || [];
+ if(rs.length && rs.every(r => r === 'insufficient_sample' || r === 'interval_includes_zero')) return 'INDICIO';
+ return rs.some(r => r === 'data_unavailable' || r === 'span_too_short' || r === 'insufficient_sample') ? 'INSUFICIENTE' : 'SIN INDICIO';
+}
+const EVAL_STATE_ORDER = ['AFIRMADO', 'INDICIO', 'INSUFICIENTE', 'SIN INDICIO'];
+const EVAL_STATE_PILL = {'AFIRMADO':'pill pill-win', 'INDICIO':'pill pill-warn', 'INSUFICIENTE':'pill pill-draw', 'SIN INDICIO':'pill'};
+const EVAL_STATE_MSG = {
+ 'INDICIO': 'Vemos una señal, pero con la evidencia actual no podemos afirmarla.',
+ 'INSUFICIENTE': 'No hay evidencia suficiente para responder en esta ventana.',
+ 'SIN INDICIO': 'No se observa evidencia suficiente de un cambio bajo este criterio; no equivale a demostrar que no hubo cambio.'
+};
+const EVAL_META = {
+ CHESS_COLOR_ASYMMETRY: {title: 'Asimetría por color', scope: 'Ajedrez · partidas decididas'},
+ CHESS_RATING_JUMP: {title: 'Salto de ELO', scope: 'Ajedrez · ELO observado'},
+ LANG_XP_ACCELERATION: {title: 'Aceleración de ritmo', scope: 'Cuenta · XP'}
+};
+// The thresholds quoted here mirror the rules in src/domain/whatChanged.ts (the payload does not carry them).
+function evalReasonText(id, r, m){
+ const f = (v, d) => v == null ? '—' : Number(v).toFixed(d == null ? 1 : d);
+ if(id === 'CHESS_COLOR_ASYMMETRY'){
+  if(r === 'insufficient_sample') return f(m.decidedCount, 0) + ' partidas decididas observadas; el criterio exige al menos 10.';
+  if(r === 'effect_below_threshold') return 'Diferencia observada entre colores: ' + f(m.diffPp) + ' pp; el criterio exige al menos 15 pp.';
+  if(r === 'interval_includes_zero') return 'El intervalo de confianza 95% de la diferencia [' + f(m.diffCiLower, 0) + ', ' + f(m.diffCiUpper, 0) + '] pp incluye 0.';
+  if(r === 'data_unavailable') return 'Falta al menos un color con partidas decididas en la ventana.';
+ }
+ if(id === 'CHESS_RATING_JUMP'){
+  if(r === 'effect_below_threshold') return 'Cambio de ELO observado: ' + f(m.ratingDelta, 0) + ' puntos; el criterio exige al menos 25.';
+  if(r === 'data_unavailable') return 'No hay ELO observado al inicio o al final de la ventana.';
+ }
+ if(id === 'LANG_XP_ACCELERATION'){
+  if(r === 'span_too_short') return 'La ventana cubre ' + f(m.intervalDays, 0) + ' días; el criterio exige al menos 3.';
+  if(r === 'insufficient_sample') return f(m.xpGained, 0) + ' XP ganados en la ventana; el criterio exige al menos 200.';
+  if(r === 'effect_below_threshold') return 'Ritmo observado: ' + f(m.ratio) + '× el histórico; el criterio exige al menos 1,3×.';
+  if(r === 'data_unavailable') return 'No hay ritmo histórico de referencia.';
+ }
+ return {insufficient_sample:'Muestra insuficiente.', effect_below_threshold:'El efecto observado no alcanza el criterio.', interval_includes_zero:'El intervalo de confianza incluye 0.', persistence_not_met:'El efecto no se mantiene en ambas mitades del historial.', span_too_short:'La ventana es demasiado corta.', data_unavailable:'Faltan datos necesarios.'}[r] || r;
+}
+function evalObserved(id, m){
+ const f = (v, d) => Number(v).toFixed(d == null ? 1 : d);
+ if(id === 'CHESS_COLOR_ASYMMETRY' && m.whiteWinRate != null && m.blackWinRate != null) return 'Blancas ' + f(m.whiteWinRate) + '% · Negras ' + f(m.blackWinRate) + '% (' + m.decidedCount + ' partidas decididas)';
+ if(id === 'CHESS_RATING_JUMP' && m.baselineRating != null && m.currentRating != null) return 'ELO ' + m.baselineRating + ' → ' + m.currentRating + ' (' + m.gamesCount + ' partidas)';
+ if(id === 'LANG_XP_ACCELERATION' && m.dailyRate != null && m.historicalRate != null) return f(m.dailyRate, 0) + ' XP/día en la ventana vs ' + f(m.historicalRate, 0) + ' XP/día histórico (+' + m.xpGained + ' XP)';
+ return '';
+}
+function renderEvaluationCard(e, state, finding, win){
+ const meta = EVAL_META[e.id] || {title: e.id, scope: ''};
+ const m = e.metrics || {};
+ let body;
+ if(state === 'AFIRMADO' && finding){
+  body = '<div style="font-size:13px;font-weight:600;color:#c8d7ea;margin-bottom:6px">' + esc(finding.claim) + '</div>'
+   + '<div class="muted" style="font-size:12px"><strong>Evidencia:</strong> ' + esc(finding.evidence) + '</div>';
+ } else {
+  const obs = evalObserved(e.id, m);
+  body = (obs ? '<div style="font-size:13px;color:#c8d7ea;margin-bottom:4px"><strong>Observado:</strong> ' + esc(obs) + '</div>' : '')
+   + '<div style="font-size:13px;font-weight:600;color:#c8d7ea;margin-bottom:4px">' + esc(EVAL_STATE_MSG[state]) + '</div>'
+   + '<ul class="muted" style="font-size:12px;margin:0;padding-left:18px">' + (e.reasons || []).map(r => '<li>' + esc(evalReasonText(e.id, r, m)) + '</li>').join('') + '</ul>';
+ }
+ const basis = e.kind === 'statistical' ? 'con intervalo de confianza 95%' : 'umbral fijo, sin intervalo de confianza';
+ return '<div class="card" style="margin-bottom:10px">'
+  + '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px">'
+  + '<h3 style="margin:0;font-size:14px;color:#e6edf3">' + esc(meta.title) + '</h3>'
+  + '<span><span class="' + EVAL_STATE_PILL[state] + '">' + state + '</span> <span class="pill pill-scope">' + esc(meta.scope) + '</span></span></div>'
+  + body
+  + '<div class="muted" style="font-size:11px;margin-top:6px">Ventana: ' + esc(win) + ' · ' + basis + '</div></div>';
+}
+function renderEvaluations(data){
+ const findings = data.findings || [];
+ const evals = data.evaluations || [];
+ const win = data.interval ? String(data.interval.since).slice(0, 10) + ' → ' + String(data.interval.until).slice(0, 10) : '';
+ const evalIds = new Set(evals.map(e => e.id));
+ const cards = evals.map(e => ({state: evalState(e), e})).sort((a, b) => EVAL_STATE_ORDER.indexOf(a.state) - EVAL_STATE_ORDER.indexOf(b.state))
+  .map(x => renderEvaluationCard(x.e, x.state, findings.find(f => f.id === x.e.id), win));
+ // events (course switch, streak) are facts, not evaluations: they keep the finding card
+ const events = findings.filter(f => !evalIds.has(f.id)).map(f => '<div class="card" style="margin-bottom:10px">'
+  + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
+  + '<h3 style="margin:0;font-size:14px;color:#e6edf3">' + esc(f.title) + '</h3>'
+  + '<span><span class="pill pill-win">EVENTO</span> <span class="pill pill-scope">' + esc(f.category.toUpperCase()) + '</span></span></div>'
+  + '<div style="font-size:13px;font-weight:600;color:#c8d7ea;margin-bottom:6px">' + esc(f.claim) + '</div>'
+  + '<div class="muted" style="font-size:12px"><strong>Evidencia:</strong> ' + esc(f.evidence) + '</div></div>');
+ if(!cards.length && !events.length) return '';
+ const head = evals.length ? 'Evaluaciones' : '🔎 Descubrimientos';
+ const legend = evals.length ? '<div class="muted" style="font-size:12px;margin-bottom:10px">Qué se observó, con qué criterio y qué no se puede afirmar todavía.</div>' : '';
+ return '<h2 style="margin:18px 0 10px;font-size:14px;letter-spacing:.05em;text-transform:uppercase;color:#8ea0b8">' + head + '</h2>' + legend + cards.concat(events).join('');
+}
+
 function renderWhatChanged(data){
  const elEmpty = q('#changesEmpty');
  const elFindings = q('#changesFindings');
@@ -2019,24 +2111,7 @@ function renderWhatChanged(data){
 
  if(elEmpty) elEmpty.style.display = 'none';
 
- if(elFindings){
-  if(data.findings && data.findings.length > 0){
-   let html = '<h2 style="margin:18px 0 10px;font-size:14px;letter-spacing:.05em;text-transform:uppercase;color:#8ea0b8">🔎 Descubrimientos</h2>';
-   for(const f of data.findings){
-    html += '<div class="card" style="margin-bottom:10px">'
-     + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
-     + '<h3 style="margin:0;font-size:14px;color:#e6edf3">' + esc(f.title) + '</h3>'
-     + '<span class="pill pill-scope">' + esc(f.category.toUpperCase()) + '</span>'
-     + '</div>'
-     + '<div style="font-size:13px;font-weight:600;color:#c8d7ea;margin-bottom:6px">' + esc(f.claim) + '</div>'
-     + '<div class="muted" style="font-size:12px"><strong>Evidencia:</strong> ' + esc(f.evidence) + '</div>'
-     + '</div>';
-   }
-   elFindings.innerHTML = html;
-  } else {
-   elFindings.innerHTML = '';
-  }
- }
+ if(elFindings) elFindings.innerHTML = renderEvaluations(data);
 
  if(elChess){
   const c = data.chess;
