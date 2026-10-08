@@ -94,13 +94,9 @@ export async function getWhatChangedUseCase(
 
   // Chess calculations
   const baselineRating = chessBase.data?.rating ?? null;
-  const currentRating =
-    chessInt.latestRating ??
-    (chessBase.status === "exactOrPrevious" ? baselineRating : null);
-  let ratingDelta: number | null = null;
-  if (baselineRating !== null && currentRating !== null) {
-    ratingDelta = chessInt.gamesCount === 0 ? 0 : currentRating - baselineRating;
-  }
+  // A rating is observed only by a game inside the window: with none, "no change" is not an observation (amendment A2).
+  const currentRating = chessInt.latestRating;
+  const ratingDelta = baselineRating !== null && currentRating !== null ? currentRating - baselineRating : null;
 
   // Rates are over decided games: an unknown result is neither a win nor a loss.
   const intervalWinRate =
