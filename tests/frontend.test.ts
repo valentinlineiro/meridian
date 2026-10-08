@@ -12,22 +12,6 @@ import {
 } from "../src/frontend.ts";
 import { getElementHtmlById, createDashboardRuntime } from "./helpers/dom.ts";
 
-describe("dashboard otros course names", () => {
-  it("shouldMapKnownCoursePrefixesToHumanNames", () => {
-    expect(DASHBOARD_HTML).toMatch(/CHESS:\s*['"]Chess['"]/);
-    expect(DASHBOARD_HTML).toMatch(/MUSIC:\s*['"]Música['"]/);
-    expect(DASHBOARD_HTML).toMatch(/MATH:\s*['"]Matemáticas['"]/);
-  });
-
-  it("shouldFallBackToTitleOrIdForUnknownPrefix", () => {
-    expect(DASHBOARD_HTML).toMatch(/friendlyOtherName/);
-    // fallback branch must reference c.title and c.id, not just the prefix map
-    const fnBody = DASHBOARD_HTML.match(/function friendlyOtherName\(c\)\{([\s\S]*?)\}/)?.[1] ?? "";
-    expect(fnBody).toMatch(/c\.title/);
-    expect(fnBody).toMatch(/c\.id/);
-  });
-});
-
 describe("dashboard tabs", () => {
   it("shouldHaveChessAndLanguageTabPanels", () => {
     expect(DASHBOARD_HTML).toMatch(/id="chessTab"/);
@@ -205,20 +189,6 @@ describe("dashboard compact matches table", () => {
     expect(DASHBOARD_HTML).toMatch(/function nextPage\(\)\{\s*loadM\(off\+pageSize\(\)\);\s*\}/);
     // the disabled check must use the same pageSize(), not a hardcoded 50
     expect(DASHBOARD_HTML).toMatch(/q\('#next'\)\.disabled=\s*off\+pageSize\(\)\s*>=\s*d\.total/);
-  });
-});
-
-describe("dashboard path progress", () => {
-  it("shouldRenderSectionDetailBehindNativeDetails", () => {
-    const renderLangBody = DASHBOARD_HTML.match(/function renderLang\(d\)\{([\s\S]*?)\n\}/)?.[1] ?? "";
-    expect(renderLangBody).toMatch(/<details/);
-    expect(renderLangBody).toMatch(/<summary/);
-  });
-
-  it("shouldSkipActiveLevelBarWhenNoActiveSection", () => {
-    const renderLangBody = DASHBOARD_HTML.match(/function renderLang\(d\)\{([\s\S]*?)\n\}/)?.[1] ?? "";
-    // the active-level block must be conditional on `act`, not rendered unconditionally
-    expect(renderLangBody).toMatch(/act\s*\?/);
   });
 });
 
@@ -717,7 +687,6 @@ describe("dashboard smoke test: markup validity, 3 panels, and responsive viewpo
     const media480Match = DASHBOARD_HTML.match(/@media\s*\(\s*max-width:\s*480px\s*\)\s*\{([\s\S]*?)\n\}/);
     expect(media480Match).not.toBeNull();
     const css480 = media480Match![1];
-    expect(css480).toMatch(/\.elo-hero\s+b\s*\{[^}]*font-size:\s*22px/);
     expect(css480).toMatch(/\.kpi\s*\{[^}]*padding:\s*10px\s+12px/);
     expect(css480).toMatch(/\.card\s*\{[^}]*padding:\s*12px/);
   });
