@@ -1,6 +1,6 @@
 # Diseño: ancla de visita en servidor (P1 #8)
 
-**Estado:** 📝 BORRADOR para decisión del propietario (2026-10-08). **Sin implementar: no hay migración, ni código, ni despliegue.** Es el requisito previo del *digest* ("desde tu última visita"); no es el digest.
+**Estado:** ✅ **D1–D6 aprobadas por el propietario (2026-10-08).** Implementado en el PR de este slice; la migración `0016` **no está aplicada** hasta que se aplique a mano, con aprobación explícita, antes de mergear ese PR. Es el requisito previo del *digest* ("desde tu última visita"); no es el digest.
 
 **Qué resuelve:** hoy "Desde última visita" es, en la práctica, "los últimos 7 días". Tras este diseño es "desde la última vez que viste los cambios", en cualquier navegador.
 
