@@ -3,9 +3,13 @@ import { Hono } from "hono";
 import { getCookie } from "hono/cookie";
 import type { Context } from "hono";
 import type { Env } from "../types.ts";
+import type { Container } from "../kernel/container.ts";
+import { buildContainer } from "../composition/index.ts";
+import { dailyGoalRoutes } from "../slices/daily-goal/delivery/routes.ts";
 import { handleImport, json } from "./import.ts";
 import { handleStats, handleLangStats, handleMatches, handleSnapshots } from "./stats.ts";
-import { handleMeStats, handleMeSync, handleMeSyncStatus } from "./me.ts";
+import { handleMeStats } from "./me.ts";
+import { handleSyncRequest, handleSyncStatus } from "./sync.ts";
 import { handleSaveMatchDetail, handleGetMatchDetail, handleGetPendingMatchDetails } from "./chessDetail.ts";
 import { handleGetLanguages, handleGetLanguageCourse, handleGetLanguageXp } from "./languages.ts";
 import { handleGetLanguagesAnalytics } from "./languagesAnalytics.ts";
@@ -22,8 +26,9 @@ import { SESSION_COOKIE, SESSION_TTL_SECONDS, isSameOrigin, loginPage, redirect,
 import { createD1TrajectoryAdapter } from "../infrastructure/d1/d1TrajectoryAdapter.ts";
 import { getTrajectoryUseCase } from "../application/getTrajectoryUseCase.ts";
 import { DASHBOARD_HTML, RAW_HTML } from "../frontend.ts";
+import { SETTINGS_HTML } from "../settingsPage.ts";
 
-type AppEnv = { Bindings: Env; Variables: { email: string | null } };
+type AppEnv = { Bindings: Env; Variables: { email: string | null; container: Container } };
 export const app = new Hono<AppEnv>();
 
 
@@ -40,11 +45,11 @@ app.use("*", async (c, next) => {
 //   GET|HEAD /login, POST /login                -> public (the login itself; POST is same-origin + throttled)
 //   write (not GET/HEAD)                        -> IMPORT_TOKEN (machine)        [except identity writes below]
 //   machine read (pending-details)              -> IMPORT_TOKEN
-//   POST /api/me/sync, POST /logout             -> owner session + same-origin (CSRF)
+//   POST /api/me/sync, PUT /api/me/settings, POST /logout -> owner session + same-origin (CSRF)
 //   everything else, incl. HTML + unknown       -> owner session cookie (HTML -> redirect to /login, API -> 401)
 // Identity is a signed session cookie issued by /login for ADMIN_EMAIL; nothing else is trusted.
 const MACHINE_READ = new Set(["/api/chess/matches/pending-details"]);
-const IDENTITY_WRITE = new Set(["/api/me/sync", "/logout"]);
+const IDENTITY_WRITE = new Set(["/api/me/sync", "/api/me/settings", "/logout"]);
 
 const sha256 = async (s: string) => new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)));
 
@@ -102,6 +107,7 @@ app.use("*", async (c, next) => {
   return next();
 });
 
+const syncTarget = (e: Env) => (e.SYNC_REPO && e.SYNC_WORKFLOW && e.SYNC_REF ? { repo: e.SYNC_REPO, workflow: e.SYNC_WORKFLOW, ref: e.SYNC_REF } : null);
 const emailOf = (c: Context<AppEnv>): string | null => c.get("email");
 
 app.get("/login", (c) => loginPage(safeNext(c.req.query("next"))));
@@ -164,10 +170,12 @@ app.get("/api/languages/courses/:courseId", (c) =>
   handleGetLanguageCourse(c.env.DB, c.req.param("courseId"), new URL(c.req.url)));
 
 app.get("/api/me/stats/lang", (c) => handleMeStats(c.env.DB, new URL(c.req.url), emailOf(c)));
+app.use("/api/me/settings", async (c, next) => { c.set("container", buildContainer(c.env)); await next(); });
+app.route("/api/me/settings", dailyGoalRoutes);
 app.post("/api/me/sync", (c) =>
-  handleMeSync(c.env.DB, emailOf(c), fetch, c.env.GITHUB_ACTIONS_TOKEN ?? null, c.env.COLLECTOR_REPO ?? null, c.env.COLLECTOR_REF ?? null));
+  handleSyncRequest({ db: c.env.DB, email: emailOf(c), token: c.env.GITHUB_ACTIONS_TOKEN ?? null, target: syncTarget(c.env) }));
 app.get("/api/me/sync/status", (c) =>
-  handleMeSyncStatus(c.env.DB, emailOf(c), new URL(c.req.url), fetch, c.env.GITHUB_ACTIONS_TOKEN ?? null, c.env.COLLECTOR_REPO ?? null));
+  handleSyncStatus({ db: c.env.DB, email: emailOf(c), token: c.env.GITHUB_ACTIONS_TOKEN ?? null, target: syncTarget(c.env) }, new URL(c.req.url)));
 
 app.get("/api/stats/lang", (c) => handleLangStats(c.env.DB, new URL(c.req.url)));
 app.get("/api/stats/*", (c) => {
@@ -232,8 +240,18 @@ app.get("/api/trajectory", async (c) => {
   }
 });
 
-const dashboard = () =>
-  new Response(DASHBOARD_HTML, { headers: { "content-type": "text/html" } });
+// The dashboard keeps inline scripts and handlers, so script-src needs 'unsafe-inline': this CSP does not stop injected markup
+// from running (escaping does), it stops it from loading anything external or sending data off-origin.
+const HTML_HEADERS = {
+  "content-type": "text/html; charset=utf-8",
+  "cache-control": "no-store",
+  "x-content-type-options": "nosniff",
+  "x-frame-options": "DENY",
+  "referrer-policy": "same-origin",
+  "content-security-policy":
+    "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
+} as const;
+const dashboard = () => new Response(DASHBOARD_HTML, { headers: HTML_HEADERS });
 app.get("/", dashboard);
 app.get("/index.html", dashboard);
 app.get("/overview", dashboard);
@@ -245,7 +263,8 @@ app.get("/languages/", dashboard);
 app.get("/languages/*", dashboard);
 app.get("/changes", dashboard);
 app.get("/trajectory", dashboard);
-app.get("/raw", () => new Response(RAW_HTML, { headers: { "content-type": "text/html" } }));
+app.get("/raw", () => new Response(RAW_HTML, { headers: HTML_HEADERS }));
+app.get("/settings", () => new Response(SETTINGS_HTML, { headers: HTML_HEADERS }));
 
 // exported so composition wrappers (src/dev.ts, tests) keep identical error/404 behaviour
 export const onFailure = (e: Error) => {

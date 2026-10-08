@@ -6,6 +6,9 @@ export interface LanguagesOverviewResult {
   totalXp: number | null;
   streak: number | null;
   updatedAt: string | null;
+  totalXpObservedAt: string | null;
+  streakObservedAt: string | null;
+  currentCourseObservedAt: string | null;
   courses: Array<{
     courseId: string;
     title: string | null;
@@ -34,6 +37,9 @@ export async function getLanguages(
     totalXp: userState?.total_xp ?? null,
     streak: userState?.streak ?? null,
     updatedAt: userState?.updated_at ?? null,
+    totalXpObservedAt: userState?.total_xp_observed_at ?? null,
+    streakObservedAt: userState?.streak_observed_at ?? null,
+    currentCourseObservedAt: userState?.current_course_observed_at ?? null,
     courses: coursesRows.map((c) => ({
       courseId: c.course_id,
       title: c.title,

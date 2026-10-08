@@ -52,6 +52,10 @@ describe("Languages Analytics API (Contract v0.1)", () => {
     rawDb.exec(mig0004);
     rawDb.exec(mig0008);
     rawDb.exec(mig0009);
+    rawDb.exec(readFileSync(new URL("../migrations/0011_user_state_observed_at.sql", import.meta.url).pathname, "utf8"));
+    rawDb.exec(readFileSync(new URL("../migrations/0012_observation_series.sql", import.meta.url).pathname, "utf8"));
+    rawDb.exec(readFileSync(new URL("../migrations/0013_xp_summaries_daily_goal.sql", import.meta.url).pathname, "utf8"));
+    rawDb.exec(readFileSync(new URL("../migrations/0014_course_path_state.sql", import.meta.url).pathname, "utf8"));
     d1 = createTestD1(rawDb);
   });
 

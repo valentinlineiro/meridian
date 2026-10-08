@@ -17,7 +17,7 @@ describe("epistemic wording", () => {
   });
 
   it("shouldNotFlagSmallSamplesWithAFixedGamesThreshold", () => {
-    const render = new Function(`${fn("fmtDelta")}; ${fn("pctCi")}; ${fn("renderCompare")}; return renderCompare;`)() as any;
+    const render = new Function(`${fn("esc")}; ${fn("fmtDelta")}; ${fn("pctCi")}; ${fn("renderCompare")}; return renderCompare;`)() as any;
     const g = (games: number) => ({ key: "pvp", games, wins: games, losses: 0, draws: 0, unknown: 0, decided: games, winRate: 1, scoreRate: 1, winRateCi: { lower: 0.5, upper: 1 } });
     expect(render([g(3)], 3)).not.toMatch(/muestra pequeña/);
     expect(render([g(3)], 3)).toContain("[50–100]"); // the interval carries the uncertainty

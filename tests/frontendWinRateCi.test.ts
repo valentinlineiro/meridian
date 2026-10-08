@@ -3,7 +3,7 @@ import { summarize } from "../src/domain/result.ts";
 import { DASHBOARD_HTML } from "../src/frontend.ts";
 
 const fn = (name: string) => DASHBOARD_HTML.match(new RegExp(`function ${name}\\([^)]*\\)\\{[\\s\\S]*?\\n\\}`))![0];
-const renderCompare = new Function(`${fn("pctCi")}; ${fn("renderCompare")}; return renderCompare;`)() as (g: any[], total: number) => string;
+const renderCompare = new Function(`${fn("esc")}; ${fn("pctCi")}; ${fn("renderCompare")}; return renderCompare;`)() as (g: any[], total: number) => string;
 function renderForm(r: any) {
   const el = { innerHTML: "" };
   new Function("q", `${fn("pctCi")}; ${fn("renderForm")}; return renderForm;`)(() => el)(r);

@@ -35,7 +35,8 @@ export function createD1LanguageAdapter(db: D1Database): LanguagePort {
 
     async getUserState(userId: string): Promise<UserStateRow | null> {
       return db.prepare(`
-        SELECT user_id, total_xp, streak, current_course_id, updated_at
+        SELECT user_id, total_xp, streak, current_course_id, updated_at,
+          total_xp_observed_at, streak_observed_at, current_course_observed_at
         FROM user_state
         WHERE user_id = ?
       `).bind(userId).first<UserStateRow>();

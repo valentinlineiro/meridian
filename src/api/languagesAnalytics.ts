@@ -12,10 +12,23 @@ import {
 
 export async function getCurriculumDeltas(db: D1Database, userId: string): Promise<CurriculumObservationDelta[]> {
   try {
+    // Only the first and last observation of each course are compared, so only those cross the D1 boundary
+    // (a row is both when the course was observed once). Selecting the whole history grew by ~3 MB/day per request.
     const rows = ((await db.prepare(`
-      SELECT created_at, raw_json
-      FROM snapshots
-      WHERE user_id = ? AND source = 'duolingo-lang' AND raw_json LIKE '%pathSectioned%'
+      SELECT created_at, raw_json FROM (
+        SELECT created_at, raw_json,
+          ROW_NUMBER() OVER (PARTITION BY course_id ORDER BY created_at ASC) AS from_start,
+          ROW_NUMBER() OVER (PARTITION BY course_id ORDER BY created_at DESC) AS from_end
+        FROM (
+          SELECT created_at, raw_json,
+            CASE WHEN json_valid(raw_json) AND json_type(raw_json, '$.currentCourse.pathSectioned') = 'array'
+              THEN json_extract(raw_json, '$.currentCourse.id') END AS course_id
+          FROM snapshots
+          WHERE user_id = ? AND source = 'duolingo-lang' AND raw_json LIKE '%pathSectioned%'
+        )
+        WHERE course_id IS NOT NULL AND course_id <> ''
+      )
+      WHERE from_start = 1 OR from_end = 1
       ORDER BY created_at ASC
     `).bind(userId).all<any>()).results ?? []);
 

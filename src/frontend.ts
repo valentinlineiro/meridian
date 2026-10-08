@@ -85,6 +85,8 @@ svg text{font-family:system-ui,sans-serif}
   <div class="h-right">
    <div class="elo-hero"><b id="eloHero">—</b><span id="eloSub">ELO</span></div>
     <button id="syncBtn" class="btn btn-p" onclick="doSync()">Sincronizar</button>
+    <small id="syncNote" class="muted" style="max-width:260px"></small>
+    <a class="btn btn-g" href="/settings" style="text-decoration:none">Configuración</a>
     <form method="post" action="/logout" style="margin:0"><button class="btn btn-g" type="submit">Salir</button></form>
   </div>
 </header>
@@ -321,6 +323,10 @@ svg text{font-family:system-ui,sans-serif}
           <span id="langWeekSummary" class="muted" style="font-size:11px;white-space:nowrap">—</span>
         </div>
         <div class="activity-strip" id="langActivityStrip" style="margin-top:10px"></div>
+        <div id="langGoalRow" style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:10px;font-size:12px">
+          <span id="langGoalToday" class="muted"></span>
+          <a href="/settings">Configurar</a>
+        </div>
       </div>
 
       <!-- Tus Cursos (Comprensión 1m) -->
@@ -607,45 +613,69 @@ let off=0, lastRows=[], lastTotal=0;
 const _fetch=window.fetch.bind(window);
 window.fetch=async(...a)=>{const r=await _fetch(...a); if(r.status===401) location.href='/login?next='+encodeURIComponent(location.pathname+location.search); return r;};
 const j=async u=>(await fetch(u)).json();
-const fmt=n=>n==null?'—':String(n);
-const pct=(a,b)=>b? (a/b*100).toFixed(1)+'%':'—';
-async function doSync(){
- const btn=q('#syncBtn'); if(!btn) return;
- btn.textContent='⟳ Sincronizando…'; btn.disabled=true;
- try{
-  const r=await fetch('/api/me/sync',{method:'POST'});
-  const jr=await r.json();
-  if(!r.ok) throw new Error(jr.error||r.status);
-  const runId=jr.runId;
-  if(!runId) throw new Error('no runId');
-  for(let i=0;i<20;i++){
-   await new Promise(res=>setTimeout(res,3000));
-   const s=await (await fetch('/api/me/sync/status?runId='+runId)).json();
-   if(s.status==='completed'){
-     if(s.conclusion==='success'){
-      btn.textContent='✓ Sincronizado';
-      try{ await loadChessDashboard(); loadM(0); }catch(e){ console.error(e); }
-      try{ await loadLanguagesDashboard(); }catch(e){ const lang=await j('/api/me/stats/lang').catch(()=>j('/api/stats/lang')); if(lang && !lang.error) renderLang(lang); }
-      try{ await loadOverviewDashboard(); }catch(e){ console.error(e); }
-     setTimeout(()=>{btn.textContent='Sincronizar'; btn.disabled=false;},3000);
-     return;
-    } else if(s.conclusion==='skipped' || s.conclusion==='cancelled'){
-     btn.textContent='✓ Sin cambios';
-     setTimeout(()=>{btn.textContent='Sincronizar'; btn.disabled=false;},3000);
-     return;
-    } else {
-     throw new Error(s.conclusion||'failed');
-    }
-   }
+const SYNC_KEY='meridian.syncRun';
+const syncStore={
+ get(){ try{ return Number(localStorage.getItem(SYNC_KEY))||null; }catch(e){ return null; } },
+ set(id){ try{ localStorage.setItem(SYNC_KEY,String(id)); }catch(e){} },
+ clear(){ try{ localStorage.removeItem(SYNC_KEY); }catch(e){} }
+};
+function syncUi(label,busy,note){
+ const b=q('#syncBtn'), n=q('#syncNote');
+ if(b){ b.textContent=label; b.disabled=busy; }
+ if(n) n.textContent=note||'';
+}
+function syncIdle(label,note,after){
+ syncUi(label,false,note);
+ if(after) setTimeout(()=>syncUi('Sincronizar',false,''),after);
+}
+async function trackSync(runId){
+ const t0=Date.now();
+ for(;;){
+  let s;
+  try{
+   const r=await fetch('/api/me/sync/status?runId='+runId);
+   if(!r.ok) throw new Error('status '+r.status);
+   s=await r.json();
+  }catch(e){ syncStore.clear(); return syncIdle('Sincronizar','No se pudo consultar el estado de la sincronización.'); }
+  if(s.status==='completed'){
+   syncStore.clear();
+   if(s.conclusion!=='success') return syncIdle('Sincronizar','Sincronización fallida. Inténtalo de nuevo.');
+   // A full reload is the one refresh known to show the new matches (partial reloads left the list stale).
+   syncIdle('✓ Sincronizado','Sincronización completada.');
+   setTimeout(()=>location.reload(),800);
+   return;
   }
-  btn.textContent='✓ Disparado';
-  setTimeout(()=>{btn.textContent='Sincronizar'; btn.disabled=false;},3000);
- }catch(e){
-  btn.textContent='✕ Error';
-  console.error(e);
-  setTimeout(()=>{btn.textContent='Sincronizar'; btn.disabled=false;},3000);
+  const waiting=s.status!=='in_progress';
+  const slow=Date.now()-t0>60000;
+  syncUi(waiting?'En cola…':'Sincronizando…',true,
+   waiting?'La sincronización está en cola.':slow?'Sigue en marcha. Puedes salir de esta página; la sincronización continuará.':'El collector está en marcha. Puede tardar unos minutos.');
+  await new Promise(r=>setTimeout(r,slow?10000:3000));
  }
 }
+async function doSync(){
+ syncUi('Iniciando…',true,'');
+ let res, body;
+ try{ res=await fetch('/api/me/sync',{method:'POST'}); body=await res.json().catch(()=>({})); }
+ catch(e){ return syncIdle('Sincronizar','No se pudo iniciar la sincronización.'); }
+ if(!(res.ok||res.status===409) || !body.runId) return syncIdle('Sincronizar','Sincronización fallida. Inténtalo de nuevo.');
+ syncStore.set(body.runId); // 409: a run is already going, follow that one
+ return trackSync(body.runId);
+}
+function resumeSync(){
+ const id=syncStore.get();
+ if(!id) return;
+ syncUi('Sincronizando…',true,'');
+ trackSync(id);
+}
+// updatedAt = a snapshot was applied; XP/streak may not have been in it. Say so instead of implying they are current.
+function accountStaleNote(l){
+ const obs=[l.totalXpObservedAt,l.streakObservedAt].filter(Boolean).sort()[0];
+ if(!obs) return ' · XP y racha: sin observar';
+ const day=iso=>String(iso).slice(0,10);
+ return l.updatedAt && day(obs)!==day(l.updatedAt) ? ' · XP y racha observados el '+day(obs) : '';
+}
+const fmt=n=>n==null?'—':String(n);
+const pct=(a,b)=>b? (a/b*100).toFixed(1)+'%':'—';
 
 function kpi(label,val,sub){return '<div class="kpi"><label>'+label+'</label><b>'+val+'</b><small>'+(sub||'')+'</small></div>'}
 
@@ -735,7 +765,7 @@ function renderLang(d){
  const elEmpty=q('#langEmpty'), elContent=q('#langContent');
  if(!d || d.totals.days===0){ elEmpty.style.display='block'; elContent.style.display='none'; return; }
  elEmpty.style.display='none'; elContent.style.display='block';
- const elAccountXp=q('#langAccountXp')||q('#langHeroXp'); if(elAccountXp) elAccountXp.textContent=(d.totalXp??0).toLocaleString('es-ES')+' XP';
+ const elAccountXp=q('#langAccountXp')||q('#langHeroXp'); if(elAccountXp) elAccountXp.textContent=d.totalXp!=null? d.totalXp.toLocaleString('es-ES')+' XP' : '—';
  const elAccountStreak=q('#langAccountStreak')||q('#langHeroStreak'); if(elAccountStreak) elAccountStreak.textContent=d.streak!=null? '🔥 '+d.streak+' días': '';
  const elAccountDays=q('#langAccountDays')||q('#langHeroDays'); if(elAccountDays) elAccountDays.textContent=t.activeDays+'/'+t.days+' días activos';
  const relDate=(iso)=>{ if(!iso) return '—'; const days=Math.floor((Date.now()-new Date(iso).getTime())/864e5); return days<=0?'hoy':days===1?'ayer':'hace '+days+'d'; };
@@ -762,7 +792,7 @@ function renderLang(d){
  const idx=d.courseProgressIndex||[];
  const indexByCourseId=new Map(idx.map(e=>[e.courseId,e]));
  const units=(s)=> s&&s.completedUnits!=null&&s.totalUnits!=null? s.completedUnits+' / '+s.totalUnits+' unidades' : null;
- const cefrPill=(c)=> c? '<span class="pill" style="border-color:#58a6ff;color:#a8c8ff" title="CEFR (fuente)">'+c+'</span>' : '';
+ const cefrPill=(c)=> c? '<span class="pill" style="border-color:#58a6ff;color:#a8c8ff" title="CEFR (fuente)">'+esc(c)+'</span>' : '';
  const unitsPill=(s)=> units(s)? '<span class="pill" style="border-color:#2ea043;color:#8fd19e" title="Path: unidades completadas de la sección">'+units(s)+'</span>' : '';
  q('#langIdiomas').innerHTML= langs.length? langs.map(c=>{
   // a language can group several courses (e.g. Demo Alpha from EN and from ES); show whichever was synced last
@@ -770,23 +800,23 @@ function renderLang(d){
   const path= entry && entry.summary
    ? ' '+cefrPill(entry.summary.currentCefr)+' '+unitsPill(entry.summary.activeSection)+' <span class="muted" style="font-size:11px">Path '+relDate(entry.capturedAt)+'</span>'
    : ' <span class="muted" style="font-size:11px">Path no sincronizado</span>';
-  return '<div class="row"><b>'+flag(c.lang)+' '+c.title+'</b><span><span class="pill">'+c.xp.toLocaleString('es-ES')+' XP</span>'+path+'</span></div>';
+  return '<div class="row"><b>'+flag(c.lang)+' '+esc(c.title)+'</b><span><span class="pill">'+c.xp.toLocaleString('es-ES')+' XP</span>'+path+'</span></div>';
  }).join('') : '<div class="muted">Sin idiomas</div>';
- q('#langOtros').innerHTML= otros.length? otros.map(c=>'<div class="row"><b>'+friendlyOtherName(c)+'</b><span class="pill">'+(c.xp!=null? c.xp.toLocaleString('es-ES')+' XP':'—')+'</span></div>').join('') : '<div class="muted">Sin otros</div>';
+ q('#langOtros').innerHTML= otros.length? otros.map(c=>'<div class="row"><b>'+esc(friendlyOtherName(c))+'</b><span class="pill">'+(c.xp!=null? c.xp.toLocaleString('es-ES')+' XP':'—')+'</span></div>').join('') : '<div class="muted">Sin otros</div>';
  const limitation='Cada captura trae el Path de un solo curso; los demás cursos conservan el último Path capturado (con su fecha).';
  if(!idx.length){
   q('#langProgress').innerHTML='<div class="muted">'+(d.courseProgressError? 'Formato de currentCourse no reconocido: '+d.courseProgressError : 'Sin progreso del Path capturado todavía — todavía no hay capturas con Path.')+'</div>';
  } else {
   const bar=(r,color)=>'<div class="bar" style="height:6px"><i style="width:'+(r!=null? (r*100).toFixed(1):0)+'%;background:'+color+'"></i></div>';
   q('#langProgress').innerHTML=[...idx].sort((a,b)=>b.capturedAt.localeCompare(a.capturedAt)).map(e=>{
-   if(!e.summary) return '<div class="row" style="margin-bottom:10px"><b>'+e.courseId+'</b><span class="muted" style="font-size:11px">Path no reconocido: '+e.formatError+'</span></div>';
+   if(!e.summary) return '<div class="row" style="margin-bottom:10px"><b>'+esc(e.courseId)+'</b><span class="muted" style="font-size:11px">Path no reconocido: '+esc(e.formatError)+'</span></div>';
    const s=e.summary, act=s.activeSection;
-   const lang=(s.learningLanguage? flag(s.learningLanguage)+' ':'')+(s.title||s.courseId);
+   const lang=(s.learningLanguage? flag(s.learningLanguage)+' ':'')+esc(s.title||s.courseId);
    return '<div style="margin-bottom:14px"><div class="row" style="margin-bottom:6px"><b>'+lang+'</b><span>'+(s.xp!=null? '<span class="pill">'+s.xp.toLocaleString('es-ES')+' XP</span> ':'')+cefrPill(s.currentCefr)+' <span class="muted" style="font-size:11px">Path '+relDate(e.capturedAt)+'</span></span></div>'
-    +(act? '<div class="muted" style="font-size:11px;margin-bottom:2px">'+(act.cefr||act.type||'Nivel actual')+(units(act)? ' · '+units(act) : '')+'</div>'+bar(act.completionRatio,'#2ea043') : '')
+    +(act? '<div class="muted" style="font-size:11px;margin-bottom:2px">'+esc(act.cefr||act.type||'Nivel actual')+(units(act)? ' · '+units(act) : '')+'</div>'+bar(act.completionRatio,'#2ea043') : '')
     +(s.completionRatio!=null? '<div class="muted" style="margin-top:8px;font-size:11px">Curso completo: '+s.completedUnits+' / '+s.totalUnits+' unidades ('+(s.completionRatio*100).toFixed(1)+'%)</div>'+bar(s.completionRatio,'#58a6ff') : '')
     +'<details style="margin-top:8px"><summary class="muted" style="cursor:pointer;font-size:11px">Ver detalle de secciones</summary>'
-    +s.sections.map(sec=>'<div class="hist-row"'+(act&&sec.index===act.index?' style="font-weight:600"':'')+'><span>'+(sec.cefr||sec.type||'—')+'</span>'+bar(sec.completionRatio,'#2ea043')+'<span>'+(sec.completedUnits!=null&&sec.totalUnits!=null? sec.completedUnits+'/'+sec.totalUnits : '—')+'</span></div>').join('')
+    +s.sections.map(sec=>'<div class="hist-row"'+(act&&sec.index===act.index?' style="font-weight:600"':'')+'><span>'+esc(sec.cefr||sec.type||'—')+'</span>'+bar(sec.completionRatio,'#2ea043')+'<span>'+(sec.completedUnits!=null&&sec.totalUnits!=null? sec.completedUnits+'/'+sec.totalUnits : '—')+'</span></div>').join('')
     +'</details></div>';
   }).join('');
  }
@@ -805,7 +835,7 @@ function renderLang(d){
     const xpArrow=dXp==null?'':dXp>0?' ↑ +'+dXp.toLocaleString('es-ES'):' →';
     if(!pathArrow&&!xpArrow) continue;
     const label=first.title||first.learningLanguage||cid;
-    evoHtml+='<div class="muted" style="font-size:11px">Evolución · '+label+' · Path'+pathArrow+' · XP'+xpArrow+' · desde '+first.capturedAt.slice(0,10)+' ('+relDate(first.capturedAt)+')</div>';
+    evoHtml+='<div class="muted" style="font-size:11px">Evolución · '+esc(label)+' · Path'+pathArrow+' · XP'+xpArrow+' · desde '+first.capturedAt.slice(0,10)+' ('+relDate(first.capturedAt)+')</div>';
   }
   q('#langProgressNote').innerHTML=limitation+(evoHtml?'<div style="margin-top:6px">'+evoHtml+'</div>':'');
   const d7=sumLast(d.summaries,7), d30=sumLast(d.summaries,30), p7=sumLast(d.summaries.slice(0,-7),7), p30=sumLast(d.summaries.slice(0,-30),30);
@@ -866,7 +896,7 @@ async function showCourseDetail(courseId){
    const comp=s.completedUnits||0;
    const ratio=s.totalUnits? (comp/s.totalUnits) : 0;
    return '<div class="row" style="padding:10px 0;border-bottom:1px solid #1e2e44"><div style="flex:1">'
-    +'<div style="display:flex;justify-content:space-between;align-items:baseline"><b>SECCIÓN '+s.sectionIndex+': '+cefrLabel+'</b><span><b>'+(s.completedUnits??0)+' / '+(s.totalUnits??0)+' unidades</b></span></div>'
+    +'<div style="display:flex;justify-content:space-between;align-items:baseline"><b>SECCIÓN '+s.sectionIndex+': '+esc(cefrLabel)+'</b><span><b>'+(s.completedUnits??0)+' / '+(s.totalUnits??0)+' unidades</b></span></div>'
     +'<div style="margin-top:6px">'+bar(ratio,'#2ea043')+'</div>'
     +'<details style="margin-top:6px"><summary class="muted" style="cursor:pointer;font-size:11px">Detalle de sección</summary>'
     +'<div class="muted" style="font-size:12px;margin-top:4px">Section ID: '+s.sectionId+' · Tipo: '+(s.type||'learning')+' · '+(s.lastSeenAt? 'Última observación: '+s.lastSeenAt.slice(0,10):'')+'</div>'
@@ -935,6 +965,21 @@ async function selectCourse(courseId, skipHistory){
  if(lastLangsData) renderLanguagesView(lastLangsData, lastAnalyticsData, lastLangXpData, detail);
  renderOverviewLangCard(lastLangsData, detail);
 }
+let dailyGoalXp=null;
+function goalColor(xp,goal){
+ if(!(xp>0)) return '#1e2e44';
+ if(goal==null) return '#8ea0b8';
+ return xp>=goal? '#2ea043' : '#58a6ff';
+}
+function renderGoalSummary(days7, summaries){
+ const el=q('#langGoalToday');
+ if(!el) return;
+ if(dailyGoalXp==null){ el.textContent='Sin objetivo diario configurado.'; return; }
+ const xpOf=iso=>{ const s=summaries.find(x=>{ const xIso=typeof x.date==='string'? x.date.slice(0,10):new Date(x.date>1e11? x.date:x.date*1000).toISOString().slice(0,10); return xIso===iso; }); return s? (s.gainedXp||0):0; };
+ const today=xpOf(days7[days7.length-1].date);
+ const met=days7.filter(d=>xpOf(d.date)>=dailyGoalXp).length;
+ el.textContent='Hoy: '+today.toLocaleString('es-ES')+' / '+dailyGoalXp.toLocaleString('es-ES')+' XP'+(today>=dailyGoalXp? ' · objetivo cumplido':'')+' · '+met+' de 7 días con objetivo cumplido';
+}
 function renderLanguagesView(langData, analyticsData, xpData, activeDetail){
  if(langData) lastLangsData=langData;
  if(analyticsData) lastAnalyticsData=analyticsData;
@@ -961,7 +1006,7 @@ function renderLanguagesView(langData, analyticsData, xpData, activeDetail){
  // 1. HeroCard (Orientación 3s) - populate course selector
  const elSelect=q('#langCourseSelect');
  if(elSelect){
-  elSelect.innerHTML=courses.map(c=>'<option value="'+c.courseId+'">'+(c.learningLanguage?flag(c.learningLanguage)+' ':'')+(c.title||c.courseId)+' ('+Number(c.xp||0).toLocaleString('es-ES')+' XP)</option>').join('');
+  elSelect.innerHTML=courses.map(c=>'<option value="'+esc(c.courseId)+'">'+(c.learningLanguage?flag(c.learningLanguage)+' ':'')+esc(c.title||c.courseId)+' ('+Number(c.xp||0).toLocaleString('es-ES')+' XP)</option>').join('');
   elSelect.value=selectedCourseId||'';
  }
  const elFlag=q('#langCourseFlag');
@@ -1003,7 +1048,7 @@ function renderLanguagesView(langData, analyticsData, xpData, activeDetail){
  }
 
  const elAccountXp=q('#langAccountXp')||q('#langHeroXp');
- if(elAccountXp) elAccountXp.textContent=(langs.totalXp??0).toLocaleString('es-ES')+' XP';
+ if(elAccountXp) elAccountXp.textContent=langs.totalXp!=null? Number(langs.totalXp).toLocaleString('es-ES')+' XP' : '—';
  const elAccountStreak=q('#langAccountStreak')||q('#langHeroStreak');
  if(elAccountStreak) elAccountStreak.textContent=langs.streak!=null? '🔥 '+Number(langs.streak).toLocaleString('es-ES')+' días':'—';
  const activeDays=summaries.filter(s=>s.gainedXp>0).length;
@@ -1015,7 +1060,7 @@ function renderLanguagesView(langData, analyticsData, xpData, activeDetail){
  const lastActivityDay=summaries.length? summaries[summaries.length-1].date*1000 : null;
  const lastActivityIso=lastActivityDay? new Date(lastActivityDay).toISOString().slice(0,10) : null;
  const elSyncMeta=q('#langSyncMeta');
- if(elSyncMeta) elSyncMeta.textContent='Sincronizado '+relDate(langs.updatedAt||langs.createdAt)+(lastActivityIso?' · Actividad hasta '+lastActivityIso:'')+(duolingoCurrentCourseId?' · Último curso en Duolingo: '+duolingoCurrentCourseId:'');
+ if(elSyncMeta) elSyncMeta.textContent='Sincronizado '+relDate(langs.updatedAt||langs.createdAt)+(lastActivityIso?' · Actividad hasta '+lastActivityIso:'')+(duolingoCurrentCourseId?' · Último curso en Duolingo: '+duolingoCurrentCourseId:'')+accountStaleNote(langs);
 
  // 2. ActivityStrip (Estado 10s)
  const days7=[];
@@ -1040,7 +1085,7 @@ function renderLanguagesView(langData, analyticsData, xpData, activeDetail){
    const secVal=s? (s.totalSessionTime||0):0;
    wXp+=xpVal; wSes+=sesVal; wSec+=secVal;
    const minVal=Math.round(secVal/60);
-   const c=xpVal>=500?'#2ea043':xpVal>=100?'#58a6ff':xpVal>0?'#8ea0b8':'#1e2e44';
+   const c=goalColor(xpVal,dailyGoalXp);
    return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px" title="'+day.date+': '+xpVal+' XP · '+sesVal+' ses · '+minVal+' min">'
     +'<span class="muted" style="font-size:11px">'+day.dayLetter+'</span>'
     +'<div style="width:22px;height:22px;border-radius:50%;background:'+c+';display:flex;align-items:center;justify-content:center"></div>'
@@ -1052,6 +1097,7 @@ function renderLanguagesView(langData, analyticsData, xpData, activeDetail){
    elWeekSum.textContent=wXp.toLocaleString('es-ES')+' XP · '+wSes+' ses'+(wMin>0?' · '+wMin+' min':'');
   }
  }
+ renderGoalSummary(days7, summaries);
 
  // 3. Tus Cursos (Comprensión 1m) - Orden canónico del catálogo (/api/languages: xp DESC)
  const deterministicCourses=courses;
@@ -1078,7 +1124,7 @@ function renderLanguagesView(langData, analyticsData, xpData, activeDetail){
        const ratio=s.totalUnits? (comp/s.totalUnits) : 0;
        const pct=(ratio*100).toFixed(1);
        return '<div class="row" style="padding:6px 0;border-bottom:1px solid #1e2e44"><div style="flex:1">'
-        +'<div style="display:flex;justify-content:space-between;align-items:baseline;font-size:12px"><b>SECCIÓN '+s.sectionIndex+': '+cefrLabel+'</b><span><b>'+comp+' / '+(s.totalUnits??0)+' unidades</b> ('+pct+'%)</span></div>'
+        +'<div style="display:flex;justify-content:space-between;align-items:baseline;font-size:12px"><b>SECCIÓN '+s.sectionIndex+': '+esc(cefrLabel)+'</b><span><b>'+comp+' / '+(s.totalUnits??0)+' unidades</b> ('+pct+'%)</span></div>'
         +'<div class="progress-bar" style="height:6px;margin-top:4px"><div style="width:'+pct+'%;background:#2ea043"></div></div>'
         +'</div></div>';
      }).join('')
@@ -1096,10 +1142,10 @@ function renderLanguagesView(langData, analyticsData, xpData, activeDetail){
    }
 
    return '<details class="card" style="margin:0 0 8px 0;padding:12px;background:#0e1724" '+(isSelected?'open':'')+'>'
-    +'<summary style="cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px" onclick="selectCourse(\\''+c.courseId+'\\')">'
+    +'<summary style="cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px" onclick="selectCourse('+esc(JSON.stringify(c.courseId))+')">'
     +'<div style="display:flex;align-items:center;gap:8px">'
     +'<span style="font-size:18px">'+flag(c.learningLanguage)+'</span>'
-    +'<div><b>'+(c.title||c.courseId)+'</b>'+(isSelected?' <span class="pill pill-selected" style="font-size:10px">Seleccionado</span>':'')+'<div class="muted" style="font-size:11px">'+cFromTo+'</div></div>'
+    +'<div><b>'+esc(c.title||c.courseId)+'</b>'+(isSelected?' <span class="pill pill-selected" style="font-size:10px">Seleccionado</span>':'')+'<div class="muted" style="font-size:11px">'+esc(cFromTo)+'</div></div>'
     +'</div>'
     +'<div style="display:flex;align-items:center;gap:8px">'
     +'<span class="pill" style="font-weight:700">'+cXp+'</span>'
@@ -1110,7 +1156,7 @@ function renderLanguagesView(langData, analyticsData, xpData, activeDetail){
     +'<div style="margin-top:10px;padding-top:8px;border-top:1px solid #1e2e44">'
     +sectionsHtml
     +'<div style="margin-top:8px;display:flex;justify-content:flex-end">'
-    +'<button class="btn btn-g" style="padding:4px 8px;font-size:11px" onclick="showCourseDetail(\\''+c.courseId+'\\')">Ver detalle curricular completo</button>'
+    +'<button class="btn btn-g" style="padding:4px 8px;font-size:11px" onclick="showCourseDetail('+esc(JSON.stringify(c.courseId))+')">Ver detalle curricular completo</button>'
     +'</div>'
     +'</div>'
     +'</details>';
@@ -1199,7 +1245,7 @@ function renderLanguagesAnalytics(a){
    +'<div class="hist">'
    +cList.map(c=>{
      const barW=(c.sharePercentage||0).toFixed(1);
-     return '<div class="hist-row"><span style="width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(c.title||c.courseId)+'</span><div class="bar"><i style="width:'+barW+'%;background:#2ea043"></i></div><span style="min-width:70px;text-align:right">'+barW+'%</span></div>';
+     return '<div class="hist-row"><span style="width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(c.title||c.courseId)+'</span><div class="bar"><i style="width:'+barW+'%;background:#2ea043"></i></div><span style="min-width:70px;text-align:right">'+barW+'%</span></div>';
    }).join('')
    +'</div>'
    +'<div class="muted" style="font-size:11px;margin-top:8px">Total vitalicio lingüístico: '+(hc.totalLinguisticXp||0).toLocaleString('es-ES')+' XP en '+(hc.courses||[]).length+' cursos. Medida puramente matemática sin juicio de balance.</div>';
@@ -1224,14 +1270,14 @@ function renderLanguagesAnalytics(a){
     const prevDate=d.previousObservedAt?d.previousObservedAt.slice(0,10):'—';
     const latestDate=d.latestObservedAt?d.latestObservedAt.slice(0,10):'—';
     return '<div class="row" style="padding:8px 0"><div style="flex:1">'
-     +'<div style="display:flex;justify-content:space-between;align-items:center"><b>'+d.courseId+'</b>'+statusPill+'</div>'
+     +'<div style="display:flex;justify-content:space-between;align-items:center"><b>'+esc(d.courseId)+'</b>'+statusPill+'</div>'
      +'<div style="font-size:12px;margin-top:4px">'+deltaText+'</div>'
      +'<div class="muted" style="font-size:11px;margin-top:2px">Observado: '+prevDate+' → '+latestDate+'</div>'
      +'</div></div>';
    });
    const waitingRows=waiting.map(c=>
     '<div class="row" style="padding:8px 0"><div style="flex:1">'
-    +'<div style="display:flex;justify-content:space-between;align-items:center"><b>'+(c.title||c.id)+'</b><span class="pill pill-draw">ESPERANDO 2ª OBSERVACIÓN</span></div>'
+    +'<div style="display:flex;justify-content:space-between;align-items:center"><b>'+esc(c.title||c.id)+'</b><span class="pill pill-draw">ESPERANDO 2ª OBSERVACIÓN</span></div>'
     +'<div class="muted" style="font-size:11px;margin-top:2px">Aún no hay una segunda captura del Path de este curso para poder comparar.</div>'
     +'</div></div>'
    );
@@ -1247,9 +1293,9 @@ function renderOverviewLangCard(langs, activeDetail){
  if(elActiveCourse){
   const flagStr = activeCourse && activeCourse.learningLanguage ? flag(activeCourse.learningLanguage) + ' ' : '';
   const arrowStr = activeCourse && activeCourse.fromLanguage && activeCourse.learningLanguage
-   ? ' <span class="muted" style="font-size:12px;font-weight:400">(' + activeCourse.fromLanguage.toUpperCase() + ' → ' + activeCourse.learningLanguage.toUpperCase() + ')</span>'
+   ? ' <span class="muted" style="font-size:12px;font-weight:400">(' + esc(activeCourse.fromLanguage.toUpperCase()) + ' → ' + esc(activeCourse.learningLanguage.toUpperCase()) + ')</span>'
    : '';
-  elActiveCourse.innerHTML = flagStr + (activeCourse ? (activeCourse.title || activeCourse.courseId) : (selectedCourseId || 'Ninguno')) + arrowStr;
+  elActiveCourse.innerHTML = flagStr + esc(activeCourse ? (activeCourse.title || activeCourse.courseId) : (selectedCourseId || 'Ninguno')) + arrowStr;
  }
 
  const {completed: completedUnits, total: totalUnits} = getCourseProgress(activeDetail);
@@ -1520,10 +1566,12 @@ async function loadLanguagesDashboard(){
    q('#langContent').style.display='none';
    return;
   }
-  const [xpData, analytics]=await Promise.all([
+  const [xpData, analytics, settings]=await Promise.all([
    j('/api/languages/xp?days=90').catch(()=>({summaries:[]})),
    j('/api/languages/analytics').catch(()=>null),
+   j('/api/me/settings').catch(()=>null),
   ]);
+  dailyGoalXp=settings&&typeof settings.dailyGoalXp==='number'? settings.dailyGoalXp : null;
   // Resolve selectedCourseId (Canonical Route > localStorage > max XP); duolingoCurrentCourseId is purely observational
   const route=parseCanonicalRoute(location.pathname, location.hash, location.search);
   selectedCourseId=resolveSelectedCourseId(langs.courses, route.courseId);
@@ -1601,24 +1649,24 @@ function pillResult(r){
  if(r.includes('win')||r==='won') return '<span class="pill pill-win">Victoria</span>';
  if(r.includes('los')||r.includes('defeat')) return '<span class="pill pill-loss">Derrota</span>';
  if(r.includes('draw')||r.includes('tie')) return '<span class="pill pill-draw">Tablas</span>';
- return '<span class="pill">'+(r||'—')+'</span>';
+ return '<span class="pill">'+esc(r||'—')+'</span>';
 }
 function pillType(t){
  t=String(t||'').toLowerCase();
  if(t==='bot') return '<span class="pill">Bot</span>';
  if(t==='pvp') return '<span class="pill" style="border-color:#58a6ff;color:#a8c8ff">PvP</span>';
- return '<span class="pill">'+(t||'—')+'</span>';
+ return '<span class="pill">'+esc(t||'—')+'</span>';
 }
 function pillEnd(c){
  if(!c||c==='unknown') return '<span class="pill" style="opacity:.4">—</span>';
  const labels={checkmate:'Mate',disconnection:'Desconexión',stalemate:'Ahogado',repetition:'Repetición',resignation:'Rendición',insufficient_material:'Material',timeout:'Tiempo',fifty_moves:'50 jugadas'};
- return '<span class="pill">'+(labels[c]||c)+'</span>';
+ return '<span class="pill">'+esc(labels[c]||c)+'</span>';
 }
 function pillSegment(s){
  if(!s||s==='unknown') return '';
  const labels={noisy_neural:'Noisy Neural',neural:'Neural',blended:'Blended',stockfish:'Stockfish',pvp:'PvP'};
  const label=labels[s]||s;
- return ' <span class="pill" style="font-size:10px;margin-left:4px;opacity:.85">'+label+'</span>';
+ return ' <span class="pill" style="font-size:10px;margin-left:4px;opacity:.85">'+esc(label)+'</span>';
 }
 
 function formatMatchDate(playedAt, firstSeenAt) {
@@ -1642,7 +1690,7 @@ function renderCompare(groups, totalGames){
   const dec=g.decided||0, w=dec?Math.round(g.wins/dec*100):0, l=dec?Math.round(g.losses/dec*100):0, d=dec?100-w-l:0; // bars are shares of decided games; unknowns are reported apart
   const pctGames=totalGames? (g.games/totalGames*100).toFixed(1):'0';
   const label=g.label||segLabels[g.key]||g.key;
-  return '<div class="row"><div style="flex:1"><div style="display:flex;justify-content:space-between;align-items:baseline"><b>'+label+'</b><span class="muted">'+g.games+' · '+pctGames+'%</span></div><div class="bar" style="margin-top:6px;display:flex"><i class="bar-win" style="width:'+w+'%"></i><i class="bar-loss" style="width:'+l+'%"></i><i class="bar-draw" style="width:'+d+'%"></i></div><div class="muted" style="margin-top:4px;display:flex;gap:10px;flex-wrap:wrap"><span>Win '+pctCi(g.winRate,g.winRateCi)+'</span><span>Score '+(g.scoreRate!=null?(g.scoreRate*100).toFixed(1)+'%':'—')+'</span>'+'<span>· barra sobre '+dec+' decididas'+(g.unknown?' · '+g.unknown+' sin resultado':'')+'</span>'+'</div></div></div>';
+  return '<div class="row"><div style="flex:1"><div style="display:flex;justify-content:space-between;align-items:baseline"><b>'+esc(label)+'</b><span class="muted">'+g.games+' · '+pctGames+'%</span></div><div class="bar" style="margin-top:6px;display:flex"><i class="bar-win" style="width:'+w+'%"></i><i class="bar-loss" style="width:'+l+'%"></i><i class="bar-draw" style="width:'+d+'%"></i></div><div class="muted" style="margin-top:4px;display:flex;gap:10px;flex-wrap:wrap"><span>Win '+pctCi(g.winRate,g.winRateCi)+'</span><span>Score '+(g.scoreRate!=null?(g.scoreRate*100).toFixed(1)+'%':'—')+'</span>'+'<span>· barra sobre '+dec+' decididas'+(g.unknown?' · '+g.unknown+' sin resultado':'')+'</span>'+'</div></div></div>';
  }).join('') || '<div class="muted">Sin datos</div>';
 }
 
@@ -1661,7 +1709,7 @@ function renderRows(){
   q('#empty').style.display='none';
   q('#mb').innerHTML=rows.map(m=>{
    var fullDate = m.played_at ? new Date(m.played_at * 1000).toLocaleString('es-ES') : (m.first_seen_at ? new Date(m.first_seen_at).toLocaleString('es-ES') : '');
-   return '<tr><td data-l="Fecha"' + (fullDate ? ' title="' + fullDate + '"' : '') + '>' + formatMatchDate(m.played_at, m.first_seen_at) + '</td><td data-l="Rival">'+(m.opponent_name||'—')+pillSegment(m.opponent_segment)+'</td><td data-l="Tipo">'+pillType(m.opponent_type)+(m.opening_key&&m.opening_key!=='unclassified'?'<span class="pill" style="font-size:10px;margin-left:4px;opacity:.75">'+m.opening_key+'</span>':'')+(m.phase_key&&m.phase_key!=='unknown'?'<span class="pill" style="font-size:10px;margin-left:4px;opacity:.8">'+({opening:'Aper.',middlegame:'Medio',endgame:'Final'}[m.phase_key]||m.phase_key)+'</span>':'')+'</td><td data-l="ELO">'+fmt(m.opponent_elo)+'</td><td data-l="Color">'+(m.user_color||'—')+'</td><td data-l="Resultado">'+pillResult(m.result||m.outcome)+'</td><td data-l="Fin">'+pillEnd(m.end_condition)+'</td><td data-l="Rev.">'+(m.reviewed?'✓':'')+'</td></tr>';
+   return '<tr><td data-l="Fecha"' + (fullDate ? ' title="' + fullDate + '"' : '') + '>' + formatMatchDate(m.played_at, m.first_seen_at) + '</td><td data-l="Rival">'+esc(m.opponent_name||'—')+pillSegment(m.opponent_segment)+'</td><td data-l="Tipo">'+pillType(m.opponent_type)+(m.opening_key&&m.opening_key!=='unclassified'?'<span class="pill" style="font-size:10px;margin-left:4px;opacity:.75">'+esc(m.opening_key)+'</span>':'')+(m.phase_key&&m.phase_key!=='unknown'?'<span class="pill" style="font-size:10px;margin-left:4px;opacity:.8">'+({opening:'Aper.',middlegame:'Medio',endgame:'Final'}[m.phase_key]||esc(m.phase_key))+'</span>':'')+'</td><td data-l="ELO">'+fmt(m.opponent_elo)+'</td><td data-l="Color">'+esc(m.user_color||'—')+'</td><td data-l="Resultado">'+pillResult(m.result||m.outcome)+'</td><td data-l="Fin">'+pillEnd(m.end_condition)+'</td><td data-l="Rev.">'+(m.reviewed?'✓':'')+'</td></tr>';
   }).join('');
  }
 }
@@ -2037,13 +2085,15 @@ function renderWhatChanged(data){
  }
 }
 init();
+resumeSync();
 </script></body></html>`;
 
 export const RAW_HTML = `<!doctype html><html><head><meta charset="utf-8"><title>Raw · Meridian</title><style>body{font-family:monospace;background:#0e141c;color:#e6edf3;padding:24px}pre{background:#131f33;padding:12px;border-radius:8px;overflow:auto;border:1px solid #1e2e44}a{color:#7aa7e6}</style></head><body>
 <p><a href="/">← Volver al dashboard</a></p><h1>Raw snapshots · debug</h1><div id="l"></div><pre id="d">selecciona un snapshot…</pre><script>
+const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 async function init(){const d=await (await fetch('/api/snapshots')).json();
-document.querySelector('#l').innerHTML=d.snapshots.map(s=>{const countLabel=s.games_count!=null?(s.games_count+' games'):(s.source==='duolingo-lang'?'languages':s.source); return '<div><button onclick="show(\\''+s.id+'\\')" style="background:#1e2e44;color:#e6edf3;border:1px solid #2a3d56;border-radius:6px;padding:4px 8px;cursor:pointer;margin:2px">'+s.created_at.slice(0,19)+' · '+countLabel+' · '+s.checksum.slice(0,12)+'</button> '+s.source+'</div>';}).join('');}
-async function show(id){const d=await (await fetch('/api/snapshots/'+id+'?raw=1')).json();document.querySelector('#d').textContent=JSON.stringify(JSON.parse(d.raw_json),null,1).slice(0,20000);}
+document.querySelector('#l').innerHTML=d.snapshots.map(s=>{const countLabel=s.games_count!=null?(s.games_count+' games'):(s.source==='duolingo-lang'?'languages':s.source); return '<div><button onclick="show('+esc(JSON.stringify(s.id))+')" style="background:#1e2e44;color:#e6edf3;border:1px solid #2a3d56;border-radius:6px;padding:4px 8px;cursor:pointer;margin:2px">'+esc(s.created_at.slice(0,19))+' · '+esc(countLabel)+' · '+esc(s.checksum.slice(0,12))+'</button> '+esc(s.source)+'</div>';}).join('');}
+async function show(id){const d=await (await fetch('/api/snapshots/'+encodeURIComponent(id)+'?raw=1')).json();document.querySelector('#d').textContent=JSON.stringify(JSON.parse(d.raw_json),null,1).slice(0,20000);}
 init();</script></body></html>`;
 
 export function escapeHtml(str: string | null | undefined): string {
