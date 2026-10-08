@@ -389,14 +389,6 @@ svg text{font-family:system-ui,sans-serif}
           <p style="margin:6px 0"><b>3. Aislamiento de métricas de actividad:</b> Las series temporales de XP proceden de <code>xp_summaries</code> a nivel de cuenta. No se realiza atribución heurística de XP a cursos individuales para preservar la exactitud epistemológica.</p>
         </div>
       </details>
-
-      <div style="display:none" id="langLegacyContainer">
-        <div id="langRitmo"></div><div id="langRitmoSub"></div><div id="langEvo"></div><div id="langEvoNote"></div>
-        <div id="langDist"></div><div id="langPct"></div><div id="langForm"></div>
-        <table class="tbl"><tbody id="langDaily"></tbody></table>
-        <div id="langIdiomas"></div><div id="langOtros"></div>
-        <div id="langProgress"></div><div id="langProgressNote"></div>
-      </div>
      </div>
 
      <!-- Nivel 2: Detalle de Curso -->
@@ -714,47 +706,9 @@ function histBuckets(buckets,count){
  const max=Math.max(1,...Object.values(buckets));
  return Object.entries(buckets).map(([k,v])=>'<div class="hist-row"><span>'+k+'</span><div class="bar"><i style="width:'+(v/max*100).toFixed(1)+'%;background:#58a6ff"></i></div><span style="width:36px;text-align:right">'+v+'</span></div>').join('');
 }
-function fmtTime(s){ if(s==null) return '—'; const h=Math.floor(s/3600), m=Math.floor((s%3600)/60); return h? h+'h '+m+'m' : m+'m'; }
-let langMetric='xp', langData=null;
 function valFor(s, m){ return m==='xp'? s.gainedXp : m==='sessions'? s.numSessions : s.totalSessionTime; }
-function barXp(summaries, metric){
- if(!summaries.length) return '<div class="muted">Sin datos</div>';
- const vals=summaries.map(s=>valFor(s, metric));
- const max=Math.max(1,...vals);
- const n=summaries.length, gap=2, W=520, H=90, pad=8, bw=Math.max(2,(W-pad*2 - gap*(n-1))/n);
- let html='<div style="display:flex;align-items:flex-end;gap:'+gap+'px;height:'+H+'px;padding:0 '+pad+'px">';
- for(let i=0;i<n;i++){ const v=vals[i], h=Math.round(v/max*(H-16)); const c=v? '#58a6ff':'#1e2e44'; const lab=new Date(summaries[i].date*1000).toISOString().slice(0,10)+': '+v+(metric==='xp'?' XP':metric==='sessions'?' ses': 's'); html+='<div title="'+lab+'" style="flex:1;max-width:'+bw+'px;height:'+h+'px;background:'+c+';border-radius:3px 3px 0 0"></div>'; }
- html+='</div>';
- const first=new Date(summaries[0].date*1000).toISOString().slice(0,10), last=new Date(summaries[summaries.length-1].date*1000).toISOString().slice(0,10);
- return html+'<div class="muted" style="display:flex;justify-content:space-between"><span>'+first+'</span><span>'+last+'</span></div>';
-}
-function setLangMetric(m){ langMetric=m; for(const k of ['Xp','Ses','Time']){ const el=q('#lb'+k); if(el) el.className='btn '+( (m==='xp'&&k==='Xp')||(m==='sessions'&&k==='Ses')||(m==='time'&&k==='Time') ? 'btn-p':'btn-g'); } q('#langEvo').innerHTML=barXp(langData.summaries, langMetric); }
-function sumLast(summaries, n){
- const slice=summaries.slice(-n);
- return { gainedXp: slice.reduce((a,x)=>a+x.gainedXp,0), sessions: slice.reduce((a,x)=>a+x.numSessions,0), active: slice.filter(x=>x.gainedXp>0).length, days: slice.length };
-}
-function pctile(arr, p){ if(!arr.length) return null; const s=[...arr].sort((a,b)=>a-b); const i=Math.ceil(p/100*s.length)-1; return s[Math.max(0,Math.min(i,s.length-1))]; }
-const OTHER_NAMES={CHESS:'Chess', MUSIC:'Música', MATH:'Matemáticas'};
-function friendlyOtherName(c){
- const prefix=(c.id||'').toUpperCase().split('_')[0];
- return OTHER_NAMES[prefix] || c.title || c.id;
-}
 const flag=(code)=>({es:'🇪🇸',fr:'🇫🇷',en:'🇬🇧',ja:'🇯🇵',zh:'🇨🇳',it:'🇮🇹',de:'🇩🇪',ru:'🇷🇺',pt:'🇵🇹',ko:'🇰🇷',ar:'🇸🇦',hi:'🇮🇳'}[String(code||'').toLowerCase()]||'🌐');
-function groupCourses(courses){
- const langMap=new Map(), otros=[];
- for(const c of courses){
-  const id=(c.id||'').toUpperCase();
-  if(id.startsWith('CHESS_')||id.startsWith('MUSIC_')||id.startsWith('MATH_')){ otros.push(c); continue; }
-  const key=(c.learningLanguage || c.id || '').toLowerCase() || c.id;
-  const name=(c.title || c.id).split(' ')[0];
-  if(!langMap.has(key)) langMap.set(key, { title: name, xp: 0, ids: [], lang: c.learningLanguage || '' });
-  langMap.get(key).xp+=(c.xp||0); langMap.get(key).ids.push(c.id);
- }
- const langs=[...langMap.values()].sort((a,b)=>b.xp-a.xp);
- return { langs, otros: otros.sort((a,b)=>(b.xp||0)-(a.xp||0)) };
-}
 function renderLang(d){
- langData=d;
  const elEmpty=q('#langEmpty'), elContent=q('#langContent');
  if(!d || d.totals.days===0){ elEmpty.style.display='block'; elContent.style.display='none'; return; }
  elEmpty.style.display='none'; elContent.style.display='block';
@@ -766,78 +720,6 @@ function renderLang(d){
  const lastPathSync=(d.courseProgressIndex||[]).reduce((max,e)=> !max||e.capturedAt>max? e.capturedAt:max, null);
  const lastActivityIso=lastActivityDay? new Date(lastActivityDay).toISOString().slice(0,10) : null;
  q('#langSyncMeta').textContent= 'Sincronizado '+relDate(d.createdAt)+' · Actividad hasta '+(lastActivityIso||'—')+(lastPathSync? ' · Path '+relDate(lastPathSync) : '');
- q('#langRitmo').innerHTML='<div><div class="muted" style="font-size:11px">XP/día</div><b>'+(t.avgXpPerDay!=null? t.avgXpPerDay.toFixed(0):'—')+'</b></div><div><div class="muted" style="font-size:11px">Ses/día</div><b>'+(t.avgSessionsPerDay!=null? t.avgSessionsPerDay.toFixed(1):'—')+'</b></div><div><div class="muted" style="font-size:11px">Min/día</div><b>'+(t.avgTimePerDay!=null? Math.round(t.avgTimePerDay/60):'—')+'</b></div><div><div class="muted" style="font-size:11px">XP/sesión</div><b>'+(t.xpPerSession!=null? t.xpPerSession.toFixed(0):'—')+'</b></div>';
- q('#langRitmoSub').textContent=t.gainedXp.toLocaleString('es-ES')+' XP · '+t.sessions+' sesiones · '+fmtTime(t.totalTime)+' · ~'+(t.totalTime&&t.gainedXp? (t.gainedXp/(t.totalTime/3600)).toFixed(0)+' XP/h':'—');
- setLangMetric(langMetric);
- q('#langEvoNote').textContent=t.days+' días · '+t.activeDays+' activos · '+(t.avgXpPerActiveDay!=null? t.avgXpPerActiveDay.toFixed(0)+' XP/día activo':'');
- const xpVals=d.summaries.map(s=>s.gainedXp);
- const p25=pctile(xpVals,25), p50=pctile(xpVals,50), p75=pctile(xpVals,75), p90=pctile(xpVals,90);
- const intense=d.summaries.filter(s=>s.gainedXp>=500).length, normal=d.summaries.filter(s=>s.gainedXp>=100&&s.gainedXp<500).length, maint=d.summaries.filter(s=>s.gainedXp>0&&s.gainedXp<100).length;
- q('#langDist').innerHTML='<div class="hist"><div class="hist-row"><span>Intenso ≥500</span><div class="bar"><i style="width:'+(intense/t.days*100).toFixed(0)+'%;background:#2ea043"></i></div><span>'+intense+'</span></div><div class="hist-row"><span>Normal</span><div class="bar"><i style="width:'+(normal/t.days*100).toFixed(0)+'%;background:#58a6ff"></i></div><span>'+normal+'</span></div><div class="hist-row"><span>Mantenimiento</span><div class="bar"><i style="width:'+(maint/t.days*100).toFixed(0)+'%;background:#8ea0b8"></i></div><span>'+maint+'</span></div></div>';
- q('#langPct').textContent='P25 '+p25+' · Mediana '+p50+' · P75 '+p75+' · P90 '+p90+' XP/día';
- // Daily table
- const badge=(xp)=> xp>=500? '<span class="pill pill-win">Intenso</span>' : xp>=100? '<span class="pill">Normal</span>' : xp>0? '<span class="pill" style="opacity:.7">Mantenimiento</span>' : '<span class="pill pill-draw">—</span>';
- q('#langDaily').innerHTML=[...d.summaries].reverse().map(s=>'<tr><td>'+new Date(s.date*1000).toISOString().slice(0,10)+'</td><td style="text-align:right"><b>'+s.gainedXp+'</b></td><td style="text-align:right">'+s.numSessions+'</td><td style="text-align:right">'+fmtTime(s.totalSessionTime)+'</td><td>'+badge(s.gainedXp)+'</td></tr>').join('');
- const {langs, otros}=groupCourses(d.courses);
- const flag=(code)=>({es:'🇪🇸',fr:'🇫🇷',en:'🇬🇧',ja:'🇯🇵',zh:'🇨🇳',it:'🇮🇹',de:'🇩🇪',ru:'🇷🇺',pt:'🇵🇹',ko:'🇰🇷',ar:'🇸🇦',hi:'🇮🇳'}[String(code||'').toLowerCase()]||'🌐');
- // XP (courses[], always current) and Path (courseProgressIndex, one entry per course, each dated by its
- // own last sync) are separate pills — a course can show fresh XP next to a stale or absent Path.
- const idx=d.courseProgressIndex||[];
- const indexByCourseId=new Map(idx.map(e=>[e.courseId,e]));
- const units=(s)=> s&&s.completedUnits!=null&&s.totalUnits!=null? s.completedUnits+' / '+s.totalUnits+' unidades' : null;
- const cefrPill=(c)=> c? '<span class="pill" style="border-color:#58a6ff;color:#a8c8ff" title="CEFR (fuente)">'+esc(c)+'</span>' : '';
- const unitsPill=(s)=> units(s)? '<span class="pill" style="border-color:#2ea043;color:#8fd19e" title="Path: unidades completadas de la sección">'+units(s)+'</span>' : '';
- q('#langIdiomas').innerHTML= langs.length? langs.map(c=>{
-  // a language can group several courses (e.g. Demo Alpha from EN and from ES); show whichever was synced last
-  const entry=c.ids.map(id=>indexByCourseId.get(id)).filter(Boolean).sort((a,b)=>b.capturedAt.localeCompare(a.capturedAt))[0];
-  const path= entry && entry.summary
-   ? ' '+cefrPill(entry.summary.currentCefr)+' '+unitsPill(entry.summary.activeSection)+' <span class="muted" style="font-size:11px">Path '+relDate(entry.capturedAt)+'</span>'
-   : ' <span class="muted" style="font-size:11px">Path no sincronizado</span>';
-  return '<div class="row"><b>'+flag(c.lang)+' '+esc(c.title)+'</b><span><span class="pill">'+c.xp.toLocaleString('es-ES')+' XP</span>'+path+'</span></div>';
- }).join('') : '<div class="muted">Sin idiomas</div>';
- q('#langOtros').innerHTML= otros.length? otros.map(c=>'<div class="row"><b>'+esc(friendlyOtherName(c))+'</b><span class="pill">'+(c.xp!=null? c.xp.toLocaleString('es-ES')+' XP':'—')+'</span></div>').join('') : '<div class="muted">Sin otros</div>';
- const limitation='Cada captura trae el Path de un solo curso; los demás cursos conservan el último Path capturado (con su fecha).';
- if(!idx.length){
-  q('#langProgress').innerHTML='<div class="muted">'+(d.courseProgressError? 'Formato de currentCourse no reconocido: '+d.courseProgressError : 'Sin progreso del Path capturado todavía — todavía no hay capturas con Path.')+'</div>';
- } else {
-  const bar=(r,color)=>'<div class="bar" style="height:6px"><i style="width:'+(r!=null? (r*100).toFixed(1):0)+'%;background:'+color+'"></i></div>';
-  q('#langProgress').innerHTML=[...idx].sort((a,b)=>b.capturedAt.localeCompare(a.capturedAt)).map(e=>{
-   if(!e.summary) return '<div class="row" style="margin-bottom:10px"><b>'+esc(e.courseId)+'</b><span class="muted" style="font-size:11px">Path no reconocido: '+esc(e.formatError)+'</span></div>';
-   const s=e.summary, act=s.activeSection;
-   const lang=(s.learningLanguage? flag(s.learningLanguage)+' ':'')+esc(s.title||s.courseId);
-   return '<div style="margin-bottom:14px"><div class="row" style="margin-bottom:6px"><b>'+lang+'</b><span>'+(s.xp!=null? '<span class="pill">'+s.xp.toLocaleString('es-ES')+' XP</span> ':'')+cefrPill(s.currentCefr)+' <span class="muted" style="font-size:11px">Path '+relDate(e.capturedAt)+'</span></span></div>'
-    +(act? '<div class="muted" style="font-size:11px;margin-bottom:2px">'+esc(act.cefr||act.type||'Nivel actual')+(units(act)? ' · '+units(act) : '')+'</div>'+bar(act.completionRatio,'#2ea043') : '')
-    +(s.completionRatio!=null? '<div class="muted" style="margin-top:8px;font-size:11px">Curso completo: '+s.completedUnits+' / '+s.totalUnits+' unidades ('+(s.completionRatio*100).toFixed(1)+'%)</div>'+bar(s.completionRatio,'#58a6ff') : '')
-    +'<details style="margin-top:8px"><summary class="muted" style="cursor:pointer;font-size:11px">Ver detalle de secciones</summary>'
-    +s.sections.map(sec=>'<div class="hist-row"'+(act&&sec.index===act.index?' style="font-weight:600"':'')+'><span>'+esc(sec.cefr||sec.type||'—')+'</span>'+bar(sec.completionRatio,'#2ea043')+'<span>'+(sec.completedUnits!=null&&sec.totalUnits!=null? sec.completedUnits+'/'+sec.totalUnits : '—')+'</span></div>').join('')
-    +'</details></div>';
-  }).join('');
- }
-  const hist2=d.courseProgressHistory||[];
-  const byCourse=new Map();
-  for(const p of hist2){ if(!byCourse.has(p.courseId)) byCourse.set(p.courseId,[]); byCourse.get(p.courseId).push(p); }
-  let evoHtml='';
-  for(const [cid,pts] of byCourse){
-    if(pts.length<2) continue;
-    const first=pts[0], last=pts[pts.length-1];
-    const pathPts=pts.filter(x=>x.path&&x.path.completedUnits!=null);
-    let dPath=null;
-    if(pathPts.length>=2) dPath=pathPts[pathPts.length-1].path.completedUnits-pathPts[0].path.completedUnits;
-    const dXp=first.xp!=null&&last.xp!=null?last.xp-first.xp:null;
-    const pathArrow=dPath==null?'':dPath>0?' ↑ +'+dPath:' →';
-    const xpArrow=dXp==null?'':dXp>0?' ↑ +'+dXp.toLocaleString('es-ES'):' →';
-    if(!pathArrow&&!xpArrow) continue;
-    const label=first.title||first.learningLanguage||cid;
-    evoHtml+='<div class="muted" style="font-size:11px">Evolución · '+esc(label)+' · Path'+pathArrow+' · XP'+xpArrow+' · desde '+first.capturedAt.slice(0,10)+' ('+relDate(first.capturedAt)+')</div>';
-  }
-  q('#langProgressNote').innerHTML=limitation+(evoHtml?'<div style="margin-top:6px">'+evoHtml+'</div>':'');
-  const d7=sumLast(d.summaries,7), d30=sumLast(d.summaries,30), p7=sumLast(d.summaries.slice(0,-7),7), p30=sumLast(d.summaries.slice(0,-30),30);
- const pct=(a,b)=> b? ((a-b)/b*100).toFixed(1)+'%':'—';
- const arrow=(a,b)=> a>b?' ↑': a<b?' ↓':' ·';
- q('#langForm').innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
-  +'<div><div class="muted" style="font-size:11px;letter-spacing:.04em;text-transform:uppercase">Últimos 7 días</div><div style="font-weight:700">'+d7.gainedXp.toLocaleString('es-ES')+' XP · '+d7.sessions+' ses</div><div class="muted">'+d7.active+' días activos</div><div class="muted" style="margin-top:4px;font-size:11px">vs 7 ant: '+pct(d7.gainedXp,p7.gainedXp)+arrow(d7.gainedXp,p7.gainedXp)+' · '+pct(d7.sessions,p7.sessions)+arrow(d7.sessions,p7.sessions)+' ses</div></div>'
-  +'<div style="border-left:1px solid #1e2e44;padding-left:12px"><div class="muted" style="font-size:11px;letter-spacing:.04em;text-transform:uppercase">Últimos 30 días</div><div style="font-weight:700">'+d30.gainedXp.toLocaleString('es-ES')+' XP · '+d30.sessions+' ses</div><div class="muted">'+d30.active+' días activos</div><div class="muted" style="margin-top:4px;font-size:11px">vs 30 ant: '+pct(d30.gainedXp,p30.gainedXp)+arrow(d30.gainedXp,p30.gainedXp)+' · '+pct(d30.sessions,p30.sessions)+arrow(d30.sessions,p30.sessions)+' ses</div></div>'
-  +'</div>';
 }
 
 function showLanguagesGlobal(){
