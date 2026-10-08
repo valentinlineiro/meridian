@@ -76,6 +76,16 @@ describe("evaluation cards (P0)", () => {
     expect(h).toContain("0 XP ganados en la ventana; el criterio exige al menos 200.");
   });
 
+  it("shouldNotRenderMissingHistoricalReferenceAsZeroWhenRateHasNoReference", () => {
+    const h = html({ languages: { historicalDailyXpRate: 0, dailyXpRate: 15, xpGained: 1355 } });
+    expect(h).toContain("15 XP/día en la ventana; no hay referencia histórica disponible (+1355 XP)");
+    expect(h).not.toContain("0 XP/día histórico");
+  });
+
+  it("shouldShowHistoricalReferenceWhenItExists", () => {
+    expect(html({ languages: { historicalDailyXpRate: 50, dailyXpRate: 20, xpGained: 140, intervalDays: 7 } })).toContain("20 XP/día en la ventana vs 50 XP/día histórico (+140 XP)");
+  });
+
   it("shouldRenderIndicioWithAmberPill", () => {
     expect(html({ chess: { decidedCount: 9 } })).toContain('class="pill pill-warn">INDICIO');
   });
