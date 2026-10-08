@@ -187,37 +187,6 @@ describe("Frontend What Changed Navigation & Visual Engine", () => {
     for (const title of ["Ajedrez", "Idiomas", "Racha"]) expect(html).toContain(">" + title + "</div>");
   });
 
-  it("shouldUpdateLastVisitedAtWhenMarkAsSeenNowIsClicked", async () => {
-    const rt = createDashboardRuntime("/changes");
-    const fakeNow = new Date("2026-10-01T12:00:00.000Z");
-    const realDate = globalThis.Date;
-
-    let requestedUrl = "";
-    rt.sandbox.fetch = async (url: string) => {
-      if (url.includes("/api/what-changed")) {
-        requestedUrl = url;
-      }
-      return {
-        ok: true,
-        json: async () => ({
-          userId: "1000001",
-          interval: { since: "2026-10-01T12:00:00.000Z", until: "2026-10-01T12:00:01.000Z" },
-          baseline: { status: "exactOrPrevious", observedAt: "2026-10-01T12:00:00.000Z" },
-          chess: { gamesCount: 0, ratingDelta: 0, baselineRating: null, currentRating: null, intervalWinRate: null, whiteWinRate: null, blackWinRate: null, historicalWinRateDelta: null },
-          languages: { xpGained: 0, sessionsCount: 0, totalSessionMinutes: 0, baselineCourseId: null, currentCourseId: null, courseChanged: false },
-          streak: { baselineStreak: null, currentStreak: null, streakDelta: 0, status: "active", streakStarted: false, streakMilestone: null },
-          findings: [],
-        }),
-      };
-    };
-
-    rt.sandbox.markChangesAsSeenNow();
-    const stored = rt.sandbox.localStorage.getItem("lastVisitedAt");
-    expect(stored).toBeTruthy();
-    expect(new Date(stored!).getTime()).not.toBeNaN();
-    expect(requestedUrl).toContain("/api/what-changed");
-  });
-
   it("shouldFetchWhatChangedWithSevenDayBaselineWhenNoStoredVisitTimestampExists", async () => {
     const rt = createDashboardRuntime("/changes");
     rt.sandbox.localStorage.clear();
@@ -243,7 +212,7 @@ describe("Frontend What Changed Navigation & Visual Engine", () => {
 
     await rt.sandbox.fetchWhatChanged();
     expect(capturedUrl).toContain("/api/what-changed?since=");
-    expect(rt.getEl("#changesHeader").innerHTML).toContain("Marcar como visto ahora");
+    expect(rt.getEl("#changesHeader").innerHTML).toContain("Marcar como visto");
     expect(rt.getEl("#changesHeader").innerHTML).toContain("Últimos 7 días");
     expect(rt.getEl("#changesHeader").innerHTML).toContain("Últimos 30 días");
     expect(rt.getEl("#changesHeader").innerHTML).toContain("Desde última visita");

@@ -480,7 +480,7 @@ function parseCanonicalRoute(pathOrHash, hashOrSearch, searchQuery){
  }
  return { tab: 'overview', courseId: null, canonicalPath: '/overview', canonicalHash: '#/overview', hasLegacyQuery };
 }
-let selectedCourseId=null, lastLangsData=null, lastAnalyticsData=null, lastLangXpData=null, lastActiveDetail=null, activeChangesInterval=null;
+let selectedCourseId=null, lastLangsData=null, lastAnalyticsData=null, lastLangXpData=null, lastActiveDetail=null, activeChangesInterval=null, changesAnchor=null, changesShownUntil=null;
 function showTab(name){
  const tab=(name==='languages'||name==='chess')?name:'overview';
  const activeTab=(name==='changes'||name==='trajectory')?name:tab;
@@ -1799,46 +1799,82 @@ async function fetchTrajectory(){
  }
 }
 function fmtWhen(iso){ const t = new Date(iso); return isNaN(t.getTime()) ? String(iso) : t.toISOString().slice(0, 10) + ' ' + t.toISOString().slice(11, 16) + ' UTC'; }
-async function fetchWhatChanged(sinceOverride){
- const now = new Date();
- let since = sinceOverride;
- if(!since){
-  since = localStorage.getItem('lastVisitedAt');
-  if(!since){
-   since = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+async function putChangesAnchor(iso){
+ try{
+  const res=await fetch('/api/me/changes-anchor',{method:'PUT',headers:{'content-type':'application/json'},body:JSON.stringify({seenThrough:iso})});
+  if(!res.ok) return {ok:false,status:res.status};
+  const d=await res.json();
+  return {ok:true,seenThrough:d.seenThrough||null};
+ }catch(e){ return {ok:false,status:0}; }
+}
+// The anchor lives on the server ("the changes up to this instant have been seen"). Reading never moves it.
+// A value left in this browser by the old manual button is migrated once and the key dropped.
+async function loadChangesAnchor(){
+ let anchor=null, readable=false;
+ try{
+  const res=await fetch('/api/me/changes-anchor');
+  if(res.ok){ const d=await res.json(); anchor=d.seenThrough||null; readable=true; }
+ }catch(e){}
+ let legacy=null;
+ try{ legacy=localStorage.getItem('lastVisitedAt'); }catch(e){}
+ if(legacy && readable){
+  let drop=true;
+  if(anchor===null){
+   const r=await putChangesAnchor(legacy);
+   if(r.ok) anchor=r.seenThrough;
+   drop=r.ok || r.status===400;
   }
+  if(drop){ try{ localStorage.removeItem('lastVisitedAt'); }catch(e){} }
  }
- let until = now.toISOString();
+ changesAnchor=anchor;
+ return {anchor,readable};
+}
+async function fetchWhatChanged(sinceOverride){
+ const now=new Date();
+ changesShownUntil=null;
+ const {anchor,readable}=await loadChangesAnchor();
+ const visit=!sinceOverride;
+ const since=sinceOverride || anchor || new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+ let until=now.toISOString();
  if(new Date(since).getTime() >= new Date(until).getTime()){
-  until = new Date(new Date(since).getTime() + 1000).toISOString();
+  until=new Date(new Date(since).getTime() + 1000).toISOString();
  }
+ // "Marcar como visto" only when the window shown covers everything not yet seen: the visit window, or one that starts at or before the anchor.
+ const canMark=visit || (anchor!==null && new Date(since).getTime() <= new Date(anchor).getTime());
 
- const elHeader = q('#changesHeader');
- const elEmpty = q('#changesEmpty');
+ const elHeader=q('#changesHeader');
+ const elEmpty=q('#changesEmpty');
 
  if(elHeader){
-  const is7d = activeChangesInterval === 7;
-  const is30d = activeChangesInterval === 30;
-  const isVisit = activeChangesInterval === 0 || (!sinceOverride && Boolean(localStorage.getItem('lastVisitedAt')));
+  const is7d=!visit && activeChangesInterval === 7;
+  const is30d=!visit && activeChangesInterval === 30;
+  const span=esc(fmtWhen(since)) + ' y ' + esc(fmtWhen(until));
+  const sub=visit
+   ? (anchor ? 'Desde tu última visita (' + esc(fmtWhen(anchor)) + ') hasta ' + esc(fmtWhen(until))
+      : readable ? 'Sin visita registrada: mostrando los últimos 7 días (' + span + ')'
+      : 'No se pudo leer tu última visita: mostrando los últimos 7 días (' + span + ')')
+   : 'Mostrando cambios entre ' + span;
+  const markNote=!canMark && anchor ? '<div class="muted" style="font-size:11px;margin-top:6px">Para marcar como visto, elige «Desde última visita»: esta ventana no cubre todo lo que no has visto.</div>' : '';
 
-  elHeader.innerHTML = '<div class="hero-card" style="margin-bottom:12px">'
+  elHeader.innerHTML='<div class="hero-card" style="margin-bottom:12px">'
    + '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'
    + '<div>'
    + '<h2 style="margin:0;font-size:18px">¿Qué ha cambiado?</h2>'
-   + '<div class="muted" style="font-size:12px;margin-top:2px">Mostrando cambios entre ' + esc(fmtWhen(since)) + ' y ' + esc(fmtWhen(until)) + '</div>'
+   + '<div class="muted" style="font-size:12px;margin-top:2px">' + sub + '</div>'
    + '</div>'
-   + '<button class="btn btn-p" id="btnMarkSeen" onclick="markChangesAsSeenNow()">Marcar como visto ahora</button>'
+   + (canMark ? '<button class="btn btn-p" id="btnMarkSeen" onclick="markChangesAsSeen()">Marcar como visto</button>' : '')
    + '</div>'
+   + markNote
    + '<div class="filters" style="margin-top:12px;margin-bottom:0">'
    + '<button class="btn ' + (is7d ? 'btn-p' : 'btn-g') + '" onclick="setChangesInterval(7)">Últimos 7 días</button>'
    + '<button class="btn ' + (is30d ? 'btn-p' : 'btn-g') + '" onclick="setChangesInterval(30)">Últimos 30 días</button>'
-   + '<button class="btn ' + (isVisit ? 'btn-p' : 'btn-g') + '" onclick="setChangesInterval(0)">Desde última visita</button>'
+   + '<button class="btn ' + (visit ? 'btn-p' : 'btn-g') + '" onclick="setChangesInterval(0)">Desde última visita</button>'
    + '</div>'
    + '</div>';
  }
 
  try {
-  const res = await fetch('/api/what-changed?since=' + encodeURIComponent(since) + '&until=' + encodeURIComponent(until));
+  const res=await fetch('/api/what-changed?since=' + encodeURIComponent(since) + '&until=' + encodeURIComponent(until));
   if(!res.ok){
    if(elEmpty){
     elEmpty.style.display = 'block';
@@ -1846,7 +1882,9 @@ async function fetchWhatChanged(sinceOverride){
    }
    return;
   }
-  const data = await res.json();
+  const data=await res.json();
+  // what is marked is what was shown: the until of this response, not the time of the click
+  changesShownUntil=(data.interval && data.interval.until) || until;
   renderWhatChanged(data);
  } catch(err){
   if(elEmpty){
@@ -1856,10 +1894,18 @@ async function fetchWhatChanged(sinceOverride){
  }
 }
 
-function markChangesAsSeenNow(){
- localStorage.setItem('lastVisitedAt', new Date().toISOString());
- activeChangesInterval = 0;
- fetchWhatChanged();
+async function markChangesAsSeen(){
+ const until=changesShownUntil;
+ if(!until) return;
+ const r=await putChangesAnchor(until);
+ if(!r.ok){
+  const b=q('#btnMarkSeen');
+  if(b) b.textContent='No se pudo guardar; reintenta';
+  return;
+ }
+ changesAnchor=r.seenThrough;
+ activeChangesInterval=0;
+ await fetchWhatChanged();
 }
 
 function setChangesInterval(days){
