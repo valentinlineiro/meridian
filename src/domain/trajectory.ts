@@ -1,4 +1,5 @@
 import { distinguishable, newcombeDiff, scaleDelta, type Delta } from "./proportion.ts";
+import { CRITERIA, canonical, numeric, type Evaluation, type Reason } from "./whatChanged.ts";
 
 export type TrajectoryFindingType =
   | "CHESS_COLOR_ASYMMETRY_LONGITUDINAL"
@@ -87,85 +88,96 @@ export interface TrajectoryInput {
   languages: LanguagesTrajectoryInput;
 }
 
+export interface TrajectoryEvaluation {
+  findings: TrajectoryFinding[];
+  evaluations: Evaluation[];
+}
+
 export function evaluateTrajectoryPatterns(input: TrajectoryInput): TrajectoryFinding[] {
+  return evaluateTrajectory(input).findings;
+}
+
+const daysBetween = (a: string, b: string) =>
+  Math.max(0, Math.floor((new Date(b).getTime() - new Date(a).getTime()) / (1000 * 60 * 60 * 24)));
+
+// One pass yields the findings (exactly the emitted ones) and the evaluations. Contract: docs/contracts/2026-10-06-discarded-signals-contract.md.
+// Only the colour pattern is evaluable: LANG_FOCUS_SHIFT_LONGITUDINAL needs its own contract (§3.1) and produces no evaluation.
+export function evaluateTrajectory(input: TrajectoryInput): TrajectoryEvaluation {
   const findings: TrajectoryFinding[] = [];
+  const evaluations: Evaluation[] = [];
+  const K = CRITERIA.CHESS_COLOR_ASYMMETRY_LONGITUDINAL;
 
-  // 1. Evaluate CHESS_COLOR_ASYMMETRY_LONGITUDINAL
+  // 1. CHESS_COLOR_ASYMMETRY_LONGITUDINAL
   const chess = input.chess;
-  if (
-    chess.startedAt &&
-    chess.endedAt &&
-    chess.whiteDecided >= 40 &&
-    chess.blackDecided >= 40 &&
-    chess.activeDays >= 60 &&
-    chess.h1.whiteDecided > 0 &&
-    chess.h1.blackDecided > 0 &&
-    chess.h2.whiteDecided > 0 &&
-    chess.h2.blackDecided > 0
-  ) {
-    const totalDays = Math.max(
-      0,
-      Math.floor(
-        (new Date(chess.endedAt).getTime() - new Date(chess.startedAt).getTime()) /
-          (1000 * 60 * 60 * 24)
-      )
-    );
+  {
+    const why = new Set<Reason>();
+    const spanKnown = Boolean(chess.startedAt && chess.endedAt);
+    const totalDays = spanKnown ? daysBetween(chess.startedAt!, chess.endedAt!) : null;
+    if (!spanKnown) why.add("data_unavailable");
+    if (chess.whiteDecided < K.minDecidedPerColor || chess.blackDecided < K.minDecidedPerColor) why.add("insufficient_sample");
+    if (chess.activeDays < K.minActiveDays) why.add("insufficient_sample");
+    if (totalDays !== null && totalDays < K.minSpanDays) why.add("span_too_short");
+    const erasDefined = chess.h1.whiteDecided > 0 && chess.h1.blackDecided > 0 && chess.h2.whiteDecided > 0 && chess.h2.blackDecided > 0;
+    if (!erasDefined) why.add("data_unavailable");
 
-    if (totalDays >= 60) {
-      const globalWhiteWR = (chess.whiteWins / chess.whiteDecided) * 100;
-      const globalBlackWR = (chess.blackWins / chess.blackDecided) * 100;
-      const globalDiff = globalWhiteWR - globalBlackWR;
+    const ratesDefined = chess.whiteDecided > 0 && chess.blackDecided > 0;
+    const globalWhiteWR = chess.whiteDecided > 0 ? (chess.whiteWins / chess.whiteDecided) * 100 : null;
+    const globalBlackWR = chess.blackDecided > 0 ? (chess.blackWins / chess.blackDecided) * 100 : null;
+    const globalDiff = globalWhiteWR !== null && globalBlackWR !== null ? globalWhiteWR - globalBlackWR : null;
+    const h1Diff = erasDefined ? (chess.h1.whiteWins / chess.h1.whiteDecided) * 100 - (chess.h1.blackWins / chess.h1.blackDecided) * 100 : null;
+    const h2Diff = erasDefined ? (chess.h2.whiteWins / chess.h2.whiteDecided) * 100 - (chess.h2.blackWins / chess.h2.blackDecided) * 100 : null;
+    // The interval applies to the global difference only: per-era n is too small for it, and the eras are a persistence check.
+    const diffCi = ratesDefined ? scaleDelta(newcombeDiff({ wins: chess.whiteWins, n: chess.whiteDecided }, { wins: chess.blackWins, n: chess.blackDecided }), 100) : null;
 
-      const h1WhiteWR = (chess.h1.whiteWins / chess.h1.whiteDecided) * 100;
-      const h1BlackWR = (chess.h1.blackWins / chess.h1.blackDecided) * 100;
-      const h1Diff = h1WhiteWR - h1BlackWR;
+    if (globalDiff === null) why.add("data_unavailable");
+    else if (Math.abs(globalDiff) < K.minDiffPp) why.add("effect_below_threshold");
+    if (diffCi === null) why.add("data_unavailable");
+    else if (!distinguishable(diffCi)) why.add("interval_includes_zero");
+    if (globalDiff !== null && h1Diff !== null && h2Diff !== null) {
+      const white = globalDiff > 0;
+      const ok = (d: number) => (white ? d >= K.minEraDiffPp : d <= -K.minEraDiffPp);
+      if (!(ok(h1Diff) && ok(h2Diff))) why.add("persistence_not_met");
+    }
 
-      const h2WhiteWR = (chess.h2.whiteWins / chess.h2.whiteDecided) * 100;
-      const h2BlackWR = (chess.h2.blackWins / chess.h2.blackDecided) * 100;
-      const h2Diff = h2WhiteWR - h2BlackWR;
+    const emitted = why.size === 0;
+    evaluations.push({
+      id: "CHESS_COLOR_ASYMMETRY_LONGITUDINAL", kind: "statistical", status: emitted ? "emitted" : "not_emitted", reasons: canonical(why),
+      metrics: numeric({
+        whiteDecided: chess.whiteDecided, blackDecided: chess.blackDecided, activeDays: chess.activeDays, totalDays,
+        startedAt: chess.startedAt, endedAt: chess.endedAt, // this rule's own window (the response span also covers languages)
+        whiteWinRate: globalWhiteWR, blackWinRate: globalBlackWR, diffPp: globalDiff === null ? null : Math.abs(globalDiff),
+        diffCiLower: diffCi?.lower, diffCiUpper: diffCi?.upper,
+        // signed white − black, so persistence can be read: same sign as the global difference and at least the era criterion
+        diffSigned: globalDiff, h1DiffSigned: h1Diff, h2DiffSigned: h2Diff,
+      }),
+      criteria: K,
+    });
 
-      // The interval applies to the global difference only: per-era n is too small for it, and the eras are a persistence check.
-      const diffCi = scaleDelta(newcombeDiff({ wins: chess.whiteWins, n: chess.whiteDecided }, { wins: chess.blackWins, n: chess.blackDecided }), 100);
-
-      if (Math.abs(globalDiff) >= 15.0 && distinguishable(diffCi)) {
-        const isWhiteFavored = globalDiff > 0;
-        const h1Satisfied = isWhiteFavored ? h1Diff >= 10.0 : h1Diff <= -10.0;
-        const h2Satisfied = isWhiteFavored ? h2Diff >= 10.0 : h2Diff <= -10.0;
-
-        if (h1Satisfied && h2Satisfied) {
-          findings.push({
-            type: "CHESS_COLOR_ASYMMETRY_LONGITUDINAL",
-            category: "chess",
-            temporalSpan: {
-              startedAt: chess.startedAt,
-              endedAt: chess.endedAt,
-              totalDays,
-              activeDays: chess.activeDays,
-            },
-            sample: {
-              gamesCount: chess.whiteGames + chess.blackGames,
-              decidedCount: chess.whiteDecided + chess.blackDecided,
-            },
-            metrics: {
-              globalWhiteGames: chess.whiteGames,
-              globalBlackGames: chess.blackGames,
-              globalWhiteDecided: chess.whiteDecided,
-              globalBlackDecided: chess.blackDecided,
-              globalWhiteWinRate: globalWhiteWR,
-              globalBlackWinRate: globalBlackWR,
-              diffPp: Math.abs(globalDiff),
-              diffCi: diffCi!,
-              h1WhiteWinRate: h1WhiteWR,
-              h1BlackWinRate: h1BlackWR,
-              h1DiffPp: Math.abs(h1Diff),
-              h2WhiteWinRate: h2WhiteWR,
-              h2BlackWinRate: h2BlackWR,
-              h2DiffPp: Math.abs(h2Diff),
-              dominantColor: isWhiteFavored ? "white" : "black",
-            },
-          });
-        }
-      }
+    if (emitted) {
+      const globalDiffV = globalDiff!, h1 = h1Diff!, h2 = h2Diff!;
+      findings.push({
+        type: "CHESS_COLOR_ASYMMETRY_LONGITUDINAL",
+        category: "chess",
+        temporalSpan: { startedAt: chess.startedAt!, endedAt: chess.endedAt!, totalDays: totalDays!, activeDays: chess.activeDays },
+        sample: { gamesCount: chess.whiteGames + chess.blackGames, decidedCount: chess.whiteDecided + chess.blackDecided },
+        metrics: {
+          globalWhiteGames: chess.whiteGames,
+          globalBlackGames: chess.blackGames,
+          globalWhiteDecided: chess.whiteDecided,
+          globalBlackDecided: chess.blackDecided,
+          globalWhiteWinRate: globalWhiteWR!,
+          globalBlackWinRate: globalBlackWR!,
+          diffPp: Math.abs(globalDiffV),
+          diffCi: diffCi!,
+          h1WhiteWinRate: (chess.h1.whiteWins / chess.h1.whiteDecided) * 100,
+          h1BlackWinRate: (chess.h1.blackWins / chess.h1.blackDecided) * 100,
+          h1DiffPp: Math.abs(h1),
+          h2WhiteWinRate: (chess.h2.whiteWins / chess.h2.whiteDecided) * 100,
+          h2BlackWinRate: (chess.h2.blackWins / chess.h2.blackDecided) * 100,
+          h2DiffPp: Math.abs(h2),
+          dominantColor: globalDiffV > 0 ? "white" : "black",
+        },
+      });
     }
   }
 
@@ -242,5 +254,5 @@ export function evaluateTrajectoryPatterns(input: TrajectoryInput): TrajectoryFi
     }
   }
 
-  return findings;
+  return { findings, evaluations };
 }

@@ -1,7 +1,7 @@
 # Contrato: señales descartadas (evaluaciones de hallazgo)
 
 **Fecha:** 2026-10-06
-**Estado:** 🔒 **CONGELADO (2026-10-06), sin implementar.** D1–D4, D6 y D7 aprobadas; D5 y D8 fuera de este contrato (§7). `LANG_FOCUS_SHIFT_LONGITUDINAL` pendiente de un contrato propio. Cualquier cambio posterior entra por enmienda explícita. **Enmienda A3 (2026-10-08, PROPUESTA, §10): criterios en la evaluación y redacción de `LANG_XP_ACCELERATION`.** **Enmienda A2 (2026-10-08, aprobada y desplegada, §9): `CHESS_RATING_JUMP` — sin ELO observado en la ventana no es "Δ = 0".** **Enmienda 2026-10-06:** el invariante de trazabilidad de §4 pasa de igualdad a inclusión (*Inconcluso* ⊇ eliminados por IC); la definición operativa y §8 no cambian.
+**Estado:** 🔒 **CONGELADO (2026-10-06), sin implementar.** D1–D4, D6 y D7 aprobadas; D5 y D8 fuera de este contrato (§7). `LANG_FOCUS_SHIFT_LONGITUDINAL` pendiente de un contrato propio. Cualquier cambio posterior entra por enmienda explícita. **Enmienda A3 (2026-10-08, aprobada y desplegada, §10): criterios en la evaluación y redacción de `LANG_XP_ACCELERATION`.** **Enmienda A2 (2026-10-08, aprobada y desplegada, §9): `CHESS_RATING_JUMP` — sin ELO observado en la ventana no es "Δ = 0".** **Enmienda 2026-10-06:** el invariante de trazabilidad de §4 pasa de igualdad a inclusión (*Inconcluso* ⊇ eliminados por IC); la definición operativa y §8 no cambian.
 **Origen:** hoy un hallazgo cuya evidencia no basta **desaparece**: What-changed y Trayectoria solo devuelven lo que se emite. Tras P1.5 eso oculta la distinción más útil: *"no hay señal"* frente a *"hay indicio, pero los datos no permiten afirmarlo"*. Es también el requisito previo de cualquier capa de interpretación (LLM): esta no debe decidir qué se descartó ni por qué.
 
 **Principio:** *Insufficient evidence no significa ausencia de señal.* Meridian decide, de forma determinista, qué se afirma, qué queda inconcluso y por qué. Nada de esto lo decide un modelo.
@@ -190,7 +190,7 @@ Se añade a la tabla de §3.1, fila de `CHESS_RATING_JUMP`: *"ELO observado **de
 
 ## 10. Enmienda A3 (2026-10-08) — criterios dentro de la evaluación y XP observado, no "ritmo de aprendizaje"
 
-**Estado:** 📝 **PROPUESTA**, pendiente de aprobación del propietario. Código y tests viajan en la misma rama, **sin mergear**.
+**Estado:** ✅ **aprobada y desplegada** (2026-10-08, PR #34).
 
 ### 10.1 Datos que la motivan
 
@@ -231,3 +231,15 @@ Umbrales y condiciones de emisión, enumerado de motivos, `salience()`, el conju
 - El claim nuevo de `LANG_XP_ACCELERATION` y la ausencia de "aprendizaje" / "Aceleración".
 - Golden de hallazgos con el mapeo de redacción como única excepción.
 - UI: cita el criterio del payload (cambiado a 77 aparece 77); sin `criteria` no inventa ninguno.
+
+---
+
+## 11. Estado de implementación de D7 (2026-10-08) — Trayectoria
+
+Sin enmienda: es la ejecución de lo ya aprobado (D6 y D7; §3.1 ya enumera las condiciones de `CHESS_COLOR_ASYMMETRY_LONGITUDINAL`).
+
+- `/api/trajectory` devuelve `evaluations` (aditivo). Una evaluación, `CHESS_COLOR_ASYMMETRY_LONGITUDINAL` (`statistical`), con los motivos de la tabla de §3.1: `insufficient_sample` (decididas por color, días con actividad), `span_too_short`, `data_unavailable` (extremos temporales o una era sin un color), `effect_below_threshold`, `interval_includes_zero`, `persistence_not_met` (≥ 10 pp y mismo signo en las dos eras).
+- Sus `metrics` conservan el efecto observado aunque no se emita, y añaden las diferencias con signo (global y de cada era) para poder leer la persistencia.
+- Sus `criteria` salen de la misma constante `CRITERIA` que la regla (§10).
+- `findings` no cambia: el golden compara byte a byte contra una copia verbatim de la función anterior (`tests/fixtures/legacyTrajectory.ts`).
+- **Sigue fuera:** `LANG_FOCUS_SHIFT_LONGITUDINAL` (necesita contrato propio, §3.1). Su hallazgo, si se emite, se muestra sin estado epistémico.
