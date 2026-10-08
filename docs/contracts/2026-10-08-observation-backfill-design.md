@@ -29,6 +29,7 @@ lote.sql  →  revisión  →  wrangler d1 execute --remote --file lote.sql
 - Reutiliza **exactamente** `observationStatements`, así que no hay un segundo juego de INSERT que mantener.
 - **Sin superficie nueva en producción** (ningún endpoint de administración) y el SQL es revisable antes de aplicarlo.
 - Cursor `(created_at, id)` pasado y devuelto por el script; **sin tabla de progreso** (idempotencia basta).
+- **El presupuesto se aplica por snapshot completo.** El script nunca corta la extracción de un snapshot: si el siguiente haría superar el tope, el lote termina *antes* de él y el cursor queda en el último snapshot completamente emitido. Así el cursor no puede saltarse filas y el mecanismo es reanudable. (Un snapshot suelto nunca pasa de unas decenas de filas, así que el tope se supera, como mucho, por esa cantidad si es el primero del lote.)
 - Alternativa descartada: ruta autenticada en el Worker. Evita transferir ~55 MB, pero añade código y permisos permanentes para una operación puntual.
 
 Volumen (de §0.1 Q2): ~740 snapshots de idiomas (~74 KB) y 38 de Chess (~400 KB). Lotes de 25 → unas 30 llamadas de lectura.
@@ -57,7 +58,7 @@ Estimación: idiomas ~740 × ~27 filas ≈ **20.000** + Chess 38 + K7 ≤ 105 �
 
 ## 5. Informe de cobertura y segunda pasada (§6.4)
 
-El script puede ejecutarse en modo `--verify` (solo lectura): re-extrae cada snapshot y comprueba que **todas** las filas esperadas existen.
+El script puede ejecutarse en modo `--verify` (solo lectura): re-extrae cada snapshot y comprueba que **todas las filas que el extractor determina como esperadas para él existen**. Las ausencias clasificadas *por diseño* no son diferencias.
 
 Informe, tomado del propio extractor (no de conteos paralelos):
 
@@ -84,7 +85,8 @@ Gate: **segunda ejecución completa ⇒ 0 filas escritas y 0 diferencias** en `-
 - **Convivencia:** filas de la ingesta en vivo no se alteran; el backfill no pisa `daily_goal_xp` ya escrito.
 - **Orden y cursor:** reanudar desde el cursor no repite ni omite snapshots con el mismo `created_at`.
 - **No parseable:** aparece en el informe, no se omite.
-- **Escapado del SQL generado:** comillas, saltos de línea y Unicode en `title`/`teaching_objective` (el SQL se ejecuta tal cual en D1).
+- **Serialización prepared-statement → SQL literal:** el SQL generado se ejecuta en SQLite y debe dejar **exactamente los mismos valores** que el prepared statement equivalente. Casos: `NULL`, enteros y reales, string vacío, comillas simples, saltos de línea, Unicode, backslash (sin tratamiento especial), y booleanos (se vuelven 0/1 como hace la ingesta). `NaN` e `Infinity` **no pueden llegar como literal**: el serializador falla en voz alta en lugar de emitirlos.
+- **Cursor:** un lote cortado por el tope no deja ningún snapshot parcialmente emitido; encadenar lotes equivale a una sola pasada (mismas filas, mismo resultado).
 
 ## 8. Decisiones que necesito del propietario
 
