@@ -712,6 +712,7 @@ function renderLang(d){
  const elEmpty=q('#langEmpty'), elContent=q('#langContent');
  if(!d || d.totals.days===0){ elEmpty.style.display='block'; elContent.style.display='none'; return; }
  elEmpty.style.display='none'; elContent.style.display='block';
+ const t=d.totals;
  const elAccountXp=q('#langAccountXp')||q('#langHeroXp'); if(elAccountXp) elAccountXp.textContent=d.totalXp!=null? d.totalXp.toLocaleString('es-ES')+' XP' : '—';
  const elAccountStreak=q('#langAccountStreak')||q('#langHeroStreak'); if(elAccountStreak) elAccountStreak.textContent=d.streak!=null? '🔥 '+d.streak+' días': '';
  const elAccountDays=q('#langAccountDays')||q('#langHeroDays'); if(elAccountDays) elAccountDays.textContent=t.activeDays+'/'+t.days+' días activos';

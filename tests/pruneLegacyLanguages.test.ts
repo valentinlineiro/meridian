@@ -25,4 +25,14 @@ describe("legacy languages DOM", () => {
     expect(rt.getEl("#langEmpty").style.display).toBe("block");
     expect(rt.getEl("#langContent").style.display).toBe("none");
   });
+
+  it("shouldFillAccountKpisAndSyncMetaWhenTheFallbackHasActivity", () => {
+    // renderLang referenced `t` without declaring it, so the fallback threw after the first two KPIs
+    const rt = createDashboardRuntime("/languages");
+    rt.sandbox.renderLang({ totals: { days: 3, activeDays: 2 }, summaries: [{ date: 1790000000 }], courses: [], totalXp: 100, streak: 3, createdAt: new Date().toISOString(), courseProgressIndex: [] });
+    expect(rt.getEl("#langAccountXp").textContent).toContain("100 XP");
+    expect(rt.getEl("#langAccountStreak").textContent).toContain("3 días");
+    expect(rt.getEl("#langAccountDays").textContent).toBe("2/3 días activos");
+    expect(rt.getEl("#langSyncMeta").textContent).toMatch(/^Sincronizado hoy · Actividad hasta /);
+  });
 });
