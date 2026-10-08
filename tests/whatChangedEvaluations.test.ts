@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { evaluateChanges, evaluateSignificantChanges, salience, type WhatChangedDeltas } from "../src/domain/whatChanged.ts";
+import { evaluateChanges, evaluateSignificantChanges, salience, CRITERIA, type WhatChangedDeltas } from "../src/domain/whatChanged.ts";
 import { evaluateSignificantChanges as legacy } from "./fixtures/legacyWhatChanged.ts"; // verbatim copy of the function on main before this change
 import { newcombeDiff, scaleDelta, distinguishable } from "../src/domain/proportion.ts";
 import { getWhatChangedUseCase } from "../src/application/getWhatChangedUseCase.ts";
@@ -16,6 +16,14 @@ const deltas = (o: Over = {}): WhatChangedDeltas => ({
 });
 const evalOf = (id: string, o: Over = {}) => evaluateChanges(deltas(o), ctx).evaluations.find((e) => e.id === id)!;
 
+// Amendment A3 rewrites the wording of one finding (XP observed, not "learning pace"); the legacy fixture stays verbatim and
+// only that title/claim is mapped, so every other field of every finding is still compared byte for byte.
+const amendedWording = (fs: any[]) => fs.map((f) => f.id !== "LANG_XP_ACCELERATION" ? f : {
+  ...f,
+  title: "Mayor XP diario",
+  claim: f.claim.replace(/^Aceleración en tu ritmo de aprendizaje: creció (.+)x sobre tu media histórica\.$/, "Tu XP diario en el periodo fue $1x tu media histórica."),
+});
+
 describe("golden: findings are unchanged by the evaluation refactor", () => {
   it("shouldProduceByteIdenticalFindingsAcrossAGridOfInputs", () => {
     let n = 0;
@@ -31,8 +39,8 @@ describe("golden: findings are unchanged by the evaluation refactor", () => {
         languages: { intervalDays, xpGained, historicalDailyXpRate: hist, dailyXpRate: rate, courseChanged },
         streak: { streakMilestone: milestone, status },
       });
-      expect(JSON.stringify(evaluateSignificantChanges(d, ctx))).toBe(JSON.stringify(legacy(d, ctx)));
-      expect(JSON.stringify(evaluateChanges(d, ctx).findings)).toBe(JSON.stringify(legacy(d, ctx)));
+      expect(JSON.stringify(evaluateSignificantChanges(d, ctx))).toBe(JSON.stringify(amendedWording(legacy(d, ctx))));
+      expect(JSON.stringify(evaluateChanges(d, ctx).findings)).toBe(JSON.stringify(amendedWording(legacy(d, ctx))));
       n++;
     }
     expect(n).toBe(5 * 4 * 8 * 4 * 9 * 2 * 3);
@@ -99,6 +107,28 @@ describe("LANG_XP_ACCELERATION evaluation", () => {
   it("shouldCombineSpanVolumeAndEffectReasons", () => {
     expect(evalOf("LANG_XP_ACCELERATION", { languages: { intervalDays: 1, xpGained: 10, dailyXpRate: 10, historicalDailyXpRate: 50 } }).reasons)
       .toEqual(["insufficient_sample", "effect_below_threshold", "span_too_short"]);
+  });
+});
+
+describe("evaluations carry the criteria their rule applies (amendment A3)", () => {
+  it("shouldCarryTheCriteriaOfEveryEvaluation", () => {
+    for (const e of evaluateChanges(deltas(), ctx).evaluations) expect(e.criteria).toEqual((CRITERIA as any)[e.id]);
+  });
+  // the criteria are the rule's own thresholds: at the value the rule emits, one step below it does not
+  it("shouldEmitAtTheCarriedThresholdAndNotBelowIt", () => {
+    const j = CRITERIA.CHESS_RATING_JUMP.minAbsDelta;
+    expect(evalOf("CHESS_RATING_JUMP", { chess: { ratingDelta: j } }).status).toBe("emitted");
+    expect(evalOf("CHESS_RATING_JUMP", { chess: { ratingDelta: j - 1 } }).status).toBe("not_emitted");
+    const c = CRITERIA.CHESS_COLOR_ASYMMETRY;
+    expect(evalOf("CHESS_COLOR_ASYMMETRY", { chess: { decidedCount: c.minDecided } }).status).toBe("emitted");
+    expect(evalOf("CHESS_COLOR_ASYMMETRY", { chess: { decidedCount: c.minDecided - 1 } }).reasons).toContain("insufficient_sample");
+    expect(evalOf("CHESS_COLOR_ASYMMETRY", { chess: { intervalWhiteWinRate: 50 + c.minDiffPp, intervalBlackWinRate: 50 } }).reasons).not.toContain("effect_below_threshold");
+    expect(evalOf("CHESS_COLOR_ASYMMETRY", { chess: { intervalWhiteWinRate: 50 + c.minDiffPp - 0.1, intervalBlackWinRate: 50 } }).reasons).toContain("effect_below_threshold");
+    const x = CRITERIA.LANG_XP_ACCELERATION;
+    expect(evalOf("LANG_XP_ACCELERATION", { languages: { intervalDays: x.minDays, xpGained: x.minXp, historicalDailyXpRate: 50, dailyXpRate: 50 * x.minRatio } }).status).toBe("emitted");
+    expect(evalOf("LANG_XP_ACCELERATION", { languages: { intervalDays: x.minDays - 0.1 } }).reasons).toContain("span_too_short");
+    expect(evalOf("LANG_XP_ACCELERATION", { languages: { xpGained: x.minXp - 1 } }).reasons).toContain("insufficient_sample");
+    expect(evalOf("LANG_XP_ACCELERATION", { languages: { historicalDailyXpRate: 50, dailyXpRate: 50 * x.minRatio - 0.1 } }).reasons).toContain("effect_below_threshold");
   });
 });
 

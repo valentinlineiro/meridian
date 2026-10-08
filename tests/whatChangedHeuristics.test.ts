@@ -119,7 +119,8 @@ describe("What Changed Domain Heuristics", () => {
     const finding = findings.find((f) => f.id === "LANG_XP_ACCELERATION");
     expect(finding).toBeDefined();
     expect(finding?.category).toBe("languages");
-    expect(finding?.claim).toContain("Aceleración");
+    expect(finding?.claim).toBe("Tu XP diario en el periodo fue 2.0x tu media histórica.");
+    expect(finding?.claim).not.toMatch(/aprendizaje/); // XP observed, not learning (amendment A3)
   });
 
   it("shouldNotEmitXpAccelerationFindingWhenIntervalDurationIsLessThanThreeDays", () => {

@@ -59,7 +59,7 @@ describe("evaluation cards (P0)", () => {
   it("shouldMarkInsuficienteWhenDataIsUnavailable", () => {
     const h = html({ languages: { historicalDailyXpRate: 0 } });
     expect(h).toContain("INSUFICIENTE");
-    expect(h).toContain("No hay ritmo histórico de referencia.");
+    expect(h).toContain("No hay media histórica de referencia.");
   });
 
   it("shouldMarkSinIndicioWhenEffectIsBelowCriterion", () => {
@@ -70,7 +70,7 @@ describe("evaluation cards (P0)", () => {
   });
 
   it("shouldMarkInsuficienteNotSinIndicioWhenSampleIsShortAndEffectIsAlsoBelowCriterion", () => {
-    const h = html({ languages: { xpGained: 0, dailyXpRate: 0 } }).split('<div class="card"').find((c) => c.includes("Aceleración de ritmo"))!;
+    const h = html({ languages: { xpGained: 0, dailyXpRate: 0 } }).split('<div class="card"').find((c) => c.includes("Mayor XP diario"))!;
     expect(h).not.toContain("SIN INDICIO");
     expect(h).toContain("INSUFICIENTE");
     expect(h).toContain("0 XP ganados en la ventana; el criterio exige al menos 200.");
@@ -91,6 +91,26 @@ describe("evaluation cards (P0)", () => {
     expect(h).toContain("INSUFICIENTE");
     expect(h).not.toContain("SIN INDICIO");
     expect(h).toContain("ninguna partida con ELO");
+  });
+
+  it("shouldQuoteTheCriteriaCarriedByTheEvaluationNotACopy", () => {
+    const rt = createDashboardRuntime("/changes");
+    const p = payload({ chess: { decidedCount: 9 } });
+    p.evaluations.find((e) => e.id === "CHESS_COLOR_ASYMMETRY")!.criteria = { minDecided: 77, minDiffPp: 15 };
+    expect(rt.sandbox.renderEvaluations(p)).toContain("el criterio exige al menos 77.");
+  });
+
+  it("shouldNotInventACriterionWhenTheEvaluationCarriesNone", () => {
+    const rt = createDashboardRuntime("/changes");
+    const p = payload({ chess: { decidedCount: 9 } });
+    delete (p.evaluations.find((e) => e.id === "CHESS_COLOR_ASYMMETRY") as any).criteria;
+    const h = rt.sandbox.renderEvaluations(p);
+    expect(h).toContain("9 partidas decididas observadas; no se alcanza el criterio.");
+    expect(h).not.toContain("al menos 10");
+  });
+
+  it("shouldNotCallXpObservedInAWindowLearningPace", () => {
+    expect(html({ languages: { dailyXpRate: 100, historicalDailyXpRate: 50 } })).not.toMatch(/aprendizaje|Aceleración/);
   });
 
   it("shouldRenderIndicioWithAmberPill", () => {

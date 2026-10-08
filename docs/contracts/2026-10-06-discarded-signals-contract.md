@@ -1,7 +1,7 @@
 # Contrato: señales descartadas (evaluaciones de hallazgo)
 
 **Fecha:** 2026-10-06
-**Estado:** 🔒 **CONGELADO (2026-10-06), sin implementar.** D1–D4, D6 y D7 aprobadas; D5 y D8 fuera de este contrato (§7). `LANG_FOCUS_SHIFT_LONGITUDINAL` pendiente de un contrato propio. Cualquier cambio posterior entra por enmienda explícita. **Enmienda A2 (2026-10-08, PROPUESTA, §9): `CHESS_RATING_JUMP` — sin ELO observado en la ventana no es "Δ = 0".** **Enmienda 2026-10-06:** el invariante de trazabilidad de §4 pasa de igualdad a inclusión (*Inconcluso* ⊇ eliminados por IC); la definición operativa y §8 no cambian.
+**Estado:** 🔒 **CONGELADO (2026-10-06), sin implementar.** D1–D4, D6 y D7 aprobadas; D5 y D8 fuera de este contrato (§7). `LANG_FOCUS_SHIFT_LONGITUDINAL` pendiente de un contrato propio. Cualquier cambio posterior entra por enmienda explícita. **Enmienda A3 (2026-10-08, PROPUESTA, §10): criterios en la evaluación y redacción de `LANG_XP_ACCELERATION`.** **Enmienda A2 (2026-10-08, aprobada y desplegada, §9): `CHESS_RATING_JUMP` — sin ELO observado en la ventana no es "Δ = 0".** **Enmienda 2026-10-06:** el invariante de trazabilidad de §4 pasa de igualdad a inclusión (*Inconcluso* ⊇ eliminados por IC); la definición operativa y §8 no cambian.
 **Origen:** hoy un hallazgo cuya evidencia no basta **desaparece**: What-changed y Trayectoria solo devuelven lo que se emite. Tras P1.5 eso oculta la distinción más útil: *"no hay señal"* frente a *"hay indicio, pero los datos no permiten afirmarlo"*. Es también el requisito previo de cualquier capa de interpretación (LLM): esta no debe decidir qué se descartó ni por qué.
 
 **Principio:** *Insufficient evidence no significa ausencia de señal.* Meridian decide, de forma determinista, qué se afirma, qué queda inconcluso y por qué. Nada de esto lo decide un modelo.
@@ -185,3 +185,49 @@ Se añade a la tabla de §3.1, fila de `CHESS_RATING_JUMP`: *"ELO observado **de
 - Con una partida con ELO en la ventana: la regla se evalúa como antes (`effect_below_threshold` con Δ 10; hallazgo con Δ 30).
 - UI: la evaluación sin ELO observado sale INSUFICIENTE y nunca SIN INDICIO.
 - El golden de hallazgos (`whatChangedEvaluations`) sigue pasando sin cambios.
+
+---
+
+## 10. Enmienda A3 (2026-10-08) — criterios dentro de la evaluación y XP observado, no "ritmo de aprendizaje"
+
+**Estado:** 📝 **PROPUESTA**, pendiente de aprobación del propietario. Código y tests viajan en la misma rama, **sin mergear**.
+
+### 10.1 Datos que la motivan
+
+- **Duplicación (deuda declarada en #29).** El frontend cita en los motivos los umbrales de las reglas (10 decididas, 15 pp, 25 puntos, 200 XP, 1,3×, 3 días) copiados a mano. Si una regla cambia, el texto miente sin que ningún test lo detecte.
+- **Contradicción de lenguaje.** `LANG_XP_ACCELERATION` afirma "Aceleración en tu ritmo de aprendizaje", mientras la card de Intensidad del mismo producto dice que sus ratios "no representan eficiencia cognitiva ni velocidad de aprendizaje". Lo observado es XP por día; "aprendizaje" es una interpretación sin respaldo (§7 de la auditoría de producto, "Observed ≠ Interpreted").
+
+### 10.2 Decisión propuesta
+
+1. **`Evaluation.criteria`** (campo nuevo, aditivo como `evaluations` en D6): `Record<string, number>` con los umbrales que la regla aplica. Los valores salen de **una sola constante** (`CRITERIA`) que usan tanto la regla como la evaluación, así que no pueden divergir.
+
+   | Regla | `criteria` |
+   |---|---|
+   | `CHESS_RATING_JUMP` | `minAbsDelta: 25` |
+   | `CHESS_COLOR_ASYMMETRY` | `minDecided: 10`, `minDiffPp: 15` |
+   | `LANG_XP_ACCELERATION` | `minDays: 3`, `minXp: 200`, `minRatio: 1.3` |
+
+   Las reglas de Trayectoria no generan evaluaciones todavía (D7) y quedan fuera.
+2. **Redacción de `LANG_XP_ACCELERATION`** (el `id` no cambia: es un contrato externo estable):
+   - `title`: "Aceleración de ritmo" → **"Mayor XP diario"**.
+   - `claim`: "Aceleración en tu ritmo de aprendizaje: creció Nx sobre tu media histórica." → **"Tu XP diario en el periodo fue Nx tu media histórica."**
+   - `evidence`, `metrics` y la condición de emisión no cambian.
+3. **Frontend:** los motivos leen `evaluation.criteria`; si falta, dicen "no se alcanza el criterio" sin inventar un número. Se eliminan las constantes copiadas.
+
+### 10.3 Qué no cambia
+
+Umbrales y condiciones de emisión, enumerado de motivos, `salience()`, el conjunto de hallazgos emitidos (el golden sigue comparando byte a byte **todos** los hallazgos; solo se mapea `title` y `claim` de `LANG_XP_ACCELERATION`, y la fixture `legacyWhatChanged` queda verbatim), y los demás textos de hallazgos.
+
+### 10.4 Alternativas descartadas
+
+- **Dejar los umbrales copiados con un test de paridad:** protege la copia, pero la copia sigue existiendo.
+- **Nombre neutro sin cambiar el claim:** el claim es la frase que el usuario lee; el problema está ahí.
+- **Cambiar el `id`:** rompería a cualquier consumidor del id, sin ganancia.
+
+### 10.5 Tests
+
+- Cada evaluación lleva `criteria` igual a `CRITERIA[id]`.
+- Cada umbral emite justo en su valor y no un paso por debajo (la constante es la que usa la regla).
+- El claim nuevo de `LANG_XP_ACCELERATION` y la ausencia de "aprendizaje" / "Aceleración".
+- Golden de hallazgos con el mapeo de redacción como única excepción.
+- UI: cita el criterio del payload (cambiado a 77 aparece 77); sin `criteria` no inventa ninguno.
