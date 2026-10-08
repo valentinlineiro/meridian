@@ -41,6 +41,15 @@ npx wrangler deploy --config wrangler.private.jsonc
 - El deploy no pasa por CI: se hace a mano con `wrangler deploy` desde un clon de este repo (CI solo ejecuta typecheck, guard y tests). `wrangler.private.jsonc` no se versiona: cópialo al clon y mantenlo fuera de git (`.git/info/exclude`).
 - Código nuevo: slices verticales (`docs/ARCHITECTURE.md`).
 
+### Despliegue desde GitHub Actions (`.github/workflows/deploy.yml`)
+
+Hace lo mismo que la rutina anterior, pero en CI: typecheck, guarda y tests; genera `wrangler.production.jsonc` (nunca despliega con el `wrangler.jsonc` de ejemplo); se niega a desplegar si hay migraciones pendientes (**no las aplica**, siguen siendo a mano y antes del deploy); despliega y comprueba `/login` 200, `/` 303 y la API cerrada (401). Si el smoke falla, el run queda en rojo: `npx wrangler rollback <version-id> --config wrangler.private.jsonc`.
+
+- Secretos del repo: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `D1_DATABASE_ID`.
+- Variables del repo: `SYNC_REPO`, `SYNC_WORKFLOW`, `SYNC_REF` (sin ellas, un deploy apagaría Sincronizar: el workflow se niega) y `PROD_URL`.
+- Disparo manual (pestaña Actions, *Run workflow* sobre `main`): siempre permitido. Disparo en cada push a `main`: **apagado** hasta definir la variable `CD_AUTO_DEPLOY=true`.
+
+
 ## 3. Si "Sincronizar" falla: qué mirar (todo de solo lectura)
 
 La UI solo dice "Sincronización fallida". El motivo está en otro sitio:
