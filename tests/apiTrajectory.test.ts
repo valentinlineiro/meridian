@@ -37,6 +37,10 @@ describe("API Trajectory (Integration)", () => {
     expect(body.temporalSpan.startedAt).toBeNull();
     expect(body.temporalSpan.totalDays).toBeNull();
     expect(body.findings).toEqual([]);
+    // no activity is not "no pattern": the evaluation says what is missing
+    expect(body.evaluations).toHaveLength(1);
+    expect(body.evaluations[0]).toMatchObject({ id: "CHESS_COLOR_ASYMMETRY_LONGITUDINAL", status: "not_emitted", reasons: ["insufficient_sample", "data_unavailable"] });
+    expect(body.evaluations[0].criteria.minDecidedPerColor).toBe(40);
   });
 
   it("shouldReturn200WithFindingsWhenLongitudinalPatternsExist", async () => {

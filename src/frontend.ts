@@ -1901,12 +1901,19 @@ async function fetchTrajectory(){
   const res = await fetch('/api/trajectory');
   if(!res.ok) throw new Error('http ' + res.status);
   const data = await res.json();
-  const items = (data.findings || []).map(trajectoryCopy).filter(Boolean);
-  elEmpty.style.display = items.length ? 'none' : 'block';
-  elFindings.innerHTML = items.map(c => '<div class="card" style="margin-bottom:10px">'
-   + '<h3 style="margin:0 0 6px;font-size:14px;color:#e6edf3">' + esc(c.title) + '</h3>'
-   + '<div style="font-size:13px;font-weight:600;color:#c8d7ea;margin-bottom:6px">' + esc(c.claim) + '</div>'
-   + '<div class="muted" style="font-size:12px"><strong>Evidencia:</strong> ' + esc(c.evidence) + '</div></div>').join('');
+  const evals = data.evaluations || [];
+  const evalIds = new Set(evals.map(e => e.id));
+  const copies = (data.findings || []).map(f => ({type: f.type, c: trajectoryCopy(f)})).filter(x => x.c);
+  const span = data.temporalSpan;
+  const win = span && span.startedAt && span.endedAt ? String(span.startedAt).slice(0, 10) + ' → ' + String(span.endedAt).slice(0, 10) : 'sin fechas';
+  // a pattern with an evaluation is shown with its epistemic status; one without (language focus shift has no contract yet) keeps its plain card
+  const cards = evaluationCards(evals, e => (copies.find(x => x.type === e.id) || {}).c, win);
+  const plain = copies.filter(x => !evalIds.has(x.type)).map(x => '<div class="card" style="margin-bottom:10px">'
+   + '<h3 style="margin:0 0 6px;font-size:14px;color:#e6edf3">' + esc(x.c.title) + '</h3>'
+   + '<div style="font-size:13px;font-weight:600;color:#c8d7ea;margin-bottom:6px">' + esc(x.c.claim) + '</div>'
+   + '<div class="muted" style="font-size:12px"><strong>Evidencia:</strong> ' + esc(x.c.evidence) + '</div></div>');
+  elEmpty.style.display = cards.length || plain.length ? 'none' : 'block';
+  elFindings.innerHTML = cards.concat(plain).join('');
  } catch(err){
   elFindings.innerHTML = '';
   elEmpty.style.display = 'block';
@@ -2006,7 +2013,8 @@ const EVAL_STATE_MSG = {
 const EVAL_META = {
  CHESS_COLOR_ASYMMETRY: {title: 'Asimetría por color', scope: 'Ajedrez · partidas decididas'},
  CHESS_RATING_JUMP: {title: 'Salto de ELO', scope: 'Ajedrez · ELO observado'},
- LANG_XP_ACCELERATION: {title: 'Mayor XP diario', scope: 'Cuenta · XP'}
+ LANG_XP_ACCELERATION: {title: 'Mayor XP diario', scope: 'Cuenta · XP'},
+ CHESS_COLOR_ASYMMETRY_LONGITUDINAL: {title: 'Asimetría por color · todo el historial', scope: 'Ajedrez · historial'}
 };
 // The criteria come from the evaluation itself (e.criteria): the rule's own thresholds, never copied here.
 function evalReasonText(e, r){
@@ -2018,6 +2026,15 @@ function evalReasonText(e, r){
   if(r === 'effect_below_threshold') return 'Diferencia observada entre colores: ' + f(m.diffPp) + ' pp; ' + need(k.minDiffPp, ' pp') + '.';
   if(r === 'interval_includes_zero') return 'El intervalo de confianza 95% de la diferencia [' + f(m.diffCiLower, 0) + ', ' + f(m.diffCiUpper, 0) + '] pp incluye 0.';
   if(r === 'data_unavailable') return 'Falta al menos un color con partidas decididas en la ventana.';
+ }
+ if(id === 'CHESS_COLOR_ASYMMETRY_LONGITUDINAL'){
+  const sg = v => v == null ? '—' : (v > 0 ? '+' : '') + f(v, 0);
+  if(r === 'insufficient_sample') return 'Decididas: blancas ' + f(m.whiteDecided, 0) + ', negras ' + f(m.blackDecided, 0) + '; días con actividad: ' + f(m.activeDays, 0) + '. ' + (k.minDecidedPerColor != null && k.minActiveDays != null ? 'El criterio exige al menos ' + k.minDecidedPerColor + ' decididas por color y ' + k.minActiveDays + ' días con actividad.' : 'No se alcanza el criterio.');
+  if(r === 'span_too_short') return 'El historial de ajedrez cubre ' + f(m.totalDays, 0) + ' días; ' + need(k.minSpanDays, '') + '.';
+  if(r === 'effect_below_threshold') return 'Diferencia observada entre colores: ' + f(m.diffPp) + ' pp; ' + need(k.minDiffPp, ' pp') + '.';
+  if(r === 'interval_includes_zero') return 'El intervalo de confianza 95% de la diferencia global [' + f(m.diffCiLower, 0) + ', ' + f(m.diffCiUpper, 0) + '] pp incluye 0.';
+  if(r === 'persistence_not_met') return 'La diferencia no se mantiene con el mismo signo en las dos mitades del historial: ' + sg(m.h1DiffSigned) + ' pp en la primera y ' + sg(m.h2DiffSigned) + ' pp en la segunda (blancas − negras); ' + need(k.minEraDiffPp, ' pp') + ' en ambas.';
+  if(r === 'data_unavailable') return 'Falta información en el historial: fechas, o algún color sin partidas decididas en alguna de las dos mitades.';
  }
  if(id === 'CHESS_RATING_JUMP'){
   if(r === 'effect_below_threshold') return 'Cambio de ELO observado: ' + f(m.ratingDelta, 0) + ' puntos; ' + need(k.minAbsDelta, '') + '.';
@@ -2034,6 +2051,7 @@ function evalReasonText(e, r){
 function evalObserved(id, m){
  const f = (v, d) => Number(v).toFixed(d == null ? 1 : d);
  if(id === 'CHESS_COLOR_ASYMMETRY' && m.whiteWinRate != null && m.blackWinRate != null) return 'Blancas ' + f(m.whiteWinRate) + '% · Negras ' + f(m.blackWinRate) + '% (' + m.decidedCount + ' partidas decididas)';
+ if(id === 'CHESS_COLOR_ASYMMETRY_LONGITUDINAL' && m.whiteWinRate != null && m.blackWinRate != null) return 'Blancas ' + f(m.whiteWinRate) + '% · Negras ' + f(m.blackWinRate) + '% (' + m.whiteDecided + ' y ' + m.blackDecided + ' decididas' + (m.totalDays != null ? ', ' + m.totalDays + ' días' : '') + ')';
  if(id === 'CHESS_RATING_JUMP' && m.baselineRating != null && m.currentRating != null) return 'ELO ' + m.baselineRating + ' → ' + m.currentRating + ' (' + m.gamesCount + ' partidas)';
  if(id === 'LANG_XP_ACCELERATION' && m.dailyRate != null){
   // a historical rate of 0 means "no reference" (data_unavailable), not an observed 0 XP/day
@@ -2045,6 +2063,7 @@ function evalObserved(id, m){
 function renderEvaluationCard(e, state, finding, win){
  const meta = EVAL_META[e.id] || {title: e.id, scope: ''};
  const m = e.metrics || {};
+ if(m.startedAt && m.endedAt) win = String(m.startedAt).slice(0, 10) + ' → ' + String(m.endedAt).slice(0, 10); // the evaluation's own window wins over the response's
  let body;
  if(state === 'AFIRMADO' && finding){
   body = '<div style="font-size:13px;font-weight:600;color:#c8d7ea;margin-bottom:6px">' + esc(finding.claim) + '</div>'
@@ -2063,13 +2082,17 @@ function renderEvaluationCard(e, state, finding, win){
   + body
   + '<div class="muted" style="font-size:11px;margin-top:6px">Ventana: ' + esc(win) + ' · ' + basis + '</div></div>';
 }
+// AFIRMADO first, then INDICIO, INSUFICIENTE, SIN INDICIO; findingFor(e) gives the claim/evidence of an emitted evaluation.
+function evaluationCards(evals, findingFor, win){
+ return evals.map(e => ({state: evalState(e), e})).sort((a, b) => EVAL_STATE_ORDER.indexOf(a.state) - EVAL_STATE_ORDER.indexOf(b.state))
+  .map(x => renderEvaluationCard(x.e, x.state, findingFor(x.e), win));
+}
 function renderEvaluations(data){
  const findings = data.findings || [];
  const evals = data.evaluations || [];
  const win = data.interval ? String(data.interval.since).slice(0, 10) + ' → ' + String(data.interval.until).slice(0, 10) : '';
  const evalIds = new Set(evals.map(e => e.id));
- const cards = evals.map(e => ({state: evalState(e), e})).sort((a, b) => EVAL_STATE_ORDER.indexOf(a.state) - EVAL_STATE_ORDER.indexOf(b.state))
-  .map(x => renderEvaluationCard(x.e, x.state, findings.find(f => f.id === x.e.id), win));
+ const cards = evaluationCards(evals, e => findings.find(f => f.id === e.id), win);
  // events (course switch, streak) are facts, not evaluations: they keep the finding card
  const events = findings.filter(f => !evalIds.has(f.id)).map(f => '<div class="card" style="margin-bottom:10px">'
   + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'

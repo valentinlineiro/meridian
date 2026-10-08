@@ -76,6 +76,7 @@ export const CRITERIA = {
   CHESS_RATING_JUMP: { minAbsDelta: 25 },
   CHESS_COLOR_ASYMMETRY: { minDecided: 10, minDiffPp: 15 },
   LANG_XP_ACCELERATION: { minDays: 3, minXp: 200, minRatio: 1.3 },
+  CHESS_COLOR_ASYMMETRY_LONGITUDINAL: { minDecidedPerColor: 40, minActiveDays: 60, minSpanDays: 60, minDiffPp: 15, minEraDiffPp: 10 },
 } as const;
 
 export interface Evaluation {
@@ -96,8 +97,8 @@ export function salience(e: Evaluation): "finding" | "inconclusive" | "no_indica
     : "no_indication";
 }
 
-const canonical = (rs: Set<Reason>): Reason[] => REASONS.filter((r) => rs.has(r));
-const numeric = (o: Record<string, number | string | null | undefined>) =>
+export const canonical = (rs: Set<Reason>): Reason[] => REASONS.filter((r) => rs.has(r));
+export const numeric = (o: Record<string, number | string | null | undefined>) =>
   Object.fromEntries(Object.entries(o).filter(([, v]) => v !== null && v !== undefined)) as Record<string, number | string>;
 
 export function evaluateSignificantChanges(deltas: WhatChangedDeltas, context: FindingContext): Finding[] {

@@ -1,9 +1,10 @@
 import type { TrajectoryPort } from "../ports/trajectoryPort.ts";
 import { NotFoundError } from "./errors.ts";
 import {
-  evaluateTrajectoryPatterns,
+  evaluateTrajectory,
   type TrajectoryFinding,
 } from "../domain/trajectory.ts";
+import type { Evaluation } from "../domain/whatChanged.ts";
 
 export interface GetTrajectoryInput {
   userId?: string | null;
@@ -17,6 +18,7 @@ export interface TrajectoryResult {
     totalDays: number | null;
   };
   findings: TrajectoryFinding[];
+  evaluations: Evaluation[];
 }
 
 export async function getTrajectoryUseCase(
@@ -37,7 +39,7 @@ export async function getTrajectoryUseCase(
     port.getLanguagesTrajectoryData(userId),
   ]);
 
-  const findings = evaluateTrajectoryPatterns({
+  const { findings, evaluations } = evaluateTrajectory({
     chess: chessData,
     languages: languagesData,
   });
@@ -81,5 +83,6 @@ export async function getTrajectoryUseCase(
       totalDays,
     },
     findings,
+    evaluations,
   };
 }
