@@ -34,3 +34,19 @@ describe("concentration card without HHI / top-3 / effective courses", () => {
     expect(html).toMatch(/Total vitalicio lingüístico: 112[.,]000 XP en 2 cursos\./);
   });
 });
+
+describe("intensity card without XP per minute", () => {
+  it("shouldNotShowXpPerMinuteNorItsMedian", () => {
+    const html = render().getEl("#langIntensityBody").innerHTML;
+    expect(html).not.toMatch(/XP \/ minuto/);
+    expect(html).not.toMatch(/med: 29\.0/); // the xpPerMinute median
+  });
+  it("shouldKeepXpPerSessionAndTimePerSessionWithTheirDisclaimer", () => {
+    const html = render().getEl("#langIntensityBody").innerHTML;
+    expect(html).toContain("XP / sesión");
+    expect(html).toContain("Tiempo / sesión");
+    expect(html).toContain("28.0"); // global XP per session
+    expect(html).toContain("60 s");
+    expect(html).toMatch(/No representan eficiencia cognitiva ni velocidad de aprendizaje/);
+  });
+});

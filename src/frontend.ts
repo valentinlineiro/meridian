@@ -1204,10 +1204,9 @@ function renderLanguagesAnalytics(a){
  const timePerSes=g.secondsPerSession? Math.round(g.secondsPerSession)+' s':'—';
  const elInt=q('#langIntensityBody');
  if(elInt){
-  elInt.innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center;margin-bottom:12px">'
+  elInt.innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;text-align:center;margin-bottom:12px">'
    +'<div><div class="muted" style="font-size:11px;letter-spacing:.04em;text-transform:uppercase">XP / sesión</div><div style="font-size:20px;font-weight:700">'+(g.xpPerSession!=null?g.xpPerSession.toFixed(1):'—')+'</div><div class="muted" style="font-size:11px">global · med: '+(d.xpPerSessionMedian!=null?d.xpPerSessionMedian.toFixed(1):'—')+'</div></div>'
    +'<div style="border-left:1px solid #1e2e44;padding-left:8px"><div class="muted" style="font-size:11px;letter-spacing:.04em;text-transform:uppercase">Tiempo / sesión</div><div style="font-size:20px;font-weight:700">'+timePerSes+'</div><div class="muted" style="font-size:11px">global · med: '+(d.secondsPerSessionMedian!=null?Math.round(d.secondsPerSessionMedian)+' s':'—')+'</div></div>'
-   +'<div style="border-left:1px solid #1e2e44;padding-left:8px"><div class="muted" style="font-size:11px;letter-spacing:.04em;text-transform:uppercase">XP / minuto</div><div style="font-size:20px;font-weight:700">'+(g.xpPerMinute!=null?g.xpPerMinute.toFixed(1):'—')+'</div><div class="muted" style="font-size:11px">global · med: '+(d.xpPerMinuteMedian!=null?d.xpPerMinuteMedian.toFixed(1):'—')+'</div></div>'
    +'</div>'
    +'<div class="muted" style="font-size:11px;line-height:1.4;border-top:1px solid #1e2e44;padding-top:8px">Ratios descriptivos observados entre XP y tiempo reportado. No representan eficiencia cognitiva ni velocidad de aprendizaje.</div>';
  }
