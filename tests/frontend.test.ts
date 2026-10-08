@@ -717,7 +717,6 @@ describe("dashboard smoke test: markup validity, 3 panels, and responsive viewpo
     const media480Match = DASHBOARD_HTML.match(/@media\s*\(\s*max-width:\s*480px\s*\)\s*\{([\s\S]*?)\n\}/);
     expect(media480Match).not.toBeNull();
     const css480 = media480Match![1];
-    expect(css480).toMatch(/\.elo-hero\s+b\s*\{[^}]*font-size:\s*22px/);
     expect(css480).toMatch(/\.kpi\s*\{[^}]*padding:\s*10px\s+12px/);
     expect(css480).toMatch(/\.card\s*\{[^}]*padding:\s*12px/);
   });

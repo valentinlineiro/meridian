@@ -6,9 +6,6 @@ header{position:sticky;top:0;z-index:10;background:#111d2e;border-bottom:1px sol
 .h-left h1{margin:0;font-size:18px;letter-spacing:.02em;display:flex;gap:8px;align-items:center}
 .h-left small{color:#8ea0b8;font-size:12px;display:block;margin-top:2px}
 .h-right{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
-.elo-hero{display:flex;flex-direction:column;align-items:flex-end}
-.elo-hero b{font-size:28px;line-height:1}
-.elo-hero span{font-size:12px;color:#8ea0b8}
 .btn{border:0;border-radius:8px;padding:8px 14px;font-weight:600;cursor:pointer;font-size:13px}
 .btn-p{background:#1f6feb;color:#fff}.btn-p:hover{background:#2a7bff}
 .btn-g{background:#1e2e44;color:#c8d7ea;border:1px solid #2a3d56}.btn-g:disabled{opacity:.5;cursor:default}
@@ -71,7 +68,6 @@ svg text{font-family:system-ui,sans-serif}
 }
 @media(max-width:480px){
  header{padding:10px 14px;gap:8px}
- .elo-hero b{font-size:22px}
  .kpis{gap:8px;margin:10px 0}
  .kpi{padding:10px 12px;border-radius:10px}
  .kpi b{font-size:20px;margin-top:2px}
@@ -84,7 +80,6 @@ svg text{font-family:system-ui,sans-serif}
 <header>
   <div class="h-left"><h1>Meridian</h1><small id="syncMeta">—</small></div>
   <div class="h-right">
-   <div class="elo-hero"><b id="eloHero">—</b><span id="eloSub">ELO ajedrez</span></div>
     <button id="syncBtn" class="btn btn-p" onclick="doSync()">Sincronizar</button>
     <small id="syncNote" class="muted" style="max-width:260px"></small>
     <a class="btn btn-g" href="/settings" style="text-decoration:none">Configuración</a>
@@ -1747,8 +1742,6 @@ async function loadChessDashboard(){
   const elo=s.currentElo??s.latestElo??null;
   const delta=(elo!=null && s.firstElo!=null)? elo - s.firstElo : null;
   const deltaLabel = delta!=null ? (delta>0?'▲ +'+delta:delta<0?'▼ '+Math.abs(delta):'0')+' vs primer snapshot' : '';
-  q('#eloHero').textContent= elo!=null? elo : '—';
-  q('#eloSub').textContent= 'ELO ajedrez'+(delta!=null? ' · '+(delta>0?'+':'')+delta+' vs primer snapshot':'');
   const lastSnap=t.snapshots?.[t.snapshots.length-1];
   const lastDate= lastSnap?.createdAt ? lastSnap.createdAt.slice(0,10) : null;
   q('#syncMeta').textContent= lastDate ? 'Actualizado '+lastDate+' · '+s.games.toLocaleString('es-ES')+' partidas' : s.games.toLocaleString('es-ES')+' partidas';

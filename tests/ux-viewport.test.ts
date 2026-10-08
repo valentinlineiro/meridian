@@ -83,8 +83,7 @@ describe("chess dashboard DOM hierarchy & viewport rules", () => {
     expect(mediaMatch).not.toBeNull();
     const cssBody = mediaMatch![1];
 
-    // Compact styles for header, elo-hero, kpis, kpi, and card on mobile (375px/480px)
-    expect(cssBody).toMatch(/\.elo-hero\s+b\s*\{[^}]*font-size:\s*22px/);
+    // Compact styles for header, kpis, kpi, and card on mobile (375px/480px)
     expect(cssBody).toMatch(/\.kpis\s*\{[^}]*gap:\s*8px/);
     expect(cssBody).toMatch(/\.kpi\s*\{[^}]*padding:\s*10px\s+12px/);
     expect(cssBody).toMatch(/\.kpi\s+b\s*\{[^}]*font-size:\s*20px/);
