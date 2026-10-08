@@ -1227,22 +1227,14 @@ function renderLanguagesAnalytics(a){
  const hc=a.historicalConcentration;
  const elConc=q('#langConcentrationBody');
  if(hc&&elConc){
-  const hhiStr=hc.hhi!=null?hc.hhi.toFixed(4):'—';
-  const effStr=hc.effectiveCourseCount!=null?hc.effectiveCourseCount.toFixed(2):'—';
-  const top3Str=hc.top3SharePercentage!=null?hc.top3SharePercentage.toFixed(1)+'%':'—';
   const cList=(hc.courses||[]).slice(0,5);
-  elConc.innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center;margin-bottom:12px">'
-   +'<div><div class="muted" style="font-size:11px;letter-spacing:.04em;text-transform:uppercase">Índice HHI</div><div style="font-size:20px;font-weight:700">'+hhiStr+'</div><div class="muted" style="font-size:11px">concentración de XP</div></div>'
-   +'<div style="border-left:1px solid #1e2e44;padding-left:8px"><div class="muted" style="font-size:11px;letter-spacing:.04em;text-transform:uppercase">Cursos efectivos</div><div style="font-size:20px;font-weight:700">'+effStr+'</div><div class="muted" style="font-size:11px">1 / HHI</div></div>'
-   +'<div style="border-left:1px solid #1e2e44;padding-left:8px"><div class="muted" style="font-size:11px;letter-spacing:.04em;text-transform:uppercase">Cuota Top 3</div><div style="font-size:20px;font-weight:700">'+top3Str+'</div><div class="muted" style="font-size:11px">3 cursos principales</div></div>'
-   +'</div>'
-   +'<div class="hist">'
+  elConc.innerHTML='<div class="hist">'
    +cList.map(c=>{
      const barW=(c.sharePercentage||0).toFixed(1);
      return '<div class="hist-row"><span style="width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(c.title||c.courseId)+'</span><div class="bar"><i style="width:'+barW+'%;background:#2ea043"></i></div><span style="min-width:70px;text-align:right">'+barW+'%</span></div>';
    }).join('')
    +'</div>'
-   +'<div class="muted" style="font-size:11px;margin-top:8px">Total vitalicio lingüístico: '+(hc.totalLinguisticXp||0).toLocaleString('es-ES')+' XP en '+(hc.courses||[]).length+' cursos. Medida puramente matemática sin juicio de balance.</div>';
+   +'<div class="muted" style="font-size:11px;margin-top:8px">Total vitalicio lingüístico: '+(hc.totalLinguisticXp||0).toLocaleString('es-ES')+' XP en '+(hc.courses||[]).length+' cursos.</div>';
  }
 
  const deltas=(a.curriculum&&a.curriculum.recentDeltas)||[];
