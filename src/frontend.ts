@@ -432,11 +432,7 @@ svg text{font-family:system-ui,sans-serif}
     <div id="changesHeader" style="margin-bottom:16px"></div>
     <div id="changesEmpty" class="empty" style="display:none"></div>
     <div id="changesFindings" style="margin-bottom:16px"></div>
-    <div class="grid2">
-     <div id="changesChess"></div>
-     <div id="changesLanguages"></div>
-    </div>
-    <div id="changesStreak" style="margin-top:16px"></div>
+    <div id="changesActivity"></div>
    </section>
    <section id="trajectoryTab" class="tab-panel" hidden>
     <div id="trajectoryHeader" style="margin-bottom:16px">
@@ -2088,9 +2084,7 @@ function renderEvaluations(data){
 function renderWhatChanged(data){
  const elEmpty = q('#changesEmpty');
  const elFindings = q('#changesFindings');
- const elChess = q('#changesChess');
- const elLanguages = q('#changesLanguages');
- const elStreak = q('#changesStreak');
+ const elActivity = q('#changesActivity');
 
  if(!data || !data.chess || !data.languages || !data.streak){
   return;
@@ -2107,9 +2101,7 @@ function renderWhatChanged(data){
    elEmpty.textContent = 'No hay actividad registrada entre ' + data.interval.since + ' y ' + data.interval.until + '.';
   }
   if(elFindings) elFindings.innerHTML = '';
-  if(elChess) elChess.innerHTML = '';
-  if(elLanguages) elLanguages.innerHTML = '';
-  if(elStreak) elStreak.innerHTML = '';
+  if(elActivity) elActivity.innerHTML = '';
   return;
  }
 
@@ -2117,50 +2109,35 @@ function renderWhatChanged(data){
 
  if(elFindings) elFindings.innerHTML = renderEvaluations(data);
 
- if(elChess){
-  const c = data.chess;
-  const ratingDeltaText = c.ratingDelta !== null ? (c.ratingDelta > 0 ? '+' + c.ratingDelta : String(c.ratingDelta)) : '—';
-  const intervalWrText = c.intervalWinRate !== null ? c.intervalWinRate.toFixed(1) + '%' : '—';
-  const whiteWr = c.whiteWinRate !== null ? c.whiteWinRate.toFixed(1) + '%' : '—';
-  const blackWr = c.blackWinRate !== null ? c.blackWinRate.toFixed(1) + '%' : '—';
-  const histWrDeltaText = fmtDelta(c.historicalDelta);
-
-  elChess.innerHTML = '<div class="card">'
-   + '<h2>Ajedrez · Deltas</h2>'
-   + '<div class="row"><span class="muted">Partidas jugadas</span><b>' + c.gamesCount + '</b></div>'
-   + '<div class="row"><span class="muted">Delta ELO</span><b>' + ratingDeltaText + '</b></div>'
-   + '<div class="row"><span class="muted">Win rate en intervalo</span><b>' + intervalWrText + '</b></div>'
-   + '<div class="row"><span class="muted">Blancas vs Negras WR</span><b>' + whiteWr + ' / ' + blackWr + '</b></div>'
-   + '<div class="row"><span class="muted">Delta WR histórico</span><b>' + histWrDeltaText + '</b></div>'
-   + '</div>';
- }
-
- if(elLanguages){
-  const l = data.languages;
+ if(elActivity){
+  // Context for the evaluations above, not more insights: whatever an evaluation already states (rating change, colour split) is not repeated here.
+  const c = data.chess, l = data.languages, s = data.streak;
+  const row = (label, value) => '<div class="row"><span class="muted">' + label + '</span><b>' + value + '</b></div>';
+  const block = (title, rows) => '<div><div class="muted" style="font-size:11px;letter-spacing:.05em;text-transform:uppercase;margin-bottom:4px">' + title + '</div>' + rows.join('') + '</div>';
   const xpText = l.xpGained > 0 ? '+' + l.xpGained.toLocaleString('es-ES') : String(l.xpGained);
   const courseText = l.courseChanged
    ? (esc(l.baselineCourseId || '—') + ' → ' + esc(l.currentCourseId || '—'))
    : esc(l.currentCourseId || '—');
-
-  elLanguages.innerHTML = '<div class="card">'
-   + '<h2>Idiomas · Deltas</h2>'
-   + '<div class="row"><span class="muted">XP ganado</span><b>' + xpText + '</b></div>'
-   + '<div class="row"><span class="muted">Sesiones completadas</span><b>' + l.sessionsCount + '</b></div>'
-   + '<div class="row"><span class="muted">Tiempo invertido</span><b>' + l.totalSessionMinutes + ' min</b></div>'
-   + '<div class="row"><span class="muted">Curso activo</span><b>' + courseText + '</b></div>'
-   + '</div>';
- }
-
- if(elStreak){
-  const s = data.streak;
   const streakDeltaText = s.streakDelta !== null ? (s.streakDelta > 0 ? '+' + s.streakDelta : String(s.streakDelta)) : '—';
-  elStreak.innerHTML = '<div class="card">'
-   + '<h2>Racha · Deltas</h2>'
-   + '<div class="row"><span class="muted">Racha actual</span><b>🔥 ' + (s.currentStreak ?? '—') + '</b></div>'
-   + '<div class="row"><span class="muted">Racha anterior</span><b>' + (s.baselineStreak ?? '—') + '</b></div>'
-   + '<div class="row"><span class="muted">Delta racha</span><b>' + streakDeltaText + '</b></div>'
-   + '<div class="row"><span class="muted">Estado</span><span class="pill ' + (s.status === 'active' ? 'pill-win' : 'pill-loss') + '">' + s.status + '</span></div>'
-   + '</div>';
+  elActivity.innerHTML = '<div class="card">'
+   + '<h2>Actividad en la ventana</h2>'
+   + '<div class="muted" style="font-size:12px;margin-bottom:10px">Datos que contextualizan las evaluaciones.</div>'
+   + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px">'
+   + block('Ajedrez', [
+      row('Partidas jugadas', c.gamesCount),
+      row('Win rate en intervalo', c.intervalWinRate !== null ? c.intervalWinRate.toFixed(1) + '%' : '—'),
+      row('Delta WR histórico', fmtDelta(c.historicalDelta))])
+   + block('Idiomas', [
+      row('XP ganado', xpText),
+      row('Sesiones completadas', l.sessionsCount),
+      row('Tiempo invertido', l.totalSessionMinutes + ' min'),
+      row('Curso activo', courseText)])
+   + block('Racha', [
+      row('Racha actual', '🔥 ' + (s.currentStreak ?? '—')),
+      row('Racha anterior', s.baselineStreak ?? '—'),
+      row('Delta racha', streakDeltaText),
+      '<div class="row"><span class="muted">Estado</span><span class="pill ' + (s.status === 'active' ? 'pill-win' : 'pill-loss') + '">' + s.status + '</span></div>'])
+   + '</div></div>';
  }
 }
 init();

@@ -24,9 +24,7 @@ describe("Frontend What Changed Navigation & Visual Engine", () => {
     expect(DASHBOARD_HTML).toMatch(/<section[^>]+id="changesTab"[^>]*class="tab-panel"[^>]*hidden/);
     expect(DASHBOARD_HTML).toMatch(/id="changesHeader"/);
     expect(DASHBOARD_HTML).toMatch(/id="changesFindings"/);
-    expect(DASHBOARD_HTML).toMatch(/id="changesChess"/);
-    expect(DASHBOARD_HTML).toMatch(/id="changesLanguages"/);
-    expect(DASHBOARD_HTML).toMatch(/id="changesStreak"/);
+    expect(DASHBOARD_HTML).toMatch(/id="changesActivity"/);
     expect(DASHBOARD_HTML).toMatch(/id="changesEmpty"/);
   });
 
@@ -89,9 +87,7 @@ describe("Frontend What Changed Navigation & Visual Engine", () => {
       "No hay actividad registrada entre 2026-09-24T00:00:00.000Z y 2026-10-01T00:00:00.000Z."
     );
     expect(rt.getEl("#changesFindings").innerHTML).toBe("");
-    expect(rt.getEl("#changesChess").innerHTML).toBe("");
-    expect(rt.getEl("#changesLanguages").innerHTML).toBe("");
-    expect(rt.getEl("#changesStreak").innerHTML).toBe("");
+    expect(rt.getEl("#changesActivity").innerHTML).toBe("");
   });
 
   it("shouldRenderDeltaCardsAndFindingsWhenActivityExistsInInterval", () => {
@@ -153,23 +149,42 @@ describe("Frontend What Changed Navigation & Visual Engine", () => {
     expect(findingsHtml).toContain("Incremento notable de rating (+35)");
     expect(findingsHtml).toContain("Rating inicial 1200 subió a 1235");
 
-    const chessHtml = rt.getEl("#changesChess").innerHTML;
-    expect(chessHtml).toContain("Partidas jugadas");
-    expect(chessHtml).toContain("15");
-    expect(chessHtml).toContain("+35");
-    expect(chessHtml).toContain("60.0%");
+    const activityHtml = rt.getEl("#changesActivity").innerHTML;
+    expect(activityHtml).toContain("Actividad en la ventana");
+    // chess
+    expect(activityHtml).toContain("Partidas jugadas");
+    expect(activityHtml).toContain("15");
+    expect(activityHtml).toContain("60.0%");
+    // languages
+    expect(activityHtml).toContain("450");
+    expect(activityHtml).toContain("6");
+    expect(activityHtml).toContain("35 min");
+    expect(activityHtml).toContain("DUOLINGO_EN_ES → DUOLINGO_XC_ES");
+    // streak
+    expect(activityHtml).toContain("52");
+    expect(activityHtml).toContain("45");
+    expect(activityHtml).toContain("+7");
+    expect(activityHtml).toContain("active");
+    // already stated by an evaluation: not repeated as a second representation
+    expect(activityHtml).not.toContain("Delta ELO");
+    expect(activityHtml).not.toContain("Blancas vs Negras");
+    expect(activityHtml).not.toContain("66.7%");
+  });
 
-    const languagesHtml = rt.getEl("#changesLanguages").innerHTML;
-    expect(languagesHtml).toContain("450");
-    expect(languagesHtml).toContain("6");
-    expect(languagesHtml).toContain("35 min");
-    expect(languagesHtml).toContain("DUOLINGO_EN_ES → DUOLINGO_XC_ES");
-
-    const streakHtml = rt.getEl("#changesStreak").innerHTML;
-    expect(streakHtml).toContain("52");
-    expect(streakHtml).toContain("45");
-    expect(streakHtml).toContain("+7");
-    expect(streakHtml).toContain("active");
+  it("shouldRenderASingleActivityCardWithChessLanguagesAndStreakBlocks", () => {
+    const rt = createDashboardRuntime("/changes");
+    rt.sandbox.renderWhatChanged({
+      userId: "1000001",
+      interval: { since: "2026-09-24T00:00:00.000Z", until: "2026-10-01T00:00:00.000Z" },
+      baseline: { status: "exactOrPrevious", observedAt: "2026-09-24T00:00:00.000Z" },
+      chess: { gamesCount: 3, ratingDelta: null, baselineRating: 800, currentRating: null, intervalWinRate: null, whiteWinRate: null, blackWinRate: null, historicalWinRateDelta: null, historicalDelta: null },
+      languages: { xpGained: 0, sessionsCount: 2, totalSessionMinutes: 4, baselineCourseId: null, currentCourseId: null, courseChanged: false },
+      streak: { baselineStreak: null, currentStreak: null, streakDelta: null, status: "active", streakStarted: false, streakMilestone: null },
+      findings: [],
+    });
+    const html = rt.getEl("#changesActivity").innerHTML;
+    expect((html.match(/<h2>/g) || []).length).toBe(1);
+    for (const title of ["Ajedrez", "Idiomas", "Racha"]) expect(html).toContain(">" + title + "</div>");
   });
 
   it("shouldUpdateLastVisitedAtWhenMarkAsSeenNowIsClicked", async () => {
