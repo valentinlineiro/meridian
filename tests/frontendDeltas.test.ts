@@ -2,7 +2,8 @@ import { describe, it, expect } from "vitest";
 import { DASHBOARD_HTML } from "../src/frontend.ts";
 
 const fn = (name: string) => DASHBOARD_HTML.match(new RegExp(`function ${name}\\([^)]*\\)\\{[\\s\\S]*?\\n\\}`))![0];
-const lib = ["esc", "fmtDelta", "scaleDelta", "setColDiff", "pctCi", "renderForm", "renderWhatChanged"].map(fn).join("\n");
+const evaluations = DASHBOARD_HTML.slice(DASHBOARD_HTML.indexOf("function evalState"), DASHBOARD_HTML.indexOf("function renderWhatChanged")); // functions plus the constants they share
+const lib = ["esc", "fmtDelta", "scaleDelta", "setColDiff", "pctCi", "renderForm"].map(fn).join("\n") + "\n" + evaluations + "\n" + fn("renderWhatChanged");
 function run(call: string, els: Record<string, any> = {}) {
   const q = (sel: string) => (els[sel] ??= { innerHTML: "", textContent: "", style: {} });
   new Function("q", "document", `${lib}; ${call}`)(q, { getElementById: () => null });
