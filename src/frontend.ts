@@ -84,7 +84,7 @@ svg text{font-family:system-ui,sans-serif}
 <header>
   <div class="h-left"><h1>Meridian</h1><small id="syncMeta">—</small></div>
   <div class="h-right">
-   <div class="elo-hero"><b id="eloHero">—</b><span id="eloSub">ELO</span></div>
+   <div class="elo-hero"><b id="eloHero">—</b><span id="eloSub">ELO ajedrez</span></div>
     <button id="syncBtn" class="btn btn-p" onclick="doSync()">Sincronizar</button>
     <small id="syncNote" class="muted" style="max-width:260px"></small>
     <a class="btn btn-g" href="/settings" style="text-decoration:none">Configuración</a>
@@ -100,7 +100,7 @@ svg text{font-family:system-ui,sans-serif}
     <h2 style="margin:0;font-size:18px">Tu actividad</h2>
     <div class="muted" style="font-size:12px;margin-top:2px" id="overviewSyncMeta">Pulso unificado y verificado por dominio</div>
    </div>
-   <span id="overviewStreak" class="pill pill-win" style="font-size:13px;font-weight:700">🔥 —</span>
+   <span style="display:flex;align-items:center;gap:6px"><span id="overviewStreak" class="pill pill-win" style="font-size:13px;font-weight:700">🔥 —</span><span class="pill pill-scope">CUENTA</span></span>
   </div>
  </div>
 
@@ -112,8 +112,9 @@ svg text{font-family:system-ui,sans-serif}
     <button class="btn btn-g" onclick="showTab('languages')" style="font-size:12px;padding:4px 10px">Ver Idiomas →</button>
    </div>
    <div>
-    <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.05em">Curso destacado</div>
+    <div style="display:flex;justify-content:space-between;align-items:center"><div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.05em">Curso seleccionado</div><span class="pill pill-scope">CURSO</span></div>
     <div id="overviewLangActiveCourse" style="font-size:18px;font-weight:700;margin-top:2px">—</div>
+    <div id="overviewLangSourceCourse" class="muted" style="font-size:11px;margin-top:2px"></div>
    </div>
    <div style="margin-top:10px">
     <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:12px;margin-bottom:4px">
@@ -123,7 +124,7 @@ svg text{font-family:system-ui,sans-serif}
     <div class="progress-bar"><div id="overviewLangProgressBar" style="width:0%"></div></div>
    </div>
    <div style="margin-top:12px;padding-top:10px;border-top:1px solid #1e2e44;display:flex;justify-content:space-between;align-items:center">
-    <span class="muted" style="font-size:12px">Total catálogo</span>
+    <span class="muted" style="font-size:12px">Todos los cursos <span class="pill pill-scope">CUENTA</span></span>
     <span id="overviewLangCatalogXp" class="pill" style="font-weight:700">—</span>
    </div>
   </div>
@@ -134,12 +135,13 @@ svg text{font-family:system-ui,sans-serif}
     <button class="btn btn-g" onclick="showTab('chess')" style="font-size:12px;padding:4px 10px">Ver Ajedrez →</button>
    </div>
    <div>
-    <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.05em">ELO Actual</div>
+    <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.05em">ELO observado</div>
     <div id="overviewChessElo" style="font-size:24px;font-weight:800;line-height:1.2">—</div>
+    <div id="overviewChessEloMeta" class="muted" style="font-size:11px;margin-top:2px"></div>
    </div>
    <div style="margin-top:10px">
     <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:12px;margin-bottom:4px">
-     <span class="muted" id="overviewChessWrLabel">Win rate (últimas 50)</span>
+     <span class="muted" id="overviewChessWrLabel">Win rate (últimas 50 partidas, todos los rivales)</span>
      <span id="overviewChessWrMeta" class="muted" style="font-size:11px">—</span>
     </div>
     <div class="distribution-bar" id="overviewChessDist">
@@ -160,7 +162,7 @@ svg text{font-family:system-ui,sans-serif}
   <div class="card" id="overviewLangWeekCard">
    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
     <div>
-     <h3 style="margin:0;font-size:13px;color:#c8d7ea">Cuenta · últimos 7 días</h3>
+     <h3 style="margin:0;font-size:13px;color:#c8d7ea">Cuenta · últimos 7 días <span class="pill pill-scope">CUENTA</span></h3>
      <div class="muted" style="font-size:11px;margin-top:2px">Actividad global registrada en la cuenta</div>
     </div>
     <span id="overviewLangWeekSummary" class="muted" style="font-size:11px;white-space:nowrap">—</span>
@@ -169,7 +171,7 @@ svg text{font-family:system-ui,sans-serif}
   </div>
   <div class="card" id="overviewChessWeekCard">
    <div style="display:flex;justify-content:space-between;align-items:baseline">
-    <h3 style="margin:0;font-size:13px;color:#c8d7ea">Ajedrez</h3>
+    <h3 style="margin:0;font-size:13px;color:#c8d7ea">Ajedrez · últimos 7 días</h3>
     <span id="overviewChessWeekSummary" class="muted" style="font-size:11px">—</span>
    </div>
    <div class="activity-strip" id="overviewChessWeek"></div>
@@ -194,7 +196,7 @@ svg text{font-family:system-ui,sans-serif}
   </div>
   <div style="margin-top:14px">
    <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:12px;margin-bottom:6px">
-    <span id="chessHeroWrLabel" style="font-weight:600">Win rate (últimas 50 partidas)</span>
+    <span id="chessHeroWrLabel" style="font-weight:600">Win rate (últimas 50 partidas, todos los rivales)</span>
     <span id="chessHeroDistMeta" class="muted" style="font-size:11px">—</span>
    </div>
    <div class="distribution-bar" id="chessHeroDist">
@@ -1294,6 +1296,13 @@ function renderOverviewLangCard(langs, activeDetail){
    : '';
   elActiveCourse.innerHTML = flagStr + esc(activeCourse ? (activeCourse.title || activeCourse.courseId) : (selectedCourseId || 'Ninguno')) + arrowStr;
  }
+ // The selected course is a choice made in this dashboard (URL, saved selection or most XP), not what Duolingo reports: when they differ, say both.
+ const elSourceCourse = q('#overviewLangSourceCourse');
+ if(elSourceCourse){
+  const src = langs.currentCourseId;
+  const srcCourse = src ? (langs.courses || []).find(c => c.courseId === src) : null;
+  elSourceCourse.textContent = src && src !== selectedCourseId ? 'Último curso en Duolingo: ' + (srcCourse ? (srcCourse.title || src) : src) : '';
+ }
 
  const {completed: completedUnits, total: totalUnits} = getCourseProgress(activeDetail);
  const elLangUnits = q('#overviewLangUnits');
@@ -1349,6 +1358,9 @@ function renderOverview(data){
   const elo = stats.currentElo ?? stats.latestElo ?? null;
   elElo.textContent = elo != null ? elo + ' ELO' : '—';
  }
+ // The ELO comes from the last Chess snapshot, so its age is the age of that sync.
+ const elEloMeta = q('#overviewChessEloMeta');
+ if(elEloMeta) elEloMeta.textContent = (stats.currentElo ?? stats.latestElo ?? null) != null && data.lastChessSyncedAt ? 'último snapshot de Chess: ' + relDate(data.lastChessSyncedAt) : '';
 
  const recent = data.recent || {};
  const wins = recent.wins || 0, losses = recent.losses || 0, draws = recent.draws || 0;
@@ -1358,7 +1370,7 @@ function renderOverview(data){
  const elWrMeta = q('#overviewChessWrMeta');
  const elDist = q('#overviewChessDist');
  if(elWrLabel){
-  elWrLabel.textContent = wrVal !== '—' ? wrVal + '% victorias (últimas ' + (recent.limit || 50) + ')' : 'Win rate (últimas 50)';
+  elWrLabel.textContent = wrVal !== '—' ? wrVal + '% victorias (últimas ' + (recent.limit || 50) + ' partidas, todos los rivales)' : 'Win rate (últimas 50 partidas, todos los rivales)';
  }
  if(elWrMeta){
   elWrMeta.textContent = wins + ' W · ' + losses + ' L · ' + draws + ' D';
@@ -1480,7 +1492,7 @@ function renderChessView(stats, matches){
  
  const elHeroWrLabel=q('#chessHeroWrLabel');
  if(elHeroWrLabel){
-  elHeroWrLabel.textContent=rWr!=='—'? rWr+'% victorias (últimas '+(recent.limit||50)+')' : 'Win rate (últimas 50)';
+  elHeroWrLabel.textContent=rWr!=='—'? rWr+'% victorias (últimas '+(recent.limit||50)+' partidas, todos los rivales)' : 'Win rate (últimas 50 partidas, todos los rivales)';
  }
  const elHeroDistMeta=q('#chessHeroDistMeta');
  if(elHeroDistMeta){
@@ -1736,7 +1748,7 @@ async function loadChessDashboard(){
   const delta=(elo!=null && s.firstElo!=null)? elo - s.firstElo : null;
   const deltaLabel = delta!=null ? (delta>0?'▲ +'+delta:delta<0?'▼ '+Math.abs(delta):'0')+' vs primer snapshot' : '';
   q('#eloHero').textContent= elo!=null? elo : '—';
-  q('#eloSub').textContent= 'ELO'+(delta!=null? ' · '+(delta>0?'+':'')+delta+' vs primer snapshot':'');
+  q('#eloSub').textContent= 'ELO ajedrez'+(delta!=null? ' · '+(delta>0?'+':'')+delta+' vs primer snapshot':'');
   const lastSnap=t.snapshots?.[t.snapshots.length-1];
   const lastDate= lastSnap?.createdAt ? lastSnap.createdAt.slice(0,10) : null;
   q('#syncMeta').textContent= lastDate ? 'Actualizado '+lastDate+' · '+s.games.toLocaleString('es-ES')+' partidas' : s.games.toLocaleString('es-ES')+' partidas';
