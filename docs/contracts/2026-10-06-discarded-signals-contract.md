@@ -1,7 +1,7 @@
 # Contrato: señales descartadas (evaluaciones de hallazgo)
 
 **Fecha:** 2026-10-06
-**Estado:** 🔒 **CONGELADO (2026-10-06), sin implementar.** D1–D4, D6 y D7 aprobadas; D5 y D8 fuera de este contrato (§7). `LANG_FOCUS_SHIFT_LONGITUDINAL` pendiente de un contrato propio. Cualquier cambio posterior entra por enmienda explícita. **Enmienda 2026-10-06:** el invariante de trazabilidad de §4 pasa de igualdad a inclusión (*Inconcluso* ⊇ eliminados por IC); la definición operativa y §8 no cambian.
+**Estado:** 🔒 **CONGELADO (2026-10-06), sin implementar.** D1–D4, D6 y D7 aprobadas; D5 y D8 fuera de este contrato (§7). `LANG_FOCUS_SHIFT_LONGITUDINAL` pendiente de un contrato propio. Cualquier cambio posterior entra por enmienda explícita. **Enmienda A2 (2026-10-08, PROPUESTA, §9): `CHESS_RATING_JUMP` — sin ELO observado en la ventana no es "Δ = 0".** **Enmienda 2026-10-06:** el invariante de trazabilidad de §4 pasa de igualdad a inclusión (*Inconcluso* ⊇ eliminados por IC); la definición operativa y §8 no cambian.
 **Origen:** hoy un hallazgo cuya evidencia no basta **desaparece**: What-changed y Trayectoria solo devuelven lo que se emite. Tras P1.5 eso oculta la distinción más útil: *"no hay señal"* frente a *"hay indicio, pero los datos no permiten afirmarlo"*. Es también el requisito previo de cualquier capa de interpretación (LLM): esta no debe decidir qué se descartó ni por qué.
 
 **Principio:** *Insufficient evidence no significa ausencia de señal.* Meridian decide, de forma determinista, qué se afirma, qué queda inconcluso y por qué. Nada de esto lo decide un modelo.
@@ -137,3 +137,51 @@ Se derivan **solo de la evaluación transportada** (`status`, `reasons` y `metri
 - Ninguna evaluación de tipo `event`.
 - **Invariante de oro (D3):** para los mismos inputs, `findings` es idéntico antes y después (mismo contenido, mismo orden); evaluar todas las condiciones solo amplía `evaluations`.
 - Los motivos no dependen del orden en que se evalúan las condiciones.
+
+---
+
+## 9. Enmienda A2 (2026-10-08) — ausencia de observación de ELO no es efecto cero
+
+**Estado:** 📝 **PROPUESTA**, pendiente de aprobación del propietario. Hasta entonces el contrato vigente es el de §1–§8. El código y los tests de esta enmienda viajan en la misma rama, **sin mergear**.
+
+### 9.1 Dato que la motiva
+
+- Demo local sobre `main` (2026-10-08, ventana de 7 días sin partidas): `CHESS_RATING_JUMP` sale `not_emitted` con `reasons = [effect_below_threshold]` y `metrics.ratingDelta = 0`, y la UI muestra "ELO 900 → 900 (0 partidas) · SIN INDICIO". Es la lectura "se comprobó que no cambió", cuando no se observó nada.
+- Causa, en `getWhatChangedUseCase`: con `gamesCount = 0` el caso de uso **fabrica** `currentRating = baselineRating` y `ratingDelta = 0`. La regla recibe un efecto observado de 0 y lo descarta por debajo del umbral. `data_unavailable` (§3.1: "una magnitud necesaria **no está definida**; nunca cuenta como efecto bajo el umbral") no puede dispararse nunca para esta causa.
+- Procedencia del ELO (contrato del modelo de observación, §0.1, Q1): 1.507 partidas, **0** con `elo_after`, 1.507 con `page_elo`. La serie de ELO que lee What-changed es por partida (`COALESCE(elo_after, page_elo)`). Una observación de ELO en la ventana es, por tanto, **una partida de la ventana con ELO**.
+
+### 9.2 Decisión propuesta
+
+| | Hoy | Con A2 |
+|---|---|---|
+| `currentRating` | último ELO de una partida de la ventana, o el inicial si no hay | **solo** el último ELO de una partida de la ventana; `null` si no hay |
+| `ratingDelta` | `0` si `gamesCount = 0`; si no, `current − baseline` | `current − baseline` si ambos existen; **`null`** en otro caso |
+| `CHESS_RATING_JUMP`, ventana sin ELO observado | `[effect_below_threshold]` (`SIN INDICIO`) | **`[data_unavailable]`** (`INSUFICIENTE`) |
+
+Se añade a la tabla de §3.1, fila de `CHESS_RATING_JUMP`: *"ELO observado **dentro de la ventana** (al menos una partida con ELO)" → `data_unavailable`*. El resto de condiciones de la regla no cambian.
+
+### 9.3 Qué no cambia
+
+- El umbral (`|Δ| ≥ 25`), el enumerado de motivos, `kind`, `salience()` y la forma de `evaluations`.
+- **Los hallazgos emitidos (invariante de oro, D3):** un Δ de 0 y un Δ `null` no emiten, así que `findings` es idéntico antes y después para las mismas entradas. Cambia solo `evaluations` de `CHESS_RATING_JUMP` en ventanas sin ELO observado, y los campos `chess.ratingDelta` / `chess.currentRating` de la respuesta de `/api/what-changed`, que pasan de `0` / ELO inicial a `null`.
+- No se añade ningún mínimo de partidas: una partida con ELO basta para observarlo; exigir más sería un umbral nuevo sin dato que lo respalde.
+
+### 9.4 Alternativas descartadas
+
+- **`insufficient_sample` con un mínimo de partidas:** introduce un umbral arbitrario, y el fallo real no es de tamaño sino de ausencia de observación (`data_unavailable`, §3.1).
+- **Exigir un snapshot de Chess dentro de la ventana** (`elo_observations`, 41 filas): la serie que What-changed lee hoy es por partida; cambiarlo mezcla esta enmienda con el cambio de lecturas de P2. Se reabre cuando las lecturas pasen a `elo_observations`.
+- **Parchear la UI** para mostrar INSUFICIENTE cuando `gamesCount = 0`: dejaría dos semánticas para la misma `Evaluation`.
+
+### 9.5 Consecuencias en consumidores
+
+- La UI ya mapea `data_unavailable` a INSUFICIENTE; solo cambia el texto del motivo ("No hay ELO observado al inicio o dentro de la ventana (ninguna partida con ELO)"). La card de Deltas muestra "—" en lugar de "0" para Delta ELO.
+- El cliente de ingesta no consume `/api/what-changed` (auditoría de lecturas 2026-10-01: consumidor único, el dashboard).
+
+### 9.6 Tests (en `tests/getWhatChangedUseCase.test.ts` y `tests/frontendEvaluations.test.ts`)
+
+- Sin ELO observado: `ratingDelta` y `currentRating` son `null`, `baselineRating` se conserva.
+- `CHESS_RATING_JUMP` sin ELO observado: `reasons = [data_unavailable]`, sin hallazgo.
+- Partidas en la ventana pero ninguna con ELO: `data_unavailable`.
+- Con una partida con ELO en la ventana: la regla se evalúa como antes (`effect_below_threshold` con Δ 10; hallazgo con Δ 30).
+- UI: la evaluación sin ELO observado sale INSUFICIENTE y nunca SIN INDICIO.
+- El golden de hallazgos (`whatChangedEvaluations`) sigue pasando sin cambios.

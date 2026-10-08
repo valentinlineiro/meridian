@@ -86,6 +86,13 @@ describe("evaluation cards (P0)", () => {
     expect(html({ languages: { historicalDailyXpRate: 50, dailyXpRate: 20, xpGained: 140, intervalDays: 7 } })).toContain("20 XP/día en la ventana vs 50 XP/día histórico (+140 XP)");
   });
 
+  it("shouldMarkRatingJumpInsuficienteWhenNoRatingIsObservedInTheWindow", () => {
+    const h = html({ chess: { ratingDelta: null, currentRating: null } }).split('<div class="card"').find((c) => c.includes("Salto de ELO"))!;
+    expect(h).toContain("INSUFICIENTE");
+    expect(h).not.toContain("SIN INDICIO");
+    expect(h).toContain("ninguna partida con ELO");
+  });
+
   it("shouldRenderIndicioWithAmberPill", () => {
     expect(html({ chess: { decidedCount: 9 } })).toContain('class="pill pill-warn">INDICIO');
   });

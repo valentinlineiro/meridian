@@ -131,29 +131,40 @@ describe("Get What Changed Use Case", () => {
     expect(jump?.claim).toContain("+30");
   });
 
-  it("shouldReturnZeroRatingDeltaWhenNoGamesPlayedInInterval", async () => {
-    const port = createMockPort({
-      getChessInterval: async () => ({
-        gamesCount: 0,
-        decidedCount: 0,
-        wins: 0,
-        whiteGames: 0,
-        whiteDecided: 0,
-        whiteWins: 0,
-        blackGames: 0,
-        blackDecided: 0,
-        blackWins: 0,
-        latestRating: null,
-      }),
-    });
-    const res = await getWhatChangedUseCase(port, {
-      since: "2026-09-24T00:00:00.000Z",
-      until: "2026-10-01T00:00:00.000Z",
-    });
+  // Amendment A2 (docs/contracts/2026-10-06-discarded-signals-contract.md §9): no rating observed in the window is not "delta 0".
+  const emptyInterval = { gamesCount: 0, decidedCount: 0, wins: 0, whiteGames: 0, whiteDecided: 0, whiteWins: 0, blackGames: 0, blackDecided: 0, blackWins: 0, latestRating: null };
+  const window = { since: "2026-09-24T00:00:00.000Z", until: "2026-10-01T00:00:00.000Z" };
+
+  it("shouldReturnNullRatingsWhenNoRatingIsObservedInInterval", async () => {
+    const res = await getWhatChangedUseCase(createMockPort({ getChessInterval: async () => emptyInterval }), window);
     expect(res.chess.gamesCount).toBe(0);
-    expect(res.chess.ratingDelta).toBe(0);
+    expect(res.chess.ratingDelta).toBeNull();
+    expect(res.chess.currentRating).toBeNull();
+    expect(res.chess.baselineRating).toBe(800);
     expect(res.chess.intervalWinRate).toBeNull();
   });
+
+  it("shouldReportRatingJumpAsDataUnavailableNotAsNoChangeWhenNoRatingIsObserved", async () => {
+    const res = await getWhatChangedUseCase(createMockPort({ getChessInterval: async () => emptyInterval }), window);
+    const e = res.evaluations.find((x) => x.id === "CHESS_RATING_JUMP")!;
+    expect(e).toMatchObject({ status: "not_emitted", reasons: ["data_unavailable"] });
+    expect(res.findings.some((f) => f.id === "CHESS_RATING_JUMP")).toBe(false);
+  });
+
+  it("shouldReportDataUnavailableWhenGamesExistButNoneCarriesARating", async () => {
+    const res = await getWhatChangedUseCase(createMockPort({ getChessInterval: async () => ({ ...emptyInterval, gamesCount: 3, decidedCount: 3 }) }), window);
+    expect(res.chess.ratingDelta).toBeNull();
+    expect(res.evaluations.find((x) => x.id === "CHESS_RATING_JUMP")!.reasons).toEqual(["data_unavailable"]);
+  });
+
+  it("shouldKeepEvaluatingTheJumpWhenARatingIsObservedInInterval", async () => {
+    const small = await getWhatChangedUseCase(createMockPort({ getChessInterval: async () => ({ ...emptyInterval, gamesCount: 1, latestRating: 810 }) }), window);
+    expect(small.chess.ratingDelta).toBe(10);
+    expect(small.evaluations.find((x) => x.id === "CHESS_RATING_JUMP")).toMatchObject({ status: "not_emitted", reasons: ["effect_below_threshold"] });
+    const big = await getWhatChangedUseCase(createMockPort({ getChessInterval: async () => ({ ...emptyInterval, gamesCount: 1, latestRating: 830 }) }), window);
+    expect(big.findings.some((f) => f.id === "CHESS_RATING_JUMP")).toBe(true);
+  });
+
 
   it("shouldClassifyBaselineAsUnavailableWhenBothChessAndLanguagesUnavailable", async () => {
     const port = createMockPort({

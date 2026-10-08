@@ -2023,7 +2023,7 @@ function evalReasonText(id, r, m){
  }
  if(id === 'CHESS_RATING_JUMP'){
   if(r === 'effect_below_threshold') return 'Cambio de ELO observado: ' + f(m.ratingDelta, 0) + ' puntos; el criterio exige al menos 25.';
-  if(r === 'data_unavailable') return 'No hay ELO observado al inicio o al final de la ventana.';
+  if(r === 'data_unavailable') return 'No hay ELO observado al inicio o dentro de la ventana (ninguna partida con ELO).';
  }
  if(id === 'LANG_XP_ACCELERATION'){
   if(r === 'span_too_short') return 'La ventana cubre ' + f(m.intervalDays, 0) + ' días; el criterio exige al menos 3.';
