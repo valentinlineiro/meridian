@@ -6,6 +6,7 @@ import type { Env } from "../types.ts";
 import type { Container } from "../kernel/container.ts";
 import { buildContainer } from "../composition/index.ts";
 import { dailyGoalRoutes } from "../slices/daily-goal/delivery/routes.ts";
+import { visitAnchorRoutes } from "../slices/visit-anchor/delivery/routes.ts";
 import { handleImport, json } from "./import.ts";
 import { handleStats, handleLangStats, handleMatches, handleSnapshots } from "./stats.ts";
 import { handleMeStats } from "./me.ts";
@@ -45,11 +46,11 @@ app.use("*", async (c, next) => {
 //   GET|HEAD /login, POST /login                -> public (the login itself; POST is same-origin + throttled)
 //   write (not GET/HEAD)                        -> IMPORT_TOKEN (machine)        [except identity writes below]
 //   machine read (pending-details)              -> IMPORT_TOKEN
-//   POST /api/me/sync, PUT /api/me/settings, POST /logout -> owner session + same-origin (CSRF)
+//   POST /api/me/sync, PUT /api/me/settings, PUT /api/me/changes-anchor, POST /logout -> owner session + same-origin (CSRF)
 //   everything else, incl. HTML + unknown       -> owner session cookie (HTML -> redirect to /login, API -> 401)
 // Identity is a signed session cookie issued by /login for ADMIN_EMAIL; nothing else is trusted.
 const MACHINE_READ = new Set(["/api/chess/matches/pending-details"]);
-const IDENTITY_WRITE = new Set(["/api/me/sync", "/api/me/settings", "/logout"]);
+const IDENTITY_WRITE = new Set(["/api/me/sync", "/api/me/settings", "/api/me/changes-anchor", "/logout"]);
 
 const sha256 = async (s: string) => new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)));
 
@@ -172,6 +173,8 @@ app.get("/api/languages/courses/:courseId", (c) =>
 app.get("/api/me/stats/lang", (c) => handleMeStats(c.env.DB, new URL(c.req.url), emailOf(c)));
 app.use("/api/me/settings", async (c, next) => { c.set("container", buildContainer(c.env)); await next(); });
 app.route("/api/me/settings", dailyGoalRoutes);
+app.use("/api/me/changes-anchor", async (c, next) => { c.set("container", buildContainer(c.env)); await next(); });
+app.route("/api/me/changes-anchor", visitAnchorRoutes);
 app.post("/api/me/sync", (c) =>
   handleSyncRequest({ db: c.env.DB, email: emailOf(c), token: c.env.GITHUB_ACTIONS_TOKEN ?? null, target: syncTarget(c.env) }));
 app.get("/api/me/sync/status", (c) =>
