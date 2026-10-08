@@ -223,6 +223,35 @@ describe("d1WhatChangedAdapter", () => {
       expect(interval.latestRating).toBe(715);
     });
 
+    describe("latestRating when some games carry no rating", () => {
+      const sinceIso = "2026-09-20T00:00:00.000Z";
+      const untilIso = "2026-09-27T00:00:00.000Z";
+      const sinceSec = Math.floor(new Date(sinceIso).getTime() / 1000);
+      const insert = (db: any, id: string, playedAt: number, pageElo: number | null) =>
+        db.prepare(`
+          INSERT INTO matches (match_id, user_id, snapshot_id, raw_json, first_seen_at, last_seen_at, played_at, user_color, result, page_elo)
+          VALUES (?, 'u1', 's1', '{}', '2026-09-21', '2026-09-21', ?, 'white', 'win', ?)
+        `).run(id, playedAt, pageElo);
+
+      it("shouldReturnTheLatestObservedRatingWhenTheMostRecentGameHasNone", async () => {
+        const { db, d1 } = setupTestDb();
+        insert(db, "m1", sinceSec + 100, 650);
+        insert(db, "m2", sinceSec + 200, null);
+        const interval = await createD1WhatChangedAdapter(d1).getChessInterval("u1", sinceIso, untilIso);
+        expect(interval.gamesCount).toBe(2);
+        expect(interval.latestRating).toBe(650);
+      });
+
+      it("shouldReturnNullRatingWhenGamesExistButNoneHasARating", async () => {
+        const { db, d1 } = setupTestDb();
+        insert(db, "m1", sinceSec + 100, null);
+        insert(db, "m2", sinceSec + 200, null);
+        const interval = await createD1WhatChangedAdapter(d1).getChessInterval("u1", sinceIso, untilIso);
+        expect(interval.gamesCount).toBe(2);
+        expect(interval.latestRating).toBeNull();
+      });
+    });
+
     it("shouldReturnZeroMetricsAndNullRatingWhenNoMatchesInInterval", async () => {
       const { d1 } = setupTestDb();
       const adapter = createD1WhatChangedAdapter(d1);

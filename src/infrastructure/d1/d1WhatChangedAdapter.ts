@@ -171,6 +171,7 @@ export function createD1WhatChangedAdapter(db: D1Database): WhatChangedPort {
             AND m.user_color IN ('white', 'black')
             AND m.played_at IS NOT NULL
             AND m.played_at > ? AND m.played_at <= ?
+            AND COALESCE(md.elo_after, m.page_elo) IS NOT NULL
           ORDER BY m.played_at DESC
           LIMIT 1
         `)
