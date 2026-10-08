@@ -257,7 +257,7 @@ svg text{font-family:system-ui,sans-serif}
  <details class="methodology-disclosure" id="chessMethodology" style="margin-top:16px;margin-bottom:16px">
   <summary style="cursor:pointer;font-weight:600;font-size:13px;color:#8ea0b8">¿Cómo sabemos esto? <span class="muted" style="font-weight:400">· Integridad epistemológica y taxonomía canónica</span></summary>
   <div style="margin-top:10px;font-size:12px;line-height:1.5;color:#8ea0b8">
-   <p style="margin:6px 0"><b>1. Modelo Result/Outcome hermético (#16.6c):</b> Cada partida clasifica su resultado en la tríada canónica (victoria, derrota o tablas) reconciliando <code>result</code> y <code>outcome</code> reportados por Duolingo. La causa de fin se asigna con taxonomía canónica exhaustiva (checkmate, resignation, timeout, stalemate, repetition, insufficient material, fifty moves) sin estados ambiguos ni inventados.</p>
+   <p style="margin:6px 0"><b>1. Modelo Result/Outcome hermético:</b> Cada partida clasifica su resultado en la tríada canónica (victoria, derrota o tablas) reconciliando <code>result</code> y <code>outcome</code> reportados por Duolingo. La causa de fin se asigna con taxonomía canónica exhaustiva (checkmate, resignation, timeout, stalemate, repetition, insufficient material, fifty moves) sin estados ambiguos ni inventados.</p>
    <p style="margin:6px 0"><b>2. Segmentación de oponentes (Bot vs PvP):</b> Los rivales se clasifican deterministamente según su identificador y tipología (bots por motor: Noisy Neural, Neural, Blended, Stockfish vs jugadores humanos en PvP). Cuando una muestra es pequeña (ej. PvP o muestras n &lt; 50), se reporta explícitamente el tamaño muestral evitando inferencias apresuradas.</p>
    <p style="margin:6px 0"><b>3. Observación de ELO y marcas temporales:</b> El ELO registrado corresponde a observaciones de sincronización contra el perfil de la fuente. Las fechas reflejan la marca canónica <code>played_at</code> (o primera observación en <code>first_seen_at</code>).</p>
   </div>
@@ -340,7 +340,6 @@ svg text{font-family:system-ui,sans-serif}
       <div class="card" id="langObservedChangesCard" style="margin-bottom:12px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
           <h2 style="margin:0;font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:#8ea0b8">Cambios observados</h2>
-          <span class="pill pill-win" style="font-size:11px">Longitudinal #16.9</span>
         </div>
         <div id="langObservedChangesBody">
           <div id="langObservedSynthesis" style="font-weight:700;font-size:14px;color:#c8d7ea">—</div>
