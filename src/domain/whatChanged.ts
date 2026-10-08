@@ -71,12 +71,20 @@ export const REASONS = [
 ] as const;
 export type Reason = (typeof REASONS)[number];
 
+// The thresholds of each rule: the single source for the rule and for the criteria an evaluation carries (amendment A3).
+export const CRITERIA = {
+  CHESS_RATING_JUMP: { minAbsDelta: 25 },
+  CHESS_COLOR_ASYMMETRY: { minDecided: 10, minDiffPp: 15 },
+  LANG_XP_ACCELERATION: { minDays: 3, minXp: 200, minRatio: 1.3 },
+} as const;
+
 export interface Evaluation {
   id: string;
   kind: "statistical" | "threshold";
   status: "emitted" | "not_emitted";
   reasons: Reason[];
   metrics: Record<string, number | string>; // keeps the observed effect even when not emitted
+  criteria: Record<string, number>; // the thresholds this rule applies, so a consumer can state them without copying them
 }
 
 // Derived from the evaluation alone: inconclusive = the effect was observed and reaches the threshold, and only the sample
@@ -105,16 +113,17 @@ export function evaluateChanges(
   const evaluations: Evaluation[] = [];
 
 
-  // 1. Chess rating jump (|delta| >= 25)
+  // 1. Chess rating jump (|delta| >= CRITERIA.CHESS_RATING_JUMP.minAbsDelta)
   {
     const delta = deltas.chess.ratingDelta;
     const why = new Set<Reason>();
     if (delta === null) why.add("data_unavailable");
-    else if (Math.abs(delta) < 25) why.add("effect_below_threshold");
+    else if (Math.abs(delta) < CRITERIA.CHESS_RATING_JUMP.minAbsDelta) why.add("effect_below_threshold");
     const emitted = why.size === 0;
     evaluations.push({
       id: "CHESS_RATING_JUMP", kind: "threshold", status: emitted ? "emitted" : "not_emitted", reasons: canonical(why),
       metrics: numeric({ ratingDelta: delta, baselineRating: deltas.chess.baselineRating, currentRating: deltas.chess.currentRating, gamesCount: deltas.chess.gamesCount }),
+      criteria: CRITERIA.CHESS_RATING_JUMP,
     });
     if (emitted) {
       const sign = delta! > 0 ? "+" : "";
@@ -140,16 +149,17 @@ export function evaluateChanges(
   {
     const c = deltas.chess, white = c.intervalWhiteWinRate, black = c.intervalBlackWinRate;
     const why = new Set<Reason>();
-    if (c.decidedCount < 10) why.add("insufficient_sample");
+    if (c.decidedCount < CRITERIA.CHESS_COLOR_ASYMMETRY.minDecided) why.add("insufficient_sample");
     const diff = white !== null && black !== null ? Math.abs(white - black) : null;
     if (diff === null) why.add("data_unavailable");
-    else if (diff < 15.0) why.add("effect_below_threshold");
+    else if (diff < CRITERIA.CHESS_COLOR_ASYMMETRY.minDiffPp) why.add("effect_below_threshold");
     if (c.colorDelta === null) why.add("data_unavailable");
     else if (!distinguishable(c.colorDelta)) why.add("interval_includes_zero");
     const emitted = why.size === 0;
     evaluations.push({
       id: "CHESS_COLOR_ASYMMETRY", kind: "statistical", status: emitted ? "emitted" : "not_emitted", reasons: canonical(why),
       metrics: numeric({ decidedCount: c.decidedCount, whiteWinRate: white, blackWinRate: black, diffPp: diff, diffCiLower: c.colorDelta?.lower, diffCiUpper: c.colorDelta?.upper }),
+      criteria: CRITERIA.CHESS_COLOR_ASYMMETRY,
     });
     if (emitted) {
       const better = white! > black! ? "blancas" : "negras";
@@ -197,22 +207,23 @@ export function evaluateChanges(
   {
     const l = deltas.languages;
     const why = new Set<Reason>();
-    if (l.intervalDays < 3) why.add("span_too_short");
-    if (l.xpGained < 200) why.add("insufficient_sample");
+    if (l.intervalDays < CRITERIA.LANG_XP_ACCELERATION.minDays) why.add("span_too_short");
+    if (l.xpGained < CRITERIA.LANG_XP_ACCELERATION.minXp) why.add("insufficient_sample");
     if (!(l.historicalDailyXpRate > 0)) why.add("data_unavailable");
-    else if (l.dailyXpRate < 1.3 * l.historicalDailyXpRate) why.add("effect_below_threshold");
+    else if (l.dailyXpRate < CRITERIA.LANG_XP_ACCELERATION.minRatio * l.historicalDailyXpRate) why.add("effect_below_threshold");
     const emitted = why.size === 0;
     evaluations.push({
       id: "LANG_XP_ACCELERATION", kind: "threshold", status: emitted ? "emitted" : "not_emitted", reasons: canonical(why),
       metrics: numeric({ intervalDays: l.intervalDays, xpGained: l.xpGained, dailyRate: l.dailyXpRate, historicalRate: l.historicalDailyXpRate, ratio: l.historicalDailyXpRate > 0 ? l.dailyXpRate / l.historicalDailyXpRate : null }),
+      criteria: CRITERIA.LANG_XP_ACCELERATION,
     });
     if (emitted) {
       const ratio = (l.dailyXpRate / l.historicalDailyXpRate).toFixed(1);
       findings.push({
         id: "LANG_XP_ACCELERATION",
         category: "languages",
-        title: "Aceleración de ritmo",
-        claim: `Aceleración en tu ritmo de aprendizaje: creció ${ratio}x sobre tu media histórica.`,
+        title: "Mayor XP diario",
+        claim: `Tu XP diario en el periodo fue ${ratio}x tu media histórica.`,
         evidence: `${Math.round(l.dailyXpRate)} XP/día en el intervalo vs ${Math.round(l.historicalDailyXpRate)} XP/día histórico (+${l.xpGained} XP).`,
         baselineAt: context.baselineAt,
         until: context.until,

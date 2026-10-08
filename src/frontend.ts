@@ -2006,26 +2006,28 @@ const EVAL_STATE_MSG = {
 const EVAL_META = {
  CHESS_COLOR_ASYMMETRY: {title: 'Asimetría por color', scope: 'Ajedrez · partidas decididas'},
  CHESS_RATING_JUMP: {title: 'Salto de ELO', scope: 'Ajedrez · ELO observado'},
- LANG_XP_ACCELERATION: {title: 'Aceleración de ritmo', scope: 'Cuenta · XP'}
+ LANG_XP_ACCELERATION: {title: 'Mayor XP diario', scope: 'Cuenta · XP'}
 };
-// The thresholds quoted here mirror the rules in src/domain/whatChanged.ts (the payload does not carry them).
-function evalReasonText(id, r, m){
+// The criteria come from the evaluation itself (e.criteria): the rule's own thresholds, never copied here.
+function evalReasonText(e, r){
+ const id = e.id, m = e.metrics || {}, k = e.criteria || {};
  const f = (v, d) => v == null ? '—' : Number(v).toFixed(d == null ? 1 : d);
+ const need = (v, unit) => v == null ? 'no se alcanza el criterio' : 'el criterio exige al menos ' + String(v).replace('.', ',') + unit;
  if(id === 'CHESS_COLOR_ASYMMETRY'){
-  if(r === 'insufficient_sample') return f(m.decidedCount, 0) + ' partidas decididas observadas; el criterio exige al menos 10.';
-  if(r === 'effect_below_threshold') return 'Diferencia observada entre colores: ' + f(m.diffPp) + ' pp; el criterio exige al menos 15 pp.';
+  if(r === 'insufficient_sample') return f(m.decidedCount, 0) + ' partidas decididas observadas; ' + need(k.minDecided, '') + '.';
+  if(r === 'effect_below_threshold') return 'Diferencia observada entre colores: ' + f(m.diffPp) + ' pp; ' + need(k.minDiffPp, ' pp') + '.';
   if(r === 'interval_includes_zero') return 'El intervalo de confianza 95% de la diferencia [' + f(m.diffCiLower, 0) + ', ' + f(m.diffCiUpper, 0) + '] pp incluye 0.';
   if(r === 'data_unavailable') return 'Falta al menos un color con partidas decididas en la ventana.';
  }
  if(id === 'CHESS_RATING_JUMP'){
-  if(r === 'effect_below_threshold') return 'Cambio de ELO observado: ' + f(m.ratingDelta, 0) + ' puntos; el criterio exige al menos 25.';
+  if(r === 'effect_below_threshold') return 'Cambio de ELO observado: ' + f(m.ratingDelta, 0) + ' puntos; ' + need(k.minAbsDelta, '') + '.';
   if(r === 'data_unavailable') return 'No hay ELO observado al inicio o dentro de la ventana (ninguna partida con ELO).';
  }
  if(id === 'LANG_XP_ACCELERATION'){
-  if(r === 'span_too_short') return 'La ventana cubre ' + f(m.intervalDays, 0) + ' días; el criterio exige al menos 3.';
-  if(r === 'insufficient_sample') return f(m.xpGained, 0) + ' XP ganados en la ventana; el criterio exige al menos 200.';
-  if(r === 'effect_below_threshold') return 'Ritmo observado: ' + f(m.ratio) + '× el histórico; el criterio exige al menos 1,3×.';
-  if(r === 'data_unavailable') return 'No hay ritmo histórico de referencia.';
+  if(r === 'span_too_short') return 'La ventana cubre ' + f(m.intervalDays, 0) + ' días; ' + need(k.minDays, '') + '.';
+  if(r === 'insufficient_sample') return f(m.xpGained, 0) + ' XP ganados en la ventana; ' + need(k.minXp, '') + '.';
+  if(r === 'effect_below_threshold') return 'XP diario observado: ' + f(m.ratio) + '× la media histórica; ' + need(k.minRatio, '×') + '.';
+  if(r === 'data_unavailable') return 'No hay media histórica de referencia.';
  }
  return {insufficient_sample:'Muestra insuficiente.', effect_below_threshold:'El efecto observado no alcanza el criterio.', interval_includes_zero:'El intervalo de confianza incluye 0.', persistence_not_met:'El efecto no se mantiene en ambas mitades del historial.', span_too_short:'La ventana es demasiado corta.', data_unavailable:'Faltan datos necesarios.'}[r] || r;
 }
@@ -2051,7 +2053,7 @@ function renderEvaluationCard(e, state, finding, win){
   const obs = evalObserved(e.id, m);
   body = (obs ? '<div style="font-size:13px;color:#c8d7ea;margin-bottom:4px"><strong>Observado:</strong> ' + esc(obs) + '</div>' : '')
    + '<div style="font-size:13px;font-weight:600;color:#c8d7ea;margin-bottom:4px">' + esc(EVAL_STATE_MSG[state]) + '</div>'
-   + '<ul class="muted" style="font-size:12px;margin:0;padding-left:18px">' + (e.reasons || []).map(r => '<li>' + esc(evalReasonText(e.id, r, m)) + '</li>').join('') + '</ul>';
+   + '<ul class="muted" style="font-size:12px;margin:0;padding-left:18px">' + (e.reasons || []).map(r => '<li>' + esc(evalReasonText(e, r)) + '</li>').join('') + '</ul>';
  }
  const basis = e.kind === 'statistical' ? 'con intervalo de confianza 95%' : 'umbral fijo, sin intervalo de confianza';
  return '<div class="card" style="margin-bottom:10px">'
