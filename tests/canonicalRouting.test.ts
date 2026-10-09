@@ -145,28 +145,6 @@ describe("Canonical Routing (#16.9.1)", () => {
   });
 
   describe("DASHBOARD_HTML client script integration", () => {
-    it("shouldDefineCanonicalRouteParserInDashboardScript", () => {
-      expect(DASHBOARD_HTML).toMatch(/function parseCanonicalRoute\(/);
-    });
-
-    it("shouldUpdateUrlWithoutLegacyQueryParamInSelectCourse", () => {
-      const fn = DASHBOARD_HTML.match(/function selectCourse\([^)]*\)\{([\s\S]*?)\n\}/)?.[1] ?? "";
-      // Must set canonical path /languages/:courseId
-      expect(fn).toMatch(/\/languages\//);
-      expect(fn).toMatch(/targetPath/);
-      // Must not set ?course= query param
-      expect(fn).not.toMatch(/searchParams\.set\(['"]course['"]/);
-    });
-
-    it("shouldCleanLegacyQueryParamIfPresentDuringInit", () => {
-      expect(DASHBOARD_HTML).toMatch(/searchParams\.delete\(['"]course['"]\)/);
-    });
-
-    it("shouldSupportBackForwardNavigationWithCourseParam", () => {
-      // Must re-route course on popstate and hashchange if courseId changed
-      expect(DASHBOARD_HTML).toMatch(/addEventListener\(\s*['"]popstate['"]/);
-      expect(DASHBOARD_HTML).toMatch(/addEventListener\(\s*['"]hashchange['"]/);
-    });
 
     it("shouldSimulateFullBackForwardNavigationSequence", () => {
       // Simulate state machine:

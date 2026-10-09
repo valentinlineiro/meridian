@@ -162,18 +162,15 @@ describe("visit anchor in What Changed (P1 #8)", () => {
   });
 });
 
-describe("script order", () => {
-  // initTab() opens the What Changed tab on load and runs fetchWhatChanged before later top-level code: a `let` declared after that
-  // call is still in its temporal dead zone ("Cannot access 'changesShownUntil' before initialization") and the tab stays blank.
-  it("shouldDeclareTheAnchorStateBeforeTheTabIsInitialised", async () => {
-    const { DASHBOARD_HTML } = await import("../src/frontend.ts");
-    const script = DASHBOARD_HTML.slice(DASHBOARD_HTML.indexOf("<script>"));
-    const boot = script.indexOf("\ninitTab();");
-    expect(boot).toBeGreaterThan(0);
-    for (const name of ["changesAnchor", "changesShownUntil", "activeChangesInterval"]) {
-      const decl = script.search(new RegExp("\\blet\\b[^;\\n]*\\b" + name + "\\b"));
-      expect(decl, name).toBeGreaterThan(-1);
-      expect(decl, name + " declared after initTab()").toBeLessThan(boot);
-    }
+describe("opening straight on What Changed", () => {
+  // initTab() opens the tab on load and runs fetchWhatChanged before the rest of the script: state declared too late would be in its
+  // temporal dead zone and the tab would stay blank.
+  it("shouldShowTheWindowHeaderWhenThePageOpensOnTheChangesRoute", async () => {
+    const wc = { interval: { since: "2026-10-02T00:00:00.000Z", until: "2026-10-09T00:00:00.000Z" }, baseline: { status: "exactOrPrevious", observedAt: "2026-10-02T00:00:00.000Z" },
+      chess: { gamesCount: 0 }, languages: { xpGained: 0, sessionsCount: 0, totalSessionMinutes: 0 }, streak: {}, findings: [], evaluations: [] };
+    const rt = createDashboardRuntime("/changes", undefined, fetchOnly("/api/what-changed", async () => ({ ok: true, status: 200, json: async () => wc })));
+    await flush();
+    expect(rt.getEl("#changesTab").hidden).toBe(false);
+    expect(rt.getEl("#changesHeader").innerHTML).toContain("2026-10-09");
   });
 });
