@@ -90,7 +90,7 @@ describe("evaluation cards (P0)", () => {
     const h = html({ chess: { ratingDelta: null, currentRating: null } }).split('<div class="card"').find((c) => c.includes("Salto de ELO"))!;
     expect(h).toContain("INSUFICIENTE");
     expect(h).not.toContain("SIN INDICIO");
-    expect(h).toContain("ninguna partida con ELO");
+    expect(h).toContain("dos observaciones de ELO en snapshots distintos");
   });
 
   it("shouldQuoteTheCriteriaCarriedByTheEvaluationNotACopy", () => {

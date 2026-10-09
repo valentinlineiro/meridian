@@ -1,7 +1,7 @@
 # Contrato: señales descartadas (evaluaciones de hallazgo)
 
 **Fecha:** 2026-10-06
-**Estado:** 🔒 **CONGELADO (2026-10-06), sin implementar.** D1–D4, D6 y D7 aprobadas; D5 y D8 fuera de este contrato (§7). `LANG_FOCUS_SHIFT_LONGITUDINAL` pendiente de un contrato propio. Cualquier cambio posterior entra por enmienda explícita. **Enmienda A3 (2026-10-08, aprobada y desplegada, §10): criterios en la evaluación y redacción de `LANG_XP_ACCELERATION`.** **Enmienda A4 (2026-10-09, dirección aprobada, SIN implementar, §12): el ELO de un snapshot solo se atribuye a la partida ancla de su lote; excepción acotada a la igualdad de `findings` de D3.** **Enmienda A2 (2026-10-08, aprobada y desplegada, §9): `CHESS_RATING_JUMP` — sin ELO observado en la ventana no es "Δ = 0".** **Enmienda 2026-10-06:** el invariante de trazabilidad de §4 pasa de igualdad a inclusión (*Inconcluso* ⊇ eliminados por IC); la definición operativa y §8 no cambian.
+**Estado:** 🔒 **CONGELADO (2026-10-06), sin implementar.** D1–D4, D6 y D7 aprobadas; D5 y D8 fuera de este contrato (§7). `LANG_FOCUS_SHIFT_LONGITUDINAL` pendiente de un contrato propio. Cualquier cambio posterior entra por enmienda explícita. **Enmienda A3 (2026-10-08, aprobada y desplegada, §10): criterios en la evaluación y redacción de `LANG_XP_ACCELERATION`.** **Enmienda A4 (2026-10-09, aprobada e implementada, §12): el ELO de un snapshot solo se atribuye a la partida ancla de su lote; excepción acotada a la igualdad de `findings` de D3.** **Enmienda A2 (2026-10-08, aprobada y desplegada, §9): `CHESS_RATING_JUMP` — sin ELO observado en la ventana no es "Δ = 0".** **Enmienda 2026-10-06:** el invariante de trazabilidad de §4 pasa de igualdad a inclusión (*Inconcluso* ⊇ eliminados por IC); la definición operativa y §8 no cambian.
 **Origen:** hoy un hallazgo cuya evidencia no basta **desaparece**: What-changed y Trayectoria solo devuelven lo que se emite. Tras P1.5 eso oculta la distinción más útil: *"no hay señal"* frente a *"hay indicio, pero los datos no permiten afirmarlo"*. Es también el requisito previo de cualquier capa de interpretación (LLM): esta no debe decidir qué se descartó ni por qué.
 
 **Principio:** *Insufficient evidence no significa ausencia de señal.* Meridian decide, de forma determinista, qué se afirma, qué queda inconcluso y por qué. Nada de esto lo decide un modelo.
@@ -80,6 +80,7 @@ Correspondencia con las reglas vigentes (comprobada contra el código):
 | | IC95 de la diferencia global excluye 0 | `interval_includes_zero` |
 | | ≥ 10 pp y mismo signo en ambas eras | `persistence_not_met` |
 | `CHESS_RATING_JUMP` | ELO inicial y final disponibles | `data_unavailable` |
+| | dos ELO observados en snapshots distintos (anclas) alrededor de la ventana (A4, §12) | `data_unavailable` |
 | | \|Δ ELO\| ≥ 25 | `effect_below_threshold` |
 | `LANG_XP_ACCELERATION` | intervalo ≥ 3 días | `span_too_short` |
 | | XP ganado ≥ 200 | `insufficient_sample` |
@@ -248,7 +249,7 @@ Sin enmienda: es la ejecución de lo ya aprobado (D6 y D7; §3.1 ya enumera las 
 
 ## 12. Enmienda A4 (2026-10-09) — el ELO de un snapshot no es el ELO de cada partida
 
-**Estado:** 📝 **dirección aprobada por el propietario (2026-10-09); sin implementar.** Este PR es solo documental. El código, la UI y los tests de §12.8 entran en un PR posterior que el propietario revisará antes. Completa a A2 (§9); no cambia el umbral (`|Δ| ≥ 25`), el enumerado de motivos, `kind`, `salience()` ni la forma de `evaluations`.
+**Estado:** ✅ **aprobada por el propietario (2026-10-09) e implementada** en el PR de A4 (adaptador `d1WhatChangedAdapter`, texto de la UI y los tests de §12.8; S1 sigue sin verificar). Completa a A2 (§9); no cambia el umbral (`|Δ| ≥ 25`), el enumerado de motivos, `kind`, `salience()` ni la forma de `evaluations`.
 
 ### 12.1 Datos que la motivan
 Extracción de solo lectura de producción del 2026-10-09 (cinco `SELECT`; los datos se borraron, solo se conservan agregados):
