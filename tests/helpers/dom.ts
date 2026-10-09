@@ -214,3 +214,11 @@ export function parseCanonicalRoute(...args: Array<string | null | undefined>) {
   const rt = createDashboardRuntime("/overview");
   return JSON.parse(vm.runInContext(`JSON.stringify(parseCanonicalRoute(${args.map((a) => JSON.stringify(a)).join(",")}))`, rt.sandbox));
 }
+
+// Calls a function of the dashboard script as the browser would (a fresh page each time) and returns its result plus every
+// element the script touched, keyed by selector. Replaces slicing function bodies out of the source.
+export function callDashboard(expression: string): { result: any; els: Record<string, MockElement> } {
+  const rt = createDashboardRuntime("/overview");
+  const result = vm.runInContext(expression, rt.sandbox);
+  return { result, els: Object.fromEntries(rt.elements) };
+}
