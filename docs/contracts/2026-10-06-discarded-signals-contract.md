@@ -248,7 +248,7 @@ Sin enmienda: es la ejecución de lo ya aprobado (D6 y D7; §3.1 ya enumera las 
 
 ## 12. Enmienda A4 (2026-10-09) — el ELO de un snapshot no es el ELO de cada partida
 
-**Estado:** 📝 **dirección aprobada por el propietario (2026-10-09); sin implementar.** Este PR es solo documental. El código, la UI y los tests de §12.7 entran en un PR posterior que el propietario revisará antes. Completa a A2 (§9); no cambia el umbral (`|Δ| ≥ 25`), el enumerado de motivos, `kind`, `salience()` ni la forma de `evaluations`.
+**Estado:** 📝 **dirección aprobada por el propietario (2026-10-09); sin implementar.** Este PR es solo documental. El código, la UI y los tests de §12.8 entran en un PR posterior que el propietario revisará antes. Completa a A2 (§9); no cambia el umbral (`|Δ| ≥ 25`), el enumerado de motivos, `kind`, `salience()` ni la forma de `evaluations`.
 
 ### 12.1 Datos que la motivan
 Extracción de solo lectura de producción del 2026-10-09 (cinco `SELECT`; los datos se borraron, solo se conservan agregados):
@@ -264,13 +264,22 @@ Un snapshot S observa **un** ELO de cuenta, en su instante de lectura. Ese valor
 
 | | Hoy | Con A4 |
 |---|---|---|
-| Serie de ELO de What Changed | `COALESCE(elo_after, page_elo)` de cualquier partida | `elo_after` o `page_elo` **solo de anclas** (una por snapshot de primera vista) |
+| Serie de ELO de What Changed | `COALESCE(elo_after, page_elo)` de cualquier partida | `page_elo` **solo de anclas** (una por snapshot de primera vista); `elo_after` queda fuera de la serie hasta que se defina su procedencia (§12.2.1) |
 | `baselineRating` | último ELO de partida ≤ `since` | ELO del último ancla ≤ `since`; `null` si no existe |
 | `currentRating` | último ELO de partida en (`since`, `until`] | ELO del último ancla en (`since`, `until`]; `null` si no existe |
 | `ratingDelta` | `current − baseline` | `current − baseline` si existen ambos **y proceden de snapshots distintos**; `null` en otro caso |
 | `CHESS_RATING_JUMP` sin comparación válida | `[effect_below_threshold]` con Δ = 0 | `[data_unavailable]` (INSUFICIENTE) |
 
 Se añade a la tabla de §3.1, fila de `CHESS_RATING_JUMP`: *«dos ELO observados en snapshots distintos (anclas) alrededor de la ventana» → `data_unavailable`*. Un Δ que no puede evaluarse con fiabilidad es `null`, nunca 0.
+
+#### 12.2.1 Fuentes de ELO: `page_elo` frente a `elo_after`
+Son dos cosas distintas y A4 no las trata igual:
+
+- **`page_elo`** procede del snapshot (`eloRating` de la lectura). Es una observación **de snapshot**, y se le aplica la regla del ancla.
+- **`elo_after`** (`match_details`) sería una observación **de partida** solo si garantizase «ELO de la cuenta tras esta partida». **Hoy no lo garantiza:** `normalizeChessDetail` lo rellena con `eloAfter ?? elo_after ?? eloRating` (`normalization/chessDetail.ts`), y `eloRating` es el nombre del ELO de cuenta *en el momento de la lectura* que usa el snapshot; la fila no guarda cuál de las tres claves lo aportó. Por tanto un `elo_after` puede ser el ELO de la hidratación y no el posterior a la partida. Además, en la medición del 2026-10-06 (observation-model §0.1, Q1) 0 de 1.507 partidas lo tenían; **no se volvió a medir** el 2026-10-09 (el `match_details` no entró en la extracción).
+- **Decisión de A4:** mientras no se registre su procedencia, `elo_after` **no se usa** como observación de partida en la serie de ELO. No se descarta por «no ser ancla»: se descarta por no tener semántica garantizada, y el contrato lo dice expresamente.
+- **Camino para admitirlo (otra enmienda, no ésta):** (1) guardar qué clave lo aportó (`eloAfter` explícito frente al respaldo `eloRating`), (2) una comprobación con datos de que, para las partidas con `elo_after` explícito, coincide con el `page_elo` del ancla cuando ambos existen para la misma partida. Con eso, un `elo_after` explícito sería una observación de partida válida aunque la partida no sea ancla, y se usaría con preferencia sobre `page_elo`.
+- Hoy el efecto práctico es nulo si `elo_after` sigue vacío; si no lo está, A4 puede reducir la serie, y eso queda cubierto por la prueba 7 de §12.8.
 
 ### 12.3 Supuesto explícito (S1) y límite de lo que se afirma
 **S1:** entre la partida ancla y la lectura de S no hay partidas jugadas que S aún no haya visto. Solo bajo S1 el ELO leído en S es el ELO *tras* el ancla.
@@ -287,7 +296,7 @@ El propietario aprueba (2026-10-09) esta precisión: lo que se preserva no es qu
 
 - A4 puede **hacer desaparecer** un hallazgo `CHESS_RATING_JUMP` que antes se emitía, si el ELO en que se apoyaba no es de un ancla o no hay dos anclas de snapshots distintos. Es aceptable porque ese hallazgo no tenía evidencia suficiente; ahora aparece como INSUFICIENTE, con `data_unavailable`.
 - La excepción solo cubre `CHESS_RATING_JUMP` y solo por esta causa. Los demás hallazgos de What Changed y de Trayectoria mantienen la igualdad byte a byte del golden.
-- **Compatibilidad histórica:** no se exige igualdad de hallazgos antes y después de A4. Se exige que cada cambio de resultado esté **explicado y probado** (§12.7, prueba 5). Los hallazgos de ELO ya mostrados no se corrigen retroactivamente en ningún almacén (no se persisten).
+- **Compatibilidad histórica:** no se exige igualdad de hallazgos antes y después de A4. Se exige que cada cambio de resultado esté **explicado y probado** (§12.8, prueba 5). Los hallazgos de ELO ya mostrados no se corrigen retroactivamente en ningún almacén (no se persisten).
 - Qué no se puede decir de las consecuencias históricas: no se midió cuántos hallazgos `CHESS_RATING_JUMP` se emitieron realmente con ELO no ancla. Esa cifra no se conoce.
 
 ### 12.6 Consecuencias en consumidores
@@ -309,3 +318,4 @@ El propietario aprueba (2026-10-09) esta precisión: lo que se preserva no es qu
 4. Consistencia: para las mismas entradas, `CHESS_RATING_JUMP` emitido ⇔ evaluación `emitted` y descartado ⇔ `not_emitted` con sus `reasons` (una sola evaluación alimenta ambos).
 5. Regresión: los casos en que un hallazgo desaparece tras A4 se fijan como tests con su explicación (el ELO usado no era de un ancla / no había dos snapshots distintos), y el golden del resto de hallazgos sigue byte a byte.
 6. Empate en el máximo `played_at` del lote: sin ancla.
+7. `elo_after` presente en una partida no ancla (y en una ancla): no entra en la serie; la serie usa solo `page_elo` del ancla. Un `elo_after` rellenado por el respaldo `eloRating` no se confunde con un ELO posterior a la partida.
