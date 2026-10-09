@@ -31,6 +31,9 @@ export interface WhatChangedResult {
     ratingDelta: number | null;
     baselineRating: number | null;
     currentRating: number | null;
+    // When each rating was placed (played_at of its anchor game); the ELO itself was read from a snapshot, not at that instant.
+    baselineRatingAt: string | null;
+    currentRatingAt: string | null;
     intervalWinRate: number | null;
     whiteWinRate: number | null;
     blackWinRate: number | null;
@@ -231,6 +234,8 @@ export async function getWhatChangedUseCase(
       ratingDelta,
       baselineRating,
       currentRating,
+      baselineRatingAt: chessBase.data?.ratingAt ?? null,
+      currentRatingAt: chessInt.latestRatingAt,
       intervalWinRate,
       whiteWinRate,
       blackWinRate,

@@ -1,5 +1,9 @@
 export interface ChessPointInTime {
+  // `observedAt` and the lifetime counters describe the last game at or before `since`. `rating` is a different observation:
+  // the ELO of the last anchor (A4) at or before `since`, placed at `ratingAt` = that anchor game's played_at. They can differ.
+  // The ELO was read from a snapshot at or after `ratingAt`; it is not claimed to be the exact ELO right after that game (S1).
   rating: number | null;
+  ratingAt: string | null;
   lifetimeGames: number; // observed
   lifetimeDecided: number; // win + loss + draw: the denominator of lifetime rates
   lifetimeWins: number;
@@ -17,6 +21,7 @@ export interface ChessIntervalData {
   blackDecided: number;
   blackWins: number;
   latestRating: number | null;
+  latestRatingAt: string | null; // played_at of the anchor game that carries latestRating
 }
 
 export interface LanguagesPointInTime {

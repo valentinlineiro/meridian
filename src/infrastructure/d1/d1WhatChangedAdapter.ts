@@ -12,12 +12,16 @@ import { summarize } from "../../domain/result.ts";
 // ingestion onto every game it saw for the first time (matches.page_elo). That value belongs only to the anchor of the batch:
 // the game with the greatest played_at among those first seen in the snapshot. Without a unique anchor (tie on played_at) or
 // without page_elo, the batch yields no ELO. md.elo_after is deliberately not read: its provenance is not guaranteed (§12.2.1).
+// The batch is identified by matches.snapshot_id (NOT NULL, written once at first sight, never updated). The snapshot row is
+// written last by ingestion, so a failed attempt leaves games pointing at an id with no snapshot: those batches are excluded
+// (a missing ELO is preferable to an attributed one). A retry that splits a payload across two ids is the residual case (§12.3).
 const ANCHORS = `
   WITH batch AS (
     SELECT m.snapshot_id, m.played_at, m.page_elo,
            MAX(m.played_at) OVER (PARTITION BY m.snapshot_id) AS last_played,
            COUNT(*) OVER (PARTITION BY m.snapshot_id, m.played_at) AS same_second
     FROM matches m
+    JOIN snapshots s ON s.id = m.snapshot_id AND s.source = 'duolingo-chess'
     WHERE m.user_id = ? AND m.played_at IS NOT NULL
   ), anchor AS (
     SELECT played_at, page_elo FROM batch
@@ -106,14 +110,15 @@ export function createD1WhatChangedAdapter(db: D1Database): WhatChangedPort {
 
         // The rating is the last observed one (anchor) at or before `since`; null when there is none, never a game's own guess.
         const anchor = await db
-          .prepare(`${ANCHORS} SELECT page_elo AS rating FROM anchor WHERE played_at <= ? ORDER BY played_at DESC LIMIT 1`)
+          .prepare(`${ANCHORS} SELECT page_elo AS rating, played_at AS rating_at FROM anchor WHERE played_at <= ? ORDER BY played_at DESC LIMIT 1`)
           .bind(userId, sinceSec)
-          .first<{ rating: number | null }>();
+          .first<{ rating: number | null; rating_at: number }>();
 
         return {
           status: "exactOrPrevious",
           data: {
             rating: anchor?.rating ?? null,
+            ratingAt: anchor ? new Date(anchor.rating_at * 1000).toISOString() : null,
             lifetimeGames: lifetime.games,
             lifetimeDecided: lifetime.decided,
             lifetimeWins: lifetime.wins,
@@ -143,6 +148,7 @@ export function createD1WhatChangedAdapter(db: D1Database): WhatChangedPort {
           status: "firstHistorical",
           data: {
             rating: null, // no game at or before `since`, so no anchor there either (A4)
+            ratingAt: null,
             lifetimeGames: 0,
             lifetimeDecided: 0,
             lifetimeWins: 0,
@@ -179,9 +185,9 @@ export function createD1WhatChangedAdapter(db: D1Database): WhatChangedPort {
       const black = summarize(rows.filter((r) => r.user_color === "black"));
 
       const latest = await db
-        .prepare(`${ANCHORS} SELECT page_elo AS rating FROM anchor WHERE played_at > ? AND played_at <= ? ORDER BY played_at DESC LIMIT 1`)
+        .prepare(`${ANCHORS} SELECT page_elo AS rating, played_at AS rating_at FROM anchor WHERE played_at > ? AND played_at <= ? ORDER BY played_at DESC LIMIT 1`)
         .bind(userId, sinceSec, untilSec)
-        .first<{ rating: number | null }>();
+        .first<{ rating: number | null; rating_at: number }>();
 
       return {
         gamesCount: all.games,
@@ -194,6 +200,7 @@ export function createD1WhatChangedAdapter(db: D1Database): WhatChangedPort {
         blackDecided: black.decided,
         blackWins: black.wins,
         latestRating: latest?.rating ?? null,
+        latestRatingAt: latest ? new Date(latest.rating_at * 1000).toISOString() : null,
       };
     },
 

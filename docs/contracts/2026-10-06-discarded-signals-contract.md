@@ -273,6 +273,12 @@ Un snapshot S observa **un** ELO de cuenta, en su instante de lectura. Ese valor
 
 Se añade a la tabla de §3.1, fila de `CHESS_RATING_JUMP`: *«dos ELO observados en snapshots distintos (anclas) alrededor de la ventana» → `data_unavailable`*. Un Δ que no puede evaluarse con fiabilidad es `null`, nunca 0.
 
+#### 12.2.0 Qué es «el lote» y qué instante describe cada cifra
+- **Lote = partidas con el mismo `matches.snapshot_id`.** El identificador es `NOT NULL`, se escribe una sola vez en la primera vista de la partida (`upsertMatches` solo actualiza `last_seen_at` y `played_at`) y es único por ingesta (`crypto.randomUUID()` por snapshot nuevo). Un snapshot posterior que repite una partida no la mueve de lote (probado con la ingesta real).
+- **Excepción conocida:** la ingesta escribe las partidas *antes* que la fila de `snapshots` (para que el reintento no se tome por duplicado). Si el intento falla entre ambos pasos, las partidas quedan con el id del intento fallido, que no tiene fila en `snapshots`, y el reintento guarda el snapshot con otro id (reproducido en test). **Un lote cuyo `snapshot_id` no existe como snapshot de ajedrez no aporta ELO** (prefiero un ELO ausente a uno atribuido).
+- **Caso residual no resuelto:** un fallo a mitad de la escritura por tandas (>50 partidas nuevas) podría repartir un mismo payload entre dos ids; el lote con fila de snapshot tendría un «ancla» que quizá no es la última partida del payload. No hay forma de detectarlo con el esquema actual; es del mismo orden que S1 (§12.3) y queda acotado por la misma limitación de la afirmación.
+- **Dos instantes distintos en la respuesta.** `baseline.observedAt` y los contadores de resultados (`lifetime*`) describen la **última partida** ≤ `since`. El ELO (`chess.baselineRating`) es otra observación: el del último **ancla** ≤ `since`, colocado en `chess.baselineRatingAt` (`played_at` del ancla); `chess.currentRatingAt` hace lo mismo para el actual. Pueden diferir, y el ELO se leyó de un snapshot en o después de ese instante: **no se afirma** que sea el ELO exacto tras esa partida (S1). `baselineAt` de los hallazgos sigue siendo `baseline.observedAt` (la ventana de resultados), no el instante del ELO.
+
 #### 12.2.1 Fuentes de ELO: `page_elo` frente a `elo_after`
 Son dos cosas distintas y A4 no las trata igual:
 
@@ -301,7 +307,7 @@ El propietario aprueba (2026-10-09) esta precisión: lo que se preserva no es qu
 - Qué no se puede decir de las consecuencias históricas: no se midió cuántos hallazgos `CHESS_RATING_JUMP` se emitieron realmente con ELO no ancla. Esa cifra no se conoce.
 
 ### 12.6 Consecuencias en consumidores
-- La UI ya mapea `data_unavailable` a INSUFICIENTE; cambia el texto del motivo de ELO a «no hay dos observaciones de ELO en snapshots distintos alrededor de la ventana». La card de Deltas muestra «—» en lugar de 0.
+- La UI ya mapea `data_unavailable` a INSUFICIENTE; cambia el texto del motivo de ELO a «no hay dos observaciones de ELO en snapshots distintos alrededor de la ventana». La card de Deltas muestra «—» en lugar de 0. La línea observada de la evaluación dice «ELO leído en snapshots: a → b (n partidas en la ventana)»: no presenta el valor como ELO exacto tras una partida mientras S1 siga sin verificar. El texto de los hallazgos emitidos (dominio) no cambia.
 - Cobertura: con los datos del 2026-10-09, 29 de 1.536 partidas tienen ELO observable. Reproducida sobre las mismas ventanas (1/3/7/14/30 d), la regla deja el delta disponible en 14/17/17/17/17; en 2 ventanas por longitud que hoy muestran Δ = 0 habría un delta resoluble, y entre 1 y 30 ventanas (según la longitud) que hoy muestran Δ ≠ 0 pasarían a `data_unavailable`. Es una descripción de los datos de ese día, no una validación de la regla.
 - `elo_observations` mejoraría la cobertura (una fila por snapshot, con o sin partidas nuevas), pero A4 no la necesita y no autoriza su backfill.
 
@@ -320,3 +326,8 @@ El propietario aprueba (2026-10-09) esta precisión: lo que se preserva no es qu
 5. Regresión: los casos en que un hallazgo desaparece tras A4 se fijan como tests con su explicación (el ELO usado no era de un ancla / no había dos snapshots distintos), y el golden del resto de hallazgos sigue byte a byte.
 6. Empate en el máximo `played_at` del lote: sin ancla.
 7. `elo_after` presente en una partida no ancla (y en una ancla): no entra en la serie; la serie usa solo `page_elo` del ancla. Un `elo_after` rellenado por el respaldo `eloRating` no se confunde con un ELO posterior a la partida.
+8. Un lote cuyo `snapshot_id` no tiene fila de snapshot de ajedrez (intento de ingesta fallido) no aporta ELO; probado con la ingesta real y un fallo en la escritura del snapshot.
+9. Un snapshot posterior que repite partidas no las mueve de lote (ingesta real).
+10. Empate en el máximo `played_at` del lote del **baseline**: sin ELO ni `ratingAt`; combinado con un ancla posterior válida, `ratingDelta` es `null` (ni 0 ni un valor inventado).
+11. `baselineRatingAt` / `currentRatingAt` son el `played_at` del ancla y pueden diferir de `baseline.observedAt`.
+12. Los hallazgos y evaluaciones distintos de `CHESS_RATING_JUMP` no dependen de las observaciones de ELO (mismos datos de partidas y XP con y sin ELO ⇒ igualdad), además del golden de `evaluateChanges` (el dominio no cambia en este PR).

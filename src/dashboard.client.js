@@ -1498,7 +1498,7 @@ function evalObserved(id, m){
  const f = (v, d) => Number(v).toFixed(d == null ? 1 : d);
  if(id === 'CHESS_COLOR_ASYMMETRY' && m.whiteWinRate != null && m.blackWinRate != null) return 'Blancas ' + f(m.whiteWinRate) + '% · Negras ' + f(m.blackWinRate) + '% (' + m.decidedCount + ' partidas decididas)';
  if(id === 'CHESS_COLOR_ASYMMETRY_LONGITUDINAL' && m.whiteWinRate != null && m.blackWinRate != null) return 'Blancas ' + f(m.whiteWinRate) + '% · Negras ' + f(m.blackWinRate) + '% (' + m.whiteDecided + ' y ' + m.blackDecided + ' decididas' + (m.totalDays != null ? ', ' + m.totalDays + ' días' : '') + ')';
- if(id === 'CHESS_RATING_JUMP' && m.baselineRating != null && m.currentRating != null) return 'ELO ' + m.baselineRating + ' → ' + m.currentRating + ' (' + m.gamesCount + ' partidas)';
+ if(id === 'CHESS_RATING_JUMP' && m.baselineRating != null && m.currentRating != null) return 'ELO leído en snapshots: ' + m.baselineRating + ' → ' + m.currentRating + ' (' + m.gamesCount + ' partidas en la ventana)';
  if(id === 'LANG_XP_ACCELERATION' && m.dailyRate != null){
   // a historical rate of 0 means "no reference" (data_unavailable), not an observed 0 XP/day
   const ref = m.historicalRate > 0 ? ' vs ' + f(m.historicalRate, 0) + ' XP/día histórico' : '; no hay referencia histórica disponible';

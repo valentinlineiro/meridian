@@ -3,11 +3,14 @@ import { setupTestDb } from "./helpers/testDb.ts";
 import { createD1WhatChangedAdapter } from "../src/infrastructure/d1/d1WhatChangedAdapter.ts";
 
 // One game of the single test user; `snapshotId` is the snapshot that saw it first (its batch).
-const game = (db: any, id: string, snapshotId: string, playedAt: number, pageElo: number | null, color = "white", result = "win") =>
+const game = (db: any, id: string, snapshotId: string, playedAt: number, pageElo: number | null, color = "white", result = "win") => {
+  db.prepare(`INSERT OR IGNORE INTO snapshots (id, created_at, source, user_id, raw_json, games_count, pages_count, checksum, size_bytes)
+    VALUES (?, '2026-12-31T00:00:00.000Z', 'duolingo-chess', 'u1', '{}', 0, 0, ?, 2)`).run(snapshotId, "chk-" + snapshotId);
   db.prepare(`
     INSERT INTO matches (match_id, user_id, snapshot_id, raw_json, first_seen_at, last_seen_at, played_at, user_color, result, page_elo)
     VALUES (?, 'u1', ?, '{}', '2026-09-21', '2026-09-21', ?, ?, ?, ?)
   `).run(id, snapshotId, playedAt, color, result, pageElo);
+};
 
 describe("d1WhatChangedAdapter", () => {
   describe("resolveUserId", () => {
@@ -144,6 +147,35 @@ describe("d1WhatChangedAdapter", () => {
       expect(baseline.data?.rating).toBeNull(); // but it has no ELO of its own
     });
 
+    it("shouldReturnNoBaselineRatingWhenTheLastSecondOfTheBaselineBatchIsTied", async () => {
+      const { db, d1 } = setupTestDb();
+      const sinceIso = "2026-09-25T12:00:00.000Z";
+      const sinceSec = Math.floor(new Date(sinceIso).getTime() / 1000);
+      game(db, "m1", "s1", sinceSec - 500, 700);
+      game(db, "m2", "s1", sinceSec - 500, 700); // tied maximum played_at: the batch has no anchor
+
+      const baseline = await createD1WhatChangedAdapter(d1).getChessBaseline("u1", sinceIso);
+
+      expect(baseline.data?.lifetimeGames).toBe(2);
+      expect(baseline.data?.rating).toBeNull();
+      expect(baseline.data?.ratingAt).toBeNull();
+    });
+
+    it("shouldPlaceTheBaselineRatingAtItsAnchorNotAtTheLastGameWhenTheyDiffer", async () => {
+      const { db, d1 } = setupTestDb();
+      const sinceIso = "2026-09-25T12:00:00.000Z";
+      const sinceSec = Math.floor(new Date(sinceIso).getTime() / 1000);
+      game(db, "anchor", "s1", sinceSec - 5000, 700);
+      game(db, "later_non_anchor", "s2", sinceSec - 100, 710);
+      game(db, "s2_anchor_after_since", "s2", sinceSec + 100, 710);
+
+      const baseline = await createD1WhatChangedAdapter(d1).getChessBaseline("u1", sinceIso);
+
+      expect(baseline.data?.observedAt).toBe(new Date((sinceSec - 100) * 1000).toISOString()); // counters: last game <= since
+      expect(baseline.data?.rating).toBe(700); // ELO: last anchor <= since
+      expect(baseline.data?.ratingAt).toBe(new Date((sinceSec - 5000) * 1000).toISOString());
+    });
+
     it("shouldReturnFirstHistoricalBaselineWithoutARatingWhenMatchesExistOnlyAfterSince", async () => {
       const { db, d1 } = setupTestDb();
       const adapter = createD1WhatChangedAdapter(d1);
@@ -251,6 +283,25 @@ describe("d1WhatChangedAdapter", () => {
         game(db, "m1", "s1", sinceSec + 100, 650);
         db.prepare(`INSERT INTO match_details (match_id, user_id, elo_after, status, move_history, move_timestamps) VALUES ('m1','u1',999,'finished','','')`).run();
         expect(await rating(d1)).toBe(650);
+      });
+
+      it("shouldIgnoreABatchWhoseSnapshotWasNeverStored", async () => {
+        // a failed ingestion attempt leaves games pointing at an id with no snapshot row: not an ELO observation
+        const { db, d1 } = setupTestDb();
+        db.prepare(`INSERT INTO matches (match_id, user_id, snapshot_id, raw_json, first_seen_at, last_seen_at, played_at, user_color, result, page_elo)
+          VALUES ('orphan', 'u1', 'attempt-that-failed', '{}', '2026-09-21', '2026-09-21', ?, 'white', 'win', 650)`).run(sinceSec + 100);
+        const interval = await createD1WhatChangedAdapter(d1).getChessInterval("u1", sinceIso, untilIso);
+        expect(interval.gamesCount).toBe(1);
+        expect(interval.latestRating).toBeNull();
+        expect(interval.latestRatingAt).toBeNull();
+      });
+
+      it("shouldReportTheInstantOfTheAnchorGameWithTheLatestRating", async () => {
+        const { db, d1 } = setupTestDb();
+        game(db, "m1", "s1", sinceSec + 100, 650);
+        game(db, "m2", "s2", sinceSec + 200, 680);
+        const interval = await createD1WhatChangedAdapter(d1).getChessInterval("u1", sinceIso, untilIso);
+        expect(interval.latestRatingAt).toBe(new Date((sinceSec + 200) * 1000).toISOString());
       });
 
       it("shouldReturnNullRatingWhenGamesExistButNoneHasARating", async () => {

@@ -11,8 +11,8 @@ function port(interval: Record<string, number>): WhatChangedPort {
   const none = { status: "unavailable", data: null } as const;
   return {
     resolveUserId: async () => "u1",
-    getChessBaseline: async () => ({ status: "exactOrPrevious", data: { rating: 800, observedAt: SINCE, lifetimeGames: 100, lifetimeDecided: 100, lifetimeWins: 50 } }),
-    getChessInterval: async () => ({ gamesCount: 0, decidedCount: 0, wins: 0, whiteGames: 0, whiteDecided: 0, whiteWins: 0, blackGames: 0, blackDecided: 0, blackWins: 0, latestRating: null, ...interval }),
+    getChessBaseline: async () => ({ status: "exactOrPrevious", data: { rating: 800, ratingAt: null, observedAt: SINCE, lifetimeGames: 100, lifetimeDecided: 100, lifetimeWins: 50 } }),
+    getChessInterval: async () => ({ gamesCount: 0, decidedCount: 0, wins: 0, whiteGames: 0, whiteDecided: 0, whiteWins: 0, blackGames: 0, blackDecided: 0, blackWins: 0, latestRating: null, latestRatingAt: null, ...interval }),
     getLanguagesBaseline: async () => none, getLanguagesTarget: async () => none,
     getLanguagesInterval: async () => ({ xpGained: 0, sessionsCount: 0, totalSessionMinutes: 0, daysWithActivity: 0 }),
     getHistoricalDailyXpRate: async () => 0,
