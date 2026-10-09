@@ -10,6 +10,7 @@ const clientJsAsText = {
 export default defineConfig({
   plugins: [clientJsAsText],
   test: {
+    setupFiles: ["./tests/setup/scriptErrors.ts"],
     // .worktrees/ holds linked checkouts with their own test copies; never run them from here.
     exclude: ["**/node_modules/**", "**/dist/**", "**/.worktrees/**"],
   },

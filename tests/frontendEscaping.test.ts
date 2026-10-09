@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import vm from "node:vm";
-import { createDashboardRuntime } from "./helpers/dom.ts";
+import { createDashboardRuntime, fetchOnly } from "./helpers/dom.ts";
 
 // Opponent names come from other Duolingo users and course fields from the source: none of them may become markup.
 const HOSTILE = `<img src=x onerror=alert(1)>`;
@@ -42,7 +42,7 @@ describe("dashboard HTML escaping of third-party strings", () => {
     const rt = createDashboardRuntime("/languages");
     const section = { sectionIndex: 1, sectionId: HOSTILE, type: HOSTILE, cefrLevel: HOSTILE, cefrSublevel: null, completedUnits: 1, totalUnits: 2, lastSeenAt: `${HOSTILE}2026-10-01` };
     const course = { courseId: "XB_EN", title: "T", xp: 10, fromLanguage: "en", learningLanguage: "xb" };
-    rt.sandbox.fetch = async () => ({ ok: true, status: 200, json: async () => ({ course, sections: [section, { ...section, cefrLevel: null }] }) });
+    rt.sandbox.fetch = fetchOnly("/api/languages/courses/", async () => ({ ok: true, status: 200, json: async () => ({ course, sections: [section, { ...section, cefrLevel: null }] }) }));
     await vm.runInContext(`showCourseDetail("XB_EN")`, rt.sandbox);
     const html = rt.getEl("#langCefrBody").innerHTML + rt.getEl("#langSectionsList").innerHTML;
     expect(html).not.toContain("<img");

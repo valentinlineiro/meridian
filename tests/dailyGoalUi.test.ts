@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { createDashboardRuntime } from "./helpers/dom.ts";
+import { createDashboardRuntime, fetchOnly } from "./helpers/dom.ts";
 
 // The daily goal control and the colours it drives, run against the real dashboard script.
 const reply = (body: unknown, ok = true, status = 200) => ({ ok, status, json: async () => body });
@@ -7,8 +7,7 @@ const reply = (body: unknown, ok = true, status = 200) => ({ ok, status, json: a
 function setup(respond: (url: string, init?: RequestInit) => ReturnType<typeof reply>) {
   const rt = createDashboardRuntime("/");
   const calls: { url: string; init?: RequestInit }[] = [];
-  rt.sandbox.console = { error() {}, log() {} };
-  rt.sandbox.fetch = async (url: string, init?: RequestInit) => { calls.push({ url, init }); return respond(url, init); };
+  rt.sandbox.fetch = fetchOnly("/api/me/", async (url: string, init?: RequestInit) => { calls.push({ url, init }); return respond(url, init); });
   rt.sandbox.window.fetch = rt.sandbox.fetch;
   return { rt, calls, input: rt.getEl("#langGoalInput"), status: rt.getEl("#langGoalStatus") };
 }

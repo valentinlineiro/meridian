@@ -107,10 +107,36 @@ export function getElementHtmlById(html: string, id: string): string {
   return "";
 }
 
+// What the API answers for an account with no data yet, so a page booted by a test starts without errors of its own.
+function emptyAccountPayload(url: string): unknown {
+  if (url.startsWith("/api/stats/lang")) return { ok: false, error: "no lang snapshot" };
+  if (url.startsWith("/api/stats/summary")) return { games: 0, wins: 0, losses: 0, draws: 0 };
+  if (url.startsWith("/api/stats/color")) return { groups: [], difference: null };
+  if (url.startsWith("/api/stats/opponents")) return { segments: [], macro: [] };
+  if (url.startsWith("/api/stats/opponent-elo")) return { count: 0, buckets: [], min: null, max: null, average: null };
+  if (url.startsWith("/api/stats/timeline")) return { snapshots: [] };
+  return {};
+}
+
+// A test's fetch stub answers only the endpoints it is about; every other request gets the empty-account answer, as the
+// page's own boot still asks for them and a stub answering them all with the same payload makes it render garbage.
+export function fetchOnly(prefixes: string | string[], handler: (url: string, init?: any) => Promise<unknown>) {
+  const mine = ([] as string[]).concat(prefixes);
+  return async (url: string, init?: any) =>
+    mine.some((p) => url.startsWith(p)) ? handler(url, init) : { ok: true, status: 200, json: async () => emptyAccountPayload(url) };
+}
+
+// console.error lines of every runtime created since the last takeScriptErrors(); the vitest setup file fails a test that left any.
+const runtimes: string[][] = [];
+export function takeScriptErrors(): string[] {
+  return runtimes.splice(0).flat();
+}
+
 export interface DashboardRuntime {
   sandbox: any;
   getEl: (selector: string) => MockElement;
   elements: Map<string, MockElement>;
+  errors: string[];
   renderLanguagesView: (langs: any, analytics: any, xp: any, activeDetail: any) => void;
   selectCourse: (courseId: string, skipHistory?: boolean) => Promise<void>;
   renderOverviewLangCard: (langs: any, activeDetail: any) => void;
@@ -134,6 +160,8 @@ export function createDashboardRuntime(initialPath = "/languages", html: string 
   }
 
   const localStorageStore = new Map<string, string>();
+  const errors: string[] = [];
+  runtimes.push(errors);
 
   const sandbox: any = {
     document: {
@@ -174,7 +202,7 @@ export function createDashboardRuntime(initialPath = "/languages", html: string 
       addEventListener: (_ev: string, _fn: any) => {},
       removeEventListener: (_ev: string, _fn: any) => {},
     },
-    console,
+    console: { ...console, error: (...a: unknown[]) => { errors.push(a.map((x) => (typeof (x as Error)?.stack === "string" ? `${(x as Error).message} @ ${((x as Error).stack ?? "").split("\n")[1]?.trim() ?? ""}` : String(x))).join(" ")); } },
     setTimeout: (_fn: any) => 0,
     clearTimeout: () => {},
     URLSearchParams,
@@ -188,7 +216,7 @@ export function createDashboardRuntime(initialPath = "/languages", html: string 
     Map,
     Promise,
     encodeURIComponent,
-    fetch: async () => ({ ok: true, json: async () => ({}) }),
+    fetch: async (url: string) => ({ ok: true, status: 200, json: async () => emptyAccountPayload(String(url)) }),
     j: async () => null,
   };
   sandbox.window.fetch = sandbox.fetch;
@@ -203,6 +231,7 @@ export function createDashboardRuntime(initialPath = "/languages", html: string 
     sandbox,
     getEl,
     elements,
+    errors,
     renderLanguagesView: sandbox.renderLanguagesView,
     selectCourse: sandbox.selectCourse,
     renderOverviewLangCard: sandbox.renderOverviewLangCard,
