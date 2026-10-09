@@ -85,7 +85,7 @@ Contracts for the language module are in `docs/contracts/` (written in Spanish).
 
 ## Testing
 
-812 tests across 57 files: unit tests for pure analytics, integration tests that run the real router against in-memory SQLite with the project's migrations, and a journey test (`tests/demoJourney.test.ts`) that goes *snapshot → deduplication → historical comparison → trajectory → chess summary* on the demo dataset with a fake clock. Test names follow `shouldXWhenY`.
+1316 tests across 110 files. CI runs the type check, the architecture boundary guard and the test suite: unit tests for pure analytics, integration tests that run the real router against in-memory SQLite with the project's migrations, and a journey test (`tests/demoJourney.test.ts`) that goes *snapshot → deduplication → historical comparison → trajectory → chess summary* on the demo dataset with a fake clock. Test names follow `shouldXWhenY`.
 
 ```bash
 npm install
@@ -102,7 +102,7 @@ npx wrangler dev src/dev.ts --port 8787 --var IMPORT_TOKEN:dev-token
 npm run demo:seed          # 60 invented matches + two language observations
 ```
 
-The `database_id` in `wrangler.jsonc` is a deliberate placeholder: this repo is public and never carries the real one. CI only runs the tests; it does not deploy.
+The `database_id` in `wrangler.jsonc` is a deliberate placeholder: this repo is public and never carries the real one. CI runs the type check, the architecture boundary guard and the tests. `.github/workflows/deploy.yml` deploys each push to `main` that passes CI when the repository variable `CD_AUTO_DEPLOY` is `true`. Database migrations remain manual.
 
 To run your own instance, create a D1 database and keep its id in a local, uncommitted copy of the config (for example `wrangler.production.jsonc`, which is git-ignored) and pass it with `--config`.
 
