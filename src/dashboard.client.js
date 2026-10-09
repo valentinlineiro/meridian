@@ -1005,7 +1005,6 @@ function populateOpeningFilter(op){
   if(optgroup.children.length) select.appendChild(optgroup);
  }
 }
-function fmtDelta(a,b){ if(a==null||b==null) return '—'; const d=a-b; return (d>0?'+':'')+d; }
 function arrow(a,b){ if(a==null||b==null) return ''; return a>b?' ↑':a<b?' ↓':' ·'; }
 async function setRecent(n){ recentN=n; for(const k of [20,50,100]){ const el=q('#b'+k); if(el){ el.className=n===k?'btn btn-p':'btn btn-g'; } } const r=await j('/api/stats/recent?limit='+n); lastRecent=r; renderForm(r); renderChessView({ recent: r }, lastRows); }
 function fmtDelta(d){ // d in percentage points: {diff,lower,upper}. Never shown without its interval.
