@@ -35,7 +35,7 @@ describe("matches table paging", () => {
     expect(rt.getEl("#matchPager").style.display).toBe("flex");
   });
 
-  it("shouldStepThePagerByTheCurrentPageSizeAndDisableNextOnTheLastPage", async () => {
+  it("shouldStepThePagerByTenAndDisableNextOnTheLastPage", async () => {
     const { rt, call, last } = await openPage(25);
     await call("loadM(0)");
     await call("nextPage()");
@@ -43,12 +43,29 @@ describe("matches table paging", () => {
     await call("nextPage()");
     expect(last().get("offset")).toBe("20");
     expect((rt.getEl("#next") as any).disabled).toBe(true); // 20 + 10 >= 25
-
-    await call("showAllMatches()"); // the step follows the page size
-    await call("nextPage()");
-    expect(last().get("offset")).toBe("50"); // the step is now 50
     await call("prevPage()");
-    expect(last().get("offset")).toBe("0");
+    expect(last().get("offset")).toBe("10");
+  });
+
+  it("shouldKeepNextDisabledWhenExpandingAListThatFitsInOnePage", async () => {
+    const { rt, call, last } = await openPage(25);
+    await call("showAllMatches()");
+    expect(last().get("limit")).toBe("50");
+    expect((rt.getEl("#next") as any).disabled).toBe(true); // 0 + 50 >= 25: there is no second page to go to
+    expect((rt.getEl("#prev") as any).disabled).toBe(true);
+  });
+
+  it("shouldStepThePagerByFiftyOnceExpandedWhenThereAreMoreMatches", async () => {
+    const { rt, call, last } = await openPage(120);
+    await call("showAllMatches()");
+    expect((rt.getEl("#next") as any).disabled).toBe(false);
+    await call("nextPage()");
+    expect(last().get("offset")).toBe("50");
+    await call("nextPage()");
+    expect(last().get("offset")).toBe("100");
+    expect((rt.getEl("#next") as any).disabled).toBe(true); // 100 + 50 >= 120
+    await call("prevPage()");
+    expect(last().get("offset")).toBe("50");
   });
 });
 
