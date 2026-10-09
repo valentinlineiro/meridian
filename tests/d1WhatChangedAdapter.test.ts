@@ -2,6 +2,16 @@ import { describe, it, expect } from "vitest";
 import { setupTestDb } from "./helpers/testDb.ts";
 import { createD1WhatChangedAdapter } from "../src/infrastructure/d1/d1WhatChangedAdapter.ts";
 
+// One game of the single test user; `snapshotId` is the snapshot that saw it first (its batch).
+const game = (db: any, id: string, snapshotId: string, playedAt: number, pageElo: number | null, color = "white", result = "win") => {
+  db.prepare(`INSERT OR IGNORE INTO snapshots (id, created_at, source, user_id, raw_json, games_count, pages_count, checksum, size_bytes)
+    VALUES (?, '2026-12-31T00:00:00.000Z', 'duolingo-chess', 'u1', '{}', 0, 0, ?, 2)`).run(snapshotId, "chk-" + snapshotId);
+  db.prepare(`
+    INSERT INTO matches (match_id, user_id, snapshot_id, raw_json, first_seen_at, last_seen_at, played_at, user_color, result, page_elo)
+    VALUES (?, 'u1', ?, '{}', '2026-09-21', '2026-09-21', ?, ?, ?, ?)
+  `).run(id, snapshotId, playedAt, color, result, pageElo);
+};
+
 describe("d1WhatChangedAdapter", () => {
   describe("resolveUserId", () => {
     it("shouldReturnExplicitUserIdWhenExplicitIdExistsInDatabase", async () => {
@@ -106,18 +116,9 @@ describe("d1WhatChangedAdapter", () => {
       const sinceIso = "2026-09-25T12:00:00.000Z";
       const sinceSec = Math.floor(new Date(sinceIso).getTime() / 1000);
 
-      // Match 1: prior win (white)
-      db.prepare(`
-        INSERT INTO matches (match_id, user_id, snapshot_id, raw_json, first_seen_at, last_seen_at, played_at, user_color, result, page_elo)
-        VALUES ('m1', 'u1', 's1', '{}', '2026-09-20', '2026-09-20', ?, 'white', 'win', 700)
-      `).run(sinceSec - 1000);
-
-      // Match 2: latest at since (black, loss, detail with elo_after = 720)
-      db.prepare(`
-        INSERT INTO matches (match_id, user_id, snapshot_id, raw_json, first_seen_at, last_seen_at, played_at, user_color, result, page_elo)
-        VALUES ('m2', 'u1', 's1', '{}', '2026-09-25', '2026-09-25', ?, 'black', 'loss', 700)
-      `).run(sinceSec);
-
+      game(db, "m1", "s1", sinceSec - 1000, 700, "white", "win");
+      // latest at since; same batch, so it is the anchor. Its detail's elo_after is NOT read (A4 §12.2.1).
+      game(db, "m2", "s1", sinceSec, 700, "black", "loss");
       db.prepare(`
         INSERT INTO match_details (match_id, user_id, elo_after, status, move_history, move_timestamps)
         VALUES ('m2', 'u1', 720, 'finished', '', '')
@@ -126,14 +127,56 @@ describe("d1WhatChangedAdapter", () => {
       const baseline = await adapter.getChessBaseline("u1", sinceIso);
 
       expect(baseline.status).toBe("exactOrPrevious");
-      expect(baseline.data).not.toBeNull();
-      expect(baseline.data?.rating).toBe(720);
+      expect(baseline.data?.rating).toBe(700);
       expect(baseline.data?.lifetimeGames).toBe(2);
       expect(baseline.data?.lifetimeWins).toBe(1);
       expect(baseline.data?.observedAt).toBe(new Date(sinceSec * 1000).toISOString());
     });
 
-    it("shouldReturnFirstHistoricalBaselineWhenMatchesExistOnlyAfterSince", async () => {
+    it("shouldReturnNoBaselineRatingWhenTheLatestGameBeforeSinceIsNotItsBatchAnchor", async () => {
+      const { db, d1 } = setupTestDb();
+      const sinceIso = "2026-09-25T12:00:00.000Z";
+      const sinceSec = Math.floor(new Date(sinceIso).getTime() / 1000);
+      game(db, "before", "s_hist", sinceSec - 1000, 992);
+      game(db, "after", "s_hist", sinceSec + 1000, 992); // the batch's anchor, played after `since`
+
+      const baseline = await createD1WhatChangedAdapter(d1).getChessBaseline("u1", sinceIso);
+
+      expect(baseline.status).toBe("exactOrPrevious");
+      expect(baseline.data?.lifetimeGames).toBe(1); // the game is still counted for results
+      expect(baseline.data?.rating).toBeNull(); // but it has no ELO of its own
+    });
+
+    it("shouldReturnNoBaselineRatingWhenTheLastSecondOfTheBaselineBatchIsTied", async () => {
+      const { db, d1 } = setupTestDb();
+      const sinceIso = "2026-09-25T12:00:00.000Z";
+      const sinceSec = Math.floor(new Date(sinceIso).getTime() / 1000);
+      game(db, "m1", "s1", sinceSec - 500, 700);
+      game(db, "m2", "s1", sinceSec - 500, 700); // tied maximum played_at: the batch has no anchor
+
+      const baseline = await createD1WhatChangedAdapter(d1).getChessBaseline("u1", sinceIso);
+
+      expect(baseline.data?.lifetimeGames).toBe(2);
+      expect(baseline.data?.rating).toBeNull();
+      expect(baseline.data?.ratingAt).toBeNull();
+    });
+
+    it("shouldPlaceTheBaselineRatingAtItsAnchorNotAtTheLastGameWhenTheyDiffer", async () => {
+      const { db, d1 } = setupTestDb();
+      const sinceIso = "2026-09-25T12:00:00.000Z";
+      const sinceSec = Math.floor(new Date(sinceIso).getTime() / 1000);
+      game(db, "anchor", "s1", sinceSec - 5000, 700);
+      game(db, "later_non_anchor", "s2", sinceSec - 100, 710);
+      game(db, "s2_anchor_after_since", "s2", sinceSec + 100, 710);
+
+      const baseline = await createD1WhatChangedAdapter(d1).getChessBaseline("u1", sinceIso);
+
+      expect(baseline.data?.observedAt).toBe(new Date((sinceSec - 100) * 1000).toISOString()); // counters: last game <= since
+      expect(baseline.data?.rating).toBe(700); // ELO: last anchor <= since
+      expect(baseline.data?.ratingAt).toBe(new Date((sinceSec - 5000) * 1000).toISOString());
+    });
+
+    it("shouldReturnFirstHistoricalBaselineWithoutARatingWhenMatchesExistOnlyAfterSince", async () => {
       const { db, d1 } = setupTestDb();
       const adapter = createD1WhatChangedAdapter(d1);
 
@@ -141,17 +184,12 @@ describe("d1WhatChangedAdapter", () => {
       const sinceSec = Math.floor(new Date(sinceIso).getTime() / 1000);
       const futureSec = sinceSec + 5000;
 
-      // Match in future relative to since
-      db.prepare(`
-        INSERT INTO matches (match_id, user_id, snapshot_id, raw_json, first_seen_at, last_seen_at, played_at, user_color, result, page_elo)
-        VALUES ('m_future', 'u1', 's1', '{}', '2026-09-26', '2026-09-26', ?, 'white', 'win', 800)
-      `).run(futureSec);
+      game(db, "m_future", "s1", futureSec, 800, "white", "win");
 
       const baseline = await adapter.getChessBaseline("u1", sinceIso);
 
       expect(baseline.status).toBe("firstHistorical");
-      expect(baseline.data).not.toBeNull();
-      expect(baseline.data?.rating).toBe(800);
+      expect(baseline.data?.rating).toBeNull(); // no anchor at or before `since`
       expect(baseline.data?.lifetimeGames).toBe(0);
       expect(baseline.data?.lifetimeWins).toBe(0);
       expect(baseline.data?.observedAt).toBe(new Date(futureSec * 1000).toISOString());
@@ -177,40 +215,15 @@ describe("d1WhatChangedAdapter", () => {
       const sinceSec = Math.floor(new Date(sinceIso).getTime() / 1000);
       const untilSec = Math.floor(new Date(untilIso).getTime() / 1000);
 
-      // Match 0: before window (should not be counted)
-      db.prepare(`
-        INSERT INTO matches (match_id, user_id, snapshot_id, raw_json, first_seen_at, last_seen_at, played_at, user_color, result, page_elo)
-        VALUES ('m0', 'u1', 's1', '{}', '2026-09-19', '2026-09-19', ?, 'white', 'win', 600)
-      `).run(sinceSec - 100);
-
-      // Match 1: white win inside interval
-      db.prepare(`
-        INSERT INTO matches (match_id, user_id, snapshot_id, raw_json, first_seen_at, last_seen_at, played_at, user_color, result, page_elo)
-        VALUES ('m1', 'u1', 's1', '{}', '2026-09-21', '2026-09-21', ?, 'white', 'win', 650)
-      `).run(sinceSec + 100);
-
-      // Match 2: black win inside interval
-      db.prepare(`
-        INSERT INTO matches (match_id, user_id, snapshot_id, raw_json, first_seen_at, last_seen_at, played_at, user_color, result, page_elo)
-        VALUES ('m2', 'u1', 's1', '{}', '2026-09-22', '2026-09-22', ?, 'black', 'win', 700)
-      `).run(sinceSec + 200);
-
-      // Match 3: black loss inside interval (latest in interval, with elo_after = 715)
-      db.prepare(`
-        INSERT INTO matches (match_id, user_id, snapshot_id, raw_json, first_seen_at, last_seen_at, played_at, user_color, result, page_elo)
-        VALUES ('m3', 'u1', 's1', '{}', '2026-09-23', '2026-09-23', ?, 'black', 'loss', 700)
-      `).run(sinceSec + 300);
-
+      game(db, "m0", "s0", sinceSec - 100, 600, "white", "win"); // before the window
+      game(db, "m1", "s1", sinceSec + 100, 650, "white", "win");
+      game(db, "m2", "s1", sinceSec + 200, 700, "black", "win");
+      game(db, "m3", "s1", sinceSec + 300, 700, "black", "loss"); // latest of its batch: the anchor
       db.prepare(`
         INSERT INTO match_details (match_id, user_id, elo_after, status, move_history, move_timestamps)
         VALUES ('m3', 'u1', 715, 'finished', '', '')
-      `).run();
-
-      // Match 4: after window (should not be counted)
-      db.prepare(`
-        INSERT INTO matches (match_id, user_id, snapshot_id, raw_json, first_seen_at, last_seen_at, played_at, user_color, result, page_elo)
-        VALUES ('m4', 'u1', 's1', '{}', '2026-09-28', '2026-09-28', ?, 'white', 'win', 750)
-      `).run(untilSec + 100);
+      `).run(); // elo_after is not read (A4 §12.2.1)
+      game(db, "m4", "s2", untilSec + 100, 750, "white", "win"); // after the window
 
       const interval = await adapter.getChessInterval("u1", sinceIso, untilIso);
 
@@ -220,35 +233,83 @@ describe("d1WhatChangedAdapter", () => {
       expect(interval.whiteWins).toBe(1);
       expect(interval.blackGames).toBe(2);
       expect(interval.blackWins).toBe(1);
-      expect(interval.latestRating).toBe(715);
+      expect(interval.latestRating).toBe(700);
     });
 
-    describe("latestRating when some games carry no rating", () => {
+    describe("ELO anchors (amendment A4)", () => {
       const sinceIso = "2026-09-20T00:00:00.000Z";
       const untilIso = "2026-09-27T00:00:00.000Z";
       const sinceSec = Math.floor(new Date(sinceIso).getTime() / 1000);
-      const insert = (db: any, id: string, playedAt: number, pageElo: number | null) =>
-        db.prepare(`
-          INSERT INTO matches (match_id, user_id, snapshot_id, raw_json, first_seen_at, last_seen_at, played_at, user_color, result, page_elo)
-          VALUES (?, 'u1', 's1', '{}', '2026-09-21', '2026-09-21', ?, 'white', 'win', ?)
-        `).run(id, playedAt, pageElo);
+      const untilSec = Math.floor(new Date(untilIso).getTime() / 1000);
+      const rating = async (d1: any) => (await createD1WhatChangedAdapter(d1).getChessInterval("u1", sinceIso, untilIso)).latestRating;
 
-      it("shouldReturnTheLatestObservedRatingWhenTheMostRecentGameHasNone", async () => {
+      it("shouldGiveNoEloToAGameInTheWindowWhenItsBatchAnchorWasPlayedLater", async () => {
         const { db, d1 } = setupTestDb();
-        insert(db, "m1", sinceSec + 100, 650);
-        insert(db, "m2", sinceSec + 200, null);
+        game(db, "in_window", "s1", sinceSec + 100, 650);
+        game(db, "anchor_after", "s1", untilSec + 100, 650);
+        expect(await rating(d1)).toBeNull();
+      });
+
+      it("shouldGiveTheSnapshotEloToTheLastPlayedGameOfItsBatch", async () => {
+        const { db, d1 } = setupTestDb();
+        game(db, "early", "s1", sinceSec + 100, 650);
+        game(db, "late", "s1", sinceSec + 200, 650);
+        expect(await rating(d1)).toBe(650);
+      });
+
+      it("shouldNotFallBackToAnEarlierGameOfTheBatchWhenTheAnchorHasNoRating", async () => {
+        const { db, d1 } = setupTestDb();
+        game(db, "m1", "s1", sinceSec + 100, 650);
+        game(db, "m2", "s1", sinceSec + 200, null);
+        expect(await rating(d1)).toBeNull();
+      });
+
+      it("shouldYieldNoAnchorWhenTheLastSecondOfTheBatchIsTied", async () => {
+        const { db, d1 } = setupTestDb();
+        game(db, "m1", "s1", sinceSec + 200, 650);
+        game(db, "m2", "s1", sinceSec + 200, 650);
+        expect(await rating(d1)).toBeNull();
+      });
+
+      it("shouldReturnTheLatestAnchorInTheWindowWhenSeveralSnapshotsObserveIt", async () => {
+        const { db, d1 } = setupTestDb();
+        game(db, "m1", "s1", sinceSec + 100, 650);
+        game(db, "m2", "s2", sinceSec + 200, 680);
+        expect(await rating(d1)).toBe(680);
+      });
+
+      it("shouldNotReadEloAfterEvenWhenTheGameIsTheAnchor", async () => {
+        const { db, d1 } = setupTestDb();
+        game(db, "m1", "s1", sinceSec + 100, 650);
+        db.prepare(`INSERT INTO match_details (match_id, user_id, elo_after, status, move_history, move_timestamps) VALUES ('m1','u1',999,'finished','','')`).run();
+        expect(await rating(d1)).toBe(650);
+      });
+
+      it("shouldIgnoreABatchWhoseSnapshotWasNeverStored", async () => {
+        // a failed ingestion attempt leaves games pointing at an id with no snapshot row: not an ELO observation
+        const { db, d1 } = setupTestDb();
+        db.prepare(`INSERT INTO matches (match_id, user_id, snapshot_id, raw_json, first_seen_at, last_seen_at, played_at, user_color, result, page_elo)
+          VALUES ('orphan', 'u1', 'attempt-that-failed', '{}', '2026-09-21', '2026-09-21', ?, 'white', 'win', 650)`).run(sinceSec + 100);
         const interval = await createD1WhatChangedAdapter(d1).getChessInterval("u1", sinceIso, untilIso);
-        expect(interval.gamesCount).toBe(2);
-        expect(interval.latestRating).toBe(650);
+        expect(interval.gamesCount).toBe(1);
+        expect(interval.latestRating).toBeNull();
+        expect(interval.latestRatingAt).toBeNull();
+      });
+
+      it("shouldReportTheInstantOfTheAnchorGameWithTheLatestRating", async () => {
+        const { db, d1 } = setupTestDb();
+        game(db, "m1", "s1", sinceSec + 100, 650);
+        game(db, "m2", "s2", sinceSec + 200, 680);
+        const interval = await createD1WhatChangedAdapter(d1).getChessInterval("u1", sinceIso, untilIso);
+        expect(interval.latestRatingAt).toBe(new Date((sinceSec + 200) * 1000).toISOString());
       });
 
       it("shouldReturnNullRatingWhenGamesExistButNoneHasARating", async () => {
         const { db, d1 } = setupTestDb();
-        insert(db, "m1", sinceSec + 100, null);
-        insert(db, "m2", sinceSec + 200, null);
-        const interval = await createD1WhatChangedAdapter(d1).getChessInterval("u1", sinceIso, untilIso);
-        expect(interval.gamesCount).toBe(2);
-        expect(interval.latestRating).toBeNull();
+        game(db, "m1", "s1", sinceSec + 100, null);
+        game(db, "m2", "s2", sinceSec + 200, null);
+        expect((await createD1WhatChangedAdapter(d1).getChessInterval("u1", sinceIso, untilIso)).gamesCount).toBe(2);
+        expect(await rating(d1)).toBeNull();
       });
     });
 

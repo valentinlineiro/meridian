@@ -39,6 +39,9 @@ describe("API What Changed (Integration)", () => {
 
   it("shouldReturn200WithDeltasWhenQueryIsValid", async () => {
     const playedAt = Math.floor(new Date("2026-09-28T12:00:00Z").getTime() / 1000);
+    // the batch's snapshot must exist: games pointing at an id with no snapshot are never an ELO observation (A4)
+    db.prepare(`INSERT INTO snapshots (id, created_at, source, user_id, raw_json, games_count, pages_count, checksum, size_bytes)
+      VALUES ('s-1', '2026-09-28T13:00:00.000Z', 'duolingo-chess', '1000001', '{}', 1, 1, 'c-s-1', 2)`).run();
     db.prepare(`
       INSERT INTO matches (
         match_id, user_id, snapshot_id, raw_json, first_seen_at, last_seen_at,

@@ -10,6 +10,7 @@ function createMockPort(overrides: Partial<WhatChangedPort> = {}): WhatChangedPo
       status: "exactOrPrevious",
       data: {
         rating: 800,
+        ratingAt: null,
         lifetimeGames: 50,
         lifetimeDecided: 50,
         lifetimeWins: 25,
@@ -27,6 +28,7 @@ function createMockPort(overrides: Partial<WhatChangedPort> = {}): WhatChangedPo
       blackDecided: 4,
       blackWins: 2,
       latestRating: 830,
+      latestRatingAt: null,
     }),
     getLanguagesBaseline: async (_userId, since) => {
       if (since <= "2026-09-24T00:00:00.000Z") {
@@ -132,7 +134,7 @@ describe("Get What Changed Use Case", () => {
   });
 
   // Amendment A2 (docs/contracts/2026-10-06-discarded-signals-contract.md §9): no rating observed in the window is not "delta 0".
-  const emptyInterval = { gamesCount: 0, decidedCount: 0, wins: 0, whiteGames: 0, whiteDecided: 0, whiteWins: 0, blackGames: 0, blackDecided: 0, blackWins: 0, latestRating: null };
+  const emptyInterval = { gamesCount: 0, decidedCount: 0, wins: 0, whiteGames: 0, whiteDecided: 0, whiteWins: 0, blackGames: 0, blackDecided: 0, blackWins: 0, latestRating: null, latestRatingAt: null };
   const window = { since: "2026-09-24T00:00:00.000Z", until: "2026-10-01T00:00:00.000Z" };
 
   it("shouldReturnNullRatingsWhenNoRatingIsObservedInInterval", async () => {
@@ -186,6 +188,7 @@ describe("Get What Changed Use Case", () => {
         status: "firstHistorical",
         data: {
           rating: 750,
+          ratingAt: null,
           lifetimeGames: 0,
           lifetimeDecided: 0,
           lifetimeWins: 0,
@@ -389,6 +392,7 @@ describe("Get What Changed Use Case", () => {
         blackDecided: 0,
         blackWins: 0,
         latestRating: null,
+        latestRatingAt: null,
       }),
       getLanguagesBaseline: async () => ({ status: "unavailable", data: null }),
       getLanguagesTarget: async () => ({ status: "unavailable", data: null }),
