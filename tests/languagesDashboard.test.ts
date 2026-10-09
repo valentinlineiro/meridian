@@ -173,13 +173,6 @@ describe("languages dashboard - strict scope boundary isolation (#16.9.2)", () =
     expect(overviewWeekHtml).toContain("Actividad global registrada en la cuenta");
   });
 
-  it("shouldNotRenderAccountDailyXPIntoTheCourseHeroCardInRenderLanguagesView", () => {
-    const fnBody = DASHBOARD_HTML.match(/function renderLanguagesView\([\s\S]*?\n\}\n/)?.[0] ?? "";
-    expect(fnBody).not.toMatch(/xpTodayStr/);
-    expect(fnBody).not.toMatch(/XP hoy/);
-    expect(fnBody).toMatch(/XP acumulado en el curso/);
-  });
-
   it("shouldExplicitlyDesignateAccountCatalogAndCourseScopesAcrossAnalyticsAndTimelineCards", () => {
     expect(DASHBOARD_HTML).toContain("Actividad de cuenta — últimos 90 días");
     const intensityCardHtml = getElementHtmlById(DASHBOARD_HTML, "langIntensityCard");

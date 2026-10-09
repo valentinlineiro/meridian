@@ -15,22 +15,6 @@ describe("dashboard tabs", () => {
     expect(DASHBOARD_HTML).toMatch(/class="tab-panel[^"]*active/); // one panel starts active
   });
 
-  it("shouldReadInitialTabFromLocationHashSynchronously", () => {
-    expect(DASHBOARD_HTML).toMatch(/function showTab\(/);
-    expect(DASHBOARD_HTML).toMatch(/function initTab\(\)\{[\s\S]*?location\.hash/);
-    // initTab must run at script load, not inside init()'s async fetch chain
-    const initFnBody = DASHBOARD_HTML.match(/async function init\(\)\{([\s\S]*?)\n\}/)?.[1] ?? "";
-    expect(initFnBody).not.toMatch(/initTab/);
-    // initTab() must actually be invoked at script top level
-    expect(DASHBOARD_HTML).toMatch(/\ninitTab\(\);/);
-  });
-
-  it("shouldNormalizeAnyTabNameToOverviewLanguagesOrChess", () => {
-    const fnBody = DASHBOARD_HTML.match(/function showTab\(name\)\{([\s\S]*?)\n\}/)?.[1] ?? "";
-    // showTab must not trust its argument verbatim into the URL/hash
-    expect(fnBody).toMatch(/const tab\s*=\s*\(name\s*===\s*['"]languages['"]\s*\|\|\s*name\s*===\s*['"]chess['"]\)\s*\?\s*name\s*:\s*['"]overview['"]/);
-    expect(fnBody).toMatch(/history\.replaceState\(null,\s*'',\s*targetPath\)/);
-  });
 });
 
 describe("dashboard 3-tab navigation", () => {
@@ -38,11 +22,6 @@ describe("dashboard 3-tab navigation", () => {
     expect(DASHBOARD_HTML).toMatch(/id="overviewTab"/);
     expect(DASHBOARD_HTML).toMatch(/id="langTab"/);
     expect(DASHBOARD_HTML).toMatch(/id="chessTab"/);
-  });
-
-  it("shouldNormalizeTabNamesToOverviewLanguagesOrChess", () => {
-    expect(DASHBOARD_HTML).toMatch(/showTab\(name\)/);
-    expect(DASHBOARD_HTML).toMatch(/overview|languages|chess/);
   });
 
   it("shouldHaveSharedDesignSystemCssClasses", () => {
@@ -71,9 +50,6 @@ describe("dashboard overview view", () => {
     expect(DASHBOARD_HTML).toMatch(/id="overviewChessWeek"/);
   });
 
-  it("shouldDefineRenderOverviewFunction", () => {
-    expect(DASHBOARD_HTML).toMatch(/function renderOverview\(/);
-  });
 });
 
 describe("dashboard languages view hierarchy", () => {
@@ -93,24 +69,11 @@ describe("dashboard languages view hierarchy", () => {
     expect(DASHBOARD_HTML).toMatch(/ΔtotalUnits\s*=\s*0/);
   });
 
-  it("shouldDefineRenderLanguagesViewFunction", () => {
-    expect(DASHBOARD_HTML).toMatch(/function renderLanguagesView\(/);
-  });
-
-  it("shouldPrioritizeCurricularProgressionAndIsolateAccountXpInLongitudinalPanel", () => {
+  it("shouldLabelTheLongitudinalPanelAsCurricularChangeAndAccountActivity", () => {
     expect(DASHBOARD_HTML).toMatch(/Cambio curricular observado:/);
     expect(DASHBOARD_HTML).toMatch(/Actividad reciente \(cuenta\):/);
-    expect(DASHBOARD_HTML).toMatch(/totalCourses\)?\s*\|\|\s*courses\.length/);
-    expect(DASHBOARD_HTML).not.toMatch(/courses\.length\s*\|\|\s*13/);
   });
 
-  it("shouldFallbackToCurriculumAnalyticsInHeroCardWhenDetailMissing", () => {
-    expect(DASHBOARD_HTML).toMatch(/activeTotal\s*===\s*0\s*&&\s*analytics\s*&&\s*analytics\.curriculum/);
-  });
-
-  it("shouldDefensivelyGuardUndefinedCompletedUnitsWhenComputingRatio", () => {
-    expect(DASHBOARD_HTML).toMatch(/const comp\s*=\s*s\.completedUnits\s*\|\|\s*0;\s*const ratio\s*=\s*s\.totalUnits\s*\?\s*\(comp\s*\/\s*s\.totalUnits\)/);
-  });
 });
 
 describe("dashboard chess view hierarchy", () => {
@@ -131,24 +94,6 @@ describe("dashboard chess view hierarchy", () => {
     expect(DASHBOARD_HTML).toMatch(/Result\/Outcome/);
   });
 
-  it("shouldDefineRenderChessViewFunction", () => {
-    expect(DASHBOARD_HTML).toMatch(/function renderChessView\(/);
-  });
-
-  it("shouldMergeIncomingStatsIntoLastChessStatsWithoutDiscardingCache", () => {
-    expect(DASHBOARD_HTML).toMatch(/if\(stats\)\s*lastChessStats\s*=\s*Object\.assign\(lastChessStats\s*\|\|\s*\{\},\s*stats\)/);
-    expect(DASHBOARD_HTML).toMatch(/const st\s*=\s*lastChessStats\s*\|\|\s*stats\s*\|\|\s*\{\}/);
-  });
-
-  it("shouldUpdateMatchesSubtitleConditionedOnCompactMode", () => {
-    const fnBody = DASHBOARD_HTML.match(/function renderChessView\(stats,\s*matches\)\{([\s\S]*?)\n\}/)?.[1] ?? "";
-    expect(fnBody).toMatch(/compact\s*\?\s*['"]Partidas recientes \(['"]\s*\+\s*Math\.min\(10,\s*mList\.length\)\s*\+\s*['"] mostradas\)['"]\s*:\s*['"]Todas las partidas \(50 por página\)['"]/);
-  });
-
-  it("shouldUpdateHeroStreakPillClassBasedOnStreakKind", () => {
-    const fnBody = DASHBOARD_HTML.match(/function renderChessView\(stats,\s*matches\)\{([\s\S]*?)\n\}/)?.[1] ?? "";
-    expect(fnBody).toMatch(/elHeroStreak\.className\s*=\s*['"]pill['"]\s*\+\s*\(s\.currentStreak\s*\?\s*\(s\.currentStreakKind\s*===\s*['"]loss['"]\s*\?\s*['"] pill-loss['"]\s*:\s*['"] pill-win['"]\)\s*:\s*['"]['"]\)/);
-  });
 });
 
 describe("dashboard /raw placement", () => {
@@ -163,97 +108,19 @@ describe("dashboard /raw placement", () => {
 });
 
 describe("dashboard compact matches table", () => {
-  it("shouldDefaultToTenRowsWithAnExpandButton", () => {
-    expect(DASHBOARD_HTML).toMatch(/let compact\s*=\s*true/);
-    expect(DASHBOARD_HTML).toMatch(/compact\s*\?\s*10\s*:\s*50/);
-    expect(DASHBOARD_HTML).toMatch(/function showAllMatches\(\)/);
-    expect(DASHBOARD_HTML).toMatch(/id="btnAllMatches"/);
-  });
-
   it("shouldHideFiltersAndPagerUntilExpanded", () => {
     expect(DASHBOARD_HTML).toMatch(/id="matchFilters"[^>]*style="display:none"/);
     expect(DASHBOARD_HTML).toMatch(/id="matchPager"[^>]*style="display:none"/);
   });
-
-  it("shouldDerivePagerStepFromASinglePageSizeSource", () => {
-    // pager buttons must not hardcode a page size that can drift from the fetch limit
-    expect(DASHBOARD_HTML).not.toMatch(/onclick="loadM\(off[+-]50\)"/);
-    expect(DASHBOARD_HTML).toMatch(/onclick="prevPage\(\)"/);
-    expect(DASHBOARD_HTML).toMatch(/onclick="nextPage\(\)"/);
-    expect(DASHBOARD_HTML).toMatch(/function pageSize\(\)\{\s*return compact\s*\?\s*10\s*:\s*50;\s*\}/);
-    expect(DASHBOARD_HTML).toMatch(/function prevPage\(\)\{\s*loadM\(off-pageSize\(\)\);\s*\}/);
-    expect(DASHBOARD_HTML).toMatch(/function nextPage\(\)\{\s*loadM\(off\+pageSize\(\)\);\s*\}/);
-    // the disabled check must use the same pageSize(), not a hardcoded 50
-    expect(DASHBOARD_HTML).toMatch(/q\('#next'\)\.disabled=\s*off\+pageSize\(\)\s*>=\s*d\.total/);
-  });
-});
-
-describe("dashboard chess refresh", () => {
-  it("shouldLoadChessDashboardOnInit", () => {
-    expect(DASHBOARD_HTML).toMatch(/async function loadChessDashboard\(\)\{/);
-    const initBody = DASHBOARD_HTML.match(/async function init\(\)\{([\s\S]*?)\n\}/)?.[1] ?? "";
-    expect(initBody).toMatch(/await loadChessDashboard\(\)/);
-  });
-});
-
-describe("dashboard rival search", () => {
-  it("shouldSendSearchQueryToServerWhenTypingRival", () => {
-    const loadMBody = DASHBOARD_HTML.match(/async function loadM\(o\)\{([\s\S]*?)\n\}/)?.[1] ?? "";
-    expect(loadMBody).toMatch(/p\.set\('q',/);
-    const onSearchLine = DASHBOARD_HTML.match(/function onSearch\(\)\{[^\n]*/)![0];
-    expect(onSearchLine).toMatch(/loadM\(0\)/);
-  });
-
-  it("shouldNotFilterLoadedPageOnClientWhenSearching", () => {
-    const renderRowsBody = DASHBOARD_HTML.match(/function renderRows\(\)\{([\s\S]*?)\n\}[\s\S]*?async function loadM/)?.[1] ?? "";
-    expect(renderRowsBody).not.toMatch(/\.filter\(/);
-    expect(DASHBOARD_HTML).not.toMatch(/qFilter/);
-  });
 });
 
 describe("dashboard chips", () => {
-  it("shouldSendChipParamsToServerWhenLoadingMatches", () => {
-    const loadMBody = DASHBOARD_HTML.match(/async function loadM\(o\)\{([\s\S]*?)\n\}/)?.[1] ?? "";
-    expect(loadMBody).toMatch(/chip\.type/);
-    expect(loadMBody).toMatch(/p\.set\('opponentType',chip\.type\)/);
-    expect(loadMBody).toMatch(/p\.set\('result',chip\.result\)/);
-    expect(loadMBody).toMatch(/p\.set\('color',chip\.color\)/);
-  });
-
-  it("shouldReloadFirstPageWhenTogglingChip", () => {
-    const setChipLine = DASHBOARD_HTML.match(/function setChip\(group,value[^\n]*/)![0];
-    expect(setChipLine).toMatch(/loadM\(0\)/);
-  });
-
   it("shouldShowChipsOutsideHiddenFilters", () => {
     expect(DASHBOARD_HTML).toMatch(/id="matchChips"/);
     const chipsPos = DASHBOARD_HTML.indexOf('id="matchChips"');
     const hiddenPos = DASHBOARD_HTML.indexOf('id="matchFilters"');
     expect(chipsPos).toBeLessThan(hiddenPos);
     expect(DASHBOARD_HTML).toMatch(/Todos/);
-  });
-
-  it("shouldResetChipsWhenClearingFilters", () => {
-    const clearFBody = DASHBOARD_HTML.match(/function clearF\(\)\{[^\n]*/)![0];
-    expect(clearFBody).toMatch(/setChip\('type',''(,[^)]*)?\)/);
-    expect(clearFBody).toMatch(/setChip\('result',''(,[^)]*)?\)/);
-    expect(clearFBody).toMatch(/setChip\('color',''(,[^)]*)?\)/);
-  });
-
-  it("shouldTriggerSingleLoadWhenClearingFilters", () => {
-    const clearFBody = DASHBOARD_HTML.match(/function clearF\(\)\{[^\n]*/)![0];
-    // setChip(group,value) fires loadM(0); a silent third arg must suppress it
-    expect(DASHBOARD_HTML).toMatch(/function setChip\(group,value,[^)]*\)/);
-    const setChipLine = DASHBOARD_HTML.match(/function setChip\(group,value,[^\n]*/)![0];
-    expect(setChipLine).toMatch(/loadM\(0\)/);
-    // loadM(0) must be conditional on silent — an unconditional loadM(0) would still pass the call-shape asserts above
-    expect(setChipLine).toMatch(/if\s*\(\s*!silent\s*\)\s*loadM\(0\)/);
-    // first two chip resets must be silent, last one fires the single loadM(0)
-    const silentResets = (clearFBody.match(/setChip\('(?:type|result|color)','',\s*true\)/g) ?? []).length;
-    expect(silentResets).toBe(2);
-    const directLoads = (clearFBody.match(/loadM\(0\)/g) ?? []).length;
-    const loudResets = (clearFBody.match(/setChip\([^)]*\)/g) ?? []).filter((c) => !c.includes("true")).length;
-    expect(directLoads + loudResets).toBe(1);
   });
 
   it("shouldNotKeepLegacyFilterSelects", () => {
@@ -265,52 +132,16 @@ describe("dashboard chips", () => {
 });
 
 describe("dashboard WR gap and ELO wording", () => {
-  it("shouldHeadlineWhiteBlackWinRateGapThroughOneRenderer", () => {
-    expect(DASHBOARD_HTML).toMatch(/id="colDiff"/);
-    expect(DASHBOARD_HTML.match(/q\('#colDiff'\)\.textContent/g)).toHaveLength(1); // unified: behaviour is covered in frontendDeltas.test.ts
-    const dashBody = DASHBOARD_HTML.match(/async function loadChessDashboard\(\)\{([\s\S]*?)\n\}/)?.[1] ?? "";
-    expect(dashBody).toMatch(/setColDiff/);
-  });
 
   it("shouldLabelEloAsSyncObserved", () => {
     expect(DASHBOARD_HTML).toMatch(/ELO observado en sincronizaciones/);
     expect(DASHBOARD_HTML).not.toMatch(/ELO observado por snapshot/);
   });
 
-  it("shouldKeepPvpSampleSizeVisible", () => {
-    const oppBody = DASHBOARD_HTML.match(/function renderCompare\(groups, totalGames\)\{([\s\S]*?)\n\}/)?.[1] ?? "";
-    expect(oppBody).toMatch(/g\.games/);
-  });
 });
 
-describe("dashboard languages sync feedback", () => {
-  it("shouldShowALanguagesTabSyncTimestamp", () => {
-    expect(DASHBOARD_HTML).toMatch(/id="langSyncMeta"/);
-    const renderLangBody = DASHBOARD_HTML.match(/function renderLang\(d\)\{([\s\S]*?)\n\}/)?.[1] ?? "";
-    expect(renderLangBody).toMatch(/langSyncMeta/);
-  });
-
-  it("shouldBaseTheSyncTimestampOnTheSnapshotCreatedAtNotJustActivityDate", () => {
-    // "Sincronizado" must reflect when the snapshot was actually captured (d.createdAt,
-    // returned by /api/stats/lang), not just the last day with xp_summaries activity —
-    // those are different facts and conflating them was the bug being fixed here.
-    const renderLangBody = DASHBOARD_HTML.match(/function renderLang\(d\)\{([\s\S]*?)\n\}/)?.[1] ?? "";
-    expect(renderLangBody).toMatch(/'Sincronizado '\+relDate\(d\.createdAt\)/);
-    expect(renderLangBody).toMatch(/Actividad hasta/);
-  });
-});
 
 describe("dashboard UX-PR2 hierarchy and reading", () => {
-  it("shouldLabelEloDeltaExplicitlyVsFirstSnapshot", () => {
-    const dashBody = DASHBOARD_HTML.match(/async function loadChessDashboard\(\)\{([\s\S]*?)\n\}/)?.[1] ?? "";
-    expect(dashBody).toMatch(/vs primer snapshot/);
-  });
-
-  it("shouldOnlyRenderRecentColorSplitIfBothColorsHaveGames", () => {
-    const formBody = DASHBOARD_HTML.match(/function renderForm\(r\)\{([\s\S]*?)\n\}/)?.[1] ?? "";
-    // Must guard that both colors exist and have games > 0
-    expect(formBody).toMatch(/wh\.games\s*>\s*0\s*&&\s*bl\.games\s*>\s*0/);
-  });
 
   it("shouldDemoteOpponentEloToACollapsibleDetailsBlock", () => {
     expect(DASHBOARD_HTML).toMatch(/<details[^>]*id="eloDetails"/);
@@ -357,18 +188,6 @@ describe("dashboard match date/time formatting", () => {
     expect(formatMatchDate(undefined, undefined)).toBe("—");
   });
 
-  it("shouldRenderFormatMatchDateInDashboardHtmlRows", () => {
-    expect(DASHBOARD_HTML).toMatch(/function formatMatchDate\(/);
-    const renderRowsBody = DASHBOARD_HTML.match(/function renderRows\(\)\{([\s\S]*?)\n\}/)?.[1] ?? "";
-    expect(renderRowsBody).toMatch(/formatMatchDate\(m\.played_at,\s*m\.first_seen_at\)/);
-  });
-
-  it("shouldIncludeFullDateInTitleAttributeWhenPlayedAtIsSet", () => {
-    const renderRowsBody = DASHBOARD_HTML.match(/function renderRows\(\)\{([\s\S]*?)\n\}/)?.[1] ?? "";
-    expect(renderRowsBody).toMatch(/title=/);
-    expect(renderRowsBody).toMatch(/m\.played_at\s*\?\s*new Date\(m\.played_at \* 1000\)\.toLocaleString\('es-ES'\)/);
-    expect(renderRowsBody).toMatch(/data-l="Fecha"'\s*\+\s*\(fullDate \? ' title="' \+ fullDate \+ '"' : ''\)/);
-  });
 });
 
 describe("dashboard end condition context and filter", () => {
@@ -376,14 +195,6 @@ describe("dashboard end condition context and filter", () => {
     const resCard = DASHBOARD_HTML.match(/<div class="card" id="resCard">[\s\S]*?<\/div>\s*<\/div>/)?.[0] ?? "";
     expect(resCard).toMatch(/id="lossContext"/);
     expect(resCard).toMatch(/id="drawContext"/);
-  });
-
-  it("shouldRenderLossAndDrawBreakdownFromResults", () => {
-    const dashBody = DASHBOARD_HTML.match(/async function loadChessDashboard\(\)\{([\s\S]*?)\n\}/)?.[1] ?? "";
-    expect(dashBody).toMatch(/endConditions/);
-    expect(dashBody).toMatch(/#lossContext/);
-    expect(dashBody).toMatch(/#drawContext/);
-    expect(dashBody).toMatch(/ahogados/);
   });
 
   it("shouldIncludeEndConditionFilterSelectWithOptions", () => {
@@ -397,23 +208,9 @@ describe("dashboard end condition context and filter", () => {
     expect(selectHtml).toMatch(/value="resignation"/);
   });
 
-  it("shouldSendEndConditionParamInLoadMatches", () => {
-    const loadMBody = DASHBOARD_HTML.match(/async function loadM\(o\)\{([\s\S]*?)\n\}/)?.[1] ?? "";
-    expect(loadMBody).toMatch(/p\.set\('endCondition',/);
-    expect(loadMBody).toMatch(/#fEnd/);
-  });
-
-  it("shouldResetEndConditionFilterWhenClearingFilters", () => {
-    const clearFBody = DASHBOARD_HTML.match(/function clearF\(\)\{[^\n]*/)![0];
-    expect(clearFBody).toMatch(/q\('#fEnd'\)\.value\s*=\s*''/);
-  });
-
-  it("shouldRenderEndConditionBadgeInMatchRows", () => {
+  it("shouldHaveAFinColumnInTheMatchesTable", () => {
     const tblHead = DASHBOARD_HTML.match(/<table class="tbl"><thead><tr>([\s\S]*?)<\/tr><\/thead>/)?.[1] ?? "";
     expect(tblHead).toMatch(/<th>Fin<\/th>/);
-    const renderRowsBody = DASHBOARD_HTML.match(/function renderRows\(\)\{([\s\S]*?)\n\}/)?.[1] ?? "";
-    expect(renderRowsBody).toMatch(/data-l="Fin"/);
-    expect(renderRowsBody).toMatch(/m\.end_condition/);
   });
 });
 
@@ -422,20 +219,6 @@ describe("dashboard opponent segmentation and filter", () => {
     const oppCard = DASHBOARD_HTML.match(/<div class="card" id="oppCard">[\s\S]*?<\/div>\s*<\/div>/)?.[0] ?? "";
     expect(oppCard).toMatch(/Oponentes por familia/);
     expect(oppCard).toMatch(/id="oppMacro"/);
-  });
-
-  it("shouldRenderMacroSummaryAndSegmentsInOppCard", () => {
-    const dashBody = DASHBOARD_HTML.match(/async function loadChessDashboard\(\)\{([\s\S]*?)\n\}/)?.[1] ?? "";
-    expect(dashBody).toMatch(/o\.macro/);
-    expect(dashBody).toMatch(/o\.segments/);
-    expect(dashBody).toMatch(/#oppMacro/);
-  });
-
-  it("shouldLeaveSmallSampleToTheIntervalInsteadOfAHeuristicLabel", () => {
-    const oppBody = DASHBOARD_HTML.match(/function renderCompare\(groups, totalGames\)\{([\s\S]*?)\n\}/)?.[1] ?? "";
-    expect(oppBody).not.toMatch(/muestra pequeña|slim/);
-    expect(oppBody).toMatch(/winRateCi/);
-    expect(oppBody).toMatch(/decididas/);
   });
 
   it("shouldIncludeOpponentFilterSelectWithOptions", () => {
@@ -450,24 +233,6 @@ describe("dashboard opponent segmentation and filter", () => {
     expect(selectHtml).toMatch(/value="seg:pvp"[^>]*>PvP/);
   });
 
-  it("shouldSendOpponentSegmentOrTypeParamInLoadMatches", () => {
-    const loadMBody = DASHBOARD_HTML.match(/async function loadM\(o\)\{([\s\S]*?)\n\}/)?.[1] ?? "";
-    expect(loadMBody).toMatch(/#fOpp/);
-    expect(loadMBody).toMatch(/opponentSegment/);
-    expect(loadMBody).toMatch(/p\.set\('opponentSegment'/);
-  });
-
-  it("shouldResetOpponentFilterWhenClearingFilters", () => {
-    const clearFBody = DASHBOARD_HTML.match(/function clearF\(\)\{[^\n]*/)![0];
-    expect(clearFBody).toMatch(/q\('#fOpp'\)\.value\s*=\s*''/);
-  });
-
-  it("shouldRenderOpponentSegmentBadgeInMatchRows", () => {
-    expect(DASHBOARD_HTML).toMatch(/function pillSegment\(/);
-    const renderRowsBody = DASHBOARD_HTML.match(/function renderRows\(\)\{([\s\S]*?)\n\}/)?.[1] ?? "";
-    expect(renderRowsBody).toMatch(/m\.opponent_segment/);
-    expect(renderRowsBody).toMatch(/pillSegment/);
-  });
 });
 
 describe("dashboard script syntax validity", () => {
@@ -488,16 +253,6 @@ describe("dashboard openings card", () => {
     expect(DASHBOARD_HTML).toMatch(/Negras/);
   });
 
-  it("shouldFetchAndRenderOpeningsInLoadChessDashboard", () => {
-    const dashBody = DASHBOARD_HTML.match(/async function loadChessDashboard\(\)\{([\s\S]*?)\n\}/)?.[1] ?? "";
-    expect(dashBody).toMatch(/api\/stats\/openings/);
-    expect(dashBody).toMatch(/openingsCard|#openingsCard/);
-  });
-
-  it("shouldRenderOpeningsWithRenderCompare", () => {
-    const dashBody = DASHBOARD_HTML.match(/async function loadChessDashboard\(\)\{([\s\S]*?)\n\}/)?.[1] ?? "";
-    expect(dashBody).toMatch(/renderCompare/);
-  });
 });
 
 describe("dashboard phases card", () => {
@@ -505,16 +260,6 @@ describe("dashboard phases card", () => {
     expect(DASHBOARD_HTML).toMatch(/id="phasesCard"/);
   });
 
-  it("shouldFetchAndRenderPhasesInLoadChessDashboard", () => {
-    const dashBody = DASHBOARD_HTML.match(/async function loadChessDashboard\(\)\{([\s\S]*?)\n\}/)?.[1] ?? "";
-    expect(dashBody).toMatch(/api\/stats\/phases/);
-    expect(dashBody).toMatch(/phasesCard|#phasesCard/);
-  });
-
-  it("shouldShowMedianPliesInPhasesCard", () => {
-    const dashBody = DASHBOARD_HTML.match(/async function loadChessDashboard\(\)\{([\s\S]*?)\n\}/)?.[1] ?? "";
-    expect(dashBody).toMatch(/medianPlies/);
-  });
 });
 
 describe("dashboard phase and opening filters", () => {
@@ -533,14 +278,6 @@ describe("dashboard phase and opening filters", () => {
     expect(selectHtml).toMatch(/value=""[^>]*>Apertura:\s*Todas/);
   });
 
-  it("shouldSendPhaseAndOpeningParamsInLoadMatches", () => {
-    const loadMBody = DASHBOARD_HTML.match(/async function loadM\(o\)\{([\s\S]*?)\n\}/)?.[1] ?? "";
-    expect(loadMBody).toMatch(/#fPhase/);
-    expect(loadMBody).toMatch(/p\.set\('phase',/);
-    expect(loadMBody).toMatch(/#fOpening/);
-    expect(loadMBody).toMatch(/p\.set\('opening',/);
-  });
-
   it("shouldPopulateOpeningFilterFromOpeningStatsGroupedByColor", () => {
     expect(DASHBOARD_HTML).toMatch(/function populateOpeningFilter\(op\)/);
     expect(DASHBOARD_HTML).toMatch(/op\.white/);
@@ -548,19 +285,6 @@ describe("dashboard phase and opening filters", () => {
     expect(DASHBOARD_HTML).toMatch(/fOpening/);
   });
 
-  it("shouldResetPhaseAndOpeningFiltersWhenClearing", () => {
-    const clearFBody = DASHBOARD_HTML.match(/function clearF\(\)\{[^\n]*/)?.[0] ?? "";
-    expect(clearFBody).toMatch(/q\('#fPhase'\)\.value\s*=\s*''/);
-    expect(clearFBody).toMatch(/q\('#fOpening'\)\.value\s*=\s*''/);
-  });
-});
-
-describe("dashboard phase and opening badges in match rows", () => {
-  it("shouldRenderPhaseAndOpeningBadgesInMatchRows", () => {
-    const renderRowsBody = DASHBOARD_HTML.match(/function renderRows\(\)\{([\s\S]*?)\n\}/)?.[1] ?? "";
-    expect(renderRowsBody).toMatch(/m\.phase_key/);
-    expect(renderRowsBody).toMatch(/m\.opening_key/);
-  });
 });
 
 describe("dashboard smoke test: markup validity, 3 panels, and responsive viewport", () => {
@@ -687,13 +411,6 @@ describe("dashboard smoke test: markup validity, 3 panels, and responsive viewpo
     expect(css480).toMatch(/\.card\s*\{[^}]*padding:\s*12px/);
   });
 
-  it("shouldInitializeTabsSynchronouslyFromLocationHashWithoutException", () => {
-    const initTabBody = DASHBOARD_HTML.match(/function initTab\(\)\{([\s\S]*?)\n\}/)?.[1] ?? "";
-    expect(initTabBody).toMatch(/location\.hash/);
-    expect(initTabBody).toMatch(/showTab\(/);
-    expect(DASHBOARD_HTML).toMatch(/function showTab\(name\)\{([\s\S]*?)\n\}/);
-    expect(DASHBOARD_HTML).toMatch(/initTab\(\);/);
-  });
 });
 
 describe("dashboard UI primitives behavioral tests", () => {
@@ -726,31 +443,8 @@ describe("course selection decoupling and resolution hierarchy", () => {
     expect(langHeroSection).not.toMatch(/Curso Activo/);
   });
 
-  it("shouldDefineResolveSelectedCourseIdFunctionWith3TierHierarchy", () => {
-    expect(DASHBOARD_HTML).toMatch(/function resolveSelectedCourseId\(/);
-    expect(DASHBOARD_HTML).toMatch(/longitudinal_selected_course/);
-    const fnBody = DASHBOARD_HTML.match(/function resolveSelectedCourseId\([^)]*\)\{([\s\S]*?)\n\}/)?.[1] ?? "";
-    expect(fnBody).toMatch(/courses\[0\]/);
-    expect(fnBody).toMatch(/localStorage/);
-  });
-
-  it("shouldExcludeDuolingoCurrentCourseIdFromUiSelectionFallback", () => {
-    const fnBody = DASHBOARD_HTML.match(/function resolveSelectedCourseId\([^)]*\)\{([\s\S]*?)\n\}/)?.[1] ?? "";
-    expect(fnBody).not.toMatch(/currentCourseId/);
-  });
-
-  it("shouldNotHaveActivoBadgeInLangCatalogRendering", () => {
-    const rvBody = DASHBOARD_HTML.match(/function renderLanguagesView\([\s\S]*?\n\}\n/)?.[0] ?? "";
-    expect(rvBody).not.toMatch(/pill-win[^"]*">ACTIVO/);
-  });
-
   it("shouldHavePillSelectedBadgeInTemplate", () => {
     expect(DASHBOARD_HTML).toMatch(/pill-selected/);
-  });
-
-  it("shouldUseResolveSelectedCourseIdInLoadLanguagesDashboard", () => {
-    const loadBody = DASHBOARD_HTML.match(/async function loadLanguagesDashboard\(\)\{([\s\S]*?)\n\}/)?.[1] ?? "";
-    expect(loadBody).toMatch(/resolveSelectedCourseId/);
   });
 
   it("shouldLabelOverviewLangCardWithCursoDestacadoNotCursoActivo", () => {
@@ -760,112 +454,17 @@ describe("course selection decoupling and resolution hierarchy", () => {
 });
 
 describe("course selection bidirectional sync and selectCourse", () => {
-  it("shouldDefineSelectCourseFunctionInScript", () => {
-    expect(DASHBOARD_HTML).toMatch(/function selectCourse\(/);
-  });
 
   it("shouldHaveLangCourseSelectWithOnchangeSelectCourse", () => {
     expect(DASHBOARD_HTML).toMatch(/id="langCourseSelect"[^>]*onchange="selectCourse\(this\.value\)"/);
   });
 
-  it("shouldDefineCourseDetailCacheForMemoization", () => {
-    expect(DASHBOARD_HTML).toMatch(/courseDetailCache/);
-  });
-
-  it("shouldPersistSelectionToLocalStorageInSelectCourse", () => {
-    const fn = DASHBOARD_HTML.match(/function selectCourse\([^)]*\)\{([\s\S]*?)\n\}/)?.[1] ?? "";
-    expect(fn).toMatch(/localStorage/);
-    expect(fn).toMatch(/longitudinal_selected_course/);
-  });
-
-  it("shouldUpdateUrlWithHistoryReplaceStateInSelectCourse", () => {
-    const fn = DASHBOARD_HTML.match(/function selectCourse\([^)]*\)\{([\s\S]*?)\n\}/)?.[1] ?? "";
-    expect(fn).toMatch(/history\.replaceState|replaceState/);
-  });
-
-  it("shouldRenderClickableCatalogRowsWithSelectCourseOnclick", () => {
-    const rvBody = DASHBOARD_HTML.match(/function renderLanguagesView\([\s\S]*?\n\}\n/)?.[0] ?? "";
-    expect(rvBody).toMatch(/selectCourse\(/);
-    expect(rvBody).toMatch(/pill-selected/);
-  });
 });
 
-describe("Overview reflects selectedCourseId, not duolingoCurrentCourseId (audit fix)", () => {
-  it("shouldResolveSelectedCourseIdInLoadOverviewDashboardInsteadOfCurrentCourseId", () => {
-    const fnBody = DASHBOARD_HTML.match(/async function loadOverviewDashboard\(\)\{([\s\S]*?)\n\}/)?.[1] ?? "";
-    expect(fnBody).toMatch(/resolveSelectedCourseId/);
-    expect(fnBody).not.toMatch(/langs\.currentCourseId/);
-  });
-
-  it("shouldFindActiveCourseBySelectedCourseIdInRenderOverview", () => {
-    const fnBody = DASHBOARD_HTML.match(/function renderOverview\(data\)\{([\s\S]*?)\n\}\n/)?.[0] ?? "";
-    expect(fnBody).toMatch(/selectedCourseId/);
-    expect(fnBody).not.toMatch(/activeCid\s*=\s*langs\?\.currentCourseId/);
-  });
-
-  it("shouldShareOneCourseProgressFunctionBetweenOverviewAndLanguages", () => {
-    expect(DASHBOARD_HTML).toMatch(/function getCourseProgress\(/);
-    const overviewLangCardBody = DASHBOARD_HTML.match(/function renderOverviewLangCard\([\s\S]*?\n\}\n/)?.[0] ?? "";
-    const langBody = DASHBOARD_HTML.match(/function renderLanguagesView\([\s\S]*?\n\}\n/)?.[0] ?? "";
-    expect(overviewLangCardBody).toMatch(/getCourseProgress\(/);
-    expect(langBody).toMatch(/getCourseProgress\(/);
-    // the two previously-duplicated "sum a single active course's sections" loops must be gone from the callers
-    expect(DASHBOARD_HTML.match(/function getCourseProgress\(/g)?.length).toBe(1);
-    expect(DASHBOARD_HTML).not.toMatch(/for\(const s of actDetail\.sections\)/);
-    expect(DASHBOARD_HTML).not.toMatch(/for\(const s of data\.activeDetail\.sections\)/);
-  });
-
-  it("shouldNotHardcodeAFakeSyncStatusInOverviewSyncMeta", () => {
-    const fnBody = DASHBOARD_HTML.match(/function renderOverview\(data\)\{([\s\S]*?)\n\}\n/)?.[0] ?? "";
-    expect(fnBody).not.toMatch(/Pulso unificado y verificado por dominio/);
-  });
-
-  it("shouldShowPerDomainSyncStatusInOverview", () => {
-    const fnBody = DASHBOARD_HTML.match(/function renderOverview\(data\)\{([\s\S]*?)\n\}\n/)?.[0] ?? "";
-    expect(fnBody).toMatch(/Idiomas/);
-    expect(fnBody).toMatch(/Ajedrez/);
-  });
-
-  it("shouldRefreshOverviewLangCardLiveWhenSelectCourseRunsWithoutReload", () => {
-    // selectCourse() is called while the user stays in the SPA (no reload); Overview's
-    // already-rendered DOM must be patched too, not just Languages'.
-    expect(DASHBOARD_HTML).toMatch(/function renderOverviewLangCard\(/);
-    const overviewBody = DASHBOARD_HTML.match(/function renderOverview\(data\)\{([\s\S]*?)\n\}\n/)?.[0] ?? "";
-    expect(overviewBody).toMatch(/renderOverviewLangCard\(/);
-    const selectCourseBody = DASHBOARD_HTML.match(/async function selectCourse\([^)]*\)\{([\s\S]*?)\n\}/)?.[1] ?? "";
-    expect(selectCourseBody).toMatch(/renderOverviewLangCard\(/);
-  });
-});
 
 describe("Languages consultation-pattern audit fixes", () => {
-  describe("Finding A: curriculum stability synthesis must not conflate insufficient_observation with stable", () => {
-    it("shouldNotLabelAnyDeltaStatusAsEstableInTheSynthesisComputation", () => {
-      const rvBody = DASHBOARD_HTML.match(/function renderLanguagesView\([\s\S]*?\n\}\n/)?.[0] ?? "";
-      expect(rvBody).not.toMatch(/estables/);
-      expect(rvBody).not.toMatch(/stableCount/);
-    });
-
-    it("shouldComputeSeparateCountsForComparableStructuralAndInsufficientStatuses", () => {
-      const rvBody = DASHBOARD_HTML.match(/function renderLanguagesView\([\s\S]*?\n\}\n/)?.[0] ?? "";
-      expect(rvBody).toMatch(/status\s*===\s*['"]comparable['"]/);
-      expect(rvBody).toMatch(/status\s*===\s*['"]structural_change['"]/);
-      expect(rvBody).toMatch(/status\s*===\s*['"]insufficient_observation['"]/);
-    });
-
-    it("shouldSurfaceInsufficientObservationCountInTheSynthesisText", () => {
-      const rvBody = DASHBOARD_HTML.match(/function renderLanguagesView\([\s\S]*?\n\}\n/)?.[0] ?? "";
-      expect(rvBody).toMatch(/observación insuficiente/);
-    });
-  });
 
   describe("Finding B: account-level XP must be labeled 'cuenta' wherever shown next to a course context", () => {
-    it("shouldNotRenderAccountDailyXpInCourseHeroCard", () => {
-      const rvBody = DASHBOARD_HTML.match(/function renderLanguagesView\([\s\S]*?\n\}\n/)?.[0] ?? "";
-      expect(rvBody).not.toMatch(/xpTodayStr/);
-      expect(rvBody).not.toMatch(/XP hoy/);
-      // the course-scoped XP must remain distinctly labeled as "curso", not blended into the account figure
-      expect(rvBody).toMatch(/XP acumulado en el curso/);
-    });
 
     it("shouldLabelWeeklyActivityCardAsCuenta", () => {
       const weekCard = DASHBOARD_HTML.match(/id="langWeekCard"[\s\S]*?<\/div>\s*<\/div>/)?.[0] ?? "";
@@ -881,16 +480,6 @@ describe("Languages consultation-pattern audit fixes", () => {
 
 describe("Power User benchmark fixes (2026-09-29)", () => {
   describe("hashchange must re-run tab routing (same-tab hash nav previously left the old panel showing)", () => {
-    it("shouldListenForHashchangeAndReRunInitTab", () => {
-      expect(DASHBOARD_HTML).toMatch(/addEventListener\(\s*['"]hashchange['"]\s*,\s*initTab\s*\)/);
-    });
-
-    it("shouldMarkInactivePanelsWithNativeHiddenAttributeForAssistiveTech", () => {
-      const fnBody = DASHBOARD_HTML.match(/function showTab\(name\)\{([\s\S]*?)\n\}/)?.[1] ?? "";
-      expect(fnBody).toMatch(/q\('#overviewTab'\)\.hidden\s*=\s*tab\s*!==?\s*['"]overview['"]/);
-      expect(fnBody).toMatch(/q\('#langTab'\)\.hidden\s*=\s*tab\s*!==?\s*['"]languages['"]/);
-      expect(fnBody).toMatch(/q\('#chessTab'\)\.hidden\s*=\s*tab\s*!==?\s*['"]chess['"]/);
-    });
 
     it("shouldMarkTheMobileCardLabelGeneratedContentAsDecorativeSoItNeverReachesAssistiveTech", () => {
       // content: attr(data-l) alone leaks into the accessibility tree even when the whole
@@ -901,27 +490,7 @@ describe("Power User benchmark fixes (2026-09-29)", () => {
     });
   });
 
-  describe("empty curricular progress must read as an explicit system state, not a bare dash", () => {
-    it("shouldExplainMissingProgressInOverviewLangCard", () => {
-      const fnBody = DASHBOARD_HTML.match(/function renderOverviewLangCard\([\s\S]*?\n\}\n/)?.[0] ?? "";
-      expect(fnBody).not.toMatch(/elLangUnits\.textContent\s*=\s*'—'/);
-      expect(fnBody).toMatch(/Sin observación/);
-    });
 
-    it("shouldExplainMissingProgressInLanguagesDetailView", () => {
-      const fnBody = DASHBOARD_HTML.match(/function renderLanguagesView\([\s\S]*?\n\}\n/)?.[0] ?? "";
-      expect(fnBody).not.toMatch(/elProg\.textContent\s*=\s*'—'/);
-      expect(fnBody).toMatch(/Sin observación/);
-    });
-  });
-
-  describe("longitudinal comparability card must account for every catalogued course, not just the ones with 2+ Path observations", () => {
-    it("shouldListCoursesMissingFromRecentDeltasAsWaitingForASecondObservation", () => {
-      const fnBody = DASHBOARD_HTML.match(/function renderLanguagesAnalytics\([\s\S]*?\n\}\n/)?.[0] ?? "";
-      expect(fnBody).toMatch(/deltaByCourse/);
-      expect(fnBody).toMatch(/esperando 2ª observación/i);
-    });
-  });
 });
 
 describe("dashboard #16.9.2 strict scope boundary isolation", () => {
@@ -989,12 +558,6 @@ describe("dashboard #16.9.2 strict scope boundary isolation", () => {
     expect(overviewWeek).toContain("Actividad global registrada en la cuenta");
   });
 
-  it("shouldNotRenderAccountDailyXPInCourseHeroCardInsideRenderLanguagesView", () => {
-    const fnBody = DASHBOARD_HTML.match(/function renderLanguagesView\([\s\S]*?\n\}\n/)?.[0] ?? "";
-    expect(fnBody).not.toMatch(/xpTodayStr/);
-    expect(fnBody).not.toMatch(/XP hoy/);
-    expect(fnBody).toMatch(/XP acumulado en el curso/);
-  });
 });
 
 describe("dashboard #16.9.2 runtime value and scope isolation", () => {

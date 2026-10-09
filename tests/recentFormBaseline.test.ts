@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { handleStats } from "../src/api/stats.ts";
-import { DASHBOARD_HTML } from "../src/frontend.ts";
+import { callDashboard } from "./helpers/dom.ts";
 import { setupTestDb } from "./helpers/testDb.ts";
 
 function seed(rows: Array<[string, number, string | null]>) {
@@ -37,16 +37,23 @@ describe("recent form baseline", () => {
 });
 
 describe("recent form rendering", () => {
-  const form = DASHBOARD_HTML.match(/function renderForm\(r\)\{([\s\S]*?)\n\}/)?.[1] ?? "";
+  const side = (o: object) => ({ key: "x", games: 20, wins: 13, losses: 7, draws: 0, unknown: 0, decided: 20, winRate: 0.65, scoreRate: 0.65, winRateCi: null, ...o });
+  const render = (hist: object) => callDashboard(`hist = ${JSON.stringify(hist)}; renderForm(${JSON.stringify({
+    ...side({ limit: 20 }), before: side({ games: 40, winRate: 0.3, scoreRate: 0.3 }),
+    delta: { diff: 0.35, lower: 0.1, upper: 0.55 },
+  })})`).els["#form"]!.innerHTML as string;
 
-  it("shouldCompareAgainstBaselineExcludingWindowWhenRenderingForm", () => {
-    expect(form).toMatch(/r\.before/);
-    expect(form).not.toMatch(/=\s*hist\b/);
+  it("shouldCompareAgainstTheGamesBeforeTheWindowAndNeverAgainstTheWholeHistory", () => {
+    const html = render({ games: 500, winRate: 0.9 });
+    expect(html).toContain("Anteriores · 40");
+    expect(html).toContain("30.0%");
+    expect(html).not.toContain("90.0%"); // the whole-history rate is not the baseline
   });
 
-  it("shouldLabelTheDeltaAsVsPreviousGamesNotVsHistory", () => {
-    expect(form).toMatch(/vs\s+anteriores/);
-    expect(form).not.toMatch(/score\s+vs\s+anteriores/); // scoreRate has no interval, so no delta
-    expect(form).not.toMatch(/vs\s+hist/);
+  it("shouldLabelTheDeltaAsAgainstPreviousGamesNotHistoryAndGiveNoScoreDelta", () => {
+    const html = render({ games: 500, winRate: 0.9 });
+    expect(html).toContain("vs anteriores");
+    expect(html).not.toMatch(/vs\s+hist/);
+    expect(html).not.toMatch(/score vs anteriores/);
   });
 });

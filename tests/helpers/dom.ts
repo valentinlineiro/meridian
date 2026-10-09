@@ -10,6 +10,7 @@ export interface MockElement {
   style: Record<string, string>;
   value: string;
   className: string;
+  hidden?: boolean; // set by the page for panels it hides
   classList: {
     add(...tokens: string[]): void;
     remove(...tokens: string[]): void;
@@ -109,7 +110,7 @@ export function getElementHtmlById(html: string, id: string): string {
 }
 
 // What the API answers for an account with no data yet, so a page booted by a test starts without errors of its own.
-function emptyAccountPayload(url: string): unknown {
+export function emptyAccountPayload(url: string): unknown {
   if (url.startsWith("/api/stats/lang")) return { ok: false, error: "no lang snapshot" };
   if (url.startsWith("/api/stats/summary")) return { games: 0, wins: 0, losses: 0, draws: 0 };
   if (url.startsWith("/api/stats/color")) return { groups: [], difference: null };
@@ -155,12 +156,13 @@ export interface DashboardRuntime {
   getEl: (selector: string) => MockElement;
   elements: Map<string, MockElement>;
   errors: string[];
+  fire: (event: string) => void; // runs the page's listeners for a window event such as hashchange or popstate
   renderLanguagesView: (langs: any, analytics: any, xp: any, activeDetail: any) => void;
   selectCourse: (courseId: string, skipHistory?: boolean) => Promise<void>;
   renderOverviewLangCard: (langs: any, activeDetail: any) => void;
 }
 
-export function createDashboardRuntime(initialPath = "/languages", html: string = DASHBOARD_HTML): DashboardRuntime {
+export function createDashboardRuntime(initialPath = "/languages", html: string = DASHBOARD_HTML, initialFetch?: (url: string, init?: any) => Promise<unknown>): DashboardRuntime {
   const scriptMatch = html.match(/<script>([\s\S]*?)<\/script>/i);
   if (!scriptMatch) {
     throw new Error("Could not find script block in the page");
@@ -180,6 +182,16 @@ export function createDashboardRuntime(initialPath = "/languages", html: string 
   const localStorageStore = new Map<string, string>();
   const errors: string[] = [];
   tracked.push({ owner: currentTestOwner(), errors, reported: 0 });
+
+  const listeners: Record<string, Array<() => void>> = {};
+  // history.pushState/replaceState: the address bar follows the URL the page sets (path, query and hash)
+  const navigate = (url: string) => {
+    if (!url.startsWith("/")) return;
+    const u = new URL(url, "https://meridian.local");
+    sandbox.location.pathname = u.pathname;
+    sandbox.location.search = u.search;
+    sandbox.location.hash = u.hash;
+  };
 
   const sandbox: any = {
     document: {
@@ -203,21 +215,11 @@ export function createDashboardRuntime(initialPath = "/languages", html: string 
       clear: () => localStorageStore.clear(),
     },
     history: {
-      pushState: (_state: any, _title: string, url: string) => {
-        if (url.startsWith("/")) {
-          const pathOnly = (url.split("?")[0] ?? "").split("#")[0] ?? "";
-          sandbox.location.pathname = pathOnly;
-        }
-      },
-      replaceState: (_state: any, _title: string, url: string) => {
-        if (url.startsWith("/")) {
-          const pathOnly = (url.split("?")[0] ?? "").split("#")[0] ?? "";
-          sandbox.location.pathname = pathOnly;
-        }
-      },
+      pushState: (_state: any, _title: string, url: string) => navigate(url),
+      replaceState: (_state: any, _title: string, url: string) => navigate(url),
     },
     window: {
-      addEventListener: (_ev: string, _fn: any) => {},
+      addEventListener: (ev: string, fn: any) => { (listeners[ev] ??= []).push(fn); },
       removeEventListener: (_ev: string, _fn: any) => {},
     },
     console: { ...console, error: (...a: unknown[]) => { errors.push(a.map((x) => (typeof (x as Error)?.stack === "string" ? `${(x as Error).message} @ ${((x as Error).stack ?? "").split("\n")[1]?.trim() ?? ""}` : String(x))).join(" ")); } },
@@ -237,6 +239,7 @@ export function createDashboardRuntime(initialPath = "/languages", html: string 
     fetch: async (url: string) => ({ ok: true, status: 200, json: async () => emptyAccountPayload(String(url)) }),
     j: async () => null,
   };
+  if (initialFetch) sandbox.fetch = initialFetch; // the page starts loading while the script runs, so a stub set afterwards misses its first requests
   sandbox.window.fetch = sandbox.fetch;
   sandbox.window.location = sandbox.location;
   sandbox.window.history = sandbox.history;
@@ -250,6 +253,7 @@ export function createDashboardRuntime(initialPath = "/languages", html: string 
     getEl,
     elements,
     errors,
+    fire: (ev: string) => (listeners[ev] ?? []).forEach((fn) => fn()),
     renderLanguagesView: sandbox.renderLanguagesView,
     selectCourse: sandbox.selectCourse,
     renderOverviewLangCard: sandbox.renderOverviewLangCard,
