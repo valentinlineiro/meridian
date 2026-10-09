@@ -1,6 +1,6 @@
 // Pure model of K5 (contract §3.2, A1): the Path tree of a course as rows, its canonical form for hashing, the
 // row-level diff, and the inverse (rows -> CourseProgress) that proves parity with parseCourseProgress.
-import type { CourseProgress, CourseLevel, CourseUnit } from "../analytics/courseProgress.ts";
+import type { CourseProgress, CourseLevel, CourseUnit } from "./courseProgress.ts";
 import type { SectionObservation } from "./observationRows.ts";
 
 export type UnitRow = { sectionIndex: number; unitIndex: number; teachingObjective: string | null; cefrLevel: string | null; isUnlocked: number | null; levelsCaptured: number };

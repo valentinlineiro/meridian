@@ -53,6 +53,14 @@ describe("Architecture Boundaries: vertical slices", () => {
   };
   const x = (layer: string, file = "A.ts") => `src/slices/x/${layer}/${file}`;
 
+  it("shouldRejectTheDomainImportingAnalyticsOrNormalization", () => {
+    for (const dep of ["analytics", "normalization"]) {
+      const r = guard({ "src/domain/D.ts": `import type { T } from "../${dep}/t.ts";\n`, [`src/${dep}/t.ts`]: "export type T = number;\n" });
+      expect(r.failed).toBe(true);
+      expect(r.output).toContain("forbidden domain import");
+    }
+  });
+
   it("shouldAcceptASliceThatRespectsItsLayers", () => {
     const r = guard({
       [x("domain", "D.ts")]: "export const d = 1;\n",
