@@ -57,10 +57,11 @@ describe("trajectory evaluations in the UI (P1 #4)", () => {
     expect(html).toContain("cubre 59 días; el criterio exige al menos 60");
   });
 
-  it("shouldKeepTheLanguageFocusShiftAsAPlainCardBecauseItHasNoEvaluation", async () => {
+  it("shouldLabelTheLanguageFocusShiftSinEvaluarBecauseItHasNoEvaluation", async () => {
     const { html } = await render(payload(input({ activeDays: 59 }, true)));
     expect(html).toContain("Desplazamiento de foco");
-    expect(html.match(/pill pill-scope/g)!.length).toBe(1); // only the evaluation card carries a status and scope
+    expect(html.match(/SIN EVALUAR/g)!.length).toBe(1); // the plain card says it has no status
+    expect(html.match(/pill pill-scope/g)!.length).toBe(2); // evaluation card scope + the SIN EVALUAR label
   });
 
   it("shouldRenderPlainCardsWhenThePayloadHasNoEvaluations", async () => {
