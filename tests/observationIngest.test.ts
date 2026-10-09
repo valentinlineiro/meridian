@@ -93,6 +93,31 @@ describe("identity of an observation: same snapshot, same set, a second run adds
     expect(counts(db)).toEqual(before);
   });
 
+  // The row counts above would not notice DO NOTHING turning into DO UPDATE: these compare the stored values themselves.
+  it("shouldKeepEveryStoredValueWhenTheSameKeysAreWrittenAgainWithDifferentValues", async () => {
+    const full = { ...accountData, currentCourse: { ...identityData.currentCourse, id: "DUOLINGO_XA_EN" } };
+    const r = await ingestSnapshot(d1, lang(full, { isAuxiliary: false, originalCourseId: "DUOLINGO_XA_EN" }));
+    const dump = () => TABLES.map((t) => db.prepare(`SELECT * FROM ${t} ORDER BY 1, 2`).all());
+    const before = dump();
+    expect(counts(db)).toEqual({ account_observations: 1, course_observations: 3, path_observations: 1, section_observations: 3, elo_observations: 0 }); // the fixture feeds every table this test protects
+    const tampered = {
+      ...full,
+      user: { ...full.user, totalXp: 9999, streak: 1, currentCourseId: "DUOLINGO_XB_EN" },
+      courses: courses.map((c) => ({ ...c, xp: 12345, title: "Changed" })),
+      currentCourse: { ...full.currentCourse, id: "DUOLINGO_XB_EN", activePathSectionId: "sec-2", pathSectioned: [{ ...section(0), completedUnits: 7, totalUnits: 9 }, section(1), section(2, "daily_refresh")] },
+    };
+    const meta = { snapshotId: r.snapshotId, userId: USER, observedAt: "2030-01-01T00:00:00.000Z" };
+    await d1.batch(observationStatements(d1, extractObservations("duolingo-lang", JSON.stringify(tampered), meta)));
+    expect(dump()).toEqual(before);
+  });
+
+  it("shouldKeepTheStoredEloWhenTheSameSnapshotIsWrittenAgainWithADifferentOne", async () => {
+    const r = await ingestSnapshot(d1, { source: "duolingo-chess", userId: USER, createdAt: AT, data: { eloRating: 981 } });
+    const meta = { snapshotId: r.snapshotId, userId: USER, observedAt: "2030-01-01T00:00:00.000Z" };
+    await d1.batch(observationStatements(d1, extractObservations("duolingo-chess", JSON.stringify({ eloRating: 1500 }), meta)));
+    expect(db.prepare("SELECT * FROM elo_observations").all()).toEqual([{ snapshot_id: r.snapshotId, user_id: USER, observed_at: AT, elo: 981, extractor_version: 1 }]);
+  });
+
   it("shouldAddTheSetOfASecondSnapshotWithADifferentPayloadAsItsOwnObservations", async () => {
     await ingestSnapshot(d1, lang(identityData));
     await ingestSnapshot(d1, lang({ ...identityData, courses: courses.map((c) => ({ ...c, xp: (c.xp ?? 0) + 1 })) }, { createdAt: "2026-10-06T11:00:00.000Z" }));
