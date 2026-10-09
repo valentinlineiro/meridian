@@ -42,7 +42,7 @@ def check_file(path: Path) -> list[str]:
 
         # Check Rule 3: domain imports
         if rel_path.startswith("domain/"):
-            if any(forbidden in imp for forbidden in ["application", "ports", "db", "infrastructure", "api"]):
+            if any(forbidden in imp for forbidden in ["application", "ports", "db", "infrastructure", "api", "analytics", "normalization"]):
                 violations.append(f"{rel_path}: forbidden domain import '{imp}' (domain must remain pure)")
 
         # Check Rule 5: domain/application must stay framework-free (hono, zod)
