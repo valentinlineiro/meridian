@@ -1784,10 +1784,12 @@ async function fetchTrajectory(){
   const copies = (data.findings || []).map(f => ({type: f.type, c: trajectoryCopy(f)})).filter(x => x.c);
   const span = data.temporalSpan;
   const win = span && span.startedAt && span.endedAt ? String(span.startedAt).slice(0, 10) + ' → ' + String(span.endedAt).slice(0, 10) : 'sin fechas';
-  // a pattern with an evaluation is shown with its epistemic status; one without (language focus shift has no contract yet) keeps its plain card
+  // a pattern with an evaluation is shown with its epistemic status; one without (language focus shift has no contract yet) keeps its plain card, labelled SIN EVALUAR (observation without criteria or epistemic status)
   const cards = evaluationCards(evals, e => (copies.find(x => x.type === e.id) || {}).c, win);
   const plain = copies.filter(x => !evalIds.has(x.type)).map(x => '<div class="card" style="margin-bottom:10px">'
-   + '<h3 style="margin:0 0 6px;font-size:14px;color:#e6edf3">' + esc(x.c.title) + '</h3>'
+   + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
+   + '<h3 style="margin:0;font-size:14px;color:#e6edf3">' + esc(x.c.title) + '</h3>'
+   + '<span class="pill pill-scope">SIN EVALUAR</span></div>'
    + '<div style="font-size:13px;font-weight:600;color:#c8d7ea;margin-bottom:6px">' + esc(x.c.claim) + '</div>'
    + '<div class="muted" style="font-size:12px"><strong>Evidencia:</strong> ' + esc(x.c.evidence) + '</div></div>');
   elEmpty.style.display = cards.length || plain.length ? 'none' : 'block';
