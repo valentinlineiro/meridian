@@ -1,4 +1,5 @@
 import vm from "node:vm";
+import { expect } from "vitest";
 import { DASHBOARD_HTML } from "../../src/frontend.ts";
 
 export interface MockElement {
@@ -126,10 +127,27 @@ export function fetchOnly(prefixes: string | string[], handler: (url: string, in
     mine.some((p) => url.startsWith(p)) ? handler(url, init) : { ok: true, status: 200, json: async () => emptyAccountPayload(url) };
 }
 
-// console.error lines of every runtime created since the last takeScriptErrors(); the vitest setup file fails a test that left any.
-const runtimes: string[][] = [];
-export function takeScriptErrors(): string[] {
-  return runtimes.splice(0).flat();
+// Every runtime remembers the test that created it. Its console.error lines are reported to that test when it ends
+// (settleScriptErrors) and, if the page logs one later still, to whichever file-level check runs next, still naming the owner
+// (lateScriptErrors). Nothing is attributed to a test that did not create the runtime, and nothing is lost.
+const MODULE_SETUP = "(module setup)";
+interface Tracked { owner: string; errors: string[]; reported: number }
+const tracked: Tracked[] = [];
+
+export const currentTestOwner = (): string => expect.getState().currentTestName ?? MODULE_SETUP;
+
+export function settleScriptErrors(owner: string): string[] {
+  return tracked.filter((t) => t.owner === owner).flatMap(unreported);
+}
+
+export function lateScriptErrors(): string[] {
+  return tracked.flatMap((t) => unreported(t).map((e) => `[${t.owner}] ${e}`));
+}
+
+function unreported(t: Tracked): string[] {
+  const fresh = t.errors.slice(t.reported);
+  t.reported = t.errors.length;
+  return fresh;
 }
 
 export interface DashboardRuntime {
@@ -161,7 +179,7 @@ export function createDashboardRuntime(initialPath = "/languages", html: string 
 
   const localStorageStore = new Map<string, string>();
   const errors: string[] = [];
-  runtimes.push(errors);
+  tracked.push({ owner: currentTestOwner(), errors, reported: 0 });
 
   const sandbox: any = {
     document: {
