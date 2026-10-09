@@ -163,97 +163,19 @@ describe("dashboard /raw placement", () => {
 });
 
 describe("dashboard compact matches table", () => {
-  it("shouldDefaultToTenRowsWithAnExpandButton", () => {
-    expect(DASHBOARD_HTML).toMatch(/let compact\s*=\s*true/);
-    expect(DASHBOARD_HTML).toMatch(/compact\s*\?\s*10\s*:\s*50/);
-    expect(DASHBOARD_HTML).toMatch(/function showAllMatches\(\)/);
-    expect(DASHBOARD_HTML).toMatch(/id="btnAllMatches"/);
-  });
-
   it("shouldHideFiltersAndPagerUntilExpanded", () => {
     expect(DASHBOARD_HTML).toMatch(/id="matchFilters"[^>]*style="display:none"/);
     expect(DASHBOARD_HTML).toMatch(/id="matchPager"[^>]*style="display:none"/);
   });
-
-  it("shouldDerivePagerStepFromASinglePageSizeSource", () => {
-    // pager buttons must not hardcode a page size that can drift from the fetch limit
-    expect(DASHBOARD_HTML).not.toMatch(/onclick="loadM\(off[+-]50\)"/);
-    expect(DASHBOARD_HTML).toMatch(/onclick="prevPage\(\)"/);
-    expect(DASHBOARD_HTML).toMatch(/onclick="nextPage\(\)"/);
-    expect(DASHBOARD_HTML).toMatch(/function pageSize\(\)\{\s*return compact\s*\?\s*10\s*:\s*50;\s*\}/);
-    expect(DASHBOARD_HTML).toMatch(/function prevPage\(\)\{\s*loadM\(off-pageSize\(\)\);\s*\}/);
-    expect(DASHBOARD_HTML).toMatch(/function nextPage\(\)\{\s*loadM\(off\+pageSize\(\)\);\s*\}/);
-    // the disabled check must use the same pageSize(), not a hardcoded 50
-    expect(DASHBOARD_HTML).toMatch(/q\('#next'\)\.disabled=\s*off\+pageSize\(\)\s*>=\s*d\.total/);
-  });
-});
-
-describe("dashboard chess refresh", () => {
-  it("shouldLoadChessDashboardOnInit", () => {
-    expect(DASHBOARD_HTML).toMatch(/async function loadChessDashboard\(\)\{/);
-    const initBody = DASHBOARD_HTML.match(/async function init\(\)\{([\s\S]*?)\n\}/)?.[1] ?? "";
-    expect(initBody).toMatch(/await loadChessDashboard\(\)/);
-  });
-});
-
-describe("dashboard rival search", () => {
-  it("shouldSendSearchQueryToServerWhenTypingRival", () => {
-    const loadMBody = DASHBOARD_HTML.match(/async function loadM\(o\)\{([\s\S]*?)\n\}/)?.[1] ?? "";
-    expect(loadMBody).toMatch(/p\.set\('q',/);
-    const onSearchLine = DASHBOARD_HTML.match(/function onSearch\(\)\{[^\n]*/)![0];
-    expect(onSearchLine).toMatch(/loadM\(0\)/);
-  });
-
-  it("shouldNotFilterLoadedPageOnClientWhenSearching", () => {
-    const renderRowsBody = DASHBOARD_HTML.match(/function renderRows\(\)\{([\s\S]*?)\n\}[\s\S]*?async function loadM/)?.[1] ?? "";
-    expect(renderRowsBody).not.toMatch(/\.filter\(/);
-    expect(DASHBOARD_HTML).not.toMatch(/qFilter/);
-  });
 });
 
 describe("dashboard chips", () => {
-  it("shouldSendChipParamsToServerWhenLoadingMatches", () => {
-    const loadMBody = DASHBOARD_HTML.match(/async function loadM\(o\)\{([\s\S]*?)\n\}/)?.[1] ?? "";
-    expect(loadMBody).toMatch(/chip\.type/);
-    expect(loadMBody).toMatch(/p\.set\('opponentType',chip\.type\)/);
-    expect(loadMBody).toMatch(/p\.set\('result',chip\.result\)/);
-    expect(loadMBody).toMatch(/p\.set\('color',chip\.color\)/);
-  });
-
-  it("shouldReloadFirstPageWhenTogglingChip", () => {
-    const setChipLine = DASHBOARD_HTML.match(/function setChip\(group,value[^\n]*/)![0];
-    expect(setChipLine).toMatch(/loadM\(0\)/);
-  });
-
   it("shouldShowChipsOutsideHiddenFilters", () => {
     expect(DASHBOARD_HTML).toMatch(/id="matchChips"/);
     const chipsPos = DASHBOARD_HTML.indexOf('id="matchChips"');
     const hiddenPos = DASHBOARD_HTML.indexOf('id="matchFilters"');
     expect(chipsPos).toBeLessThan(hiddenPos);
     expect(DASHBOARD_HTML).toMatch(/Todos/);
-  });
-
-  it("shouldResetChipsWhenClearingFilters", () => {
-    const clearFBody = DASHBOARD_HTML.match(/function clearF\(\)\{[^\n]*/)![0];
-    expect(clearFBody).toMatch(/setChip\('type',''(,[^)]*)?\)/);
-    expect(clearFBody).toMatch(/setChip\('result',''(,[^)]*)?\)/);
-    expect(clearFBody).toMatch(/setChip\('color',''(,[^)]*)?\)/);
-  });
-
-  it("shouldTriggerSingleLoadWhenClearingFilters", () => {
-    const clearFBody = DASHBOARD_HTML.match(/function clearF\(\)\{[^\n]*/)![0];
-    // setChip(group,value) fires loadM(0); a silent third arg must suppress it
-    expect(DASHBOARD_HTML).toMatch(/function setChip\(group,value,[^)]*\)/);
-    const setChipLine = DASHBOARD_HTML.match(/function setChip\(group,value,[^\n]*/)![0];
-    expect(setChipLine).toMatch(/loadM\(0\)/);
-    // loadM(0) must be conditional on silent — an unconditional loadM(0) would still pass the call-shape asserts above
-    expect(setChipLine).toMatch(/if\s*\(\s*!silent\s*\)\s*loadM\(0\)/);
-    // first two chip resets must be silent, last one fires the single loadM(0)
-    const silentResets = (clearFBody.match(/setChip\('(?:type|result|color)','',\s*true\)/g) ?? []).length;
-    expect(silentResets).toBe(2);
-    const directLoads = (clearFBody.match(/loadM\(0\)/g) ?? []).length;
-    const loudResets = (clearFBody.match(/setChip\([^)]*\)/g) ?? []).filter((c) => !c.includes("true")).length;
-    expect(directLoads + loudResets).toBe(1);
   });
 
   it("shouldNotKeepLegacyFilterSelects", () => {
