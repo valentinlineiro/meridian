@@ -99,7 +99,7 @@ describe("identity of an observation: same snapshot, same set, a second run adds
     const r = await ingestSnapshot(d1, lang(full, { isAuxiliary: false, originalCourseId: "DUOLINGO_XA_EN" }));
     const dump = () => TABLES.map((t) => db.prepare(`SELECT * FROM ${t} ORDER BY 1, 2`).all());
     const before = dump();
-    expect(before.every((rows: unknown[], i: number) => i === 4 || rows.length > 0)).toBe(true); // every lang table has rows to protect
+    expect(counts(db)).toEqual({ account_observations: 1, course_observations: 3, path_observations: 1, section_observations: 3, elo_observations: 0 }); // the fixture feeds every table this test protects
     const tampered = {
       ...full,
       user: { ...full.user, totalXp: 9999, streak: 1, currentCourseId: "DUOLINGO_XB_EN" },
@@ -115,7 +115,7 @@ describe("identity of an observation: same snapshot, same set, a second run adds
     const r = await ingestSnapshot(d1, { source: "duolingo-chess", userId: USER, createdAt: AT, data: { eloRating: 981 } });
     const meta = { snapshotId: r.snapshotId, userId: USER, observedAt: "2030-01-01T00:00:00.000Z" };
     await d1.batch(observationStatements(d1, extractObservations("duolingo-chess", JSON.stringify({ eloRating: 1500 }), meta)));
-    expect(db.prepare("SELECT elo, observed_at FROM elo_observations").all()).toEqual([{ elo: 981, observed_at: AT }]);
+    expect(db.prepare("SELECT * FROM elo_observations").all()).toEqual([{ snapshot_id: r.snapshotId, user_id: USER, observed_at: AT, elo: 981, extractor_version: 1 }]);
   });
 
   it("shouldAddTheSetOfASecondSnapshotWithADifferentPayloadAsItsOwnObservations", async () => {
