@@ -208,3 +208,9 @@ export function createDashboardRuntime(initialPath = "/languages", html: string 
     renderOverviewLangCard: sandbox.renderOverviewLangCard,
   };
 }
+
+// The browser's own router, evaluated in the dashboard script's context (not a copy of it).
+export function parseCanonicalRoute(...args: Array<string | null | undefined>) {
+  const rt = createDashboardRuntime("/overview");
+  return JSON.parse(vm.runInContext(`JSON.stringify(parseCanonicalRoute(${args.map((a) => JSON.stringify(a)).join(",")}))`, rt.sandbox));
+}

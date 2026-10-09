@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { parseRoute, DASHBOARD_HTML } from "../src/frontend.ts";
-import { createDashboardRuntime } from "./helpers/dom.ts";
+import { DASHBOARD_HTML } from "../src/frontend.ts";
+import { createDashboardRuntime, parseCanonicalRoute as parseRoute } from "./helpers/dom.ts";
 
 describe("Frontend What Changed Navigation & Visual Engine", () => {
   it("shouldParseChangesHashRouteWhenHashIsChanges", () => {

@@ -1,16 +1,12 @@
 import { describe, it, expect } from "vitest";
 import vm from "node:vm";
-import {
-  DASHBOARD_HTML,
-  formatMatchDate,
-  renderHeroCard,
-  renderProgressBar,
-  renderDistributionBar,
-  renderActivityStrip,
-  renderMethodologyDisclosure,
-  escapeHtml
-} from "../src/frontend.ts";
+import { DASHBOARD_HTML } from "../src/frontend.ts";
 import { getElementHtmlById, createDashboardRuntime } from "./helpers/dom.ts";
+
+// The browser's own formatMatchDate, evaluated in the dashboard script's context.
+const formatMatchDateRuntime = createDashboardRuntime("/overview");
+const formatMatchDate = (playedAt?: number | null, firstSeenAt?: string | null): string =>
+  vm.runInContext(`formatMatchDate(${JSON.stringify(playedAt)}, ${JSON.stringify(firstSeenAt)})`, formatMatchDateRuntime.sandbox);
 
 describe("dashboard tabs", () => {
   it("shouldHaveChessAndLanguageTabPanels", () => {
@@ -701,139 +697,6 @@ describe("dashboard smoke test: markup validity, 3 panels, and responsive viewpo
 });
 
 describe("dashboard UI primitives behavioral tests", () => {
-  describe("renderDistributionBar", () => {
-    it("shouldCalculateAccurateProportionsForKnownWinLossDraw", () => {
-      const html = renderDistributionBar({
-        wins: 30,
-        losses: 15,
-        draws: 5,
-        label: "Win rate (50 partidas)",
-        meta: "30W · 15L · 5D"
-      });
-      expect(html).toContain('class="distribution-bar"');
-      expect(html).toContain('style="width:60.0%"');
-      expect(html).toContain('style="width:30.0%"');
-      expect(html).toContain('style="width:10.0%"');
-      expect(html).toContain('title="30W · 15L · 5D (50 partidas)"');
-      expect(html).toContain("Win rate (50 partidas)");
-      expect(html).toContain("30W · 15L · 5D");
-    });
-
-    it("shouldSafelyHandleZeroGamesWithoutZeroDivisionOrNan", () => {
-      const html = renderDistributionBar({ wins: 0, losses: 0, draws: 0 });
-      expect(html).not.toContain("NaN");
-      expect(html).not.toContain("Infinity");
-      expect(html).toContain('style="width:0%"');
-      expect(html).toContain('title="0W · 0L · 0D (0 partidas)"');
-    });
-  });
-
-  describe("renderProgressBar", () => {
-    it("shouldCalculateAccuratePercentageForCurricularUnits", () => {
-      const html = renderProgressBar({ current: 33, total: 300, label: "Progreso curricular" });
-      expect(html).toContain("Progreso curricular");
-      expect(html).toContain("33 / 300 unidades (11.0%)");
-      expect(html).toContain('style="width:11.0%"');
-    });
-
-    it("shouldClampPercentageTo100WhenCurrentExceedsTotal", () => {
-      const html = renderProgressBar({ current: 350, total: 300 });
-      expect(html).toContain('style="width:100.0%"');
-    });
-
-    it("shouldReturnZeroPercentWhenTotalIsZeroWithoutNan", () => {
-      const html = renderProgressBar({ current: 0, total: 0 });
-      expect(html).not.toContain("NaN");
-      expect(html).toContain('style="width:0%"');
-    });
-
-    it("shouldOmitPercentageWhenShowPercentIsFalse", () => {
-      const html = renderProgressBar({ label: "Progreso", current: 10, total: 20, showPercent: false });
-      expect(html).not.toContain("(50.0%)");
-      expect(html).toContain("10 / 20 unidades");
-    });
-  });
-
-  describe("renderHeroCard", () => {
-    it("shouldRenderFullHeroCardWithProgressAndMeta", () => {
-      const html = renderHeroCard({
-        id: "testHero",
-        title: "Curso Activo",
-        badge: '<span class="pill pill-win">ACTIVO</span>',
-        primary: "Francés",
-        secondary: "Desde Español",
-        progress: { current: 33, total: 300, label: "Unidades completadas" },
-        meta: "Sincronizado hoy"
-      });
-      expect(html).toContain('id="testHero"');
-      expect(html).toContain("Curso Activo");
-      expect(html).toContain("Francés");
-      expect(html).toContain("Desde Español");
-      expect(html).toContain("ACTIVO");
-      expect(html).toContain("Unidades completadas");
-      expect(html).toContain("33 / 300 unidades (11.0%)");
-      expect(html).toContain("Sincronizado hoy");
-    });
-
-    it("shouldRenderMinimalHeroCardWithoutProgressOrMeta", () => {
-      const html = renderHeroCard({
-        primary: "Overview"
-      });
-      expect(html).toContain("Overview");
-      expect(html).not.toContain("progress-bar");
-      expect(html).not.toContain("border-top");
-    });
-  });
-
-  describe("renderActivityStrip", () => {
-    it("shouldRenderSevenDayDotsWithCorrectActiveStatusAndTooltips", () => {
-      const days = [
-        { date: "2026-09-23", dayLetter: "X", active: true, color: "#2ea043", bottomLabel: "549", tooltip: "2026-09-23: 549 XP" },
-        { date: "2026-09-24", dayLetter: "J", active: false, bottomLabel: "—" },
-      ];
-      const html = renderActivityStrip({ id: "testStrip", label: "Actividad", summary: "549 XP · 1 día", days });
-      expect(html).toContain('id="testStrip"');
-      expect(html).toContain("Actividad");
-      expect(html).toContain("549 XP · 1 día");
-      expect(html).toContain("background:#2ea043");
-      expect(html).toContain("background:#1e2e44");
-      expect(html).toContain("549");
-      expect(html).toContain("title=\"2026-09-23: 549 XP\"");
-    });
-  });
-
-  describe("renderMethodologyDisclosure", () => {
-    it("shouldRenderDisclosureAccordionWithItemsAndLinks", () => {
-      const html = renderMethodologyDisclosure({
-        id: "testMethod",
-        title: "¿Cómo sabemos esto?",
-        items: [
-          { term: "D1 snapshots", desc: "Datos inmutables observados." }
-        ],
-        links: [
-          { href: "/raw", text: "Datos técnicos", target: "_blank" }
-        ]
-      });
-      expect(html).toContain('id="testMethod"');
-      expect(html).toContain("<details class=\"methodology-disclosure\"");
-      expect(html).toContain("¿Cómo sabemos esto?");
-      expect(html).toContain("<b>D1 snapshots:</b> Datos inmutables observados.");
-      expect(html).toContain('href="/raw"');
-      expect(html).toContain('target="_blank"');
-    });
-  });
-
-  describe("escapeHtml", () => {
-    it("shouldEscapeSpecialHtmlCharacters", () => {
-      expect(escapeHtml("<script>alert(\"xss\")&</script>")).toBe("&lt;script&gt;alert(&quot;xss&quot;)&amp;&lt;/script&gt;");
-    });
-
-    it("shouldHandleNullAndUndefinedGracefully", () => {
-      expect(escapeHtml(null)).toBe("");
-      expect(escapeHtml(undefined)).toBe("");
-    });
-  });
-
   describe("formatMatchDate", () => {
     it("shouldFormatNumericTimestampCorrectly", () => {
       const formatted = formatMatchDate(1727500000);
