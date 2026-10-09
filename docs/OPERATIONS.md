@@ -9,7 +9,7 @@ Para volver a operar el Worker tras meses sin tocarlo. Solo describe lo comproba
 
 | Qué | Dónde |
 |---|---|
-| Config privada del Worker | `wrangler.private.jsonc` (**sin versionar**, listada en `.git/info/exclude`). Se recrea copiando `wrangler.jsonc` y poniendo el `database_id` de `npx wrangler d1 info meridian`. |
+| Config privada del Worker | `wrangler.private.jsonc` (**sin versionar**, listada en `.git/info/exclude`). Se recrea copiando `wrangler.jsonc` y poniendo el `database_id` de `npx wrangler d1 info meridian`. Debe conservar `rules` (`Text` para `**/*.client.js` y `**/*.client.css`: el script y los estilos del dashboard): `--config` no se combina con `wrangler.jsonc`, y sin la regla el Worker no arranca (el build o el arranque lo rechazan). |
 | Config pública | `wrangler.jsonc` (id de D1 ficticio `0000…`) |
 | Destino de "Sincronizar" | variables `SYNC_REPO` (`owner/repo`), `SYNC_WORKFLOW` y `SYNC_REF` en `wrangler.private.jsonc`. Sin las tres, `/api/me/sync` responde 503 `SYNC_NOT_CONFIGURED` |
 | Todos los comandos de wrangler | llevan `--config wrangler.private.jsonc` |

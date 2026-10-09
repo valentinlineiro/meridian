@@ -1,88 +1,12 @@
 import CLIENT_JS from "./dashboard.client.js";
+import CLIENT_CSS from "./dashboard.client.css";
 
 // A wrangler config without the Text rule for *.client.js bundles it as a module and this import is not a string:
 // fail at startup (the deploy is rejected) instead of serving a page whose script is "undefined".
-if (typeof CLIENT_JS !== "string") throw new Error("dashboard.client.js must be imported as text: add the wrangler rule {type:'Text', globs:['**/*.client.js'], fallthrough:false}");
+if (typeof CLIENT_JS !== "string" || typeof CLIENT_CSS !== "string") throw new Error("dashboard.client.js and .css must be imported as text: add the wrangler rule {type:'Text', globs:['**/*.client.js', '**/*.client.css'], fallthrough:false}");
 
 export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Meridian</title><style>
-*{box-sizing:border-box}body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;margin:0;background:#0e141c;color:#e6edf3;line-height:1.4}
-a{color:#7aa7e6;text-decoration:none}a:hover{text-decoration:underline}
-header{position:sticky;top:0;z-index:10;background:#111d2e;border-bottom:1px solid #1e2e44;display:flex;justify-content:space-between;align-items:center;padding:14px 20px;gap:16px;flex-wrap:wrap}
-.h-left h1{margin:0;font-size:18px;letter-spacing:.02em;display:flex;gap:8px;align-items:center}
-.h-left small{color:#8ea0b8;font-size:12px;display:block;margin-top:2px}
-.h-right{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
-.btn{border:0;border-radius:8px;padding:8px 14px;font-weight:600;cursor:pointer;font-size:13px}
-.btn-p{background:#1f6feb;color:#fff}.btn-p:hover{background:#2a7bff}
-.btn-g{background:#1e2e44;color:#c8d7ea;border:1px solid #2a3d56}.btn-g:disabled{opacity:.5;cursor:default}
-main{max-width:1120px;margin:0 auto;padding:20px 16px 40px}
-.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:16px 0}
-@media(max-width:760px){.kpis{grid-template-columns:repeat(2,1fr)}}
-.kpi{background:#142236;border:1px solid #1e2e44;border-radius:12px;padding:14px 16px}
-.kpi label{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#8ea0b8}
-.kpi b{font-size:26px;display:block;margin-top:4px}
-.kpi small{color:#8ea0b8;font-size:12px}
-.kpi-sub{grid-column:1/-1;color:#8ea0b8;font-size:12px;margin-top:-4px}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-@media(max-width:860px){.grid2{grid-template-columns:1fr}}
-.card{background:#131f33;border:1px solid #1e2e44;border-radius:12px;padding:16px}
-.card h2{margin:0 0 12px;font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:#8ea0b8}
-.card h3{margin:0 0 8px;font-size:13px;color:#c8d7ea}
-.muted{color:#8ea0b8;font-size:12px}
-.row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:6px 0;border-bottom:1px solid #1e2e44}
-.row:last-child{border:0}
-.pill{font-size:11px;padding:2px 7px;border-radius:999px;border:1px solid #2a3d56;color:#c8d7ea;white-space:nowrap}
-.pill-win{background:#12291e;border-color:#1f6b3a;color:#7ee2a0}
-.pill-loss{background:#2a1616;border-color:#7a2e2e;color:#e89a9a}
-.pill-draw{background:#1e2430;border-color:#3a4558;color:#b9c2d0}
-.pill-warn{background:#2b2210;border-color:#7a5a1e;color:#f0c674}
-.pill-selected{background:#1c2d42;border-color:#38577a;color:#9cc8ff}
-.pill-scope{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 6px;border-radius:999px;border:1px solid #2a3d56;color:#8ea0b8;background:#101a27}
-.bar{height:8px;background:#1e2e44;border-radius:999px;overflow:hidden}
-.bar>i{display:block;height:100%;border-radius:999px}
-.bar-win{background:#2ea043}.bar-loss{background:#d15a5a}.bar-draw{background:#6e7a8e}
-.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;margin-top:8px}
-.dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:4px;vertical-align:middle}
-.hist{margin-top:8px}
-.hist-row{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:12px}
-.hist-row span:first-child{width:76px;color:#8ea0b8;text-align:right}
-.hist-row .bar{flex:1}
-.filters{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
-.filters input,.filters select{background:#0e1a2b;color:#e6edf3;border:1px solid #2a3d56;border-radius:8px;padding:7px 9px;font-size:13px}
-.filters input{width:108px}.filters select{min-width:118px}
-#q{width:160px}
-.tbl{width:100%;border-collapse:collapse;font-size:13px}
-.tbl th{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:#8ea0b8;text-align:left;padding:8px 6px;border-bottom:1px solid #1e2e44}
-.tbl td{padding:9px 6px;border-bottom:1px solid #162236}
-.pager{display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:13px}
-.empty{padding:28px;text-align:center;color:#8ea0b8;border:1px dashed #2a3d56;border-radius:10px;margin-top:8px}
-.tabs{display:flex;gap:8px;margin-bottom:16px}
-.tab-panel{display:none}
-.tab-panel.active{display:block}
-.hero-card{background:#142236;border:1px solid #1e2e44;border-radius:12px;padding:20px;margin-bottom:16px}
-.activity-strip{display:flex;gap:8px;justify-content:space-between;margin:12px 0}
-.progress-bar{height:10px;background:#1e2e44;border-radius:999px;overflow:hidden}
-.progress-bar > div{height:100%;background:#2ea043;border-radius:999px}
-.distribution-bar{display:flex;height:10px;border-radius:999px;overflow:hidden;background:#1e2e44}
-.methodology-disclosure{border:1px solid #1e2e44;border-radius:10px;padding:12px;margin-top:24px;background:#0e1724;font-size:13px}
-svg text{font-family:system-ui,sans-serif}
-@media(max-width:700px){
- .tbl thead{display:none}
- .tbl tr{display:block;border:1px solid #1e2e44;border-radius:10px;margin-bottom:8px;padding:8px}
- .tbl td{display:flex;justify-content:space-between;border:0;padding:4px 0}
- .tbl td::before{content:attr(data-l) / "";color:#8ea0b8;font-size:11px;text-transform:uppercase;letter-spacing:.04em;margin-right:12px}
-}
-@media(max-width:480px){
- header{padding:10px 14px;gap:8px}
- .kpis{gap:8px;margin:10px 0}
- .kpi{padding:10px 12px;border-radius:10px}
- .kpi b{font-size:20px;margin-top:2px}
- .kpi label{font-size:10px}
- .card{padding:12px;border-radius:10px}
- main{padding:12px 10px 32px}
- select,input{max-width:100%}
-}
-</style></head><body>
+<title>Meridian</title><style>${CLIENT_CSS}</style></head><body>
 <header>
   <div class="h-left"><h1>Meridian</h1><small id="syncMeta">—</small></div>
   <div class="h-right">
