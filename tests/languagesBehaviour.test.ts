@@ -141,9 +141,7 @@ describe("languages tab", () => {
     expect(text(rt, "#langObservedSynthesis")).toBe("Sin observaciones curriculares registradas");
   });
 
-  // Known defect (found while converting these tests): renderLanguagesAnalytics looks courses up by `c.id`, but the catalogue
-  // uses `courseId`, so every course is also listed as waiting. Remove `.fails` when that lookup is fixed.
-  it.fails("shouldListACourseWithoutASecondObservationAsWaitingAndOnlyThatOne", () => {
+  it("shouldListACourseWithoutASecondObservationAsWaitingAndOnlyThatOne", () => {
     const rt = createDashboardRuntime("/languages");
     run(rt, `lastLangsData = ${JSON.stringify(langs)}`);
     const analytics = {

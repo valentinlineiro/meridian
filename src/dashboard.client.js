@@ -646,7 +646,7 @@ function renderLanguagesAnalytics(a){
   // covers — a course silently missing reads as "broken", not as "not enough data yet".
   const allCourses=(lastLangsData&&lastLangsData.courses)||[];
   const deltaByCourse=new Map(deltas.map(d=>[d.courseId,d]));
-  const waiting=allCourses.filter(c=>!deltaByCourse.has(c.id));
+  const waiting=allCourses.filter(c=>!deltaByCourse.has(c.courseId));
   if(!deltas.length&&!waiting.length){
    elComp.innerHTML='<div class="muted">No se registran múltiples observaciones curriculares para comparar.</div>';
   } else {
@@ -665,7 +665,7 @@ function renderLanguagesAnalytics(a){
    });
    const waitingRows=waiting.map(c=>
     '<div class="row" style="padding:8px 0"><div style="flex:1">'
-    +'<div style="display:flex;justify-content:space-between;align-items:center"><b>'+esc(c.title||c.id)+'</b><span class="pill pill-draw">ESPERANDO 2ª OBSERVACIÓN</span></div>'
+    +'<div style="display:flex;justify-content:space-between;align-items:center"><b>'+esc(c.title||c.courseId)+'</b><span class="pill pill-draw">ESPERANDO 2ª OBSERVACIÓN</span></div>'
     +'<div class="muted" style="font-size:11px;margin-top:2px">Aún no hay una segunda captura del Path de este curso para poder comparar.</div>'
     +'</div></div>'
    );
