@@ -37,4 +37,16 @@ describe("dashboard HTML escaping of third-party strings", () => {
     expect(handlers.length).toBeGreaterThan(0);
     for (const arg of handlers) expect(JSON.parse(arg)).toBe(QUOTE);
   });
+
+  it("shouldEscapeSectionFieldsWhenRenderingTheCourseDetail", async () => {
+    const rt = createDashboardRuntime("/languages");
+    const section = { sectionIndex: 1, sectionId: HOSTILE, type: HOSTILE, cefrLevel: HOSTILE, cefrSublevel: null, completedUnits: 1, totalUnits: 2, lastSeenAt: `${HOSTILE}2026-10-01` };
+    const course = { courseId: "XB_EN", title: "T", xp: 10, fromLanguage: "en", learningLanguage: "xb" };
+    rt.sandbox.fetch = async () => ({ ok: true, status: 200, json: async () => ({ course, sections: [section, { ...section, cefrLevel: null }] }) });
+    await vm.runInContext(`showCourseDetail("XB_EN")`, rt.sandbox);
+    const html = rt.getEl("#langCefrBody").innerHTML + rt.getEl("#langSectionsList").innerHTML;
+    expect(html).not.toContain("<img");
+    expect(html).toContain("Nivel &lt;img src=x onerror=alert(1)&gt;");
+    expect(html).toContain("Section ID: &lt;img src=x onerror=alert(1)&gt; · Tipo: &lt;img src=x onerror=alert(1)&gt;");
+  });
 });

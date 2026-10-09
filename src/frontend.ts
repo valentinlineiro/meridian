@@ -761,7 +761,7 @@ async function showCourseDetail(courseId){
    elCefr.innerHTML=cefrRows.length? cefrRows.map(([lvl,ent])=>{
     const ratio=ent.total? (ent.completed/ent.total):0;
     return '<div class="row" style="padding:6px 0"><div style="flex:1">'
-     +'<div style="display:flex;justify-content:space-between;align-items:baseline"><b>Nivel '+lvl+' ('+ent.count+' sec)</b><span><b>'+ent.completed+' / '+ent.total+' unidades</b></span></div>'
+     +'<div style="display:flex;justify-content:space-between;align-items:baseline"><b>Nivel '+esc(lvl)+' ('+ent.count+' sec)</b><span><b>'+ent.completed+' / '+ent.total+' unidades</b></span></div>'
      +'<div style="margin-top:4px">'+bar(ratio,'#58a6ff')+'</div>'
      +'</div></div>';
    }).join('') : '<div class="muted">Sin información de CEFR</div>';
@@ -772,10 +772,10 @@ async function showCourseDetail(courseId){
    const comp=s.completedUnits||0;
    const ratio=s.totalUnits? (comp/s.totalUnits) : 0;
    return '<div class="row" style="padding:10px 0;border-bottom:1px solid #1e2e44"><div style="flex:1">'
-    +'<div style="display:flex;justify-content:space-between;align-items:baseline"><b>SECCIÓN '+s.sectionIndex+': '+esc(cefrLabel)+'</b><span><b>'+(s.completedUnits??0)+' / '+(s.totalUnits??0)+' unidades</b></span></div>'
+    +'<div style="display:flex;justify-content:space-between;align-items:baseline"><b>SECCIÓN '+esc(s.sectionIndex)+': '+esc(cefrLabel)+'</b><span><b>'+(s.completedUnits??0)+' / '+(s.totalUnits??0)+' unidades</b></span></div>'
     +'<div style="margin-top:6px">'+bar(ratio,'#2ea043')+'</div>'
     +'<details style="margin-top:6px"><summary class="muted" style="cursor:pointer;font-size:11px">Detalle de sección</summary>'
-    +'<div class="muted" style="font-size:12px;margin-top:4px">Section ID: '+s.sectionId+' · Tipo: '+(s.type||'learning')+' · '+(s.lastSeenAt? 'Última observación: '+s.lastSeenAt.slice(0,10):'')+'</div>'
+    +'<div class="muted" style="font-size:12px;margin-top:4px">Section ID: '+esc(s.sectionId)+' · Tipo: '+esc(s.type||'learning')+' · '+(s.lastSeenAt? 'Última observación: '+esc(s.lastSeenAt.slice(0,10)):'')+'</div>'
     +'</details>'
     +'</div></div>';
   }).join('') : '<div class="muted">Sin secciones registradas</div>';
