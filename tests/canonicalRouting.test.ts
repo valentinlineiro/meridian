@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { DASHBOARD_HTML, parseCanonicalRoute } from "../src/frontend.ts";
+import { DASHBOARD_HTML } from "../src/frontend.ts";
+import { parseCanonicalRoute } from "./helpers/dom.ts";
 
 describe("Canonical Routing (#16.9.1)", () => {
   describe("parseCanonicalRoute unit tests", () => {

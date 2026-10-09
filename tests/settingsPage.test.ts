@@ -8,7 +8,6 @@ const reply = (body: unknown, ok = true, status = 200) => ({ ok, status, json: a
 function setup(respond: (url: string, init?: RequestInit) => ReturnType<typeof reply>) {
   const rt = createDashboardRuntime("/settings", SETTINGS_HTML);
   const calls: { url: string; init?: RequestInit }[] = [];
-  rt.sandbox.console = { error() {}, log() {} };
   rt.sandbox.fetch = async (url: string, init?: RequestInit) => { calls.push({ url, init }); return respond(url, init); };
   rt.sandbox.window.fetch = rt.sandbox.fetch;
   const puts = () => calls.filter((c) => c.init?.method === "PUT");

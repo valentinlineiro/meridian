@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { parseRoute, DASHBOARD_HTML } from "../src/frontend.ts";
-import { createDashboardRuntime } from "./helpers/dom.ts";
+import { DASHBOARD_HTML } from "../src/frontend.ts";
+import { createDashboardRuntime, fetchOnly, parseCanonicalRoute as parseRoute } from "./helpers/dom.ts";
 
 describe("Frontend What Changed Navigation & Visual Engine", () => {
   it("shouldParseChangesHashRouteWhenHashIsChanges", () => {
@@ -192,7 +192,7 @@ describe("Frontend What Changed Navigation & Visual Engine", () => {
     rt.sandbox.localStorage.clear();
 
     let capturedUrl = "";
-    rt.sandbox.fetch = async (url: string) => {
+    rt.sandbox.fetch = fetchOnly("/api/what-changed", async (url: string) => {
       if (url.includes("/api/what-changed")) {
         capturedUrl = url;
       }
@@ -208,7 +208,7 @@ describe("Frontend What Changed Navigation & Visual Engine", () => {
           findings: [],
         }),
       };
-    };
+    });
 
     await rt.sandbox.fetchWhatChanged();
     expect(capturedUrl).toContain("/api/what-changed?since=");

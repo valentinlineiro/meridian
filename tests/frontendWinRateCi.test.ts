@@ -1,14 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { summarize } from "../src/domain/result.ts";
-import { DASHBOARD_HTML } from "../src/frontend.ts";
+import { callDashboard } from "./helpers/dom.ts";
 
-const fn = (name: string) => DASHBOARD_HTML.match(new RegExp(`function ${name}\\([^)]*\\)\\{[\\s\\S]*?\\n\\}`))![0];
-const renderCompare = new Function(`${fn("esc")}; ${fn("pctCi")}; ${fn("renderCompare")}; return renderCompare;`)() as (g: any[], total: number) => string;
-function renderForm(r: any) {
-  const el = { innerHTML: "" };
-  new Function("q", `${fn("pctCi")}; ${fn("renderForm")}; return renderForm;`)(() => el)(r);
-  return el.innerHTML;
-}
+const renderCompare = (g: any[], total: number): string => callDashboard(`renderCompare(${JSON.stringify(g)}, ${total})`).result;
+const renderForm = (r: any): string => callDashboard(`renderForm(${JSON.stringify(r)})`).els["#form"]!.innerHTML;
 const group = (o: any) => ({ key: "white", games: 0, wins: 0, losses: 0, draws: 0, unknown: 0, decided: 0, winRate: null, scoreRate: null, winRateCi: null, ...o });
 const widths = (html: string) => ["win", "loss", "draw"].map((k) => Number(html.match(new RegExp(`bar-${k}" style="width:([\\d.]+)%`))![1]));
 

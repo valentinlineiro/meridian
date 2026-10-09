@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { DASHBOARD_HTML } from "../src/frontend.ts";
+import { parseCanonicalRoute } from "./helpers/dom.ts";
 
 describe("Frontend Trajectory Tab", () => {
-  const html = readFileSync(resolve(__dirname, "../src/frontend.ts"), "utf-8");
+  const html = DASHBOARD_HTML;
 
   it("shouldIncludeTrajectoryTabButtonAndSectionInMarkup", () => {
     expect(html).toContain('id="tabBtnTrajectory"');
@@ -14,7 +14,7 @@ describe("Frontend Trajectory Tab", () => {
   });
 
   it("shouldSupportTrajectoryTabInRouteParsing", () => {
-    expect(html).toContain('seg === "trajectory"');
+    expect(parseCanonicalRoute("/trajectory")).toMatchObject({ tab: "trajectory", canonicalPath: "/trajectory", canonicalHash: "#/trajectory" });
   });
 
   it("shouldProjectChessAsymmetryMetricsIntoFactualCopy", () => {

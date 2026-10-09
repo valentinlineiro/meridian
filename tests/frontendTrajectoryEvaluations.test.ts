@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { evaluateTrajectory, type TrajectoryInput } from "../src/domain/trajectory.ts";
-import { createDashboardRuntime } from "./helpers/dom.ts";
+import { createDashboardRuntime, fetchOnly } from "./helpers/dom.ts";
 
 const era = (ww: number, wd: number, bw: number, bd: number) => ({ whiteGames: wd, whiteDecided: wd, whiteWins: ww, blackGames: bd, blackDecided: bd, blackWins: bw });
 const input = (o: Partial<TrajectoryInput["chess"]> = {}, lang = false): TrajectoryInput => ({
@@ -15,7 +15,7 @@ const payload = (i: TrajectoryInput, withEvaluations = true) => {
 };
 async function render(p: unknown) {
   const rt = createDashboardRuntime("/trajectory");
-  rt.sandbox.fetch = async () => ({ ok: true, json: async () => p });
+  rt.sandbox.fetch = fetchOnly("/api/trajectory", async () => ({ ok: true, json: async () => p }));
   await rt.sandbox.fetchTrajectory();
   return { html: rt.getEl("#trajectoryFindings").innerHTML as string, empty: rt.getEl("#trajectoryEmpty").style.display as string };
 }

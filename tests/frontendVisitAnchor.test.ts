@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { createDashboardRuntime } from "./helpers/dom.ts";
+import { createDashboardRuntime, fetchOnly } from "./helpers/dom.ts";
 
 const DAY = 864e5;
 const iso = (msAgo: number) => new Date(Date.now() - msAgo).toISOString();
@@ -10,7 +10,7 @@ function setup(opts: { anchor?: string | null; getStatus?: number; putStatus?: n
   // not "/changes": booting on that route would start a fetchWhatChanged of its own that interleaves with the one under test
   const rt = createDashboardRuntime("/overview");
   const server = { anchor: opts.anchor ?? null, puts: [] as string[], whatChanged: [] as { since: string; until: string }[], getStatus: opts.getStatus ?? 200, putStatus: opts.putStatus ?? 200 };
-  rt.sandbox.fetch = async (url: string, init?: any) => {
+  rt.sandbox.fetch = fetchOnly(["/api/me/changes-anchor", "/api/what-changed"], async (url: string, init?: any) => {
     if (url.startsWith("/api/me/changes-anchor")) {
       if (init?.method === "PUT") {
         const t = JSON.parse(init.body).seenThrough as string;
@@ -23,7 +23,6 @@ function setup(opts: { anchor?: string | null; getStatus?: number; putStatus?: n
         ? { ok: true, status: 200, json: async () => ({ ok: true, seenThrough: server.anchor }) }
         : { ok: false, status: server.getStatus, json: async () => ({}) };
     }
-    if (!url.startsWith("/api/what-changed")) return { ok: false, status: 404, json: async () => ({}) }; // the dashboard boot also fetches other endpoints
     const u = new URL(url, "http://x");
     const since = u.searchParams.get("since")!, until = u.searchParams.get("until")!;
     server.whatChanged.push({ since, until });
@@ -37,7 +36,7 @@ function setup(opts: { anchor?: string | null; getStatus?: number; putStatus?: n
         findings: [], evaluations: [],
       }),
     };
-  };
+  });
   return { rt, server, header: () => rt.getEl("#changesHeader").innerHTML as string };
 }
 

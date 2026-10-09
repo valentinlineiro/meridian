@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { evaluateChanges, salience, type WhatChangedDeltas } from "../src/domain/whatChanged.ts";
-import { createDashboardRuntime } from "./helpers/dom.ts";
+import { createDashboardRuntime, fetchOnly } from "./helpers/dom.ts";
 
 const ctx = { userId: "u1", baselineAt: "2026-09-20T00:00:00.000Z", until: "2026-09-27T00:00:00.000Z" };
 const clear = { diff: 40, lower: 10, upper: 60 }, wide = { diff: 40, lower: -16, upper: 72 };
@@ -119,7 +119,7 @@ describe("evaluation cards (P0)", () => {
 
   it("shouldShowReadableWindowInChangesHeader", async () => {
     const rt = createDashboardRuntime("/changes");
-    rt.sandbox.fetch = async () => ({ ok: true, json: async () => ({}) });
+    rt.sandbox.fetch = fetchOnly("/api/what-changed", async () => ({ ok: true, json: async () => ({}) }));
     await rt.sandbox.fetchWhatChanged("2026-10-01T10:37:59.169Z");
     expect(rt.getEl("#changesHeader").innerHTML).toContain("2026-10-01 10:37 UTC");
     expect(rt.getEl("#changesHeader").innerHTML).not.toContain("10:37:59.169Z");

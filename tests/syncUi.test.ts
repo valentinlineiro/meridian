@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { createDashboardRuntime } from "./helpers/dom.ts";
+import { createDashboardRuntime, fetchOnly } from "./helpers/dom.ts";
 
 // The Sync now button as a small state machine, driven against the real dashboard script with scripted responses.
 type Reply = { ok?: boolean; status?: number; body: unknown };
@@ -18,14 +18,13 @@ function setup(script: (url: string, init?: RequestInit) => Reply, storedRun?: n
   const advance = (ms: number) => { clock += ms; };
   class FakeDate extends Date { static override now() { return clock; } }
   rt.sandbox.Date = FakeDate;
-  rt.sandbox.console = { error() {}, log() {} };
   rt.sandbox.location.reload = () => {};
   rt.sandbox.setTimeout = (fn: () => void, ms: number) => { advance(ms); Promise.resolve().then(fn); return 0; };
-  rt.sandbox.fetch = async (url: string, init?: RequestInit) => {
+  rt.sandbox.fetch = fetchOnly("/api/me/sync", async (url: string, init?: RequestInit) => {
     calls.push(`${init?.method ?? "GET"} ${url}`);
     states.push(`${btn.textContent}|${(btn as any).disabled ? "disabled" : "enabled"}|${note.textContent}`);
     return reply(script(url, init));
-  };
+  });
   rt.sandbox.window.fetch = rt.sandbox.fetch;
   rt.sandbox.localStorage.clear();
   if (storedRun) rt.sandbox.localStorage.setItem("meridian.syncRun", String(storedRun));
