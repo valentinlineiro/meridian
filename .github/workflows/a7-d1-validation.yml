@@ -186,7 +186,7 @@ jobs:
         run: |
           set -euo pipefail
           bash scripts/a7-worker-call.sh "${{ steps.deploy.outputs.worker_url }}/runtime-scenario" /tmp/a7-runtime.json | tee /tmp/a7-runtime.json
-          jq -e '.pass == true and .ordered.pass == true and .concurrent.pass == true and .ordered.dirtyCleared == true and .concurrent.snapshotsPreserved == true' /tmp/a7-runtime.json >/dev/null
+          jq -e '.pass == true and .ordered.pass == true and .concurrent.pass == true and .b1Conflict.pass == true and .b1ExtraWithoutExpectedEvents.pass == true and .ordered.dirtyCleared == true and .concurrent.snapshotsPreserved == true' /tmp/a7-runtime.json >/dev/null
           {
             echo "## Actual A7 runtime SQL on D1"
             echo "- Ordered late-arrival repair parity: $(jq -r '.ordered.parity' /tmp/a7-runtime.json)"
@@ -194,6 +194,8 @@ jobs:
             echo "- Concurrent snapshots preserved: $(jq -r '.concurrent.snapshotsPreserved' /tmp/a7-runtime.json)"
             echo "- Concurrent repair parity: $(jq -r '.concurrent.parity' /tmp/a7-runtime.json)"
             echo "- Final dirty markers cleared: $(jq -r '.concurrent.dirtyCleared' /tmp/a7-runtime.json)"
+            echo "- B1 conflicting event detected and repaired: $(jq -r '.b1Conflict.pass' /tmp/a7-runtime.json)"
+            echo "- B1 extra event with zero expected events detected and repaired: $(jq -r '.b1ExtraWithoutExpectedEvents.pass' /tmp/a7-runtime.json)"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload measurements
