@@ -7,6 +7,7 @@ on:
       - ".github/workflows/a7-d1-validation.yml"
       - "tests/a7-d1-validation-worker.mjs"
       - "scripts/a7-p1-production-audit.mjs"
+      - "scripts/a7-worker-call.sh"
 
 permissions:
   contents: read
@@ -96,23 +97,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for attempt in 1 2 3 4 5 6 7 8 9 10; do
-            code=$(curl --silent --show-error --max-time 10 -o /tmp/a7-health.json -w '%{http_code}' "$WORKER_URL/")
-            if [ "$code" = "200" ]; then cat /tmp/a7-health.json; exit 0; fi
-            if grep -q 'error code: 1042' /tmp/a7-health.json; then sleep 2; continue; fi
-            cat /tmp/a7-health.json
-            echo "::error::Unexpected temporary Worker HTTP status: $code"
-            exit 1
-          done
-          cat /tmp/a7-health.json
-          echo "::error::Temporary Worker route never became available"
-          exit 1
+          bash scripts/a7-worker-call.sh "$WORKER_URL/" /tmp/a7-health.json >/dev/null
 
       - name: Validate D1 atomicity and tuple ordering
         run: |
           set -euo pipefail
-          curl --max-time 180 --fail-with-body --silent --show-error "${{ steps.deploy.outputs.worker_url }}/setup" | tee /tmp/a7-setup.json
-          curl --max-time 180 --fail-with-body --silent --show-error "${{ steps.deploy.outputs.worker_url }}/semantics" | tee /tmp/a7-semantics.json
+          bash scripts/a7-worker-call.sh "${{ steps.deploy.outputs.worker_url }}/setup" /tmp/a7-setup.json | tee /tmp/a7-setup.json
+          bash scripts/a7-worker-call.sh "${{ steps.deploy.outputs.worker_url }}/semantics" /tmp/a7-semantics.json | tee /tmp/a7-semantics.json
           jq -e '.atomicityRollbackPass == true and .tuplePass == true' /tmp/a7-semantics.json >/dev/null
 
       - name: Measure D1 reads and Worker parsing cost
@@ -120,20 +111,20 @@ jobs:
           set -euo pipefail
           for n in 1 42 294 850; do
             echo "### D1 measurement: $n snapshots" >> "$GITHUB_STEP_SUMMARY"
-            curl --max-time 180 --fail-with-body --silent --show-error "${{ steps.deploy.outputs.worker_url }}/measure?n=$n" | tee "/tmp/a7-measure-$n.json"
+            bash scripts/a7-worker-call.sh "${{ steps.deploy.outputs.worker_url }}/measure?n=$n" "/tmp/a7-measure-$n.json" | tee "/tmp/a7-measure-$n.json"
             jq -r '"- Rows read: " + (.rowsRead|tostring) + "\n- Rows written: " + (.rowsWritten|tostring) + "\n- Payload bytes parsed: " + (.payloadBytesParsed|tostring) + "\n- Worker wall time (ms): " + (.wallMs|tostring) + "\n- D1 reported SQL duration (ms): " + (.reportedSqlDurationMs|tostring)' "/tmp/a7-measure-$n.json" >> "$GITHUB_STEP_SUMMARY"
           done
 
           for k in 1 3 10 25; do
             echo "### D1 repair chunk: $k snapshots" >> "$GITHUB_STEP_SUMMARY"
-            curl --max-time 180 --fail-with-body --silent --show-error "${{ steps.deploy.outputs.worker_url }}/measure-chunk?k=$k" | tee "/tmp/a7-chunk-$k.json"
+            bash scripts/a7-worker-call.sh "${{ steps.deploy.outputs.worker_url }}/measure-chunk?k=$k" "/tmp/a7-chunk-$k.json" | tee "/tmp/a7-chunk-$k.json"
             jq -r '"- Rows read: " + (.rowsRead|tostring) + "\n- Payload bytes parsed: " + (.payloadBytesParsed|tostring) + "\n- Worker wall time (ms): " + (.wallMs|tostring) + "\n- D1 SQL duration (ms): " + (.reportedSqlDurationMs|tostring)' "/tmp/a7-chunk-$k.json" >> "$GITHUB_STEP_SUMMARY"
           done
 
       - name: Validate full raw_json parity and corruption detection
         run: |
           set -euo pipefail
-          curl --max-time 180 --fail-with-body --silent --show-error "${{ steps.deploy.outputs.worker_url }}/p1" | tee /tmp/a7-p1.json
+          bash scripts/a7-worker-call.sh "${{ steps.deploy.outputs.worker_url }}/p1" /tmp/a7-p1.json | tee /tmp/a7-p1.json
           jq -e '.pass == true and .cleanSeriesParityPass == true and .fullRawJsonParityDetectsCorruption == true' /tmp/a7-p1.json >/dev/null
 
       - name: P1 parity audit against production raw_json (SELECT-only)
@@ -149,7 +140,7 @@ jobs:
       - name: Exercise repair liveness counterexample and watermark prototype
         run: |
           set -euo pipefail
-          curl --max-time 180 --fail-with-body --silent --show-error "${{ steps.deploy.outputs.worker_url }}/liveness" | tee /tmp/a7-liveness.json
+          bash scripts/a7-worker-call.sh "${{ steps.deploy.outputs.worker_url }}/liveness" /tmp/a7-liveness.json | tee /tmp/a7-liveness.json
           jq -e '.fixedWatermarkPrototype.completed == 100' /tmp/a7-liveness.json >/dev/null
           {
             echo "## A7 liveness model"
@@ -159,7 +150,7 @@ jobs:
       - name: Validate D1-backed watermark repair under interleaving
         run: |
           set -euo pipefail
-          curl --max-time 180 --fail-with-body --silent --show-error "${{ steps.deploy.outputs.worker_url }}/liveness-d1" | tee /tmp/a7-liveness-d1.json
+          bash scripts/a7-worker-call.sh "${{ steps.deploy.outputs.worker_url }}/liveness-d1" /tmp/a7-liveness-d1.json | tee /tmp/a7-liveness-d1.json
           jq -e '.pass == true' /tmp/a7-liveness-d1.json >/dev/null
           {
             echo "## D1-backed repair interleaving"
@@ -179,14 +170,18 @@ jobs:
         if: always()
         shell: bash
         run: |
-          set +e
+          set -euo pipefail
           if [ -n "${A7_TEST_D1_ID:-}" ]; then
-            curl --silent --show-error -X DELETE \
+            worker_delete=$(curl --fail-with-body --silent --show-error -X DELETE \
               "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$WORKER_NAME" \
-              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" >/tmp/a7-worker-delete.json 2>&1
-            curl --silent --show-error -X DELETE \
+              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN")
+            echo "$worker_delete" > /tmp/a7-worker-delete.json
+            echo "$worker_delete" | jq -e '.success == true' >/dev/null
+            db_delete=$(curl --fail-with-body --silent --show-error -X DELETE \
               "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$A7_TEST_D1_ID" \
-              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" >/tmp/a7-d1-delete.json 2>&1
-            echo "Cleanup requested for disposable Worker and D1."
+              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN")
+            echo "$db_delete" > /tmp/a7-d1-delete.json
+            echo "$db_delete" | jq -e '.success == true' >/dev/null
+            echo "Temporary Worker and D1 deletion confirmed."
           fi
           rm -f wrangler.a7-validation.jsonc
