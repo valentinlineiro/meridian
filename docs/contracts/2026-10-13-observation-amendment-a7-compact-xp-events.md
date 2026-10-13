@@ -77,6 +77,8 @@ Prototipo local con la regla de §2.3 tal como está escrita (`last_xp`, estados
 | Comprobación | Resultado |
 |---|---|
 | 120 000 intercalados aleatorios pequeños (4 semillas × 30 000; 8 snapshots, 3 cursos con `value`/`invalid`/ausencia, fallos de batch del 20 %), invariante comprobada **en cada paso** en que la serie figura limpia | **0 divergencias** |
+| **Reparación troceada** (trozos de 1 y de 2 snapshots y en un solo batch; 2 semillas × 30 000 intercalados cada configuración; invariante «antes de `dirty_from` exacto» comprobada **en cada paso**, también entre trozos) | **0 divergencias** en las tres configuraciones |
+| 600 ensayos mayores con reparación en trozos de 1 snapshot (misma carga y 678 fallos de batch inyectados) | 600 / 600 convergen, 0 violaciones |
 | 600 ensayos mayores (60 snapshots reales, 2 a 4 ingestas en vuelo, reparaciones intercaladas, snapshots que llegan entre la lectura y la escritura de una reparación; con y sin perturbaciones; con 765 fallos de batch inyectados) | **600 / 600** convergen a la serie ordenada; **0** violaciones de la invariante en ningún paso; todos los snapshots almacenados; ninguna marca perdida |
 
 **Dos defectos del diseño que esta prueba encontró y que ahora están corregidos en §4.5** (la primera versión del protocolo divergía en el 2–20 % de los ensayos):
@@ -199,7 +201,7 @@ Leer `T` para una ventana cuesta del orden de una fila por snapshot (≈ 42 por 
 | **En orden** (`s > F`) | Se calculan los eventos de `s` contra el estado vigente tras `F` y se escriben **en el mismo batch** que el snapshot. | La serie es función de `T` (I1) |
 | **Tardío** (`s < F`) | Se escribe **el snapshot** (la evidencia nunca se pierde) y **ningún evento**. Se registra una marca `dirty_from = min(dirty_from, s.observed_at)` para ese (usuario, fuente) en una fila de estado de serie (`observation_series_status`; nombre provisional). | No se inserta nada en medio de la secuencia: **no hay corrupción silenciosa** |
 | **Lectura con marca activa** | Para instantes `≥ dirty_from` la lectura **no usa la serie compacta**: durante la coexistencia (§6) cae a la lectura vigente de `raw_json` y devuelve `series_status: "stale"`. Nunca mezcla ambas en un mismo resultado. | La respuesta declara su fuente |
-| **Reparación** (explícita, idempotente) | Se borran los eventos con posición posterior al snapshot que precede a `dirty_from` y se **recomputan hacia delante** desde `raw_json`/`course_observations` en el orden de `T`; después se limpia la marca. | Convergencia a I1 |
+| **Reparación** (explícita, idempotente) | Se borran los eventos con posición posterior al snapshot que precede a `dirty_from` y se **recomputan hacia delante** desde `raw_json`/`course_observations` en el orden de `T`; después se limpia la marca. | Convergencia a I1 Se hace **en trozos**, §4.5.4. |
 | **Reloj hacia atrás** | Es un caso de «tardío»: mismo tratamiento. | — |
 | **Cambio de `extractor_version`** | Reconstrucción explícita y versionada (§5), no una actualización en sitio. | — |
 
@@ -215,21 +217,68 @@ Leer `T` para una ventana cuesta del orden de una fila por snapshot (≈ 42 por 
 - **Alternativa descartada: insertar el tardío y reparar en línea** dentro de la petición de ingesta. Un tardío con muchos sucesores convertiría una escritura en una recomputación sin cota dentro del Worker.
 - **Alternativa descartada: ignorar el tardío** (como hace A1 para el estado del árbol). K5 es un **estado** (el último gana); K10 es una **serie** y perdería una transición real.
 
-### 4.5 Escritura atómica con guardas **[PROPUESTO; probado en SQLite local, no en D1]**
+### 4.5 Protocolo de escritura, reparación y lectura **[PROPUESTO; probado en SQLite local, no en D1]**
 
-Estado de serie por (usuario, fuente): `head` (último snapshot aplicado), `dirty_from` (menor posición no confiable, o nulo) y **`version`** (entero que aumenta en toda escritura de la serie).
+#### 4.5.1 Estado de serie y versión
 
-**Ingesta** (lectura previa + **un solo `db.batch`**, junto con el snapshot, §4.5 del contrato congelado):
+Una fila por (usuario, fuente): `head` (último snapshot aplicado), `dirty_from` (menor posición no confiable, o nulo), `repair_cursor` (hasta dónde ha llegado una reparación en curso, o nulo) y **`version`**.
 
-1. Lectura: `head`, `dirty_from`, `version` y el estado por curso (a partir de los eventos). Si `dirty_from` es nulo y `s > head`, se calculan los eventos de `s`; si no, ninguno.
-2. En el batch, en este orden: insertar el snapshot; insertar cada evento **condicionado a `version = leída` y `dirty_from` nulo**; avanzar `head` y `version` **con la misma condición**; y, si tras ello `head ≠ s`, fijar `dirty_from = min(dirty_from, s)` e incrementar `version`.
-3. Si la condición no se cumple (otro escribió antes, el snapshot es tardío o la serie ya estaba sucia) **no se escribe ningún evento**, el snapshot queda guardado y la marca queda en el mismo batch.
+- **`version` aumenta en 1 en toda escritura de la serie**: (a) una ingesta que avanza `head`; (b) una ingesta que marca o ajusta `dirty_from` o `repair_cursor`; (c) cada trozo de reparación y su publicación. Nunca disminuye ni se reutiliza.
+- No es un reloj ni identifica un snapshot: es **solo una guarda**. Existe porque `head` puede volver a ser el mismo snapshot tras una reparación mientras el contenido cambió (ABA, §1.4).
 
-**Reparación** (lectura previa + un `db.batch`): lee los snapshots desde `dirty_from` y el estado anterior; en el batch borra los eventos desde `dirty_from`, inserta los recomputados y fija `head`, limpia `dirty_from` e incrementa `version`, **todo condicionado a** `version` y `dirty_from` leídos **y** a que el **número de snapshots desde `dirty_from` coincida** con el leído. Si la condición falla, no cambia nada y se reintenta.
+#### 4.5.2 La guarda es parte de la escritura, no de la aplicación
 
-**Consecuencias demostradas en el prototipo:** (i) el snapshot, sus eventos y la marca son **atómicos**: un batch fallido no deja snapshot, eventos ni marca, y el reintento del cliente es seguro; (ii) la marca no puede perderse respecto del snapshot; (iii) en todo instante en que la serie figura limpia es igual a la ordenada, y antes de la marca es siempre exacta; (iv) la reparación converge y es idempotente.
+La comprobación **no** puede hacerse en código de aplicación (leer la versión, comparar en JavaScript y escribir después): esa ventana es la carrera que se quiere cerrar. **Cada sentencia** que escribe eventos o cambia el estado de serie lleva su condición en la propia sentencia (`INSERT … SELECT … WHERE version = :leída …`, `UPDATE … WHERE version = :leída …`), y **todas** van en un único `db.batch`.
 
-**Lo que esto no resuelve:** la **vivacidad** bajo contención extrema (una reparación puede fallar su guarda repetidamente si llegan ingestas continuamente; no se midió) y qué proceso dispara la reparación (¿en la ingesta siguiente, en un cron?: decisión nueva, D-A7-10).
+- **Dependencia declarada:** que `db.batch` ejecute las sentencias en orden y como una transacción (reversión completa si una falla). Es la semántica documentada de D1; el prototipo la asume sobre SQLite y **no se ha verificado en D1** (P7).
+- Una condición que no se cumple **no es un error**: la sentencia afecta 0 filas y el batch continúa. Por eso el orden de las sentencias y que *cada* efecto esté condicionado son parte del contrato.
+
+#### 4.5.3 Ingesta
+
+Lectura previa + un `db.batch` junto con el snapshot (§4.5 del contrato congelado):
+
+1. Lectura: `head`, `dirty_from`, `version` y el estado por curso (de los eventos). Si `dirty_from` es nulo y `s > head`, se calculan los eventos de `s`; si no, ninguno.
+2. Batch, en este orden: insertar el snapshot; insertar cada evento **condicionado a `version = leída` y `dirty_from` nulo**; avanzar `head` y `version` con la misma condición; y, si tras ello `head ≠ s`, fijar `dirty_from = min(dirty_from, s)`, reiniciar `repair_cursor` si `s ≤ repair_cursor` e incrementar `version`.
+3. Si la condición no se cumple (otro escribió antes, el snapshot es tardío o la serie ya estaba sucia): **ningún evento**, snapshot guardado y marca en el mismo batch.
+
+#### 4.5.4 Reparación (en trozos)
+
+Una reparación **no** es una operación única: se ejecuta en **trozos** de a lo sumo `K` snapshots (§4.5.8).
+
+1. **Lectura previa:** `dirty_from`, `repair_cursor`, `version`; los snapshots a partir del cursor (exclusivo) o, si es nulo, de `dirty_from` (inclusivo); el estado previo, de los eventos anteriores al trozo.
+2. **Batch del trozo:** en el primer trozo, borrar los eventos desde `dirty_from`; insertar los eventos recomputados del trozo; si el trozo llega al último snapshot, fijar `head`, **limpiar `dirty_from` y `repair_cursor`**; si no, fijar `repair_cursor` al último del trozo; incrementar `version`.
+3. **Guarda de cada sentencia del trozo:** `version`, `dirty_from` y `repair_cursor` iguales a los leídos, **y** que el número de snapshots posteriores al punto de inicio coincida con el leído. Si falla, **no cambia nada**; se vuelve a leer y reintentar. Reintentar es idempotente.
+4. **Llegadas durante la reparación:** una ingesta con snapshot `≤ repair_cursor` reinicia el cursor (la reparación vuelve a empezar en `dirty_from`; borrar los eventos desde allí es idempotente) y, si es anterior a `dirty_from`, lo baja. Una llegada posterior al cursor no lo toca, pero hace fallar la guarda de conteo del trozo en vuelo y se reintenta.
+
+#### 4.5.5 Criterio de terminación y publicación
+
+La reparación está **terminada** cuando, en **un mismo batch**, el último trozo (a) cubre todos los snapshots `≥ dirty_from` existentes (conteo igual al leído, con la guarda de §4.5.4.3), (b) limpia `dirty_from` y `repair_cursor`, (c) fija `head` e (d) incrementa `version`. **La serie se «publica» en ese batch y no antes:** hasta entonces sigue marcada sucia aunque haya trozos confirmados.
+
+#### 4.5.6 Recuperación y reintentos
+
+| Fallo | Estado resultante | Recuperación |
+|---|---|---|
+| Falla el batch de una ingesta | Nada escrito: ni snapshot, ni eventos, ni marca | El cliente reintenta (como hoy); la deduplicación por `checksum` impide duplicar |
+| El Worker muere tras confirmar, antes de responder | Todo confirmado | El reintento es un duplicado: 0 eventos nuevos |
+| Falla el batch de un trozo | Nada de ese trozo; trozos anteriores confirmados; sigue sucia | Reintentar desde el cursor |
+| Se pierde o reinicia el cursor | Sigue sucia, cursor nulo | Reparación desde `dirty_from`; borrar y reescribir es idempotente |
+| La guarda falla repetidamente | Sigue sucia | **Vivacidad sin garantía** (§4.5.8) |
+
+**Política de reintentos:** la ingesta no añade lógica nueva (los reintentos son los del colector). El reintento de la reparación es manual al inicio (D-A7-10). **El contrato no fija un número máximo de reintentos**: sería arbitrario sin medición.
+
+#### 4.5.7 Lectores mientras la serie está sucia
+
+- Un lector lee **el estado de serie y los eventos en el mismo `db.batch`**, para que ambos sean coherentes.
+- Solo se fía de los eventos **anteriores a `dirty_from`**. Los posteriores pueden estar a medio reconstruir y **nunca se consumen**, tampoco un trozo ya confirmado: mientras haya marca, la serie es `stale` para esos instantes, sin excepciones.
+- Para instantes `≥ dirty_from` usa la lectura vigente de `raw_json` (§6) y devuelve `series_status: "stale"` con `dirty_from`. **No mezcla ambas fuentes en un mismo valor.**
+- Tras la publicación (§4.5.5) el mismo lector, sin marca, usa la serie completa.
+
+#### 4.5.8 Límites operativos
+
+- **Tamaño de trozo `K`: no fijado.** No hay un límite de CPU ni de transferencia confirmado para D1/Workers en este proyecto. Con los 850 payloads medidos, reparar todo supone ≈ 61 MB de lectura (§4.4): **no se puede asegurar que quepa en una invocación**, así que el troceado **no es opcional** y la reparación se ejecuta fuera de la petición de ingesta. `K` se elegirá con la medición real en D1 (P8).
+- **Mientras dura una reparación**, las ingestas siguen guardando snapshots sin eventos: el pendiente crece con el tiempo que la serie permanezca sucia.
+- **Vivacidad:** si llegan ingestas de forma continua, la guarda de conteo del trozo puede fallar siempre. No se ha medido ni se propone aún una mitigación.
+- **Consecuencias demostradas en el prototipo (§1.4):** el snapshot, sus eventos y la marca son atómicos; la marca no se pierde; antes de `dirty_from` la serie es siempre exacta, incluso entre trozos; la reparación converge y es idempotente.
 
 ---
 
@@ -279,7 +328,7 @@ Todos deben cumplirse; **ninguno es un umbral numérico arbitrario**: son iguald
 | P4 | **Integridad I2:** 0 cadenas rotas. |
 | P5 | **Idempotencia:** una segunda pasada escribe 0 filas; el orden de ingesta incremental produce los mismos eventos que el lote. |
 | P6 | **Tardíos:** con la ingesta en orden aleatorio y la reparación aplicada, la serie final es idéntica a la de la ingesta ordenada. |
-| P7 | **Casos límite** (cubiertos por el prototipo v2, §1.4, y a repetir sobre el código real): descenso a través de una ausencia, `invalid` entre dos valores, cambio de `course_id`, **0 observado frente a ausencia** y tardíos con reparación, con datos sintéticos **y** una copia de producción. La concurrencia y el fallo de batch están modelados en SQLite local (§1.4, §4.5); **P7 exige repetirlos contra D1** (atomicidad real de `db.batch`). |
+| P7 | **Casos límite** (cubiertos por el prototipo v2, §1.4, y a repetir sobre el código real): descenso a través de una ausencia, `invalid` entre dos valores, cambio de `course_id`, **0 observado frente a ausencia** y tardíos con reparación, con datos sintéticos **y** una copia de producción. La concurrencia y el fallo de batch están modelados en SQLite local (§1.4, §4.5); **P7 exige repetirlos contra D1** (atomicidad real de `db.batch`, y que la guarda condicionada en la propia sentencia se comporta igual que en SQLite). |
 | P8 | **Presupuesto:** la medición real de `rows_written` y `rows_read` por día en D1 atribuibles a K10 debe quedar por debajo de un tope **fijado por el propietario con esa medición** (como A1). Este documento **no inventa** el tope. |
 
 **Compatibilidad con A5:** A7 no toca `xp_summaries` ni las reglas de §13; **ningún** cálculo de A5 cambia.
@@ -345,6 +394,7 @@ No se corrige ningún dato ni se atribuye el residuo a una causa. Se investigan 
 
 - **El coste real de D1 sigue sin confirmarse** (plan, `rows_written`, `rows_read`, CPU). Todas las cifras de §8.2 son estimaciones; el criterio P8 exige medirlas antes de F4.
 - Las limitaciones del prototipo son las de §1.3.
+- **Reparación y vivacidad (§4.5.8):** el tamaño de trozo no está fijado, una reparación completa (≈ 61 MB) no cabe garantizadamente en una invocación y la vivacidad ante ingestas continuas no está medida.
 - El número de eventos es **función de la estabilidad de la fuente**, no una constante del diseño.
 - Esta enmienda **no** cambia ninguna regla de emisión: `LANG_FOCUS_SHIFT_LONGITUDINAL` sigue `SIN EVALUAR` y sus puertas temporales (≥ 90 días, ≥ 60 días activos) no se tocan. Con 20 días de historia ninguna de las dos lógicas emite, con o sin las puertas forzadas **[MEDIDO]**.
 
