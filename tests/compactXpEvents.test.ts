@@ -48,7 +48,7 @@ describe("A7 compact XP event series", () => {
     ).bind("u-a7", "duolingo-lang").all();
     expect(rows.results).toHaveLength(3); // unchanged values do not create events
     expect(rows.results.map((row: any) => row.course_id)).toEqual(["A", "B", "CHESS_CH"]);
-    expect(rows.results[0].prev_state).toBeNull();
+    expect(rows.results[0]?.prev_state).toBeNull();
 
     await ingest(d1, "2026-10-01T00:02:00.000Z", 102, [
       { id: "B", xp: 5 }, { id: "CHESS_CH", xp: 7 },
