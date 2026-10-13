@@ -342,14 +342,14 @@ async function livenessD1(db) {
     oneWinnerEventCount: raceEvents === 1,
     dirtyAfterRace: Boolean(afterRace.dirty_at),
     tailArrivalInvalidatesOldGuard: oldGuardRejected && Boolean(afterOldGuard.dirty_at),
-    tailArrivalDoesNotInvalidateRepairEpoch,
+    tailArrivalDoesNotInvalidateRepairEpoch: tailDidNotInvalidateRepairEpoch,
     prefixPublishedBeforeTail: prefixPublished,
     prefixEventsAfterRepair: prefixCount,
     tailSnapshots: tail.length,
     finalParity,
     finalHeadAtLatest: finalStatus.head_id === latest.id,
     dirtyCleared: finalStatus.dirty_at === null,
-    pass: versionsRead.length === 1 && snapshotsAfterRace === 20 && raceEvents === 1 && Boolean(afterRace.dirty_at) && oldGuardRejected && tailArrivalDoesNotInvalidateRepairEpoch && prefixPublished && tail.length === 5 && finalParity && finalStatus.head_id === latest.id && finalStatus.dirty_at === null,
+    pass: versionsRead.length === 1 && snapshotsAfterRace === 20 && raceEvents === 1 && Boolean(afterRace.dirty_at) && oldGuardRejected && tailDidNotInvalidateRepairEpoch && prefixPublished && tail.length === 5 && finalParity && finalStatus.head_id === latest.id && finalStatus.dirty_at === null,
     note: "D1-backed reference protocol test. A separate repair_version lets later-than-watermark ingests proceed without invalidating the current prefix. It is not the production A7 implementation.",
   };
 }
