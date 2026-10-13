@@ -234,6 +234,111 @@ async function measureChunk(db, chunkSize) {
   };
 }
 
+async function livenessD1(db) {
+  await db.prepare("DELETE FROM events WHERE user_id='race' AND source='probe'").run();
+  await db.prepare("DELETE FROM snapshots WHERE user_id='race' AND source='probe'").run();
+  await db.prepare("DELETE FROM series_status WHERE user_id='race' AND source='probe'").run();
+  await db.prepare("INSERT INTO series_status(user_id,source,head_at,head_id,dirty_at,version) VALUES('race','probe',NULL,NULL,NULL,0)").run();
+
+  const initialInserts = [];
+  for (let i = 0; i < 20; i++) {
+    const at = new Date(Date.UTC(2026, 9, 1, 0, 0, i)).toISOString();
+    initialInserts.push(db.prepare("INSERT INTO snapshots(user_id,source,observed_at,raw_json) VALUES('race','probe',?,?)").bind(at, payloadFor(i, false)));
+  }
+  await db.batch(initialInserts);
+  const initial = await db.prepare("SELECT id, observed_at, raw_json FROM snapshots WHERE user_id='race' AND source='probe' ORDER BY observed_at,id").all();
+  const staleReads = await Promise.all(initial.results.map(() => db.prepare("SELECT version,head_at,head_id,dirty_at FROM series_status WHERE user_id='race' AND source='probe'").first()));
+  const versionsRead = [...new Set(staleReads.map(x => Number(x.version)))];
+
+  await Promise.all(initial.results.map(async (snap, i) => {
+    const v = Number(staleReads[i].version);
+    const xp = JSON.parse(snap.raw_json).courses[0].xp;
+    const insert = db.prepare("INSERT INTO events(snapshot_id,user_id,source,course_id,observed_at,state,xp,prev_state,last_xp) SELECT ?, 'race','probe','C0',?,'value',?,NULL,NULL WHERE EXISTS (SELECT 1 FROM series_status WHERE user_id='race' AND source='probe' AND version=? AND dirty_at IS NULL AND (head_at IS NULL OR (?,?) > (head_at,head_id))) ON CONFLICT DO NOTHING").bind(snap.id, snap.observed_at, xp, v, snap.observed_at, snap.id);
+    const advance = db.prepare("UPDATE series_status SET head_at=?,head_id=?,version=version+1 WHERE user_id='race' AND source='probe' AND version=? AND dirty_at IS NULL AND (head_at IS NULL OR (?,?) > (head_at,head_id))").bind(snap.observed_at, snap.id, v, snap.observed_at, snap.id);
+    const mark = db.prepare("UPDATE series_status SET dirty_at=CASE WHEN dirty_at IS NULL OR dirty_at > ? THEN ? ELSE dirty_at END,version=version+1 WHERE user_id='race' AND source='probe' AND head_id IS NOT ?").bind(snap.observed_at, snap.observed_at, snap.id);
+    await db.batch([insert, advance, mark]);
+  }));
+
+  const afterRace = await db.prepare("SELECT head_at,head_id,dirty_at,version FROM series_status WHERE user_id='race' AND source='probe'").first();
+  const raceEvents = Number((await db.prepare("SELECT COUNT(*) AS n FROM events WHERE user_id='race' AND source='probe'").first()).n);
+  const snapshotsAfterRace = Number((await db.prepare("SELECT COUNT(*) AS n FROM snapshots WHERE user_id='race' AND source='probe'").first()).n);
+  const watermark = initial.results[initial.results.length - 1];
+  const versionBeforeTail = Number(afterRace.version);
+
+  const tailInserts = [];
+  for (let i = 20; i < 25; i++) {
+    const at = new Date(Date.UTC(2026, 9, 1, 0, 0, i)).toISOString();
+    tailInserts.push(db.prepare("INSERT INTO snapshots(user_id,source,observed_at,raw_json) VALUES('race','probe',?,?)").bind(at, payloadFor(i, false)));
+    tailInserts.push(db.prepare("UPDATE series_status SET dirty_at=CASE WHEN dirty_at IS NULL OR dirty_at > ? THEN ? ELSE dirty_at END,version=version+1 WHERE user_id='race' AND source='probe'").bind(at, at));
+  }
+  await db.batch(tailInserts);
+
+  const oldGuard = await db.prepare("UPDATE series_status SET head_at=?,head_id=?,dirty_at=NULL,version=version+1 WHERE user_id='race' AND source='probe' AND version=?").bind(watermark.observed_at, watermark.id, versionBeforeTail).run();
+  const oldGuardRejected = Number(oldGuard.meta?.changes ?? 0) === 0;
+  const afterOldGuard = await db.prepare("SELECT head_at,head_id,dirty_at,version FROM series_status WHERE user_id='race' AND source='probe'").first();
+
+  const all = await db.prepare("SELECT id,observed_at,raw_json FROM snapshots WHERE user_id='race' AND source='probe' ORDER BY observed_at,id").all();
+  function expectedFor(snapshotRows) {
+    const previous = new Map();
+    const expected = [];
+    for (const snap of snapshotRows) {
+      for (const course of JSON.parse(snap.raw_json).courses) {
+        const p = previous.get(course.id);
+        if (!p || p.xp !== course.xp) {
+          expected.push({ snapshot_id: snap.id, course_id: course.id, observed_at: snap.observed_at, state: "value", xp: course.xp, prev_state: p ? "value" : null, last_xp: p ? p.xp : null });
+        }
+        previous.set(course.id, { xp: course.xp });
+      }
+    }
+    return expected;
+  }
+  const canonical = rows => rows.map(r => [r.snapshot_id,r.course_id,r.observed_at,r.state,r.xp,r.prev_state,r.last_xp]).sort((a,b) => a[2].localeCompare(b[2]) || a[0]-b[0] || a[1].localeCompare(b[1]));
+  const prefix = all.results.filter(s => s.observed_at < watermark.observed_at || (s.observed_at === watermark.observed_at && s.id <= watermark.id));
+  const tail = all.results.filter(s => s.observed_at > watermark.observed_at || (s.observed_at === watermark.observed_at && s.id > watermark.id));
+  const current = await db.prepare("SELECT head_at,head_id,dirty_at,version FROM series_status WHERE user_id='race' AND source='probe'").first();
+  const prefixExpected = expectedFor(prefix);
+  const prefixInsert = prefixExpected.map(e => db.prepare("INSERT INTO events(snapshot_id,user_id,source,course_id,observed_at,state,xp,prev_state,last_xp) SELECT ?, 'race','probe',?,?, ?,?,?,? WHERE EXISTS (SELECT 1 FROM series_status WHERE user_id='race' AND source='probe' AND version=? AND dirty_at IS NOT NULL AND (SELECT COUNT(*) FROM snapshots WHERE user_id='race' AND source='probe' AND (observed_at,id) <= (?,?))=?) ON CONFLICT DO NOTHING").bind(e.snapshot_id,e.course_id,e.observed_at,e.state,e.xp,e.prev_state,e.last_xp,Number(current.version),watermark.observed_at,watermark.id,prefix.length));
+  const prefixBatch = [
+    db.prepare("DELETE FROM events WHERE user_id='race' AND source='probe' AND (observed_at,id) <= (?,?) AND EXISTS (SELECT 1 FROM series_status WHERE user_id='race' AND source='probe' AND version=? AND dirty_at IS NOT NULL AND (SELECT COUNT(*) FROM snapshots WHERE user_id='race' AND source='probe' AND (observed_at,id) <= (?,?))=?)").bind(watermark.observed_at,watermark.id,Number(current.version),watermark.observed_at,watermark.id,prefix.length),
+    ...prefixInsert,
+    db.prepare("UPDATE series_status SET head_at=?,head_id=?,dirty_at=?,version=version+1 WHERE user_id='race' AND source='probe' AND version=? AND dirty_at IS NOT NULL AND (?,?,?) >= (head_at,head_id,0) AND (SELECT COUNT(*) FROM snapshots WHERE user_id='race' AND source='probe' AND (observed_at,id) <= (?,?))=?").bind(watermark.observed_at,watermark.id,tail[0]?.observed_at ?? null,Number(current.version),watermark.observed_at,watermark.id,0,watermark.observed_at,watermark.id,prefix.length),
+  ];
+  await db.batch(prefixBatch);
+  const afterPrefix = await db.prepare("SELECT head_at,head_id,dirty_at,version FROM series_status WHERE user_id='race' AND source='probe'").first();
+  const prefixPublished = afterPrefix.head_id === watermark.id && afterPrefix.dirty_at === tail[0]?.observed_at;
+  const prefixCount = Number((await db.prepare("SELECT COUNT(*) AS n FROM events WHERE user_id='race' AND source='probe'").first()).n);
+
+  const fullExpected = expectedFor(all.results);
+  const tailExpected = fullExpected.filter(e => e.observed_at > watermark.observed_at || (e.observed_at === watermark.observed_at && e.snapshot_id > watermark.id));
+  const tailBatch = [
+    db.prepare("DELETE FROM events WHERE user_id='race' AND source='probe' AND (observed_at,id) > (?,?) AND EXISTS (SELECT 1 FROM series_status WHERE user_id='race' AND source='probe' AND version=? AND dirty_at=?)").bind(watermark.observed_at,watermark.id,Number(afterPrefix.version),tail[0]?.observed_at ?? null),
+    ...tailExpected.map(e => db.prepare("INSERT INTO events(snapshot_id,user_id,source,course_id,observed_at,state,xp,prev_state,last_xp) SELECT ?, 'race','probe',?,?, ?,?,?,? WHERE EXISTS (SELECT 1 FROM series_status WHERE user_id='race' AND source='probe' AND version=? AND dirty_at=? AND (SELECT COUNT(*) FROM snapshots WHERE user_id='race' AND source='probe' AND (observed_at,id) > (?,?))=?) ON CONFLICT DO NOTHING").bind(e.snapshot_id,e.course_id,e.observed_at,e.state,e.xp,e.prev_state,e.last_xp,Number(afterPrefix.version),tail[0]?.observed_at,watermark.observed_at,watermark.id,tail.length)),
+    db.prepare("UPDATE series_status SET head_at=?,head_id=?,dirty_at=NULL,version=version+1 WHERE user_id='race' AND source='probe' AND version=? AND dirty_at=? AND (?,?,?) >= (head_at,head_id,0) AND (SELECT COUNT(*) FROM snapshots WHERE user_id='race' AND source='probe' AND (observed_at,id) > (?,?))=?").bind(all.results[all.results.length-1].observed_at,all.results[all.results.length-1].id,Number(afterPrefix.version),tail[0]?.observed_at,all.results[all.results.length-1].observed_at,all.results[all.results.length-1].id,0,watermark.observed_at,watermark.id,tail.length),
+  ];
+  await db.batch(tailBatch);
+
+  const finalStatus = await db.prepare("SELECT head_at,head_id,dirty_at,version FROM series_status WHERE user_id='race' AND source='probe'").first();
+  const finalEvents = await db.prepare("SELECT snapshot_id,course_id,observed_at,state,xp,prev_state,last_xp FROM events WHERE user_id='race' AND source='probe' ORDER BY observed_at,snapshot_id,course_id").all();
+  const finalParity = JSON.stringify(canonical(finalEvents.results)) === JSON.stringify(canonical(fullExpected));
+  const latest = all.results[all.results.length-1];
+  return {
+    staleReadsAllSameVersion: versionsRead.length === 1,
+    staleWriterAttempts: initial.results.length,
+    snapshotsAfterRace,
+    oneWinnerEventCount: raceEvents === 1,
+    dirtyAfterRace: Boolean(afterRace.dirty_at),
+    tailArrivalInvalidatesOldGuard: oldGuardRejected && Boolean(afterOldGuard.dirty_at),
+    prefixPublishedBeforeTail: prefixPublished,
+    prefixEventsAfterRepair: prefixCount,
+    tailSnapshots: tail.length,
+    finalParity,
+    finalHeadAtLatest: finalStatus.head_id === latest.id,
+    dirtyCleared: finalStatus.dirty_at === null,
+    pass: versionsRead.length === 1 && snapshotsAfterRace === 20 && raceEvents === 1 && Boolean(afterRace.dirty_at) && oldGuardRejected && prefixPublished && tail.length === 5 && finalParity && finalStatus.head_id === latest.id && finalStatus.dirty_at === null,
+    note: "D1-backed reference protocol test. It validates the watermark idea and guarded publication on synthetic rows; it is not the production A7 implementation.",
+  };
+}
+
 function livenessSimulation() {
   function rng(seed) {
     let x = seed >>> 0;
@@ -292,8 +397,9 @@ export default {
         return json(await measureChunk(env.DB, size));
       }
       if (url.pathname === "/p1") return json(await auditP1(env.DB));
+      if (url.pathname === "/liveness-d1") return json(await livenessD1(env.DB));
       if (url.pathname === "/liveness") return json(livenessSimulation());
-      return json({ service: "meridian-a7-d1-validation", endpoints: ["/setup", "/semantics", "/measure?n=1|42|294|850", "/measure-chunk?k=1|3|10|25", "/p1", "/liveness"] });
+      return json({ service: "meridian-a7-d1-validation", endpoints: ["/setup", "/semantics", "/measure?n=1|42|294|850", "/measure-chunk?k=1|3|10|25", "/p1", "/liveness", "/liveness-d1"] });
     } catch (error) {
       return json({ ok: false, error: String(error?.stack ?? error) }, 500);
     }
