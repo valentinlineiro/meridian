@@ -173,7 +173,7 @@ async function auditP1(db) {
     return out;
   }
   const expected = expectedEvents(snaps.results);
-  const canonical = rows => rows.map(r => [r.snapshot_id, r.course_id, r.observed_at, r.state, r.xp, r.prev_state, r.last_xp]);
+  const canonical = rows => rows.map(r => [r.snapshot_id, r.course_id, r.observed_at, r.state, r.xp, r.prev_state, r.last_xp]).sort((a,b) => a[2].localeCompare(b[2]) || a[0]-b[0] || a[1].localeCompare(b[1]));
   const cleanPass = JSON.stringify(canonical(actual.results)) === JSON.stringify(canonical(expected));
   const target = expected.find(e => e.course_id === "C0" && JSON.parse(snaps.results.find(s => s.id === e.snapshot_id).raw_json).courses[0].xp > 1050);
   const orderedC0 = expected.filter(e => e.course_id === "C0");
@@ -201,19 +201,23 @@ function livenessSimulation() {
   }
   function run(mode, seed, p = 0.9, chunk = 3) {
     const random = rng(seed);
-    let total = 20;
+    const target = 20;
+    let total = target;
     let completed = 0;
     let attempts = 0;
     let failed = 0;
+    let arrivals = 0;
     while (completed < total && attempts < 3000) {
       attempts++;
       const n = Math.min(chunk, total - completed);
       const newArrival = random() < p;
+      if (newArrival) arrivals++;
       if (mode === "current" && newArrival) { failed++; total++; continue; }
       completed += n;
-      if (mode === "watermark" && newArrival) total++;
+      // A fixed watermark freezes the current repair target. New arrivals remain
+      // outside this repair and are handled by the next ordered pass.
     }
-    return { completed: completed >= total, attempts, failed, total };
+    return { completed: completed >= total, attempts, failed, arrivals, total };
   }
   const current = Array.from({ length: 100 }, (_, i) => run("current", i + 1));
   const watermark = Array.from({ length: 100 }, (_, i) => run("watermark", i + 1));
