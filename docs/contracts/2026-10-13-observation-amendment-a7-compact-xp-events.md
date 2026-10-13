@@ -1,0 +1,352 @@
+# Enmienda A7 (borrador): serie compacta de eventos de XP por curso
+
+**Fecha:** 2026-10-13
+**Estado:** 📝 **BORRADOR para decisión del propietario. No está en vigor, no está implementado y no autoriza migración, backfill, escrituras remotas ni cambio de lectores.** Mientras no se apruebe, el contrato vigente es el [modelo de observaciones](2026-10-05-observation-model-contract.md) (congelado el 2026-10-06, con A1) y las enmiendas A5/A6 del [contrato de señales descartadas](2026-10-06-discarded-signals-contract.md) (§13, §14).
+**Qué enmienda:** extiende el modelo de observaciones con **una serie derivada nueva (K10)**; no modifica el texto congelado de §2b, §3, §4, §7 ni §10 de ese contrato. Resuelve, como propuesta, la parte de la decisión **P2** de A6 (§14.6) que trata de *cómo conservar evidencia suficiente para detectar discontinuidades sin releer toda la historia*. Documenta además **A5.1** (§7 de este documento), que no cambia el comportamiento de A5.
+**Origen:** experimento de solo lectura sobre el histórico real (2026-10-13) y prototipo local. Las cifras de §1 son mediciones; todo lo demás es propuesta y está marcado.
+
+> **Convención de este documento.** Cada afirmación es una de tres cosas y se marca como tal: **[MEDIDO]** (lo producen los datos reales o el prototipo, con el procedimiento de §1), **[PROPUESTO]** (decisión de contrato aún no tomada) o **[NO DEMOSTRADO]** (límite conocido del prototipo o de los datos). Una estimación nunca se presenta como medición.
+
+---
+
+## 0. Resumen y principio
+
+El experimento mostró que la selección actual de snapshots de Trayectoria (primero + últimos 3 por frontera) no ve un descenso real de `DUOLINGO_RU_ES` (−14 XP), y que **leer toda la serie por petición no escala** (unas 680 filas de `course_observations` por día **[MEDIDO]**, del orden de 250 000 al año **[ESTIMADO]**). Solo el 0,29 % de los pares consecutivos observados cambia el XP **[MEDIDO]**.
+
+**Propuesta:** conservar, por curso, **un evento por cambio de estado observado** (valor distinto, curso ausente, valor inválido), con el valor anterior. La serie es **derivada y reconstruible** desde `raw_json`: nunca es la única copia de la evidencia (§8.0 del contrato congelado sigue vigente).
+
+**Principio rector (lo que esta enmienda no hace):** *la ausencia de eventos no es prueba de observación continua ni de ausencia de discontinuidades.* Un evento demuestra que **hubo un cambio entre dos observaciones**; que el curso se observó entre ambas lo demuestra solo la línea temporal de snapshots (§3).
+
+---
+
+## 1. Hechos medidos (2026-10-13, producción en solo lectura, análisis local)
+
+Procedimiento: `SELECT` remotos de `snapshots` (850 payloads de idiomas), `xp_summaries` y `course_observations`; el extractor real (`extractObservations`) y el lector real de Trayectoria ejecutados sobre una copia en memoria. Los datos descargados y los scripts viven fuera del repositorio. **No se escribió nada en producción.**
+
+### 1.1 Inventario **[MEDIDO]**
+
+| Dato | Valor |
+|---|---|
+| Snapshots `duolingo-lang` | 850 (551 normales, 299 auxiliares); 100 % JSON objeto válido; un solo usuario |
+| Rango | 2026-09-23T12:18:12Z → 2026-10-13T05:53:13Z |
+| Cursos por snapshot | 16 en los 850 (catálogo completo, también en los auxiliares) |
+| Entradas `courses[]` | 13 600; `xp` numérico en todas; 0 ausentes, 0 inválidas, 0 iguales a cero, 0 ids duplicados |
+| Identidad de curso | 16 ids estables; ningún `id` cambia de título ni de idiomas. Solo `subject` pasa de `null` a un valor en los 16 |
+| Cobertura temporal | 19 días con snapshot de 21; sin snapshots el 2026-10-03 y el 2026-10-04; **hueco máximo 70,8 h** (2026-10-02T07:15:42Z → 2026-10-05T06:05:55Z); mediana de hueco ≈ 3 s; p99 ≈ 12,7 h |
+| Pares consecutivos de los 13 cursos de idiomas | 11 037; **32 con cambio de XP (0,29 %)**; **1 descenso**: `DUOLINGO_RU_ES` 35 721 → 35 707 (−14) dentro del hueco de 70,8 h; recuperado después |
+| `course_observations` en producción | 237 snapshots, 3 792 filas, desde 2026-10-07T09:40:50Z; **3 792 / 3 792 filas idénticas** al extractor sobre los mismos snapshots; 613 snapshots sin filas |
+
+### 1.2 Resultados del prototipo **[MEDIDO]**
+
+Prototipo local (función pura `ingestOne` + `decode`; no es código del repositorio):
+
+| Comprobación | Resultado |
+|---|---|
+| Eventos para los 850 snapshots × 16 cursos | **78** (16 primeras observaciones + 62 cambios de valor) = 0,57 % de las 13 600 celdas, concentrados en **39** snapshots (4,6 %); los otros 811 no escriben ninguna fila |
+| Reconstrucción del estado de cada (snapshot, curso) a partir de los eventos y del orden de snapshots | **13 600 / 13 600** celdas idénticas |
+| Transiciones (valor anterior → nuevo) | 62 / 62, **mismo conjunto** que el calculado desde `raw_json` (el orden dentro de un mismo snapshot puede diferir); incluye el único descenso |
+| Estados A6 de h1 y h2 (13 cursos) calculados solo con eventos | **0 diferencias** frente al evaluador experimental de serie completa |
+| Ingesta incremental (estado leído de los eventos ya guardados) frente al lote | idéntica |
+| Prueba de estrés sintética (semilla fija; 3 % de entradas eliminadas, 2 % con `xp` inválido, 1 % con descenso de 7 XP) | reconstrucción exacta sobre 13 599 celdas comparadas; **1 588 eventos** (≈ 11,7 % de las celdas) |
+
+### 1.3 Lo que **no** demuestra el prototipo **[NO DEMOSTRADO]**
+
+1. **Descensos a través de una ausencia.** El prototipo detecta un descenso comparando con el estado del snapshot inmediatamente anterior. La regla propuesta en §2.3 (comparar con la **última observación con valor**, como exige A6 §14.2) no se probó; en los datos reales no hay ausencias ni valores inválidos.
+2. **Llegadas tardías o fuera de orden.** No se simularon.
+3. **D1 real.** La ingesta se simuló en memoria; no se midieron `rows_written`, `rows_read`, CPU del Worker ni el plan. El coste real de D1 **sigue sin estar confirmado**.
+4. **Generalidad.** Un usuario, 20 días, una fuente. El 0,57 % es propiedad de estos datos, no del diseño: la prueba de estrés muestra que el número de eventos crece con la inestabilidad de la fuente.
+5. **Chess.** Solo se probó la fuente de idiomas (los cursos no idiomáticos del mismo payload, como `CHESS_CH`, sí entran en los 16).
+6. **Que el −14 sea una regresión real o una revisión de la fuente** y la discrepancia de +1 061 XP de §7.3 siguen sin explicación.
+
+---
+
+## 2. Modelo A7 **[PROPUESTO]**
+
+### 2.1 Estado observado de un curso en un snapshot
+
+Para un snapshot `s` de la fuente de idiomas y un `course_id`, el estado observado es **uno** de:
+
+| Estado | Condición | Nota |
+|---|---|---|
+| `value` | `courses[]` de `s` trae una entrada con ese id y `xp` es un número finito | `xp` se conserva tal cual (incluido 0 **observado**) |
+| `invalid` | trae la entrada con ese id, pero `xp` no es un número finito (ausente, `null`, texto, `NaN`, `Infinity`) | Es una observación **sin XP**: no es 0 ni «sin cambio» (A6 §14.2) |
+| `absent` | `s` no trae ninguna entrada con ese id | **No dice nada del curso** (A6 §14.2); no es 0 |
+
+Reglas heredadas del extractor, sin cambios: el id es `id ?? courseId` y debe ser texto; una entrada sin id utilizable no se atribuye a ningún curso y **no genera estado**; ante ids duplicados en un mismo snapshot gana la primera entrada. La pertenencia a «curso de idiomas» (D4) **no** se decide aquí: se decide al leer, como en `course_observations`.
+
+El estado de un curso **no observado nunca** (sin entrada en ningún snapshot anterior) y ausente en `s` es «sin historia»; no genera evento.
+
+### 2.2 Evento (serie K10)
+
+Una fila **inmutable** por cambio de estado, hija de un snapshot, con `extractor_version` (mismo régimen que §4.8 y §5 del contrato congelado). Esquema **lógico** (no es una migración):
+
+| Campo | Contenido |
+|---|---|
+| `snapshot_id` | snapshot en el que **se observó** el nuevo estado |
+| `course_id` | clave del curso (§2.4) |
+| `user_id`, `observed_at` | de `snapshots` (`observed_at = created_at`, §4.1 del contrato congelado) |
+| `state` | `value` \| `invalid` \| `absent` |
+| `xp` | valor si `state = value`; `NULL` en otro caso (nunca 0) |
+| `prev_state` | estado del snapshot inmediatamente anterior de la línea temporal; `NULL` si es la primera observación del curso |
+| `last_xp` | **último valor observado** del curso antes de este evento (el que usa A6 para decidir si hay descenso), `NULL` si no hubo; es el dato que permite detectar un descenso **a través de una ausencia** (§1.3.1) |
+| `extractor_version` | versión de la regla que escribió la fila |
+
+Clave: `(snapshot_id, course_id)` (como `course_observations`); a lo sumo un evento por curso y snapshot. Índices secundarios: **decisión pendiente** (D-A7-2).
+
+### 2.3 Cuándo hay evento
+
+Sea `E(s)` el estado observado en `s` y `P` el estado vigente del curso tras el snapshot anterior de la línea temporal (§3.1):
+
+1. **Primera observación** (`P` no existe y `E(s) ≠ absent`): evento con `prev_state = NULL`. Es un hecho («apareció»), nunca XP ganado (A6 `new_course`).
+2. **Cambio** (`E(s) ≠ P`, comparando `state` y, si ambos son `value`, `xp`): evento. **Sin cambio: ningún evento.**
+3. **Descenso**: `state = value` y `last_xp` existe y `xp < last_xp`. Se **conserva tal cual**: sin recorte a 0, sin reinterpretación, sin «recuperación» inferida. La **discontinuidad** (A6 §14.2) es una lectura derivada; el evento guarda el hecho observado (Observado ≠ Interpretado).
+4. **Ausencia** (`P = value` o `invalid` y `E(s) = absent`): evento `absent`. La **vuelta** posterior es otro evento, con `prev_state = absent` y `last_xp` = último valor anterior.
+5. **Observación sin XP** (`invalid`): evento propio; no rompe la comparación de valores de A6 (que usa solo observaciones con XP numérico), pero queda registrada la incertidumbre.
+
+Función pura: **la serie de eventos es una función determinista de (línea temporal ordenada, payloads, `extractor_version`)** (invariante I1). Eso la hace reconstruible desde `raw_json` en cualquier momento.
+
+### 2.4 Identidad del curso
+
+- La clave es el `course_id` del payload, tal como lo extrae el extractor vigente. **Título, `subject`, `learningLanguage` y `fromLanguage` no forman parte de la serie** y su cambio no genera evento (permanecen en `course_observations` y en `raw_json`).
+- **Un cambio de `course_id` es otro curso**: aparece una primera observación nueva y el id antiguo queda ausente. La serie **nunca** vincula ambos ni presenta continuidad entre ellos.
+- En los datos medidos no hay ningún cambio de identidad (§1.1); el único cambio de atributo (`subject`: `null` → valor) **no** es cambio de identidad y no genera evento.
+- Si algún día hay que seguir cambios de atributos de un mismo id, es una serie distinta y una decisión aparte (D-A7-5).
+
+---
+
+## 3. Cobertura temporal
+
+### 3.1 Línea temporal de snapshots
+
+**[PROPUESTO]** La **línea temporal** `T(user, source)` es la lista de snapshots de ese usuario y fuente ordenados por `(observed_at, id)` (§5 del contrato congelado). Es una **entrada obligatoria** de cualquier lectura que use la serie compacta; los eventos solos no bastan.
+
+**[MEDIDO / hecho de código]** `T` no es un latido: `ingestSnapshot` deduplica por `checksum` y **no registra** un payload idéntico a uno anterior. Un hueco en `T` significa «no hubo un payload distinto registrado», no necesariamente «no hubo sincronización». Esta enmienda no intenta distinguirlo.
+
+### 3.2 Qué puede afirmarse y qué no
+
+Para un curso `c` y los instantes `a < b`:
+
+| Afirmación | Fuente de la afirmación | Permitida |
+|---|---|---|
+| «`c` valía `x` en el snapshot `s`» | último evento de `c` con posición ≤ `s` | Sí |
+| «`c` descendió entre los snapshots consecutivos `s_i`, `s_{i+1}`» | evento con `xp < last_xp`, ubicado en `s_{i+1}` | Sí |
+| «`c` no descendió entre `s_i` y `s_{i+1}`» | ausencia de evento **y** `s_i`, `s_{i+1}` consecutivos en `T` | Sí, **solo entre observaciones** |
+| «`c` no descendió entre `a` y `b`» | ausencia de eventos | **No**: solo se afirma lo anterior para cada par de `T`. Un descenso con recuperación dentro de un hueco de `T` es invisible |
+| «la serie de `c` es continua» | — | **Nunca**. Ningún campo ni texto puede afirmarlo |
+
+### 3.3 Regla de cobertura para A6 **[PROPUESTO]**
+
+1. Los estados de A6 (`gain`, `new_course`, `discontinuity`, `unknown`) se calculan con la definición de §14.2 **sobre `T` completa** (todas las parejas consecutivas de observaciones del curso), no sobre una muestra por frontera. Esto elimina el límite «tres snapshots por frontera» del texto actual de §14.2; **no** elimina el límite de fondo.
+2. **El límite de fondo se conserva y se declara con datos:** la continuidad solo está verificada entre observaciones consecutivas de `T`. Cada `gain` lleva, además de su valor, `observationPairs` (número de parejas de `T` entre `o_a` y `o_b`) y **`maxGapHours`** (mayor intervalo entre dos snapshots consecutivos de `T` dentro de la cadena). Un `gain` es la diferencia neta observada, no una prueba de continuidad.
+3. **Sin umbral de hueco.** La enmienda **no fija** a partir de cuántas horas un hueco invalida un `gain`; entrega el hueco como dato y deja el criterio a la regla que lo consuma (su contrato propio). Cualquier valor sería arbitrario con 20 días de historia.
+4. **Ejemplo medido:** el descenso de RU_ES cae justo en el hueco de 70,8 h. Se detecta porque las **dos observaciones extremas difieren**, no porque se vea el intervalo; si hubiera bajado y vuelto a subir dentro del hueco, no habría evento ni forma de saberlo.
+5. **Una ausencia de evento en un hueco no es «sin discontinuidad»:** la lectura debe devolver el hueco en `maxGapHours`, no omitirlo.
+
+### 3.4 Coste de obtener `T` **[ESTIMADO]**
+
+Leer `T` para una ventana cuesta del orden de una fila por snapshot (≈ 42 por día de media en el histórico medido, con picos de 110). Es **mucho menor** que leer `course_observations` (×16) o `raw_json` (≈ 73 KB por snapshot), pero **no es cero ni está medido en D1**. Alternativas (resumen diario de `T`, latido propio) se dejan a D-A7-3; ninguna se adopta aquí.
+
+---
+
+## 4. Orden de ingesta: tardíos, duplicados y fuera de orden **[PROPUESTO]**
+
+### 4.1 Hechos de partida
+
+- **[hecho de código]** `observed_at` es `created_at` del snapshot, asignado con `new Date()` **antes** de las escrituras (`ingestSnapshot`). La ruta HTTP de importación **no** reenvía `createdAt`; ese parámetro solo lo usan llamadores internos, tests y backfills. Dos peticiones concurrentes pueden, por tanto, **confirmarse en orden distinto** al de su `observed_at`, y un retroceso del reloj produciría un `observed_at` anterior al de snapshots ya guardados.
+- **[hecho de código]** La escritura del snapshot y de sus observaciones va en un mismo `db.batch` (§4.5 del contrato congelado).
+- **[precedente]** A1 ya resuelve un caso análogo para K5: si `observed_at` no es mayor que el del estado, **no se escribe nada** (§13, A1).
+- **[MEDIDO]** En el histórico no se observó ningún snapshot fuera de orden; el orden de `created_at` es el de las filas. Esto no demuestra que no ocurra.
+
+### 4.2 Definiciones
+
+- **Frontera** `F(user, source)`: el mayor `(observed_at, id)` de `T` **ya aplicado a la serie**.
+- **Tardío**: un snapshot cuyo `(observed_at, id)` es **menor** que `F`.
+- **Duplicado**: `checksum` ya existente → no se crea snapshot nuevo (comportamiento vigente) y por tanto **no hay eventos nuevos**. Reintentar el mismo snapshot es idempotente por la clave `(snapshot_id, course_id)` y `ON CONFLICT DO NOTHING` (§5).
+- **Empate** de `observed_at`: desempata `id`, como en §5.
+
+### 4.3 Estrategia concreta
+
+| Caso | Comportamiento | Garantía |
+|---|---|---|
+| **En orden** (`s > F`) | Se calculan los eventos de `s` contra el estado vigente tras `F` y se escriben **en el mismo batch** que el snapshot. | La serie es función de `T` (I1) |
+| **Tardío** (`s < F`) | Se escribe **el snapshot** (la evidencia nunca se pierde) y **ningún evento**. Se registra una marca `dirty_from = min(dirty_from, s.observed_at)` para ese (usuario, fuente) en una fila de estado de serie (`observation_series_status`; nombre provisional). | No se inserta nada en medio de la secuencia: **no hay corrupción silenciosa** |
+| **Lectura con marca activa** | Para instantes `≥ dirty_from` la lectura **no usa la serie compacta**: durante la coexistencia (§6) cae a la lectura vigente de `raw_json` y devuelve `series_status: "stale"`. Nunca mezcla ambas en un mismo resultado. | La respuesta declara su fuente |
+| **Reparación** (explícita, idempotente) | Se borran los eventos con posición posterior al snapshot que precede a `dirty_from` y se **recomputan hacia delante** desde `raw_json`/`course_observations` en el orden de `T`; después se limpia la marca. | Convergencia a I1 |
+| **Reloj hacia atrás** | Es un caso de «tardío»: mismo tratamiento. | — |
+| **Cambio de `extractor_version`** | Reconstrucción explícita y versionada (§5), no una actualización en sitio. | — |
+
+**Verificación de integridad (I2):** para cada curso, los eventos ordenados por `(observed_at, id)` deben encadenar: `prev_state` y `last_xp` de cada evento coinciden con el estado y el último valor que dejó el anterior. Una violación es **corrupción** y se informa (como la lista de no parseables de §6.3); no se corrige en silencio.
+
+### 4.4 Costes **[ESTIMADOS, no medidos]**
+
+- **Camino normal:** leer el último estado de cada curso (≈ 16 filas por ingesta, a medir) y escribir 0 filas en la mayoría de los snapshots (811 de 850, 95,4 %, en el histórico medido, §1.2; depende de la fuente).
+- **Reparación de un tardío:** proporcional a los snapshots posteriores. Con la densidad medida (≈ 42/día), un retraso de un día toca del orden de 40 snapshots; cada uno se lee (≈ 73 KB de `raw_json`) y solo se reescriben los eventos del tramo (unas decenas de filas). Es un coste **de lectura y CPU**, no de escritura.
+- **Qué pierde la estrategia:** mientras haya marca activa, la serie compacta no sirve a esa ventana y se paga la lectura vigente. Es la contrapartida de **no** corromper.
+- **Alternativa descartada: insertar el tardío y reparar en línea** dentro de la petición de ingesta. Un tardío con muchos sucesores convertiría una escritura en una recomputación sin cota dentro del Worker.
+- **Alternativa descartada: ignorar el tardío** (como hace A1 para el estado del árbol). K5 es un **estado** (el último gana); K10 es una **serie** y perdería una transición real.
+
+---
+
+## 5. Snapshots auxiliares
+
+**Se conserva el comportamiento de A6 (§14.3): sin filtro `is_auxiliary`.** Un snapshot auxiliar es una observación válida del catálogo de cursos (observation-model §4) y entra en la serie.
+
+Consecuencias de que un auxiliar **omita** un curso, documentadas y no corregidas **[PROPUESTO]**:
+
+1. Se genera un evento `absent` y, al reaparecer el curso, un segundo evento de vuelta (`prev_state = absent`, con `last_xp`). Dos filas por ciclo.
+2. **El curso queda «no observado» en ese snapshot**: si una frontera de mitad cae dentro de la ausencia, el estado del curso en esa frontera sigue siendo el de su última observación **con valor** (A6 §14.2), no 0 ni «sin cambio».
+3. La **comparación de descenso** usa `last_xp`, de modo que una ausencia **no oculta** un descenso ni lo fabrica.
+4. **Si los auxiliares omitieran cursos de forma sistemática**, el número de eventos subiría (coste), aunque la corrección no se vería afectada. **[MEDIDO]** En los 299 auxiliares del histórico: 0 ausencias.
+5. **No se introduce ningún filtro.** Si se quisiera uno (p. ej. ignorar `absent` generados por auxiliares), exige una decisión contractual explícita y su propia medición (D-A7-4). El campo `snapshot_id` permite unir con `snapshots.is_auxiliary` sin añadir columna.
+
+---
+
+## 6. Compatibilidad y migración **[PROPUESTO]**
+
+### 6.1 Convivencia
+
+- `raw_json` **sigue siendo la fuente de verdad** (§8.0 del contrato congelado). K10 es derivada y reconstruible (I1); **no autoriza** borrar, compactar ni archivar `raw_json`.
+- `course_observations` **no se sustituye**: la serie compacta solo conserva `course_id` y XP; título, idiomas y `subject` (R4, R7) siguen saliendo de `course_observations`/`raw_json`.
+- Los lectores no cambian. Ninguna lectura vigente (Trayectoria incluida) pasa a leer K10 mientras no se cumplan los criterios de §6.3.
+
+### 6.2 Fases (cada una exige su aprobación)
+
+| Fase | Contenido | Escribe en producción |
+|---|---|---|
+| F0 | Esta enmienda aprobada | No |
+| F1 | Extractor puro del estado por curso (función sin E/S) + tests, sin tabla | No |
+| F2 | Tabla K10 y **escritura en sombra** durante la ingesta; verificador de paridad | Sí (aditivo) |
+| F3 | Backfill de K10 desde `raw_json` (en orden de `T`, por lotes) y verificador | Sí (aditivo) |
+| F4 | Lectura de A6 desde K10, solo tras §6.3 | No (cambia un lector) |
+
+El backfill de `course_observations` (lotes ya preparados fuera del repo, 15 267 filas **[MEDIDO]**) es **independiente** de K10: K10 se puede construir directamente desde `raw_json` (78 eventos para el histórico medido) y no depende de él. Qué fuente usa el backfill de K10 es D-A7-6.
+
+### 6.3 Comprobación de paridad y criterios de aceptación (antes de F4)
+
+Todos deben cumplirse; **ninguno es un umbral numérico arbitrario**: son igualdades exactas o cotas medidas y aprobadas.
+
+| # | Criterio |
+|---|---|
+| P1 | **Reconstrucción exacta:** para toda `(snapshot, curso)` de la copia de producción y del dataset demo, el estado decodificado desde K10 + `T` es igual al del payload. **0 diferencias.** |
+| P2 | **Transiciones:** el conjunto de (curso, instante, valor anterior, valor nuevo) de K10 es igual al calculado desde `raw_json`. |
+| P3 | **A6:** para el conjunto fijo de ventanas de prueba, los estados A6 desde K10 son iguales a los del evaluador de serie completa. Las **únicas** diferencias aceptadas frente a la lectura vigente (tres snapshots por frontera) son las que **añaden** una `discontinuity` o un `unknown` que la muestra vigente no podía ver; cada una se enumera. |
+| P4 | **Integridad I2:** 0 cadenas rotas. |
+| P5 | **Idempotencia:** una segunda pasada escribe 0 filas; el orden de ingesta incremental produce los mismos eventos que el lote. |
+| P6 | **Tardíos:** con la ingesta en orden aleatorio y la reparación aplicada, la serie final es idéntica a la de la ingesta ordenada. |
+| P7 | **Casos que el prototipo no cubrió (§1.3):** descenso a través de una ausencia, `invalid` entre dos valores y cambio de `course_id`, con datos sintéticos **y** una copia de producción. |
+| P8 | **Presupuesto:** la medición real de `rows_written` y `rows_read` por día en D1 atribuibles a K10 debe quedar por debajo de un tope **fijado por el propietario con esa medición** (como A1). Este documento **no inventa** el tope. |
+
+**Compatibilidad con A5:** A7 no toca `xp_summaries` ni las reglas de §13; **ningún** cálculo de A5 cambia.
+
+---
+
+## 7. A5.1 — el día en curso y la ausencia de fila (documental)
+
+**Estado:** documenta un hecho observado y su límite. **No cambia el comportamiento de A5**, no cierra O1 ni O3 y no añade ningún umbral.
+
+### 7.1 Lo que los datos demuestran **[MEDIDO]**
+
+- En los 850 payloads, `xp_summaries` es un bloque contiguo de 90 o 91 días (147 y 703 bloques), **sin huecos**, con 77 203 entradas, **0 con `gainedXp = 0`** y 0 con `gainedXp` ausente o inválido.
+- Los 110 días del bloque coinciden con las 110 filas de `xp_summaries`: **110 / 110** iguales al último valor observado, ningún día sobrante ni faltante.
+- 14 días muestran valores distintos entre snapshots; **todos son no decrecientes** (un día en curso va acumulando). Ningún día quedó sin observarse después de cerrarse.
+- **El día en curso no tiene fila hasta que aparece el primer XP.** Se observó en 10 días: los snapshots tomados antes de la primera actividad del día no traen su fila, y la primera fila que aparece tiene `gainedXp > 0` (p. ej. el 2026-10-05: la fila del día aparece a las 06:38 con 173 XP; el 2026-10-13, hasta las 05:53, no hay fila). **Nunca se vio una fila con 0.**
+- Conciliación: en **848 de 849** pares consecutivos de snapshots, la suma de variaciones de XP de los cursos coincide **exactamente** con la variación de XP diario de la cuenta.
+
+### 7.2 Lo que **no** permiten determinar **[NO DEMOSTRADO]**
+
+- **Cómo se representa un día completo sin actividad.** En los 110 días observados no hay ninguno (mínimo 29 XP). Que la fuente no emita fila para el día en curso antes de su primer XP **no** prueba que tampoco la emita para un día cerrado sin actividad (lecturas L0/L1/L2 de §13.5 de A5).
+- **Una cobertura mínima (O3).** La cobertura observada es 110 / 110: no hay varianza de la que derivar un umbral. **No se fija ninguno.**
+
+### 7.3 Observaciones sin explicar (hechos, sin atribución de causa)
+
+| Hecho | Detalle |
+|---|---|
+| Descenso de 14 XP | `DUOLINGO_RU_ES` 35 721 → 35 707 entre 2026-10-02T07:15:42Z y 2026-10-05T06:05:55Z; recuperado antes del 2026-10-08T07:15:53Z |
+| Residuo de conciliación | Único par que **no** concilia: el mismo hueco de 70,8 h. Suma de variaciones de curso 3 796 XP frente a 2 735 XP de cuenta (**+1 061**); en ese par `CHESS_CH` sube 1 513 y `RU_ES` baja 14 |
+
+No se corrige ningún dato ni se atribuye el residuo a una causa. Se investigan por separado (**requieren evidencia nueva**, p. ej. snapshots dentro del hueco o la fuente original).
+
+### 7.4 Redacción propuesta para A5 (§13.5)
+
+> *La fuente no emite fila del día en curso hasta su primer XP (observado en 10 días, sin ninguna fila con 0). Para un día completo sin actividad la representación sigue sin caracterizarse: no ha ocurrido en los datos disponibles. A5 ya excluye el día en curso (§13.2); por tanto esta observación no altera ningún cálculo. O1 y O3 permanecen abiertas.*
+
+---
+
+## 8. Costes y límites
+
+### 8.1 Mediciones **[MEDIDO]**
+
+| Magnitud | Valor |
+|---|---|
+| Filas de K10 para el histórico medido | 78 (0,57 % de 13 600 celdas) |
+| Filas de `course_observations` equivalentes | 13 600 (de las cuales 3 792 ya escritas) |
+| Cambios de XP en cursos de idiomas | 32 de 11 037 pares (0,29 %) |
+| Eventos en la prueba de estrés | 1 588 (≈ 11,7 % de las celdas) |
+| Snapshots por día | de 3 a 110; ≈ 42 de media |
+| Filas de backfill pendientes de `course_observations` | 15 267 (9 808 curso, 4 838 sección, 604 path, 17 cuenta) |
+
+### 8.2 Estimaciones **[ESTIMADO, no medido en D1]**
+
+| Magnitud | Estimación | Base |
+|---|---|---|
+| Eventos nuevos por día | ≈ 3 | 62 cambios en 20 días; **depende de la actividad de este usuario** |
+| Eventos por año | del orden de 1 000 | extrapolación lineal del anterior |
+| Filas de `course_observations` por año | del orden de 250 000 | ≈ 680/día medidos |
+| Lectura de `T` | ≈ 1 fila por snapshot de la ventana | densidad medida |
+| Reparación de un tardío de un día | ≈ 40 snapshots leídos | densidad medida |
+
+### 8.3 Límites
+
+- **El coste real de D1 sigue sin confirmarse** (plan, `rows_written`, `rows_read`, CPU). Todas las cifras de §8.2 son estimaciones; el criterio P8 exige medirlas antes de F4.
+- Las limitaciones del prototipo son las de §1.3.
+- El número de eventos es **función de la estabilidad de la fuente**, no una constante del diseño.
+- Esta enmienda **no** cambia ninguna regla de emisión: `LANG_FOCUS_SHIFT_LONGITUDINAL` sigue `SIN EVALUAR` y sus puertas temporales (≥ 90 días, ≥ 60 días activos) no se tocan. Con 20 días de historia ninguna de las dos lógicas emite, con o sin las puertas forzadas **[MEDIDO]**.
+
+---
+
+## 9. Decisiones pendientes del propietario
+
+| ID | Decisión | Opciones | Recomendación (no vinculante) |
+|---|---|---|---|
+| **D-A7-1** | ¿Se aprueba K10 como serie derivada de eventos (§2) con los tres estados? | aprobar / aprobar con cambios / rechazar | Aprobar |
+| **D-A7-2** | Clave e índices de K10 | PK `(snapshot_id, course_id)` sin índices / añadir índice `(user_id, course_id, observed_at)` | Sin índice hasta medir (la serie es pequeña) |
+| **D-A7-3** | Origen de la cobertura en lectura (§3.4) | consultar `T` acotada a la ventana / resumen diario / latido | Consultar `T` acotada; medir antes de otra tabla |
+| **D-A7-4** | Auxiliares (§5) | mantener sin filtro / filtrar `absent` de auxiliares | Mantener sin filtro |
+| **D-A7-5** | Seguimiento de cambios de atributos de un mismo id | ninguno / serie aparte | Ninguno hasta que ocurra |
+| **D-A7-6** | Fuente del backfill de K10 (F3) | `raw_json` / `course_observations` | `raw_json` (distingue `absent` e `invalid`; no depende del backfill de observaciones) |
+| **D-A7-7** | Estrategia ante tardíos (§4.3) | marca + reparación explícita / ignorar / reparar en línea | Marca + reparación explícita |
+| **D-A7-8** | Tope de presupuesto de D1 (P8) | a fijar con medición real | Fijar tras medir en F2 |
+| **D-A7-9** | A5.1 (§7.4): incorporar la redacción a §13.5 | sí / no | Sí, como texto, sin cambio de código |
+
+**Sin decidir y fuera de esta enmienda:** el backfill de `course_observations` (requiere autorización de escritura y el presupuesto de D1), la regla longitudinal y sus umbrales, O1, O3, P1 (cota de frescura) y P4 (artefactos pasados).
+
+---
+
+## 10. Tests exigidos en la implementación (no en este PR)
+
+Nombres con el patrón del proyecto:
+
+- `shouldEmitNoEventWhenTheStateDoesNotChange`
+- `shouldEmitFirstObservationWithNullPreviousStateWhenTheCourseAppearsForTheFirstTime`
+- `shouldKeepTheDescentUnclippedWhenXpDecreases`
+- `shouldDetectTheDescentAcrossAnAbsenceWhenTheCourseReturnsLower`
+- `shouldNotTreatAnAbsentOrInvalidObservationAsZero`
+- `shouldReconstructEveryObservedStateWhenDecodingTheEventsWithTheTimeline`
+- `shouldNeverAffirmContinuityWhenTheTimelineHasGaps`
+- `shouldReportTheMaxGapHoursWithEveryGain`
+- `shouldWriteNoEventsAndMarkTheSeriesDirtyWhenASnapshotArrivesLate`
+- `shouldConvergeToTheOrderedSeriesWhenRepairingAfterALateSnapshot`
+- `shouldBeIdempotentWhenTheSameSnapshotIsIngestedTwice`
+- `shouldKeepTheSameEventsWhenIngestingIncrementallyOrInBatch`
+- `shouldNotCreateAnEventWhenOnlyDescriptiveAttributesChange`
+- `shouldTreatAChangedCourseIdAsAnotherCourse`
+- `shouldBreakTheChainReportWhenAnEventDoesNotLinkToThePreviousOne` (I2)
+
+---
+
+## 11. Trazabilidad y qué no cambia
+
+- **Contrato congelado de observaciones:** sin cambios en su texto de §2b, §3, §4, §7, §10 (K10 es una adición, no una modificación). Se añade solo un puntero en §13 y en la cabecera (ver abajo).
+- **A5 (§13) y A6 (§14):** no se modifican. §14.2 ya define estados y descenso; A7 solo propone **de dónde** salen las observaciones y **cómo se declara la cobertura**. El límite declarado de §14.2 («tres snapshots por frontera») se sustituye por el de §3.3 **únicamente si** esta enmienda se aprueba e implementa.
+- **Congelado, no reabierto:** D3 (invariante de oro), D4 (predicado de curso de idiomas), §8.0 (no compactar `raw_json`).
+- **Sin implementación:** este documento no contiene DDL ejecutable, migraciones, código de runtime ni scripts de backfill.

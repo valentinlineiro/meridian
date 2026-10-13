@@ -1,7 +1,7 @@
 # Contrato P2: modelo de observaciones (extraer → paridad → conmutar → compactar)
 
 **Fecha:** 2026-10-05
-**Estado:** 🟢 **CONGELADO el 2026-10-06** por el propietario. Todas las decisiones están tomadas (D1–D6 en §10, D-a…D-f en §7), §0 está resuelto (§0.1) y la revisión final de §12 está hecha. **Sin implementar:** no hay migración ni backfill. El orden es: **qué conocimiento histórico debe sobrevivir (§2b) → representación mínima que lo conserva (§3)**. Desde el congelado, cualquier cambio del modelo (§2b, §3, §4, §7, §10) entra solo por **enmienda explícita** de este documento, con su dato y su aprobación; no por el código ni por la migración. **Enmiendas: A1 (2026-10-06, §13): persistencia de K5.**
+**Estado:** 🟢 **CONGELADO el 2026-10-06** por el propietario. Todas las decisiones están tomadas (D1–D6 en §10, D-a…D-f en §7), §0 está resuelto (§0.1) y la revisión final de §12 está hecha. **Sin implementar:** no hay migración ni backfill. El orden es: **qué conocimiento histórico debe sobrevivir (§2b) → representación mínima que lo conserva (§3)**. Desde el congelado, cualquier cambio del modelo (§2b, §3, §4, §7, §10) entra solo por **enmienda explícita** de este documento, con su dato y su aprobación; no por el código ni por la migración. **Enmiendas: A1 (2026-10-06, §13): persistencia de K5.** **A7 (2026-10-13): BORRADOR, no en vigor — serie compacta de eventos de XP por curso (K10); ver [`2026-10-13-observation-amendment-a7-compact-xp-events.md`](2026-10-13-observation-amendment-a7-compact-xp-events.md).**
 **Origen:** auditoría de utilidad analítica (hallazgo: las series longitudinales dependen de parsear `snapshots.raw_json`).
 
 **Pregunta rectora de cada campo:** qué observación histórica representa, de qué snapshot procede y si puede reconstruirse de forma determinista desde el `raw_json` actual.
@@ -496,3 +496,7 @@ Cerradas: D1, D2, D3, D4/D4.1, D5, D6, D-f (A). Aprobadas: D-a, D-b, D-c+D-e (co
 - **Sin cambio de lecturas** en la pieza que la implementa; la conmutación sigue exigiendo su paridad (§7).
 
 **Orden:** K7 (`xp_summaries.daily_goal_xp`, sin enmienda) se implementa antes y por separado (pieza 2a); K5 con esta enmienda es la pieza 2b. Ninguna se implementa ni despliega hasta cerrar el gate de escrituras de la pieza 1.
+
+### A7 (2026-10-13): serie compacta de eventos de XP por curso — **BORRADOR, no en vigor**
+
+Propuesta pendiente de decisión del propietario, **sin implementar**: añade una serie derivada (K10) y no modifica el texto congelado de este contrato. Texto, mediciones y decisiones abiertas en [`2026-10-13-observation-amendment-a7-compact-xp-events.md`](2026-10-13-observation-amendment-a7-compact-xp-events.md).
