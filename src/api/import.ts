@@ -40,10 +40,19 @@ export interface IngestArgs {
   createdAt?: string;
 }
 
+// linkedin-games: data.date is part of the checksum, so a missing or malformed date would silently collapse distinct days
+// (contract 2026-10-13 L1). Rejected before hashing; every other field is stored as received.
+const isCalendarDate = (v: unknown): v is string => {
+  if (typeof v !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
+  const d = new Date(`${v}T00:00:00Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().startsWith(v); // toISOString throws on an invalid Date
+};
+
 // Shared pipeline: legacy POST /api/import and the ingest client use this.
 export async function ingestSnapshot(db: D1Database, args: IngestArgs): Promise<IngestSummary> {
   const { source, userId, data } = args;
   if (!source || !userId || data === undefined) throw new Error("ingest requires source, userId, data");
+  if (source === "linkedin-games" && !isCalendarDate(data?.date)) throw new Error("linkedin-games requires data.date as a real YYYY-MM-DD calendar date");
   const checksum = await sha256Hex(source + "|" + userId + "|" + stableStringify(data));
   const dup = await db.prepare("SELECT id, games_count FROM snapshots WHERE checksum=?").bind(checksum).first<{ id: string; games_count: number }>();
   if (dup) return { snapshotId: dup.id, deduplicated: true, pages: 0, matchesReceived: dup.games_count, newMatches: 0, existingMatches: dup.games_count, knownOpponentElo: 0, unknownOpponentElo: 0 };
