@@ -1,7 +1,7 @@
 # Contrato: señales descartadas (evaluaciones de hallazgo)
 
 **Fecha:** 2026-10-06
-**Estado:** 🔒 **CONGELADO (2026-10-06), sin implementar.** D1–D4, D6 y D7 aprobadas; D5 y D8 fuera de este contrato (§7). `LANG_FOCUS_SHIFT_LONGITUDINAL` pendiente de un contrato propio. Cualquier cambio posterior entra por enmienda explícita. **Enmienda A3 (2026-10-08, aprobada y desplegada, §10): criterios en la evaluación y redacción de `LANG_XP_ACCELERATION`.** **Enmienda A4 (2026-10-09, aprobada e implementada, §12): el ELO de un snapshot solo se atribuye a la partida ancla de su lote; excepción acotada a la igualdad de `findings` de D3.** **Enmiendas A5 y A6 (2026-10-13, §13 y §14; sin implementar): A5 aprobada parcialmente (§13.2–13.4; §13.5 abierta) y A6 aprobada con condición explícita (§14.4 y §14.2); comparabilidad de la tasa de XP de `LANG_XP_ACCELERATION` y ganancia comparable por curso en Trayectoria. La aprobación del texto no autoriza la implementación.** **Enmienda A2 (2026-10-08, aprobada y desplegada, §9): `CHESS_RATING_JUMP` — sin ELO observado en la ventana no es "Δ = 0".** **Enmienda 2026-10-06:** el invariante de trazabilidad de §4 pasa de igualdad a inclusión (*Inconcluso* ⊇ eliminados por IC); la definición operativa y §8 no cambian.
+**Estado:** 🔒 **CONGELADO (2026-10-06), sin implementar.** D1–D4, D6 y D7 aprobadas; D5 y D8 fuera de este contrato (§7). `LANG_FOCUS_SHIFT_LONGITUDINAL` pendiente de un contrato propio. Cualquier cambio posterior entra por enmienda explícita. **Enmienda A3 (2026-10-08, aprobada y desplegada, §10): criterios en la evaluación y redacción de `LANG_XP_ACCELERATION`.** **Enmienda A4 (2026-10-09, aprobada e implementada, §12): el ELO de un snapshot solo se atribuye a la partida ancla de su lote; excepción acotada a la igualdad de `findings` de D3.** **Enmiendas A5 y A6 (2026-10-13, §13 y §14; implementadas en el PR #49, merge `ba27302`, 2026-10-13): A5 aprobada parcialmente (§13.2–13.4; §13.5 abierta) y A6 aprobada con condición explícita (§14.4 y §14.2); comparabilidad de la tasa de XP de `LANG_XP_ACCELERATION` y ganancia comparable por curso en Trayectoria. Implementación ≠ validación con datos reales: O1, O3, P1, P2 y P4 siguen abiertas.** **Enmienda A2 (2026-10-08, aprobada y desplegada, §9): `CHESS_RATING_JUMP` — sin ELO observado en la ventana no es "Δ = 0".** **Enmienda 2026-10-06:** el invariante de trazabilidad de §4 pasa de igualdad a inclusión (*Inconcluso* ⊇ eliminados por IC); la definición operativa y §8 no cambian.
 **Origen:** hoy un hallazgo cuya evidencia no basta **desaparece**: What-changed y Trayectoria solo devuelven lo que se emite. Tras P1.5 eso oculta la distinción más útil: *"no hay señal"* frente a *"hay indicio, pero los datos no permiten afirmarlo"*. Es también el requisito previo de cualquier capa de interpretación (LLM): esta no debe decidir qué se descartó ni por qué.
 
 **Principio:** *Insufficient evidence no significa ausencia de señal.* Meridian decide, de forma determinista, qué se afirma, qué queda inconcluso y por qué. Nada de esto lo decide un modelo.
@@ -136,7 +136,7 @@ Se derivan **solo de la evaluación transportada** (`status`, `reasons` y `metri
 - *Inconcluso* ⊇ hallazgos eliminados por la condición de IC de A(b): 5 vs 5 con +40 pp → inconcluso con `interval_includes_zero`; 9 decididas con +30 pp → `insufficient_sample` e inconcluso solo si el resto de condiciones pasan.
 - `data_unavailable` nunca se confunde con `effect_below_threshold`.
 - Ninguna evaluación de tipo `event`.
-- **Invariante de oro (D3)** *(con la excepción acotada de A4, §12.5, y las de A5, §13.6, y A6, §14.6, aprobadas el 2026-10-13 y aún sin implementar)*: para los mismos inputs, `findings` es idéntico antes y después (mismo contenido, mismo orden); evaluar todas las condiciones solo amplía `evaluations`.
+- **Invariante de oro (D3)** *(con la excepción acotada de A4, §12.5, y las de A5, §13.6, y A6, §14.6, aprobadas e implementadas el 2026-10-13, PR #49)*: para los mismos inputs, `findings` es idéntico antes y después (mismo contenido, mismo orden); evaluar todas las condiciones solo amplía `evaluations`.
 - Los motivos no dependen del orden en que se evalúan las condiciones.
 
 ---
@@ -336,7 +336,7 @@ El propietario aprueba (2026-10-09) esta precisión: lo que se preserva no es qu
 
 ## 13. Enmienda A5 (2026-10-13) — la tasa de XP compara días naturales con días naturales
 
-**Estado:** ✅ **aprobada parcialmente por el propietario (2026-10-13); sin implementar.**
+**Estado:** ✅ **aprobada parcialmente por el propietario (2026-10-13); implementada en el PR #49 (merge `ba27302`).** Lo implementado es solo §13.2–13.4; §13.5 (O1, O3) sigue abierta.
 - **Aprobado (§13.2–13.4):** unidades temporales equivalentes, días naturales UTC completos, exclusión explícita de los extremos parciales, y un dato desconocido no es 0.
 - **Aceptado para avanzar, no definitivo (§13.5):** la base provisional «XP por día con registro». **No demuestra** que la tasa represente la actividad diaria real; es una base internamente coherente, nada más.
 - **Abierto:** O1 (qué significa una fila ausente) y O3 (cuánta cobertura es suficiente; **sin cifra**). Resueltos: O2 (no se incluyen días parciales, §13.9) y la excepción a D3 (§13.6).
@@ -464,7 +464,7 @@ Como en A4 (§12.5): lo que se preserva es que **emitir y descartar consumen la 
 
 ## 14. Enmienda A6 (2026-10-13) — la ganancia de XP de un curso exige dos observaciones del mismo curso
 
-**Estado:** ✅ **aprobada con condición explícita por el propietario (2026-10-13); sin implementar.**
+**Estado:** ✅ **aprobada con condición explícita por el propietario (2026-10-13); implementada en el PR #49 (merge `ba27302`).** La fuente sigue siendo `raw_json` con el límite declarado de §14.2; P2 y P4 siguen abiertas.
 - **Aprobado:** la distinción entre ganancia observada, dato desconocido, discontinuidad y curso nuevo (§14.2); mantener `LANG_FOCUS_SHIFT_LONGITUDINAL` en `SIN EVALUAR`; no introducir el filtro `is_auxiliary = 0` sin evidencia adicional (§14.3).
 - **Condición:** (i) P3 queda decidido y precisado (§14.4): el hallazgo **no se emite cuando la evidencia comparable no permite determinar el desplazamiento sin sesgo**; no se sustituyen desconocidos por 0 ni se renormalizan cuotas en silencio, y un `new_course` **no** silencia la regla por el solo hecho de existir; (ii) un descenso del XP acumulado produce una **discontinuidad explícita**, nunca un resultado vacío indistinguible de la falta de actividad (§14.2).
 - **Abierto:** P1 (antigüedad máxima), P2 (fuente) y P4 (emisiones pasadas). La fuente (`raw_json` o `course_observations`) no se mezcla con la corrección semántica.
