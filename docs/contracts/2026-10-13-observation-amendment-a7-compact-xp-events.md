@@ -72,7 +72,19 @@ Prototipo local con la regla de §2.3 tal como está escrita (`last_xp`, estados
 | 300 llegadas tardías aleatorias (1–4 snapshots retrasados 1–6 posiciones), serie real | **sin protocolo** (añadir a ciegas): serie incorrecta en **108 / 300**. Con el protocolo de §4.3: 300 / 300 marcadas, **todo lo anterior a la marca ya exacto**, y la reparación deja la serie **idéntica** a la ordenada (300 / 300) y es **idempotente** (300 / 300) |
 | Lo mismo sobre la serie perturbada (2 989 eventos) | sin protocolo: incorrecta en **300 / 300**; con protocolo: 300 / 300 en las tres comprobaciones |
 
-**Salvedades.** (a) La reparación se simuló leyendo el estado de los eventos y recomputando desde los payloads en memoria; no hay coste de D1 medido. (b) El protocolo marca **toda** llegada tardía como sucia, también las que no habrían alterado la serie (en la serie real, 192 / 300 (64 %) no producían diferencia): es conservador a propósito; cuánto cuesta esa conservadurez no está medido (D-A7-7). (c) No se probaron escrituras concurrentes reales ni fallos a mitad de `db.batch`.
+**Concurrencia, atomicidad y recuperación (prototipo v3, §4.5).** Ejecutado sobre **SQLite real** (`node:sqlite`, el motor de D1) con las sentencias exactas del protocolo, intercalando lecturas y escrituras de varias ingestas y de reparaciones, con fallos inyectados que revierten el batch entero:
+
+| Comprobación | Resultado |
+|---|---|
+| 120 000 intercalados aleatorios pequeños (4 semillas × 30 000; 8 snapshots, 3 cursos con `value`/`invalid`/ausencia, fallos de batch del 20 %), invariante comprobada **en cada paso** en que la serie figura limpia | **0 divergencias** |
+| 600 ensayos mayores (60 snapshots reales, 2 a 4 ingestas en vuelo, reparaciones intercaladas, snapshots que llegan entre la lectura y la escritura de una reparación; con y sin perturbaciones; con 765 fallos de batch inyectados) | **600 / 600** convergen a la serie ordenada; **0** violaciones de la invariante en ningún paso; todos los snapshots almacenados; ninguna marca perdida |
+
+**Dos defectos del diseño que esta prueba encontró y que ahora están corregidos en §4.5** (la primera versión del protocolo divergía en el 2–20 % de los ensayos):
+
+1. *Guarda de la reparación por «snapshot más nuevo».* Un snapshot insertado **dentro** del rango tras la lectura de la reparación quedaba sin aplicar y la marca se limpiaba. La guarda debe comparar el **conjunto** (aquí, el conteo, porque los snapshots no se borran).
+2. *Guarda de las ingestas por `head_id`.* Tras una reparación el `head` puede volver a ser el mismo snapshot mientras el contenido de la serie cambió (ABA): una ingesta en vuelo escribía eventos calculados contra un estado obsoleto. La guarda debe ser una **versión** que cambia en cada escritura de la serie.
+
+**Salvedades.** (a) La reparación se simuló leyendo el estado de los eventos y recomputando desde los payloads en memoria; el coste en D1 es una estimación (§8.1). (b) El protocolo marca **toda** llegada tardía como sucia, también las que no habrían alterado la serie (en la serie real, 192 / 300 (64 %) no producían diferencia): es conservador a propósito; cuánto cuesta esa conservadurez no está medido (D-A7-7). (c) La concurrencia se **modeló** (intercalado determinista de pasos sobre una sola conexión SQLite) y los fallos se modelaron como reversión atómica, que es la semántica documentada de `db.batch`; **no** se ejecutó contra D1 ni se verificó allí la atomicidad.
 
 ---
 
@@ -196,11 +208,28 @@ Leer `T` para una ventana cuesta del orden de una fila por snapshot (≈ 42 por 
 ### 4.4 Costes **[ESTIMADOS, no medidos]**
 
 - **Camino normal:** leer el último estado de cada curso (≈ 16 filas por ingesta, a medir) y escribir 0 filas en la mayoría de los snapshots (811 de 850, 95,4 %, en el histórico medido, §1.2; depende de la fuente).
-- **Reparación de un tardío:** proporcional a los snapshots posteriores. Con la densidad medida (≈ 42/día), un retraso de un día toca del orden de 40 snapshots; cada uno se lee (≈ 73 KB de `raw_json`) y solo se reescriben los eventos del tramo (unas decenas de filas). Es un coste **de lectura y CPU**, no de escritura.
+- **Reparación, medición con los 850 payloads reales (proxy de CPU en Node, no CPU de Worker):** analizar un payload (≈ 72 KB) cuesta una mediana de 0,17 ms (p99 0,5 ms). Reprocesar 1 snapshot ≈ 0,2 ms y 0 filas escritas; 42 snapshots (≈ 1 día) ≈ 7 ms, 8 filas escritas, ~3 MB leídos; 294 (≈ 1 semana) ≈ 50 ms, 44 filas, ~21 MB; los 850 ≈ 145 ms, 156 filas, ~61 MB. **Escrituras bajas, lecturas altas:** una reparación grande debe trocearse. Qué límite de CPU o de transferencia aplica en el plan real **no está confirmado**.
+- **Reparación de un tardío (estimación):** proporcional a los snapshots posteriores. Con la densidad medida (≈ 42/día), un retraso de un día toca del orden de 40 snapshots; cada uno se lee (≈ 73 KB de `raw_json`) y solo se reescriben los eventos del tramo (unas decenas de filas). Es un coste **de lectura y CPU**, no de escritura.
 - **Conservadurez medida (prototipo v2, §1.4):** el protocolo marca sucia toda llegada tardía; en la serie real el 36 % (108 / 300) habría corrompido la serie con un añadido a ciegas y el resto no, así que **parte de las reparaciones serían innecesarias**. Reducirlo (p. ej. comprobar al llegar si el estado del tardío coincide con el de su predecesor y sucesor) es una optimización posible; **no se propone aquí** porque exige leer al sucesor en la ingesta y no está probada.
 - **Qué pierde la estrategia:** mientras haya marca activa, la serie compacta no sirve a esa ventana y se paga la lectura vigente. Es la contrapartida de **no** corromper.
 - **Alternativa descartada: insertar el tardío y reparar en línea** dentro de la petición de ingesta. Un tardío con muchos sucesores convertiría una escritura en una recomputación sin cota dentro del Worker.
 - **Alternativa descartada: ignorar el tardío** (como hace A1 para el estado del árbol). K5 es un **estado** (el último gana); K10 es una **serie** y perdería una transición real.
+
+### 4.5 Escritura atómica con guardas **[PROPUESTO; probado en SQLite local, no en D1]**
+
+Estado de serie por (usuario, fuente): `head` (último snapshot aplicado), `dirty_from` (menor posición no confiable, o nulo) y **`version`** (entero que aumenta en toda escritura de la serie).
+
+**Ingesta** (lectura previa + **un solo `db.batch`**, junto con el snapshot, §4.5 del contrato congelado):
+
+1. Lectura: `head`, `dirty_from`, `version` y el estado por curso (a partir de los eventos). Si `dirty_from` es nulo y `s > head`, se calculan los eventos de `s`; si no, ninguno.
+2. En el batch, en este orden: insertar el snapshot; insertar cada evento **condicionado a `version = leída` y `dirty_from` nulo**; avanzar `head` y `version` **con la misma condición**; y, si tras ello `head ≠ s`, fijar `dirty_from = min(dirty_from, s)` e incrementar `version`.
+3. Si la condición no se cumple (otro escribió antes, el snapshot es tardío o la serie ya estaba sucia) **no se escribe ningún evento**, el snapshot queda guardado y la marca queda en el mismo batch.
+
+**Reparación** (lectura previa + un `db.batch`): lee los snapshots desde `dirty_from` y el estado anterior; en el batch borra los eventos desde `dirty_from`, inserta los recomputados y fija `head`, limpia `dirty_from` e incrementa `version`, **todo condicionado a** `version` y `dirty_from` leídos **y** a que el **número de snapshots desde `dirty_from` coincida** con el leído. Si la condición falla, no cambia nada y se reintenta.
+
+**Consecuencias demostradas en el prototipo:** (i) el snapshot, sus eventos y la marca son **atómicos**: un batch fallido no deja snapshot, eventos ni marca, y el reintento del cliente es seguro; (ii) la marca no puede perderse respecto del snapshot; (iii) en todo instante en que la serie figura limpia es igual a la ordenada, y antes de la marca es siempre exacta; (iv) la reparación converge y es idempotente.
+
+**Lo que esto no resuelve:** la **vivacidad** bajo contención extrema (una reparación puede fallar su guarda repetidamente si llegan ingestas continuamente; no se midió) y qué proceso dispara la reparación (¿en la ingesta siguiente, en un cron?: decisión nueva, D-A7-10).
 
 ---
 
@@ -250,7 +279,7 @@ Todos deben cumplirse; **ninguno es un umbral numérico arbitrario**: son iguald
 | P4 | **Integridad I2:** 0 cadenas rotas. |
 | P5 | **Idempotencia:** una segunda pasada escribe 0 filas; el orden de ingesta incremental produce los mismos eventos que el lote. |
 | P6 | **Tardíos:** con la ingesta en orden aleatorio y la reparación aplicada, la serie final es idéntica a la de la ingesta ordenada. |
-| P7 | **Casos límite** (cubiertos por el prototipo v2, §1.4, y a repetir sobre el código real): descenso a través de una ausencia, `invalid` entre dos valores, cambio de `course_id`, **0 observado frente a ausencia** y tardíos con reparación, con datos sintéticos **y** una copia de producción. Añade escrituras concurrentes y fallo a mitad del batch, no probados aún. |
+| P7 | **Casos límite** (cubiertos por el prototipo v2, §1.4, y a repetir sobre el código real): descenso a través de una ausencia, `invalid` entre dos valores, cambio de `course_id`, **0 observado frente a ausencia** y tardíos con reparación, con datos sintéticos **y** una copia de producción. La concurrencia y el fallo de batch están modelados en SQLite local (§1.4, §4.5); **P7 exige repetirlos contra D1** (atomicidad real de `db.batch`). |
 | P8 | **Presupuesto:** la medición real de `rows_written` y `rows_read` por día en D1 atribuibles a K10 debe quedar por debajo de un tope **fijado por el propietario con esa medición** (como A1). Este documento **no inventa** el tope. |
 
 **Compatibilidad con A5:** A7 no toca `xp_summaries` ni las reglas de §13; **ningún** cálculo de A5 cambia.
@@ -323,6 +352,8 @@ No se corrige ningún dato ni se atribuye el residuo a una causa. Se investigan 
 
 ## 9. Decisiones pendientes del propietario
 
+> **Ninguna decisión de esta tabla está aprobada por el hecho de que el prototipo funcione.** La evidencia de §1 y §4.5 respalda el diseño; no sustituye la decisión del propietario ni la medición en D1 (P8).
+
 | ID | Decisión | Opciones | Recomendación (no vinculante) |
 |---|---|---|---|
 | **D-A7-1** | ¿Se aprueba K10 como serie derivada de eventos (§2) con los tres estados? | aprobar / aprobar con cambios / rechazar | Aprobar |
@@ -331,9 +362,10 @@ No se corrige ningún dato ni se atribuye el residuo a una causa. Se investigan 
 | **D-A7-4** | Auxiliares (§5) | mantener sin filtro / filtrar `absent` de auxiliares | Mantener sin filtro |
 | **D-A7-5** | Seguimiento de cambios de atributos de un mismo id | ninguno / serie aparte | Ninguno hasta que ocurra |
 | **D-A7-6** | Fuente del backfill de K10 (F3) | `raw_json` / `course_observations` | `raw_json` (distingue `absent` e `invalid`; no depende del backfill de observaciones) |
-| **D-A7-7** | Estrategia ante tardíos (§4.3) | marca + reparación explícita / ignorar / reparar en línea | Marca + reparación explícita |
+| **D-A7-7** | Estrategia ante tardíos (§4.3, §4.5) | marca + reparación explícita / ignorar / reparar en línea | Marca + reparación explícita, **conservadora** (sin optimizar hasta que la medición en D1 lo justifique) |
 | **D-A7-8** | Tope de presupuesto de D1 (P8) | a fijar con medición real | Fijar tras medir en F2 |
 | **D-A7-9** | A5.1 (§7.4): incorporar la redacción a §13.5 | sí / no | Sí, como texto, sin cambio de código |
+| **D-A7-10** | Quién dispara la reparación y cuándo (§4.5) | en la ingesta siguiente / cron / manual | Manual al inicio (F2), automatizar tras medir |
 
 **Sin decidir y fuera de esta enmienda:** el backfill de `course_observations` (requiere autorización de escritura y el presupuesto de D1), la regla longitudinal y sus umbrales, O1, O3, P1 (cota de frescura) y P4 (artefactos pasados).
 
