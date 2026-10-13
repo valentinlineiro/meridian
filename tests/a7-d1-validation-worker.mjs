@@ -17,7 +17,7 @@ async function ensureSchema(db) {
   await runBatch(db, [
     db.prepare("CREATE TABLE IF NOT EXISTS snapshots (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL, source TEXT NOT NULL, observed_at TEXT NOT NULL, raw_json TEXT NOT NULL)"),
     db.prepare("CREATE INDEX IF NOT EXISTS snapshots_series_order ON snapshots(user_id, source, observed_at, id)"),
-    db.prepare("CREATE TABLE IF NOT EXISTS series_status (user_id TEXT NOT NULL, source TEXT NOT NULL, head_at TEXT, head_id INTEGER, dirty_at TEXT, version INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(user_id, source))"),
+    db.prepare("CREATE TABLE IF NOT EXISTS series_status (user_id TEXT NOT NULL, source TEXT NOT NULL, head_at TEXT, head_id INTEGER, dirty_at TEXT, version INTEGER NOT NULL DEFAULT 0, repair_watermark_at TEXT, repair_watermark_id INTEGER, repair_cursor_at TEXT, repair_cursor_id INTEGER, repair_version INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(user_id, source))"),
     db.prepare("CREATE TABLE IF NOT EXISTS events (snapshot_id INTEGER NOT NULL, user_id TEXT NOT NULL, source TEXT NOT NULL, course_id TEXT NOT NULL, observed_at TEXT NOT NULL, state TEXT NOT NULL, xp REAL, prev_state TEXT, last_xp REAL, PRIMARY KEY(snapshot_id, course_id))"),
     db.prepare("CREATE TABLE IF NOT EXISTS atomic_probe (id INTEGER PRIMARY KEY, value TEXT NOT NULL)"),
   ]);
@@ -259,12 +259,21 @@ async function livenessD1(db) {
     await db.batch([insert, advance, mark]);
   }));
 
-  const afterRace = await db.prepare("SELECT head_at,head_id,dirty_at,version FROM series_status WHERE user_id='race' AND source='probe'").first();
+  const afterRace = await db.prepare("SELECT head_at,head_id,dirty_at,version,repair_version FROM series_status WHERE user_id='race' AND source='probe'").first();
   const raceEvents = Number((await db.prepare("SELECT COUNT(*) AS n FROM events WHERE user_id='race' AND source='probe'").first()).n);
   const snapshotsAfterRace = Number((await db.prepare("SELECT COUNT(*) AS n FROM snapshots WHERE user_id='race' AND source='probe'").first()).n);
   const watermark = initial.results[initial.results.length - 1];
-  const versionBeforeTail = Number(afterRace.version);
 
+  // Start the repair and capture its independent repair_version. General version
+  // changes on every write; repair_version changes only when the repaired prefix
+  // is invalidated or repair progress/publication changes.
+  await db.prepare("UPDATE series_status SET repair_watermark_at=?,repair_watermark_id=?,repair_cursor_at=NULL,repair_cursor_id=NULL,repair_version=repair_version+1,version=version+1 WHERE user_id='race' AND source='probe' AND dirty_at IS NOT NULL").bind(watermark.observed_at, watermark.id).run();
+  const repairStart = await db.prepare("SELECT head_at,head_id,dirty_at,version,repair_watermark_at,repair_watermark_id,repair_version FROM series_status WHERE user_id='race' AND source='probe'").first();
+  const versionBeforeTail = Number(repairStart.version);
+  const repairVersionBeforeTail = Number(repairStart.repair_version);
+
+  // New in-order snapshots arrive after the watermark and after the repair read.
+  // They increment the general version, but must not invalidate this prefix epoch.
   const tailInserts = [];
   for (let i = 20; i < 25; i++) {
     const at = new Date(Date.UTC(2026, 9, 1, 0, 0, i)).toISOString();
@@ -275,7 +284,8 @@ async function livenessD1(db) {
 
   const oldGuard = await db.prepare("UPDATE series_status SET head_at=?,head_id=?,dirty_at=NULL,version=version+1 WHERE user_id='race' AND source='probe' AND version=?").bind(watermark.observed_at, watermark.id, versionBeforeTail).run();
   const oldGuardRejected = Number(oldGuard.meta?.changes ?? 0) === 0;
-  const afterOldGuard = await db.prepare("SELECT head_at,head_id,dirty_at,version FROM series_status WHERE user_id='race' AND source='probe'").first();
+  const afterOldGuard = await db.prepare("SELECT head_at,head_id,dirty_at,version,repair_watermark_at,repair_watermark_id,repair_version FROM series_status WHERE user_id='race' AND source='probe'").first();
+  const tailDidNotInvalidateRepairEpoch = Number(afterOldGuard.repair_version) === repairVersionBeforeTail && Number(afterOldGuard.version) > versionBeforeTail;
 
   const all = await db.prepare("SELECT id,observed_at,raw_json FROM snapshots WHERE user_id='race' AND source='probe' ORDER BY observed_at,id").all();
   function expectedFor(snapshotRows) {
@@ -295,32 +305,36 @@ async function livenessD1(db) {
   const canonical = rows => rows.map(r => [r.snapshot_id,r.course_id,r.observed_at,r.state,r.xp,r.prev_state,r.last_xp]).sort((a,b) => a[2].localeCompare(b[2]) || a[0]-b[0] || a[1].localeCompare(b[1]));
   const prefix = all.results.filter(s => s.observed_at < watermark.observed_at || (s.observed_at === watermark.observed_at && s.id <= watermark.id));
   const tail = all.results.filter(s => s.observed_at > watermark.observed_at || (s.observed_at === watermark.observed_at && s.id > watermark.id));
-  const current = await db.prepare("SELECT head_at,head_id,dirty_at,version FROM series_status WHERE user_id='race' AND source='probe'").first();
+  const current = await db.prepare("SELECT head_at,head_id,dirty_at,version,repair_watermark_at,repair_watermark_id,repair_version FROM series_status WHERE user_id='race' AND source='probe'").first();
   const prefixExpected = expectedFor(prefix);
-  const prefixInsert = prefixExpected.map(e => db.prepare("INSERT INTO events(snapshot_id,user_id,source,course_id,observed_at,state,xp,prev_state,last_xp) SELECT ?, 'race','probe',?,?, ?,?,?,? WHERE EXISTS (SELECT 1 FROM series_status WHERE user_id='race' AND source='probe' AND version=? AND dirty_at IS NOT NULL AND (SELECT COUNT(*) FROM snapshots WHERE user_id='race' AND source='probe' AND (observed_at,id) <= (?,?))=?) ON CONFLICT DO NOTHING").bind(e.snapshot_id,e.course_id,e.observed_at,e.state,e.xp,e.prev_state,e.last_xp,Number(current.version),watermark.observed_at,watermark.id,prefix.length));
+  const prefixGuard = "user_id='race' AND source='probe' AND repair_version=? AND dirty_at IS NOT NULL AND repair_watermark_at=? AND repair_watermark_id=? AND (SELECT COUNT(*) FROM snapshots WHERE user_id='race' AND source='probe' AND (observed_at,id) <= (?,?))=?";
+  const prefixInsert = prefixExpected.map(e => db.prepare("INSERT INTO events(snapshot_id,user_id,source,course_id,observed_at,state,xp,prev_state,last_xp) SELECT ?, 'race','probe',?,?, ?,?,?,? WHERE EXISTS (SELECT 1 FROM series_status WHERE " + prefixGuard + ") ON CONFLICT DO NOTHING").bind(e.snapshot_id,e.course_id,e.observed_at,e.state,e.xp,e.prev_state,e.last_xp,repairVersionBeforeTail,watermark.observed_at,watermark.id,watermark.observed_at,watermark.id,prefix.length));
   const prefixBatch = [
-    db.prepare("DELETE FROM events WHERE user_id='race' AND source='probe' AND (observed_at,snapshot_id) <= (?,?) AND EXISTS (SELECT 1 FROM series_status WHERE user_id='race' AND source='probe' AND version=? AND dirty_at IS NOT NULL AND (SELECT COUNT(*) FROM snapshots WHERE user_id='race' AND source='probe' AND (observed_at,id) <= (?,?))=?)").bind(watermark.observed_at,watermark.id,Number(current.version),watermark.observed_at,watermark.id,prefix.length),
+    db.prepare("DELETE FROM events WHERE user_id='race' AND source='probe' AND (observed_at,snapshot_id) <= (?,?) AND EXISTS (SELECT 1 FROM series_status WHERE " + prefixGuard + ")").bind(watermark.observed_at,watermark.id,repairVersionBeforeTail,watermark.observed_at,watermark.id,watermark.observed_at,watermark.id,prefix.length),
     ...prefixInsert,
-    db.prepare("UPDATE series_status SET head_at=?,head_id=?,dirty_at=?,version=version+1 WHERE user_id='race' AND source='probe' AND version=? AND dirty_at IS NOT NULL AND (?,?) >= (head_at,head_id) AND (SELECT COUNT(*) FROM snapshots WHERE user_id='race' AND source='probe' AND (observed_at,id) <= (?,?))=?").bind(watermark.observed_at,watermark.id,tail[0]?.observed_at ?? null,Number(current.version),watermark.observed_at,watermark.id,watermark.observed_at,watermark.id,prefix.length),
+    db.prepare("UPDATE series_status SET head_at=?,head_id=?,dirty_at=?,repair_watermark_at=NULL,repair_watermark_id=NULL,repair_cursor_at=NULL,repair_cursor_id=NULL,repair_version=repair_version+1,version=version+1 WHERE user_id='race' AND source='probe' AND repair_version=? AND dirty_at IS NOT NULL AND repair_watermark_at=? AND repair_watermark_id=? AND (?,?) >= (head_at,head_id) AND (SELECT COUNT(*) FROM snapshots WHERE user_id='race' AND source='probe' AND (observed_at,id) <= (?,?))=?").bind(watermark.observed_at,watermark.id,tail[0]?.observed_at ?? null,repairVersionBeforeTail,watermark.observed_at,watermark.id,watermark.observed_at,watermark.id,watermark.observed_at,watermark.id,prefix.length),
   ];
   await db.batch(prefixBatch);
-  const afterPrefix = await db.prepare("SELECT head_at,head_id,dirty_at,version FROM series_status WHERE user_id='race' AND source='probe'").first();
-  const prefixPublished = afterPrefix.head_id === watermark.id && afterPrefix.dirty_at === tail[0]?.observed_at;
+  const afterPrefix = await db.prepare("SELECT head_at,head_id,dirty_at,version,repair_watermark_at,repair_watermark_id,repair_version FROM series_status WHERE user_id='race' AND source='probe'").first();
+  const prefixPublished = afterPrefix.head_id === watermark.id && afterPrefix.dirty_at === tail[0]?.observed_at && afterPrefix.repair_watermark_at === null;
   const prefixCount = Number((await db.prepare("SELECT COUNT(*) AS n FROM events WHERE user_id='race' AND source='probe'").first()).n);
 
+  const latest = all.results[all.results.length-1];
+  await db.prepare("UPDATE series_status SET repair_watermark_at=?,repair_watermark_id=?,repair_cursor_at=NULL,repair_cursor_id=NULL,repair_version=repair_version+1,version=version+1 WHERE user_id='race' AND source='probe' AND dirty_at=?").bind(latest.observed_at,latest.id,tail[0]?.observed_at).run();
+  const tailRepair = await db.prepare("SELECT dirty_at,version,repair_watermark_at,repair_watermark_id,repair_version FROM series_status WHERE user_id='race' AND source='probe'").first();
   const fullExpected = expectedFor(all.results);
   const tailExpected = fullExpected.filter(e => e.observed_at > watermark.observed_at || (e.observed_at === watermark.observed_at && e.snapshot_id > watermark.id));
+  const tailGuard = "user_id='race' AND source='probe' AND repair_version=? AND dirty_at=? AND repair_watermark_at=? AND repair_watermark_id=? AND (SELECT COUNT(*) FROM snapshots WHERE user_id='race' AND source='probe' AND (observed_at,id) > (?,?))=?";
   const tailBatch = [
-    db.prepare("DELETE FROM events WHERE user_id='race' AND source='probe' AND (observed_at,snapshot_id) > (?,?) AND EXISTS (SELECT 1 FROM series_status WHERE user_id='race' AND source='probe' AND version=? AND dirty_at=?)").bind(watermark.observed_at,watermark.id,Number(afterPrefix.version),tail[0]?.observed_at ?? null),
-    ...tailExpected.map(e => db.prepare("INSERT INTO events(snapshot_id,user_id,source,course_id,observed_at,state,xp,prev_state,last_xp) SELECT ?, 'race','probe',?,?, ?,?,?,? WHERE EXISTS (SELECT 1 FROM series_status WHERE user_id='race' AND source='probe' AND version=? AND dirty_at=? AND (SELECT COUNT(*) FROM snapshots WHERE user_id='race' AND source='probe' AND (observed_at,id) > (?,?))=?) ON CONFLICT DO NOTHING").bind(e.snapshot_id,e.course_id,e.observed_at,e.state,e.xp,e.prev_state,e.last_xp,Number(afterPrefix.version),tail[0]?.observed_at,watermark.observed_at,watermark.id,tail.length)),
-    db.prepare("UPDATE series_status SET head_at=?,head_id=?,dirty_at=NULL,version=version+1 WHERE user_id='race' AND source='probe' AND version=? AND dirty_at=? AND (?,?) >= (head_at,head_id) AND (SELECT COUNT(*) FROM snapshots WHERE user_id='race' AND source='probe' AND (observed_at,id) > (?,?))=?").bind(all.results[all.results.length-1].observed_at,all.results[all.results.length-1].id,Number(afterPrefix.version),tail[0]?.observed_at,all.results[all.results.length-1].observed_at,all.results[all.results.length-1].id,watermark.observed_at,watermark.id,tail.length),
+    db.prepare("DELETE FROM events WHERE user_id='race' AND source='probe' AND (observed_at,snapshot_id) > (?,?) AND EXISTS (SELECT 1 FROM series_status WHERE " + tailGuard + ")").bind(watermark.observed_at,watermark.id,Number(tailRepair.repair_version),tail[0]?.observed_at,latest.observed_at,latest.id,watermark.observed_at,watermark.id,tail.length),
+    ...tailExpected.map(e => db.prepare("INSERT INTO events(snapshot_id,user_id,source,course_id,observed_at,state,xp,prev_state,last_xp) SELECT ?, 'race','probe',?,?, ?,?,?,? WHERE EXISTS (SELECT 1 FROM series_status WHERE " + tailGuard + ") ON CONFLICT DO NOTHING").bind(e.snapshot_id,e.course_id,e.observed_at,e.state,e.xp,e.prev_state,e.last_xp,Number(tailRepair.repair_version),tail[0]?.observed_at,latest.observed_at,latest.id,watermark.observed_at,watermark.id,tail.length)),
+    db.prepare("UPDATE series_status SET head_at=?,head_id=?,dirty_at=NULL,repair_watermark_at=NULL,repair_watermark_id=NULL,repair_cursor_at=NULL,repair_cursor_id=NULL,repair_version=repair_version+1,version=version+1 WHERE user_id='race' AND source='probe' AND repair_version=? AND dirty_at=? AND repair_watermark_at=? AND repair_watermark_id=? AND (?,?) >= (head_at,head_id) AND (SELECT COUNT(*) FROM snapshots WHERE user_id='race' AND source='probe' AND (observed_at,id) > (?,?))=?").bind(latest.observed_at,latest.id,Number(tailRepair.repair_version),tail[0]?.observed_at,latest.observed_at,latest.id,latest.observed_at,latest.id,watermark.observed_at,watermark.id,tail.length),
   ];
   await db.batch(tailBatch);
 
-  const finalStatus = await db.prepare("SELECT head_at,head_id,dirty_at,version FROM series_status WHERE user_id='race' AND source='probe'").first();
+  const finalStatus = await db.prepare("SELECT head_at,head_id,dirty_at,version,repair_watermark_at,repair_watermark_id,repair_version FROM series_status WHERE user_id='race' AND source='probe'").first();
   const finalEvents = await db.prepare("SELECT snapshot_id,course_id,observed_at,state,xp,prev_state,last_xp FROM events WHERE user_id='race' AND source='probe' ORDER BY observed_at,snapshot_id,course_id").all();
   const finalParity = JSON.stringify(canonical(finalEvents.results)) === JSON.stringify(canonical(fullExpected));
-  const latest = all.results[all.results.length-1];
   return {
     staleReadsAllSameVersion: versionsRead.length === 1,
     staleWriterAttempts: initial.results.length,
@@ -328,16 +342,18 @@ async function livenessD1(db) {
     oneWinnerEventCount: raceEvents === 1,
     dirtyAfterRace: Boolean(afterRace.dirty_at),
     tailArrivalInvalidatesOldGuard: oldGuardRejected && Boolean(afterOldGuard.dirty_at),
+    tailArrivalDoesNotInvalidateRepairEpoch,
     prefixPublishedBeforeTail: prefixPublished,
     prefixEventsAfterRepair: prefixCount,
     tailSnapshots: tail.length,
     finalParity,
     finalHeadAtLatest: finalStatus.head_id === latest.id,
     dirtyCleared: finalStatus.dirty_at === null,
-    pass: versionsRead.length === 1 && snapshotsAfterRace === 20 && raceEvents === 1 && Boolean(afterRace.dirty_at) && oldGuardRejected && prefixPublished && tail.length === 5 && finalParity && finalStatus.head_id === latest.id && finalStatus.dirty_at === null,
-    note: "D1-backed reference protocol test. It validates the watermark idea and guarded publication on synthetic rows; it is not the production A7 implementation.",
+    pass: versionsRead.length === 1 && snapshotsAfterRace === 20 && raceEvents === 1 && Boolean(afterRace.dirty_at) && oldGuardRejected && tailArrivalDoesNotInvalidateRepairEpoch && prefixPublished && tail.length === 5 && finalParity && finalStatus.head_id === latest.id && finalStatus.dirty_at === null,
+    note: "D1-backed reference protocol test. A separate repair_version lets later-than-watermark ingests proceed without invalidating the current prefix. It is not the production A7 implementation.",
   };
 }
+
 
 function livenessSimulation() {
   function rng(seed) {
