@@ -24,6 +24,9 @@ export interface ChessColorAsymmetryMetrics {
 }
 
 export interface LanguageFocusShiftMetrics {
+  // A6 §14.4: courses left out of the shares because their gain is not comparable, with the bound the series gives them.
+  // Present only when there is at least one; its absence keeps the finding byte-identical to the pre-A6 shape.
+  excludedCourses?: Array<{ courseId: string; state: NonComparableState; boundXp: number | null }>;
   previousCourseId: string;
   newCourseId: string;
   h1PreviousCourseShare: number;
@@ -66,9 +69,23 @@ export interface ChessTrajectoryInput extends ColorTally {
   h2: ColorTally;
 }
 
+// A6 (docs/contracts/2026-10-06-discarded-signals-contract.md §14.2). `courses` holds the observed gains (> 0); an observed 0 adds
+// nothing to a share. Everything else is a course whose gain in the half is NOT comparable and must never be read as 0.
 export interface LanguageEraCourseActivity {
   courseId: string;
   xp: number;
+}
+
+export type NonComparableState = "new_course" | "unknown" | "discontinuity";
+
+export interface NonComparableCourse {
+  courseId: string;
+  state: NonComparableState;
+  reason?: "not_observed_in_period" | "non_monotonic";
+  // U of §14.4: the gain in the half cannot exceed it, by what the series itself shows. null = no bound.
+  boundXp: number | null;
+  firstObservedAt?: string; // new_course
+  discontinuity?: { fromAt: string; toAt: string; xpBefore: number; xpAfter: number };
 }
 
 export interface LanguagesTrajectoryInput {
@@ -77,9 +94,11 @@ export interface LanguagesTrajectoryInput {
   activeDays: number;
   h1: {
     courses: LanguageEraCourseActivity[];
+    nonComparable?: NonComparableCourse[];
   };
   h2: {
     courses: LanguageEraCourseActivity[];
+    nonComparable?: NonComparableCourse[];
   };
 }
 
@@ -181,78 +200,109 @@ export function evaluateTrajectory(input: TrajectoryInput): TrajectoryEvaluation
     }
   }
 
-  // 2. Evaluate LANG_FOCUS_SHIFT_LONGITUDINAL
+  // 2. Evaluate LANG_FOCUS_SHIFT_LONGITUDINAL (no Evaluation: it has no contract of its own yet, §3.1)
   const lang = input.languages;
   if (lang.startedAt && lang.endedAt && lang.activeDays >= 60) {
-    const totalDays = Math.max(
-      0,
-      Math.floor(
-        (new Date(lang.endedAt).getTime() - new Date(lang.startedAt).getTime()) /
-          (1000 * 60 * 60 * 24)
-      )
-    );
+    const totalDays = daysBetween(lang.startedAt, lang.endedAt);
 
     if (totalDays >= 90) {
-      const h1TotalXp = lang.h1.courses.reduce((sum, c) => sum + c.xp, 0);
-      const h2TotalXp = lang.h2.courses.reduce((sum, c) => sum + c.xp, 0);
-
-      if (h1TotalXp > 0 && h2TotalXp > 0) {
-        // Find dominant course in H1 (share >= 60%, xp >= 2000)
-        const candidatePrev = lang.h1.courses.find(
-          (c) => c.xp >= 2000 && (c.xp / h1TotalXp) * 100 >= 60.0
-        );
-
-        if (candidatePrev) {
-          const h1PrevShare = (candidatePrev.xp / h1TotalXp) * 100;
-
-          // Find dominant course in H2 (share >= 60%, xp >= 2000, different from candidatePrev)
-          const candidateNew = lang.h2.courses.find(
-            (c) =>
-              c.courseId !== candidatePrev.courseId &&
-              c.xp >= 2000 &&
-              (c.xp / h2TotalXp) * 100 >= 60.0
-          );
-
-          if (candidateNew) {
-            const h2NewShare = (candidateNew.xp / h2TotalXp) * 100;
-
-            // Check previous course share in H2 <= 25%
-            const prevInH2 = lang.h2.courses.find((c) => c.courseId === candidatePrev.courseId);
-            const h2PrevShare = prevInH2 ? (prevInH2.xp / h2TotalXp) * 100 : 0;
-
-            // Check candidateNew was not already dominant in H1 (< 60%)
-            const newInH1 = lang.h1.courses.find((c) => c.courseId === candidateNew.courseId);
-            const h1NewShare = newInH1 ? (newInH1.xp / h1TotalXp) * 100 : 0;
-
-            if (h2PrevShare <= 25.0 && h1NewShare < 60.0) {
-              findings.push({
-                type: "LANG_FOCUS_SHIFT_LONGITUDINAL",
-                category: "languages",
-                temporalSpan: {
-                  startedAt: lang.startedAt,
-                  endedAt: lang.endedAt,
-                  totalDays,
-                  activeDays: lang.activeDays,
-                },
-                sample: {
-                  xpTotal: h1TotalXp + h2TotalXp,
-                },
-                metrics: {
-                  previousCourseId: candidatePrev.courseId,
-                  newCourseId: candidateNew.courseId,
-                  h1PreviousCourseShare: h1PrevShare,
-                  h1PreviousCourseXp: candidatePrev.xp,
-                  h2PreviousCourseShare: h2PrevShare,
-                  h2NewCourseShare: h2NewShare,
-                  h2NewCourseXp: candidateNew.xp,
-                },
-              });
-            }
-          }
-        }
+      const shift = focusShift(lang.h1.courses, lang.h2.courses);
+      // A6 §14.4 (P3): a course whose gain is not comparable does not silence the rule by existing, and it is never read as 0.
+      // The rule emits only if its conclusion is the same for every value the series allows those courses (0..U).
+      if (shift && determinableWithoutBias(lang)) {
+        const excluded = [
+          ...(lang.h1.nonComparable ?? []),
+          ...(lang.h2.nonComparable ?? []),
+        ];
+        const seen = new Set<string>();
+        const excludedCourses = excluded
+          .filter((c) => (seen.has(c.courseId) ? false : (seen.add(c.courseId), true)))
+          .map((c) => ({ courseId: c.courseId, state: c.state, boundXp: c.boundXp }));
+        findings.push({
+          type: "LANG_FOCUS_SHIFT_LONGITUDINAL",
+          category: "languages",
+          temporalSpan: {
+            startedAt: lang.startedAt,
+            endedAt: lang.endedAt,
+            totalDays,
+            activeDays: lang.activeDays,
+          },
+          sample: {
+            xpTotal: shift.h1TotalXp + shift.h2TotalXp,
+          },
+          metrics: {
+            ...(excludedCourses.length ? { excludedCourses } : {}),
+            previousCourseId: shift.prev.courseId,
+            newCourseId: shift.next.courseId,
+            h1PreviousCourseShare: shift.h1PrevShare,
+            h1PreviousCourseXp: shift.prev.xp,
+            h2PreviousCourseShare: shift.h2PrevShare,
+            h2NewCourseShare: shift.h2NewShare,
+            h2NewCourseXp: shift.next.xp,
+          },
+        });
       }
     }
   }
 
   return { findings, evaluations };
+}
+
+interface FocusShift {
+  prev: LanguageEraCourseActivity;
+  next: LanguageEraCourseActivity;
+  h1TotalXp: number;
+  h2TotalXp: number;
+  h1PrevShare: number;
+  h2PrevShare: number;
+  h2NewShare: number;
+}
+
+// The pre-A6 decision, unchanged (its thresholds belong to a contract that does not exist yet and are not approved here):
+// dominant course in H1 (share >= 60 %, xp >= 2000), another dominant course in H2, the old one <= 25 % in H2, the new one not
+// already dominant in H1.
+function focusShift(h1: LanguageEraCourseActivity[], h2: LanguageEraCourseActivity[]): FocusShift | null {
+  const h1TotalXp = h1.reduce((sum, c) => sum + c.xp, 0);
+  const h2TotalXp = h2.reduce((sum, c) => sum + c.xp, 0);
+  if (!(h1TotalXp > 0 && h2TotalXp > 0)) return null;
+
+  const prev = h1.find((c) => c.xp >= 2000 && (c.xp / h1TotalXp) * 100 >= 60.0);
+  if (!prev) return null;
+  const next = h2.find((c) => c.courseId !== prev.courseId && c.xp >= 2000 && (c.xp / h2TotalXp) * 100 >= 60.0);
+  if (!next) return null;
+
+  const h2PrevShare = ((h2.find((c) => c.courseId === prev.courseId)?.xp ?? 0) / h2TotalXp) * 100;
+  const h1NewShare = ((h1.find((c) => c.courseId === next.courseId)?.xp ?? 0) / h1TotalXp) * 100;
+  if (!(h2PrevShare <= 25.0 && h1NewShare < 60.0)) return null;
+
+  return { prev, next, h1TotalXp, h2TotalXp, h1PrevShare: (prev.xp / h1TotalXp) * 100, h2PrevShare, h2NewShare: (next.xp / h2TotalXp) * 100 };
+}
+
+const UNBOUNDED_XP = 1e9; // stands for "no bound": larger than any lifetime XP, so the share it could take is ~100 %
+const MAX_RANGE_COURSES = 12; // 2^12 combinations; beyond that the rule does not claim to be determinable
+
+// A6 §14.4.3: the conclusion must be the same for every value compatible with the evidence of the non-comparable courses.
+// Checked at the extremes of each range [0, U] (a safety check, not a proof for every interior value; contract §14.4 leaves
+// the method to the implementation).
+function determinableWithoutBias(lang: LanguagesTrajectoryInput): boolean {
+  const ranges: Array<{ half: 1 | 2; courseId: string; u: number }> = [];
+  for (const [half, h] of [[1, lang.h1], [2, lang.h2]] as const)
+    for (const c of h.nonComparable ?? []) ranges.push({ half, courseId: c.courseId, u: c.boundXp === null ? UNBOUNDED_XP : c.boundXp });
+  if (ranges.length === 0) return true;
+  if (ranges.length > MAX_RANGE_COURSES) return false;
+
+  const key = (h1: LanguageEraCourseActivity[], h2: LanguageEraCourseActivity[]) => {
+    const r = focusShift(h1, h2);
+    return r ? `${r.prev.courseId}>${r.next.courseId}` : "none";
+  };
+  const base = key(lang.h1.courses, lang.h2.courses);
+  for (let mask = 1; mask < 1 << ranges.length; mask++) {
+    const h1 = [...lang.h1.courses], h2 = [...lang.h2.courses];
+    ranges.forEach((r, i) => {
+      if (!(mask & (1 << i)) || r.u <= 0) return;
+      (r.half === 1 ? h1 : h2).push({ courseId: r.courseId, xp: r.u });
+    });
+    if (key(h1, h2) !== base) return false;
+  }
+  return true;
 }

@@ -5,6 +5,7 @@ import type {
   ChessTrajectoryInput,
   ColorTally,
   LanguagesTrajectoryInput,
+  NonComparableCourse,
 } from "../../domain/trajectory.ts";
 import { resolveUserIdWithD1 } from "./userIdResolution.ts";
 
@@ -133,37 +134,25 @@ export function createD1TrajectoryAdapter(db: D1Database): TrajectoryPort {
         .first<{ active_days: number }>();
       const activeDays = Number(xpDays?.active_days ?? 0);
 
-      // 2. Fetch boundary snapshots: start, mid, end
-      const [startSnap, midSnap, endSnap] = await Promise.all([
-        db
-          .prepare(`
-            SELECT raw_json FROM snapshots
-            WHERE source = 'duolingo-lang' AND user_id = ?
-            ORDER BY created_at ASC
-            LIMIT 1
-          `)
-          .bind(userId)
-          .first<{ raw_json: string }>(),
-        db
-          .prepare(`
-            SELECT raw_json FROM snapshots
-            WHERE source = 'duolingo-lang' AND user_id = ? AND created_at <= ?
-            ORDER BY created_at DESC
-            LIMIT 1
-          `)
-          .bind(userId, midAt)
-          .first<{ raw_json: string }>(),
-        db
-          .prepare(`
-            SELECT raw_json FROM snapshots
-            WHERE source = 'duolingo-lang' AND user_id = ? AND created_at <= ?
-            ORDER BY created_at DESC
-            LIMIT 1
-          `)
-          .bind(userId, endedAt)
-          .first<{ raw_json: string }>(),
+      // 2. Fetch boundary snapshots: start, mid, end. Auxiliary snapshots are NOT filtered (A6 §14.3): the catalog is complete in any
+      // snapshot (observation-model §4) and a snapshot that does not carry a course says nothing about it (§14.2).
+      // Reading the last few snapshots at each boundary (not just one) lets a course be found in its own last observation even when
+      // the very last snapshot is an auxiliary one that does not carry it. The limit is a cost bound tied to the open source decision
+      // (P2): if the course is in none of them it is `unknown`, never 0.
+      const RECENT_PER_BOUNDARY = 3;
+      type SnapRow = { id: string; created_at: string; raw_json: string };
+      const recent = async (at: string) =>
+        (await db
+          .prepare(`SELECT id, created_at, raw_json FROM snapshots WHERE source = 'duolingo-lang' AND user_id = ? AND created_at <= ? ORDER BY created_at DESC LIMIT ${RECENT_PER_BOUNDARY}`)
+          .bind(userId, at)
+          .all<SnapRow>()).results ?? [];
+      const [startSnap, midSnaps, endSnaps] = await Promise.all([
+        db.prepare(`SELECT id, created_at, raw_json FROM snapshots WHERE source = 'duolingo-lang' AND user_id = ? ORDER BY created_at ASC LIMIT 1`).bind(userId).first<SnapRow>(),
+        recent(midAt),
+        recent(endedAt),
       ]);
 
+      // Lifetime XP per course in one snapshot. An entry without a numeric `xp` is an observation WITHOUT XP: it is not a 0.
       function parseCourses(rawJson?: string | null): Map<string, number> {
         const map = new Map<string, number>();
         if (!rawJson) return map;
@@ -176,13 +165,12 @@ export function createD1TrajectoryAdapter(db: D1Database): TrajectoryPort {
             : [];
           for (const c of rawCourses) {
             const id = c.id ?? c.courseId;
-            const xp = Number(c.xp ?? 0);
             if (
               typeof id === "string" &&
-              !isNaN(xp) &&
+              typeof c.xp === "number" && Number.isFinite(c.xp) &&
               (c.subject === "language" || c.learningLanguage || id.startsWith("DUOLINGO_"))
             ) {
-              map.set(id, xp);
+              map.set(id, c.xp);
             }
           }
         } catch {
@@ -191,38 +179,58 @@ export function createD1TrajectoryAdapter(db: D1Database): TrajectoryPort {
         return map;
       }
 
-      const startCourses = parseCourses(startSnap?.raw_json);
-      const midCourses = parseCourses(midSnap?.raw_json ?? startSnap?.raw_json);
-      const endCourses = parseCourses(endSnap?.raw_json ?? midSnap?.raw_json);
+      // The observations read (at most three snapshots), one per snapshot id, in time order.
+      const seenIds = new Set<string>();
+      const snaps = [startSnap, ...midSnaps, ...endSnaps]
+        .filter((x): x is NonNullable<typeof x> => Boolean(x))
+        .filter((x) => (seenIds.has(x.id) ? false : (seenIds.add(x.id), true)))
+        .map((x) => ({ at: new Date(x.created_at).getTime(), xp: parseCourses(x.raw_json) }))
+        .sort((a, b) => a.at - b.at);
 
-      // Compute H1 course gains: mid - start
-      const allCourseIds = new Set<string>([
-        ...startCourses.keys(),
-        ...midCourses.keys(),
-        ...endCourses.keys(),
-      ]);
+      const series = new Map<string, Array<{ at: number; xp: number }>>();
+      for (const s of snaps) for (const [id, xp] of s.xp) (series.get(id) ?? series.set(id, []).get(id)!).push({ at: s.at, xp });
 
-      const h1Courses: Array<{ courseId: string; xp: number }> = [];
-      const h2Courses: Array<{ courseId: string; xp: number }> = [];
+      // A6 §14.2: the state of each course in the half (a, b] from ITS OWN observations.
+      function half(a: number, b: number) {
+        const courses: Array<{ courseId: string; xp: number }> = [];
+        const nonComparable: NonComparableCourse[] = [];
+        for (const [courseId, obs] of series) {
+          const oa = [...obs].reverse().find((o) => o.at <= a);
+          const inHalf = obs.filter((o) => o.at > a && o.at <= b);
+          const ob = inHalf[inHalf.length - 1];
+          const iso = (t: number) => new Date(t).toISOString();
 
-      for (const id of allCourseIds) {
-        const startXp = startCourses.get(id) ?? 0;
-        const midXp = midCourses.get(id) ?? startXp;
-        const endXp = endCourses.get(id) ?? midXp;
-
-        const h1Gain = Math.max(0, midXp - startXp);
-        const h2Gain = Math.max(0, endXp - midXp);
-
-        if (h1Gain > 0) h1Courses.push({ courseId: id, xp: h1Gain });
-        if (h2Gain > 0) h2Courses.push({ courseId: id, xp: h2Gain });
+          if (!ob) {
+            const next = obs.find((o) => o.at > b);
+            const bound = next ? next.xp - (oa?.xp ?? 0) : null;
+            nonComparable.push({ courseId, state: "unknown", reason: "not_observed_in_period", boundXp: bound !== null && bound >= 0 ? bound : null });
+            continue;
+          }
+          if (!oa) {
+            nonComparable.push({ courseId, state: "new_course", boundXp: obs[0]!.xp, firstObservedAt: iso(obs[0]!.at) });
+            continue;
+          }
+          const run = [oa, ...inHalf];
+          const drop = run.findIndex((o, i) => i > 0 && o.xp < run[i - 1]!.xp);
+          if (drop > 0) {
+            nonComparable.push({
+              courseId, state: "discontinuity", reason: "non_monotonic", boundXp: null,
+              discontinuity: { fromAt: iso(run[drop - 1]!.at), toAt: iso(run[drop]!.at), xpBefore: run[drop - 1]!.xp, xpAfter: run[drop]!.xp },
+            });
+            continue;
+          }
+          const gain = ob.xp - oa.xp;
+          if (gain > 0) courses.push({ courseId, xp: gain });
+        }
+        return { courses, nonComparable };
       }
 
       return {
         startedAt,
         endedAt,
         activeDays,
-        h1: { courses: h1Courses },
-        h2: { courses: h2Courses },
+        h1: half(startMs, midMs),
+        h2: half(midMs, endMs),
       };
     },
   };

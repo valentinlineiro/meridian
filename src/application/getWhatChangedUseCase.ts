@@ -1,6 +1,7 @@
 import type { WhatChangedPort } from "../ports/whatChangedPort.ts";
 import { NotFoundError } from "./errors.ts";
 import { newcombeDiff, scaleDelta, type Delta } from "../domain/proportion.ts";
+import { containedUtcDays } from "../domain/utcDays.ts";
 import {
   evaluateChanges,
   type Evaluation,
@@ -74,13 +75,14 @@ export async function getWhatChangedUseCase(
     );
   }
 
-  const [chessBase, chessInt, langBase, langTarget, langInt, histXpRate] = await Promise.all([
+  const [chessBase, chessInt, langBase, langTarget, langInt, histXpRate, histCoverage] = await Promise.all([
     port.getChessBaseline(userId, input.since),
     port.getChessInterval(userId, input.since, input.until),
     port.getLanguagesBaseline(userId, input.since),
     port.getLanguagesTarget(userId, input.until),
     port.getLanguagesInterval(userId, input.since, input.until),
     port.getHistoricalDailyXpRate(userId, input.since),
+    port.getHistoricalXpCoverage(userId, input.since),
   ]);
 
 
@@ -138,13 +140,11 @@ export async function getWhatChangedUseCase(
     currentCourseId !== null &&
     baselineCourseId !== currentCourseId;
 
-  // Duration in days
-  const durationMs = Math.max(
-    1,
-    new Date(input.until).getTime() - new Date(input.since).getTime()
-  );
-  const durationDays = durationMs / (1000 * 60 * 60 * 24);
-  const dailyXpRate = langInt.xpGained / durationDays;
+  // A5: the interval's XP and the rate's time base are the same whole UTC days. The rate is XP per day WITH A RECORD
+  // (provisional base, contract §13.5): the reference is measured the same way, so both sides are comparable.
+  const contained = containedUtcDays(input.since, input.until);
+  const observedDays = langInt.daysWithActivity;
+  const dailyXpRate = observedDays > 0 ? langInt.xpGained / observedDays : 0;
 
   // Streak calculations (symmetric point-in-time)
   const baselineStreak = langBase.data?.streak ?? null;
@@ -191,7 +191,12 @@ export async function getWhatChangedUseCase(
       historicalDelta,
     },
     languages: {
-      intervalDays: durationDays,
+      intervalDays: contained.count,
+      observedDays,
+      partialDaysExcluded: contained.partialDaysExcluded,
+      historicalObservedDays: histCoverage.observedDays,
+      historicalSpanDays: histCoverage.spanDays,
+      historicalSpanStart: histCoverage.spanStart,
       xpGained: langInt.xpGained,
       sessionsCount: langInt.sessionsCount,
       totalSessionMinutes: langInt.totalSessionMinutes,

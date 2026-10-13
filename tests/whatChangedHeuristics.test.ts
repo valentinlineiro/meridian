@@ -24,6 +24,7 @@ describe("What Changed Domain Heuristics", () => {
     },
     languages: {
       intervalDays: 7,
+      observedDays: 1, partialDaysExcluded: 0, historicalObservedDays: 1, historicalSpanDays: null, historicalSpanStart: null,
       xpGained: 0,
       sessionsCount: 0,
       totalSessionMinutes: 0,
@@ -119,7 +120,7 @@ describe("What Changed Domain Heuristics", () => {
     const finding = findings.find((f) => f.id === "LANG_XP_ACCELERATION");
     expect(finding).toBeDefined();
     expect(finding?.category).toBe("languages");
-    expect(finding?.claim).toBe("Tu XP diario en el periodo fue 2.0x tu media histórica.");
+    expect(finding?.claim).toBe("Tu XP por día con registro en el periodo fue 2.0x el de tu histórico.");
     expect(finding?.claim).not.toMatch(/aprendizaje/); // XP observed, not learning (amendment A3)
   });
 
@@ -129,6 +130,7 @@ describe("What Changed Domain Heuristics", () => {
       languages: {
         ...emptyDeltas.languages,
         intervalDays: 2.5,
+        observedDays: 1, partialDaysExcluded: 0, historicalObservedDays: 1, historicalSpanDays: null, historicalSpanStart: null,
         xpGained: 500,
         dailyXpRate: 200,
         historicalDailyXpRate: 50,

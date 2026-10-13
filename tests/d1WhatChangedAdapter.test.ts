@@ -521,7 +521,7 @@ describe("d1WhatChangedAdapter", () => {
   });
 
   describe("getLanguagesInterval", () => {
-    it("shouldAggregateXpSummariesAcrossCalendarDaysInSemiOpenInterval", async () => {
+    it("shouldAggregateXpSummariesOverWholeUtcDaysContainedInTheWindow", async () => {
       const { db, d1 } = setupTestDb();
       const adapter = createD1WhatChangedAdapter(d1);
 
@@ -537,7 +537,7 @@ describe("d1WhatChangedAdapter", () => {
       const day25Sec = day20Sec + daySec * 5;
       const day26Sec = day20Sec + daySec * 6;
 
-      // Day 20 (same date as since, should be excluded by (sinceDate, untilDate])
+      // Day 20 holds `since` (15:30): a partial day, excluded
       db.prepare(`
         INSERT INTO xp_summaries (user_id, date, gained_xp, num_sessions, total_session_time, updated_at)
         VALUES ('u_lang', ?, 200, 4, 800, '2026-09-20')
@@ -555,7 +555,7 @@ describe("d1WhatChangedAdapter", () => {
         VALUES ('u_lang', ?, 100, 3, 1200, '2026-09-22')
       `).run(day22Sec);
 
-      // Day 25 inside window (same date as until): 75 xp, 1 session, 300s
+      // Day 25 holds `until` (08:15): a partial day, excluded (A5 §13.2.1): 75 xp, 1 session, 300s
       db.prepare(`
         INSERT INTO xp_summaries (user_id, date, gained_xp, num_sessions, total_session_time, updated_at)
         VALUES ('u_lang', ?, 75, 1, 300, '2026-09-25')
@@ -569,11 +569,11 @@ describe("d1WhatChangedAdapter", () => {
 
       const interval = await adapter.getLanguagesInterval("u_lang", sinceIso, untilIso);
 
-      // 50 + 100 + 75 = 225 XP (excluding day 20 and day 26)
-      expect(interval.xpGained).toBe(225);
-      expect(interval.sessionsCount).toBe(6);
-      expect(interval.totalSessionMinutes).toBe(35); // (600 + 1200 + 300) / 60
-      expect(interval.daysWithActivity).toBe(3);
+      // 50 + 100 = 150 XP: only days 21 and 22 have a row among the whole days 21..24 (excluding partial days 20 and 25, and day 26)
+      expect(interval.xpGained).toBe(150);
+      expect(interval.sessionsCount).toBe(5);
+      expect(interval.totalSessionMinutes).toBe(30); // (600 + 1200) / 60
+      expect(interval.daysWithActivity).toBe(2);
     });
 
     it("shouldReturnZeroMetricsWhenSameDateProvidedForSinceAndUntil", async () => {

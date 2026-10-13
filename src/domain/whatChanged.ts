@@ -22,7 +22,13 @@ export interface ChessDeltas {
 }
 
 export interface LanguagesDeltas {
+  // A5: whole UTC days contained in the window (with or without a row), not elapsed time.
   intervalDays: number;
+  observedDays: number; // of those, days with a row: the base of the interval's rate (provisional, §13.5)
+  partialDaysExcluded: number;
+  historicalObservedDays: number;
+  historicalSpanDays: number | null; // descriptive coverage: no condition depends on it (O3)
+  historicalSpanStart: string | null;
   xpGained: number;
   sessionsCount: number;
   totalSessionMinutes: number;
@@ -210,12 +216,19 @@ export function evaluateChanges(
     const why = new Set<Reason>();
     if (l.intervalDays < CRITERIA.LANG_XP_ACCELERATION.minDays) why.add("span_too_short");
     if (l.xpGained < CRITERIA.LANG_XP_ACCELERATION.minXp) why.add("insufficient_sample");
+    // A5 §13.3: a rate over no day with a record is not defined (never "0 XP/day")
+    if (l.observedDays === 0) why.add("data_unavailable");
     if (!(l.historicalDailyXpRate > 0)) why.add("data_unavailable");
     else if (l.dailyXpRate < CRITERIA.LANG_XP_ACCELERATION.minRatio * l.historicalDailyXpRate) why.add("effect_below_threshold");
     const emitted = why.size === 0;
     evaluations.push({
       id: "LANG_XP_ACCELERATION", kind: "threshold", status: emitted ? "emitted" : "not_emitted", reasons: canonical(why),
-      metrics: numeric({ intervalDays: l.intervalDays, xpGained: l.xpGained, dailyRate: l.dailyXpRate, historicalRate: l.historicalDailyXpRate, ratio: l.historicalDailyXpRate > 0 ? l.dailyXpRate / l.historicalDailyXpRate : null }),
+      metrics: numeric({
+        intervalDays: l.intervalDays, xpGained: l.xpGained, dailyRate: l.observedDays > 0 ? l.dailyXpRate : null, historicalRate: l.historicalDailyXpRate,
+        ratio: l.observedDays > 0 && l.historicalDailyXpRate > 0 ? l.dailyXpRate / l.historicalDailyXpRate : null,
+        observedDays: l.observedDays, partialDaysExcluded: l.partialDaysExcluded, historicalObservedDays: l.historicalObservedDays,
+        historicalSpanDays: l.historicalSpanDays, historicalSpanStart: l.historicalSpanStart,
+      }),
       criteria: CRITERIA.LANG_XP_ACCELERATION,
     });
     if (emitted) {
@@ -224,8 +237,8 @@ export function evaluateChanges(
         id: "LANG_XP_ACCELERATION",
         category: "languages",
         title: "Mayor XP diario",
-        claim: `Tu XP diario en el periodo fue ${ratio}x tu media histórica.`,
-        evidence: `${Math.round(l.dailyXpRate)} XP/día en el intervalo vs ${Math.round(l.historicalDailyXpRate)} XP/día histórico (+${l.xpGained} XP).`,
+        claim: `Tu XP por día con registro en el periodo fue ${ratio}x el de tu histórico.`,
+        evidence: `${Math.round(l.dailyXpRate)} XP/día con registro en el intervalo vs ${Math.round(l.historicalDailyXpRate)} XP/día con registro histórico (+${l.xpGained} XP en ${l.observedDays} ${l.observedDays === 1 ? "día" : "días"} con registro).`,
         baselineAt: context.baselineAt,
         until: context.until,
         metrics: {

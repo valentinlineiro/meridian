@@ -31,7 +31,15 @@ export interface LanguagesPointInTime {
   observedAt: string;
 }
 
+// Descriptive only (A5 §13.3): no emission condition depends on observedDays / spanDays. null = no row before `before`.
+export interface HistoricalXpCoverage {
+  spanStart: string | null; // first UTC day with a row
+  spanDays: number | null; // every UTC day from spanStart to the last whole day before `before`, with or without a row
+  observedDays: number; // of those, days with a row
+}
+
 export interface LanguagesIntervalData {
+  // Over the whole UTC days contained in (since, until] (A5). daysWithActivity = days with a row (not days with XP > 0).
   xpGained: number;
   sessionsCount: number;
   totalSessionMinutes: number;
@@ -45,6 +53,8 @@ export interface WhatChangedPort {
   getLanguagesBaseline(userId: string, since: string): Promise<{ data: LanguagesPointInTime | null; status: "exactOrPrevious" | "firstHistorical" | "unavailable" }>;
   getLanguagesTarget(userId: string, until: string): Promise<{ data: LanguagesPointInTime | null; status: "exactOrPrevious" | "unavailable" }>;
   getLanguagesInterval(userId: string, since: string, until: string): Promise<LanguagesIntervalData>;
+  // XP per day WITH A RECORD over the whole UTC days that end at or before `before` (A5, provisional base §13.5).
   getHistoricalDailyXpRate(userId: string, before: string): Promise<number>;
+  getHistoricalXpCoverage(userId: string, before: string): Promise<HistoricalXpCoverage>;
 }
 
