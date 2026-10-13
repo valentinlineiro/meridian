@@ -55,18 +55,6 @@ jobs:
           db_id=$(echo "$response" | jq -r '.result.uuid')
           [ -n "$db_id" ] && [ "$db_id" != "null" ]
           echo "A7_TEST_D1_ID=$db_id" >> "$GITHUB_ENV"
-          runtime_name="meridian-a7-runtime-validation-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          runtime_response=$(curl --fail-with-body --silent --show-error \
-            -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database" \
-            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-            -H "Content-Type: application/json" \
-            --data "{\"name\":\"$runtime_name\",\"primary_location_hint\":\"WNAM\"}")
-          echo "$runtime_response" > /tmp/a7-runtime-d1-create.json
-          echo "$runtime_response" | jq -e '.success == true' >/dev/null
-          runtime_db_id=$(echo "$runtime_response" | jq -r '.result.uuid')
-          [ -n "$runtime_db_id" ] && [ "$runtime_db_id" != "null" ]
-          echo "A7_RUNTIME_D1_ID=$runtime_db_id" >> "$GITHUB_ENV"
-          echo "A7_RUNTIME_D1_NAME=$runtime_name" >> "$GITHUB_ENV"
           cat > wrangler.a7-validation.jsonc <<EOF
           {
             "name": "$WORKER_NAME",
@@ -79,12 +67,7 @@ jobs:
                 "binding": "DB",
                 "database_name": "meridian-a7-validation-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}",
                 "database_id": "$db_id"
-              },
-              {
-                "binding": "RUNTIME_DB",
-                "database_name": "$runtime_name",
-                "database_id": "$runtime_db_id"
-              }
+
             ]
           }
           EOF
@@ -223,13 +206,6 @@ jobs:
               -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN")
             echo "$db_delete" > /tmp/a7-d1-delete.json
             echo "$db_delete" | jq -e '.success == true' >/dev/null
-            if [ -n "${A7_RUNTIME_D1_ID:-}" ]; then
-              runtime_delete=$(curl --fail-with-body --silent --show-error -X DELETE \
-                "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$A7_RUNTIME_D1_ID" \
-                -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN")
-              echo "$runtime_delete" > /tmp/a7-runtime-d1-delete.json
-              echo "$runtime_delete" | jq -e '.success == true' >/dev/null
-            fi
-            echo "Temporary Worker and both D1 databases deletion confirmed."
+            echo "Temporary Worker and D1 deletion confirmed."
           fi
           rm -f wrangler.a7-validation.jsonc
