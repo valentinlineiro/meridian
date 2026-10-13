@@ -151,4 +151,5 @@ describe("A7 compact XP event series", () => {
     ).bind("u-a7", "duolingo-lang").first() as any;
     expect(finalStatus.head_at).toBe("2026-10-01T00:03:00.000Z");
     expect(finalStatus.dirty_at).toBeNull();
-  });});
+  });
+});
