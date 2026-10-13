@@ -26,7 +26,7 @@ async function ensureRuntimeSchema(db) {
 }
 
 async function runtimeIngest(db, snapshot) {
-  const statements = await compactXpIngestStatements(db, {
+  const statements = await compactXpIngestStatements(runtimeDb, {
     snapshotId: snapshot.id, userId: snapshot.user_id, source: snapshot.source,
     observedAt: snapshot.created_at, rawJson: snapshot.raw_json,
   });
@@ -39,9 +39,9 @@ async function runtimeIngest(db, snapshot) {
 
 function runtimeDbAdapter(db) {
   const rewrite = (sql) => sql
-    .replace(/\\bobservation_series_status\\b/g, "runtime_observation_series_status")
-    .replace(/\\bcourse_xp_events\\b/g, "runtime_course_xp_events")
-    .replace(/\\bsnapshots\\b/g, "runtime_snapshots");
+    .replace(/\bobservation_series_status\b/g, "runtime_observation_series_status")
+    .replace(/\bcourse_xp_events\b/g, "runtime_course_xp_events")
+    .replace(/\bsnapshots\b/g, "runtime_snapshots");
   return {
     prepare(sql) { return db.prepare(rewrite(sql)); },
     batch(statements) { return db.batch(statements); },
@@ -104,7 +104,7 @@ async function runtimeScenario(db) {
     };
   });
   await Promise.all(raceRows.map(async snapshot => {
-    const statements = await compactXpIngestStatements(db, {
+    const statements = await compactXpIngestStatements(runtimeDb, {
       snapshotId:snapshot.id, userId:snapshot.user_id, source:snapshot.source,
       observedAt:snapshot.created_at, rawJson:snapshot.raw_json,
     });
@@ -148,7 +148,7 @@ async function runtimeScenario(db) {
   const conflictTarget = make("conflict-2",conflictUser,t2,90,101);
   await runtimeDb.prepare("INSERT INTO snapshots(id,user_id,source,created_at,raw_json,checksum) VALUES(?,?,?,?,?,?)")
     .bind(conflictTarget.id,conflictTarget.user_id,conflictTarget.source,conflictTarget.created_at,conflictTarget.raw_json,conflictTarget.checksum).run();
-  const conflictStatements = await compactXpIngestStatements(db, {
+  const conflictStatements = await compactXpIngestStatements(runtimeDb, {
     snapshotId:conflictTarget.id, userId:conflictTarget.user_id, source:conflictTarget.source,
     observedAt:conflictTarget.created_at, rawJson:conflictTarget.raw_json,
   });
@@ -183,7 +183,7 @@ async function runtimeScenario(db) {
   const extraTarget = make("extra-2",extraUser,t2,100,101);
   await runtimeDb.prepare("INSERT INTO snapshots(id,user_id,source,created_at,raw_json,checksum) VALUES(?,?,?,?,?,?)")
     .bind(extraTarget.id,extraTarget.user_id,extraTarget.source,extraTarget.created_at,extraTarget.raw_json,extraTarget.checksum).run();
-  const extraStatements = await compactXpIngestStatements(db, {
+  const extraStatements = await compactXpIngestStatements(runtimeDb, {
     snapshotId:extraTarget.id, userId:extraTarget.user_id, source:extraTarget.source,
     observedAt:extraTarget.created_at, rawJson:extraTarget.raw_json,
   });
