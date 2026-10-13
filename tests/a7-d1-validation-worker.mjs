@@ -197,22 +197,40 @@ async function auditP1(db) {
 }
 
 async function measureChunk(db, chunkSize) {
-  const started = performance.now();
-  const result = await db.prepare("SELECT id, observed_at, raw_json FROM snapshots WHERE user_id='bench' AND source='bench' ORDER BY observed_at, id LIMIT ?").bind(chunkSize).all();
-  let parsedBytes = 0;
-  for (const row of result.results) {
-    JSON.parse(row.raw_json);
-    parsedBytes += row.raw_json.length;
+  const samples = [];
+  for (let i = 0; i < 5; i++) {
+    const started = performance.now();
+    const result = await db.prepare("SELECT id, observed_at, raw_json FROM snapshots WHERE user_id='bench' AND source='bench' ORDER BY observed_at, id LIMIT ?").bind(chunkSize).all();
+    let parsedBytes = 0;
+    for (const row of result.results) {
+      JSON.parse(row.raw_json);
+      parsedBytes += row.raw_json.length;
+    }
+    samples.push({
+      wallMs: Math.round((performance.now() - started) * 100) / 100,
+      reportedSqlDurationMs: Math.round(Number(result.meta?.duration ?? 0) * 1000) / 1000,
+      rowsRead: Number(result.meta?.rows_read ?? 0),
+      rowsWritten: Number(result.meta?.rows_written ?? 0),
+      payloadBytesParsed: parsedBytes,
+      snapshotsRead: result.results.length,
+    });
   }
+  const median = key => {
+    const sorted = samples.map(s => s[key]).sort((a,b) => a-b);
+    return sorted[Math.floor(sorted.length / 2)];
+  };
   return {
     requestedChunk: chunkSize,
-    snapshotsRead: result.results.length,
-    payloadBytesParsed: parsedBytes,
-    wallMs: Math.round((performance.now() - started) * 100) / 100,
-    reportedSqlDurationMs: Math.round(Number(result.meta?.duration ?? 0) * 1000) / 1000,
-    rowsRead: Number(result.meta?.rows_read ?? 0),
-    rowsWritten: Number(result.meta?.rows_written ?? 0),
-    note: "Single D1 query + parse, one run; use repeated samples before fixing K.",
+    repetitions: samples.length,
+    snapshotsRead: median("snapshotsRead"),
+    payloadBytesParsed: median("payloadBytesParsed"),
+    wallMs: median("wallMs"),
+    maxWallMs: Math.max(...samples.map(s => s.wallMs)),
+    reportedSqlDurationMs: median("reportedSqlDurationMs"),
+    rowsRead: median("rowsRead"),
+    rowsWritten: median("rowsWritten"),
+    samples,
+    note: "Five single-query + parse samples on disposable D1; median reported, maximum wall time retained.",
   };
 }
 
