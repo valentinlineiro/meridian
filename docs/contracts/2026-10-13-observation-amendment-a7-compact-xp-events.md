@@ -314,7 +314,7 @@ El hecho de partida: un `UPDATE … WHERE version = :v` que afecta a **0 filas n
 
 | # | Defecto | Efecto medido |
 |---|---|---|
-| 1 | Las lecturas y conteos de snapshots no filtraban por `user_id` y `source` | Con otros usuarios y una fuente `chess` en la misma tabla, **0 / 60** ensayos convergen; con el filtro, **60 / 60** |
+| 1 | Las lecturas y conteos de snapshots no filtraban por `user_id` y `source` | Con otros usuarios y una fuente `chess` en la misma tabla, **0 / 60** ensayos convergen con los filtros de #1 y #2 desactivados a la vez (no se aislaron por separado); con ambos, **60 / 60** |
 | 2 | La lectura de eventos para reconstruir el estado no filtraba por `user_id` | Un evento de otro usuario contaminaba el estado del propietario (mismo experimento) |
 | 3 | `DELETE` de eventos sin `user_id` | **No** observado (el dato de prueba quedó fuera del rango); riesgo a nivel de sentencia |
 | 4 | Inserción de eventos sin `ON CONFLICT` | Un evento ya existente abortaría **toda** la ingesta y el snapshot (evidencia) no se guardaría. Con `DO NOTHING` el batch se confirma, el snapshot se guarda y la fila conflictiva se conserva; la corrupción la detecta I2 |
