@@ -7,7 +7,7 @@ const clear = { diff: 40, lower: 10, upper: 60 }, wide = { diff: 40, lower: -16,
 type Over = { chess?: Partial<WhatChangedDeltas["chess"]>; languages?: Partial<WhatChangedDeltas["languages"]> };
 const deltas = (o: Over = {}): WhatChangedDeltas => ({
   chess: { gamesCount: 20, decidedCount: 20, ratingDelta: 0, baselineRating: 800, currentRating: 800, intervalWinRate: 50, intervalWhiteWinRate: 70, intervalBlackWinRate: 30, historicalWinRateDelta: null, colorDelta: clear, historicalDelta: null, ...o.chess },
-  languages: { intervalDays: 7, xpGained: 500, sessionsCount: 5, totalSessionMinutes: 60, baselineCourseId: "A", currentCourseId: "A", courseChanged: false, dailyXpRate: 100, historicalDailyXpRate: 50, ...o.languages },
+  languages: { intervalDays: 7, observedDays: 1, partialDaysExcluded: 0, historicalObservedDays: 1, historicalSpanDays: null, historicalSpanStart: null, xpGained: 500, sessionsCount: 5, totalSessionMinutes: 60, baselineCourseId: "A", currentCourseId: "A", courseChanged: false, dailyXpRate: 100, historicalDailyXpRate: 50, ...o.languages },
   streak: { baselineStreak: 10, currentStreak: 12, streakDelta: 2, status: "active", streakStarted: false, streakMilestone: null },
 });
 const payload = (o: Over = {}) => {
@@ -78,12 +78,12 @@ describe("evaluation cards (P0)", () => {
 
   it("shouldNotRenderMissingHistoricalReferenceAsZeroWhenRateHasNoReference", () => {
     const h = html({ languages: { historicalDailyXpRate: 0, dailyXpRate: 15, xpGained: 1355 } });
-    expect(h).toContain("15 XP/día en la ventana; no hay referencia histórica disponible (+1355 XP)");
-    expect(h).not.toContain("0 XP/día histórico");
+    expect(h).toContain("15 XP por día con registro en la ventana; no hay referencia histórica disponible (+1355 XP)");
+    expect(h).not.toContain("0 XP por día con registro histórico");
   });
 
   it("shouldShowHistoricalReferenceWhenItExists", () => {
-    expect(html({ languages: { historicalDailyXpRate: 50, dailyXpRate: 20, xpGained: 140, intervalDays: 7 } })).toContain("20 XP/día en la ventana vs 50 XP/día histórico (+140 XP)");
+    expect(html({ languages: { historicalDailyXpRate: 50, dailyXpRate: 20, xpGained: 140, intervalDays: 7 } })).toContain("20 XP por día con registro en la ventana vs 50 XP por día con registro histórico (+140 XP)");
   });
 
   it("shouldMarkRatingJumpInsuficienteWhenNoRatingIsObservedInTheWindow", () => {

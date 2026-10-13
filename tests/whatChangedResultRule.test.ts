@@ -55,6 +55,7 @@ function port(interval: Partial<Awaited<ReturnType<WhatChangedPort["getChessInte
     getLanguagesBaseline: async () => none, getLanguagesTarget: async () => none,
     getLanguagesInterval: async () => ({ xpGained: 0, sessionsCount: 0, totalSessionMinutes: 0, daysWithActivity: 0 }),
     getHistoricalDailyXpRate: async () => 0,
+    getHistoricalXpCoverage: async () => ({ spanStart: null, spanDays: null, observedDays: 0 }),
   };
 }
 
@@ -77,7 +78,7 @@ describe("what-changed result rule (use case)", () => {
 describe("what-changed evidence gate", () => {
   const deltas = (gamesCount: number, decidedCount: number): WhatChangedDeltas => ({
     chess: { gamesCount, decidedCount, ratingDelta: 0, baselineRating: null, currentRating: null, intervalWinRate: 50, intervalWhiteWinRate: 70, intervalBlackWinRate: 30, historicalWinRateDelta: null, colorDelta: { diff: 40, lower: 5, upper: 70 }, historicalDelta: null },
-    languages: { intervalDays: 7, xpGained: 0, sessionsCount: 0, totalSessionMinutes: 0, baselineCourseId: null, currentCourseId: null, courseChanged: false, dailyXpRate: 0, historicalDailyXpRate: 0 },
+    languages: { intervalDays: 7, observedDays: 1, partialDaysExcluded: 0, historicalObservedDays: 1, historicalSpanDays: null, historicalSpanStart: null, xpGained: 0, sessionsCount: 0, totalSessionMinutes: 0, baselineCourseId: null, currentCourseId: null, courseChanged: false, dailyXpRate: 0, historicalDailyXpRate: 0 },
     streak: { baselineStreak: null, currentStreak: null, streakDelta: null, status: "active", streakStarted: false, streakMilestone: null },
   });
   const ctx = { userId: "u1", baselineAt: SINCE, until: UNTIL };

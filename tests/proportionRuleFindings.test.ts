@@ -16,6 +16,7 @@ function port(interval: Record<string, number>): WhatChangedPort {
     getLanguagesBaseline: async () => none, getLanguagesTarget: async () => none,
     getLanguagesInterval: async () => ({ xpGained: 0, sessionsCount: 0, totalSessionMinutes: 0, daysWithActivity: 0 }),
     getHistoricalDailyXpRate: async () => 0,
+    getHistoricalXpCoverage: async () => ({ spanStart: null, spanDays: null, observedDays: 0 }),
   };
 }
 const asym = (r: any) => r.findings.find((f: any) => f.id === "CHESS_COLOR_ASYMMETRY");
@@ -57,7 +58,7 @@ describe("what-changed gates are independent", () => {
   const clear = { diff: 30, lower: 5, upper: 55 }, wide = { diff: 30, lower: -5, upper: 65 };
   const d = (decidedCount: number, white: number, black: number, colorDelta: any): WhatChangedDeltas => ({
     chess: { gamesCount: decidedCount, decidedCount, ratingDelta: 0, baselineRating: null, currentRating: null, intervalWinRate: 50, intervalWhiteWinRate: white, intervalBlackWinRate: black, historicalWinRateDelta: null, colorDelta, historicalDelta: null },
-    languages: { intervalDays: 7, xpGained: 0, sessionsCount: 0, totalSessionMinutes: 0, baselineCourseId: null, currentCourseId: null, courseChanged: false, dailyXpRate: 0, historicalDailyXpRate: 0 },
+    languages: { intervalDays: 7, observedDays: 1, partialDaysExcluded: 0, historicalObservedDays: 1, historicalSpanDays: null, historicalSpanStart: null, xpGained: 0, sessionsCount: 0, totalSessionMinutes: 0, baselineCourseId: null, currentCourseId: null, courseChanged: false, dailyXpRate: 0, historicalDailyXpRate: 0 },
     streak: { baselineStreak: null, currentStreak: null, streakDelta: null, status: "active", streakStarted: false, streakMilestone: null },
   });
   const emits = (x: WhatChangedDeltas) => evaluateSignificantChanges(x, ctx).some((f) => f.id === "CHESS_COLOR_ASYMMETRY");

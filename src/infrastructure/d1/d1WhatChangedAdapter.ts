@@ -5,8 +5,10 @@ import type {
   ChessIntervalData,
   LanguagesPointInTime,
   LanguagesIntervalData,
+  HistoricalXpCoverage,
 } from "../../ports/whatChangedPort.ts";
 import { summarize } from "../../domain/result.ts";
+import { containedUtcDays, lastReferenceDaySec } from "../../domain/utcDays.ts";
 
 // Amendment A4 (docs/contracts/2026-10-06-discarded-signals-contract.md §12). A snapshot observes ONE account ELO, copied by
 // ingestion onto every game it saw for the first time (matches.page_elo). That value belongs only to the anchor of the batch:
@@ -352,34 +354,24 @@ export function createD1WhatChangedAdapter(db: D1Database): WhatChangedPort {
       since: string,
       until: string
     ): Promise<LanguagesIntervalData> {
-      // xp_summaries.date is stored as midnight UTC (YYYY-MM-DD 00:00:00 UTC) epoch seconds
-      const sinceDate = since.slice(0, 10);
-      const untilDate = until.slice(0, 10);
-      const sinceDaySec = Math.floor(new Date(sinceDate + "T00:00:00Z").getTime() / 1000);
-      const untilDaySec = Math.floor(new Date(untilDate + "T00:00:00Z").getTime() / 1000);
-
-      // (since, until] semantics over calendar days:
-      // Activity must have occurred on calendar days strictly after since's date and on or before until's date
-      if (untilDaySec <= sinceDaySec) {
-        return {
-          xpGained: 0,
-          sessionsCount: 0,
-          totalSessionMinutes: 0,
-          daysWithActivity: 0,
-        };
+      // A5: XP only over the UTC days entirely inside (since, until]; the days holding the edges are partial and excluded.
+      const { firstDaySec, count } = containedUtcDays(since, until);
+      if (count === 0) {
+        return { xpGained: 0, sessionsCount: 0, totalSessionMinutes: 0, daysWithActivity: 0 };
       }
+      const untilSec = Math.floor(new Date(until).getTime() / 1000);
 
       const xpSum = await db
         .prepare(`
-          SELECT 
+          SELECT
             SUM(gained_xp) as xp_gained,
             SUM(num_sessions) as sessions_count,
             SUM(total_session_time) as total_time,
             COUNT(DISTINCT date) as days_with_activity
           FROM xp_summaries
-          WHERE user_id = ? AND date > ? AND date <= ?
+          WHERE user_id = ? AND date >= ? AND date + 86400 <= ?
         `)
-        .bind(userId, sinceDaySec, untilDaySec)
+        .bind(userId, firstDaySec, untilSec)
         .first<{
           xp_gained: number | null;
           sessions_count: number | null;
@@ -396,21 +388,34 @@ export function createD1WhatChangedAdapter(db: D1Database): WhatChangedPort {
     },
 
     async getHistoricalDailyXpRate(userId: string, before: string): Promise<number> {
-      const beforeDate = before.slice(0, 10);
-      const beforeDaySec = Math.floor(new Date(beforeDate + "T00:00:00Z").getTime() / 1000);
+      // Whole UTC days that end at or before `before`: the same boundary that closes the reference in A5, disjoint from the interval.
       const row = await db
         .prepare(`
-          SELECT 
+          SELECT
             SUM(gained_xp) as total_xp,
             COUNT(DISTINCT date) as days_count
           FROM xp_summaries
           WHERE user_id = ? AND date <= ?
         `)
-        .bind(userId, beforeDaySec)
+        .bind(userId, lastReferenceDaySec(before))
         .first<{ total_xp: number | null; days_count: number }>();
 
       if (!row || !row.days_count || row.days_count === 0) return 0;
-      return (row.total_xp ?? 0) / Math.max(1, row.days_count);
+      return (row.total_xp ?? 0) / row.days_count;
+    },
+
+    async getHistoricalXpCoverage(userId: string, before: string): Promise<HistoricalXpCoverage> {
+      const last = lastReferenceDaySec(before);
+      const row = await db
+        .prepare(`SELECT MIN(date) as first_day, COUNT(DISTINCT date) as observed FROM xp_summaries WHERE user_id = ? AND date <= ?`)
+        .bind(userId, last)
+        .first<{ first_day: number | null; observed: number }>();
+      if (!row || row.first_day === null || !row.observed) return { spanStart: null, spanDays: null, observedDays: 0 };
+      return {
+        spanStart: new Date(row.first_day * 1000).toISOString().slice(0, 10),
+        spanDays: (last - row.first_day) / 86_400 + 1,
+        observedDays: Number(row.observed),
+      };
     },
   };
 }

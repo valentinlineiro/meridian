@@ -50,7 +50,7 @@ describe("K7: xp_summaries.daily_goal_xp", () => {
   });
 
   it("shouldNormalizeDailyGoalXpAsNullWhenAbsent", () => {
-    const n = normalizeLanguagePayload({ userId: "u1", data: { xpSummaries: [{ date: 1, dailyGoalXp: 50 }, { date: 2 }] } });
+    const n = normalizeLanguagePayload({ userId: "u1", data: { xpSummaries: [{ date: 1, gainedXp: 10, dailyGoalXp: 50 }, { date: 2, gainedXp: 10 }] } });
     expect(n.xpSummaries.map((s) => s.dailyGoalXp)).toEqual([50, null]);
   });
 });

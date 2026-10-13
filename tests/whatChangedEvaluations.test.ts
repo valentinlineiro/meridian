@@ -11,7 +11,7 @@ const clear = { diff: 40, lower: 10, upper: 60 }, wide = { diff: 40, lower: -16,
 type Over = { chess?: Partial<WhatChangedDeltas["chess"]>; languages?: Partial<WhatChangedDeltas["languages"]>; streak?: Partial<WhatChangedDeltas["streak"]> };
 const deltas = (o: Over = {}): WhatChangedDeltas => ({
   chess: { gamesCount: 20, decidedCount: 20, ratingDelta: 0, baselineRating: 800, currentRating: 800, intervalWinRate: 50, intervalWhiteWinRate: 70, intervalBlackWinRate: 30, historicalWinRateDelta: null, colorDelta: clear, historicalDelta: null, ...o.chess },
-  languages: { intervalDays: 7, xpGained: 500, sessionsCount: 5, totalSessionMinutes: 60, baselineCourseId: "A", currentCourseId: "A", courseChanged: false, dailyXpRate: 100, historicalDailyXpRate: 50, ...o.languages },
+  languages: { intervalDays: 7, observedDays: 1, partialDaysExcluded: 0, historicalObservedDays: 1, historicalSpanDays: null, historicalSpanStart: null, xpGained: 500, sessionsCount: 5, totalSessionMinutes: 60, baselineCourseId: "A", currentCourseId: "A", courseChanged: false, dailyXpRate: 100, historicalDailyXpRate: 50, ...o.languages },
   streak: { baselineStreak: 10, currentStreak: 12, streakDelta: 2, status: "active", streakStarted: false, streakMilestone: null, ...o.streak },
 });
 const evalOf = (id: string, o: Over = {}) => evaluateChanges(deltas(o), ctx).evaluations.find((e) => e.id === id)!;
@@ -21,7 +21,9 @@ const evalOf = (id: string, o: Over = {}) => evaluateChanges(deltas(o), ctx).eva
 const amendedWording = (fs: any[]) => fs.map((f) => f.id !== "LANG_XP_ACCELERATION" ? f : {
   ...f,
   title: "Mayor XP diario",
-  claim: f.claim.replace(/^Aceleración en tu ritmo de aprendizaje: creció (.+)x sobre tu media histórica\.$/, "Tu XP diario en el periodo fue $1x tu media histórica."),
+  claim: f.claim.replace(/^Aceleración en tu ritmo de aprendizaje: creció (.+)x sobre tu media histórica\.$/, "Tu XP por día con registro en el periodo fue $1x el de tu histórico."),
+  // A5 (§13.5/C5): the wording names the metric exactly: XP per day WITH A RECORD. The fixtures have one observed day.
+  evidence: f.evidence.replace(/^(\d+) XP\/día en el intervalo vs (\d+) XP\/día histórico \(\+(\d+) XP\)\.$/, "$1 XP/día con registro en el intervalo vs $2 XP/día con registro histórico (+$3 XP en 1 día con registro)."),
 });
 
 describe("golden: findings are unchanged by the evaluation refactor", () => {
@@ -105,7 +107,7 @@ describe("LANG_XP_ACCELERATION evaluation", () => {
     expect(evalOf("LANG_XP_ACCELERATION", { languages: { dailyXpRate: 100, historicalDailyXpRate: 50, ...languages } as any }).reasons).toEqual([reason]);
   });
   it("shouldCombineSpanVolumeAndEffectReasons", () => {
-    expect(evalOf("LANG_XP_ACCELERATION", { languages: { intervalDays: 1, xpGained: 10, dailyXpRate: 10, historicalDailyXpRate: 50 } }).reasons)
+    expect(evalOf("LANG_XP_ACCELERATION", { languages: { intervalDays: 1, observedDays: 1, partialDaysExcluded: 0, historicalObservedDays: 1, historicalSpanDays: null, historicalSpanStart: null, xpGained: 10, dailyXpRate: 10, historicalDailyXpRate: 50 } }).reasons)
       .toEqual(["insufficient_sample", "effect_below_threshold", "span_too_short"]);
   });
 });
@@ -175,6 +177,7 @@ describe("what-changed use case transports evaluations", () => {
     getLanguagesBaseline: async () => none, getLanguagesTarget: async () => none,
     getLanguagesInterval: async () => ({ xpGained: 0, sessionsCount: 0, totalSessionMinutes: 0, daysWithActivity: 0 }),
     getHistoricalDailyXpRate: async () => 0,
+    getHistoricalXpCoverage: async () => ({ spanStart: null, spanDays: null, observedDays: 0 }),
   });
 
   it("shouldReportTheFiveVsFiveCaseAsInconclusiveWithoutAddingAFinding", async () => {

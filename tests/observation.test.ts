@@ -56,6 +56,7 @@ describe("windowDelta vs existing chess win-rate delta", () => {
       getLanguagesTarget: async () => ({ status: "unavailable", data: null }),
       getLanguagesInterval: async () => ({ xpGained: 0, sessionsCount: 0, totalSessionMinutes: 0, daysWithActivity: 0 }),
       getHistoricalDailyXpRate: async () => 0,
+      getHistoricalXpCoverage: async () => ({ spanStart: null, spanDays: null, observedDays: 0 }),
     } as unknown as WhatChangedPort;
     const existing = await getWhatChangedUseCase(port, { since: "2026-09-24T00:00:00.000Z", until: "2026-10-01T00:00:00.000Z", userId: "u" });
     const generic = windowDelta(games(lifetime[0], lifetime[1], "p"), games(interval[0], interval[1], "i"), winRate);

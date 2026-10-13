@@ -1487,10 +1487,10 @@ function evalReasonText(e, r){
   if(r === 'data_unavailable') return 'No hay dos observaciones de ELO en snapshots distintos alrededor de la ventana.';
  }
  if(id === 'LANG_XP_ACCELERATION'){
-  if(r === 'span_too_short') return 'La ventana cubre ' + f(m.intervalDays, 0) + ' días; ' + need(k.minDays, '') + '.';
+  if(r === 'span_too_short') return 'La ventana contiene ' + f(m.intervalDays, 0) + ' días completos (UTC)' + (m.partialDaysExcluded ? '; ' + m.partialDaysExcluded + ' parcial(es) excluido(s)' : '') + '; ' + need(k.minDays, '') + '.';
   if(r === 'insufficient_sample') return f(m.xpGained, 0) + ' XP ganados en la ventana; ' + need(k.minXp, '') + '.';
   if(r === 'effect_below_threshold') return 'XP diario observado: ' + f(m.ratio) + '× la media histórica; ' + need(k.minRatio, '×') + '.';
-  if(r === 'data_unavailable') return 'No hay media histórica de referencia.';
+  if(r === 'data_unavailable') return (m.observedDays === 0 ? 'Ningún día de la ventana tiene registro de XP. ' : '') + (m.historicalRate > 0 ? '' : 'No hay media histórica de referencia.');
  }
  return {insufficient_sample:'Muestra insuficiente.', effect_below_threshold:'El efecto observado no alcanza el criterio.', interval_includes_zero:'El intervalo de confianza incluye 0.', persistence_not_met:'El efecto no se mantiene en ambas mitades del historial.', span_too_short:'La ventana es demasiado corta.', data_unavailable:'Faltan datos necesarios.'}[r] || r;
 }
@@ -1501,8 +1501,8 @@ function evalObserved(id, m){
  if(id === 'CHESS_RATING_JUMP' && m.baselineRating != null && m.currentRating != null) return 'ELO leído en snapshots: ' + m.baselineRating + ' → ' + m.currentRating + ' (' + m.gamesCount + ' partidas en la ventana)';
  if(id === 'LANG_XP_ACCELERATION' && m.dailyRate != null){
   // a historical rate of 0 means "no reference" (data_unavailable), not an observed 0 XP/day
-  const ref = m.historicalRate > 0 ? ' vs ' + f(m.historicalRate, 0) + ' XP/día histórico' : '; no hay referencia histórica disponible';
-  return f(m.dailyRate, 0) + ' XP/día en la ventana' + ref + ' (+' + m.xpGained + ' XP)';
+  const ref = m.historicalRate > 0 ? ' vs ' + f(m.historicalRate, 0) + ' XP por día con registro histórico' : '; no hay referencia histórica disponible';
+  return f(m.dailyRate, 0) + ' XP por día con registro en la ventana' + ref + ' (+' + m.xpGained + ' XP)';
  }
  return '';
 }

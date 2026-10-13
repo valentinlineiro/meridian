@@ -9,7 +9,7 @@ describe("epistemic wording", () => {
     expect(DASHBOARD_HTML).not.toMatch(/significativ/i);
     const f = evaluateSignificantChanges({
       chess: { gamesCount: 40, decidedCount: 40, ratingDelta: 0, baselineRating: null, currentRating: null, intervalWinRate: 50, intervalWhiteWinRate: 75, intervalBlackWinRate: 25, historicalWinRateDelta: null, colorDelta: { diff: 50, lower: 28.4, upper: 66.1 }, historicalDelta: null },
-      languages: { intervalDays: 7, xpGained: 0, sessionsCount: 0, totalSessionMinutes: 0, baselineCourseId: null, currentCourseId: null, courseChanged: false, dailyXpRate: 0, historicalDailyXpRate: 0 },
+      languages: { intervalDays: 7, observedDays: 1, partialDaysExcluded: 0, historicalObservedDays: 1, historicalSpanDays: null, historicalSpanStart: null, xpGained: 0, sessionsCount: 0, totalSessionMinutes: 0, baselineCourseId: null, currentCourseId: null, courseChanged: false, dailyXpRate: 0, historicalDailyXpRate: 0 },
       streak: { baselineStreak: null, currentStreak: null, streakDelta: null, status: "active", streakStarted: false, streakMilestone: null },
     }, { userId: "u", baselineAt: "a", until: "b" }).find((x) => x.id === "CHESS_COLOR_ASYMMETRY")!;
     expect(f.claim).not.toMatch(/significativ/i);

@@ -1,7 +1,7 @@
 # Contrato: señales descartadas (evaluaciones de hallazgo)
 
 **Fecha:** 2026-10-06
-**Estado:** 🔒 **CONGELADO (2026-10-06), sin implementar.** D1–D4, D6 y D7 aprobadas; D5 y D8 fuera de este contrato (§7). `LANG_FOCUS_SHIFT_LONGITUDINAL` pendiente de un contrato propio. Cualquier cambio posterior entra por enmienda explícita. **Enmienda A3 (2026-10-08, aprobada y desplegada, §10): criterios en la evaluación y redacción de `LANG_XP_ACCELERATION`.** **Enmienda A4 (2026-10-09, aprobada e implementada, §12): el ELO de un snapshot solo se atribuye a la partida ancla de su lote; excepción acotada a la igualdad de `findings` de D3.** **Enmienda A2 (2026-10-08, aprobada y desplegada, §9): `CHESS_RATING_JUMP` — sin ELO observado en la ventana no es "Δ = 0".** **Enmienda 2026-10-06:** el invariante de trazabilidad de §4 pasa de igualdad a inclusión (*Inconcluso* ⊇ eliminados por IC); la definición operativa y §8 no cambian.
+**Estado:** 🔒 **CONGELADO (2026-10-06), sin implementar.** D1–D4, D6 y D7 aprobadas; D5 y D8 fuera de este contrato (§7). `LANG_FOCUS_SHIFT_LONGITUDINAL` pendiente de un contrato propio. Cualquier cambio posterior entra por enmienda explícita. **Enmienda A3 (2026-10-08, aprobada y desplegada, §10): criterios en la evaluación y redacción de `LANG_XP_ACCELERATION`.** **Enmienda A4 (2026-10-09, aprobada e implementada, §12): el ELO de un snapshot solo se atribuye a la partida ancla de su lote; excepción acotada a la igualdad de `findings` de D3.** **Enmiendas A5 y A6 (2026-10-13, §13 y §14; sin implementar): A5 aprobada parcialmente (§13.2–13.4; §13.5 abierta) y A6 aprobada con condición explícita (§14.4 y §14.2); comparabilidad de la tasa de XP de `LANG_XP_ACCELERATION` y ganancia comparable por curso en Trayectoria. La aprobación del texto no autoriza la implementación.** **Enmienda A2 (2026-10-08, aprobada y desplegada, §9): `CHESS_RATING_JUMP` — sin ELO observado en la ventana no es "Δ = 0".** **Enmienda 2026-10-06:** el invariante de trazabilidad de §4 pasa de igualdad a inclusión (*Inconcluso* ⊇ eliminados por IC); la definición operativa y §8 no cambian.
 **Origen:** hoy un hallazgo cuya evidencia no basta **desaparece**: What-changed y Trayectoria solo devuelven lo que se emite. Tras P1.5 eso oculta la distinción más útil: *"no hay señal"* frente a *"hay indicio, pero los datos no permiten afirmarlo"*. Es también el requisito previo de cualquier capa de interpretación (LLM): esta no debe decidir qué se descartó ni por qué.
 
 **Principio:** *Insufficient evidence no significa ausencia de señal.* Meridian decide, de forma determinista, qué se afirma, qué queda inconcluso y por qué. Nada de esto lo decide un modelo.
@@ -82,9 +82,9 @@ Correspondencia con las reglas vigentes (comprobada contra el código):
 | `CHESS_RATING_JUMP` | ELO inicial y final disponibles | `data_unavailable` |
 | | dos ELO observados en snapshots distintos (anclas) alrededor de la ventana (A4, §12) | `data_unavailable` |
 | | \|Δ ELO\| ≥ 25 | `effect_below_threshold` |
-| `LANG_XP_ACCELERATION` | intervalo ≥ 3 días | `span_too_short` |
+| `LANG_XP_ACCELERATION` | intervalo ≥ 3 días (A5, §13.4: días naturales completos contenidos en la ventana, no tiempo transcurrido) | `span_too_short` |
 | | XP ganado ≥ 200 | `insufficient_sample` |
-| | tasa histórica > 0 | `data_unavailable` |
+| | tasa histórica definida y > 0 (A5, §13.4: sin días con registro en la referencia, la tasa no está definida) | `data_unavailable` |
 | | ritmo ≥ 1,3 × histórico | `effect_below_threshold` |
 
 **No representable con este enumerado: `LANG_FOCUS_SHIFT_LONGITUDINAL`.** Sus condiciones se evalúan sobre *candidatos* (cursos) y no sobre una sola magnitud: "curso dominante en H1 (≥ 60 % y ≥ 2000 XP)", "otro curso dominante en H2", "el anterior ≤ 25 % en H2", "el nuevo no era ya dominante en H1". Elegir qué candidato explica el descarte y cómo nombrar "el nuevo ya era dominante" (no es umbral de efecto ni persistencia) es una decisión propia. **Queda fuera de este contrato**: no genera evaluaciones hasta resolverla aparte.
@@ -136,7 +136,7 @@ Se derivan **solo de la evaluación transportada** (`status`, `reasons` y `metri
 - *Inconcluso* ⊇ hallazgos eliminados por la condición de IC de A(b): 5 vs 5 con +40 pp → inconcluso con `interval_includes_zero`; 9 decididas con +30 pp → `insufficient_sample` e inconcluso solo si el resto de condiciones pasan.
 - `data_unavailable` nunca se confunde con `effect_below_threshold`.
 - Ninguna evaluación de tipo `event`.
-- **Invariante de oro (D3)** *(con la excepción acotada de A4, §12.5)*: para los mismos inputs, `findings` es idéntico antes y después (mismo contenido, mismo orden); evaluar todas las condiciones solo amplía `evaluations`.
+- **Invariante de oro (D3)** *(con la excepción acotada de A4, §12.5, y las de A5, §13.6, y A6, §14.6, aprobadas el 2026-10-13 y aún sin implementar)*: para los mismos inputs, `findings` es idéntico antes y después (mismo contenido, mismo orden); evaluar todas las condiciones solo amplía `evaluations`.
 - Los motivos no dependen del orden en que se evalúan las condiciones.
 
 ---
@@ -331,3 +331,242 @@ El propietario aprueba (2026-10-09) esta precisión: lo que se preserva no es qu
 10. Empate en el máximo `played_at` del lote del **baseline**: sin ELO ni `ratingAt`; combinado con un ancla posterior válida, `ratingDelta` es `null` (ni 0 ni un valor inventado).
 11. `baselineRatingAt` / `currentRatingAt` son el `played_at` del ancla y pueden diferir de `baseline.observedAt`.
 12. Los hallazgos y evaluaciones distintos de `CHESS_RATING_JUMP` no dependen de las observaciones de ELO (mismos datos de partidas y XP con y sin ELO ⇒ igualdad), además del golden de `evaluateChanges` (el dominio no cambia en este PR).
+
+---
+
+## 13. Enmienda A5 (2026-10-13) — la tasa de XP compara días naturales con días naturales
+
+**Estado:** ✅ **aprobada parcialmente por el propietario (2026-10-13); sin implementar.**
+- **Aprobado (§13.2–13.4):** unidades temporales equivalentes, días naturales UTC completos, exclusión explícita de los extremos parciales, y un dato desconocido no es 0.
+- **Aceptado para avanzar, no definitivo (§13.5):** la base provisional «XP por día con registro». **No demuestra** que la tasa represente la actividad diaria real; es una base internamente coherente, nada más.
+- **Abierto:** O1 (qué significa una fila ausente) y O3 (cuánta cobertura es suficiente; **sin cifra**). Resueltos: O2 (no se incluyen días parciales, §13.9) y la excepción a D3 (§13.6).
+
+No cambia `minXp`, `minRatio`, el enumerado de motivos, `kind`, `salience()` ni la forma de `evaluations`. Alcance: `LANG_XP_ACCELERATION` y los campos de What Changed que alimentan su evaluación.
+
+### 13.1 Datos que la motivan
+Reproducción sintética (`tests/e1/xpRateComparability.test.ts`, 7 tests de caracterización; **ninguna cifra procede de datos reales**):
+
+- Numerador y divisor miden tiempos distintos. El XP del intervalo se suma por **días naturales** `(día(since), día(until)]` (`getLanguagesInterval`, fijado por `d1WhatChangedAdapter.test.ts`); el divisor es el **tiempo transcurrido en milisegundos** (`getWhatChangedUseCase`, `durationDays`).
+- Con las mismas cuatro filas (600 XP), tres ventanas que solo difieren en la hora de sus extremos dan ratio 1,5 / ≥ 1,9 / ≤ 1,25 y estados `emitted / emitted / not_emitted`: el estado epistémico depende del reloj de la ventana, no de los datos.
+- El día de `until` entra entero aunque `until` sea las 00:01; el XP posterior a `until` entra en la ventana si `until` está en el pasado (las filas de `xp_summaries` se sobrescriben en sitio). El día de `since` no entra en ninguna ventana del flujo por defecto (ancla → ahora), porque sus filas se asignan a la referencia (`date <= día(since)`).
+- La referencia es `SUM(gained_xp) / COUNT(DISTINCT date)` **sobre filas existentes**: «XP por día con registro». Con la misma actividad, guardar los días inactivos como filas con 0 o no guardarlos da 50 frente a 100 XP/día de referencia.
+- `normalizeLanguagePayload` convierte un `gainedXp` ausente en `0` (y `gained_xp` es `NOT NULL` desde la migración `0008`).
+
+**Lo que no se ha podido establecer** (requiere lectura de datos reales, hoy no autorizada): si la fuente entrega filas para los días sin actividad (§13.5); la magnitud del sesgo en ventanas reales; cuántos hallazgos `LANG_XP_ACCELERATION` se emitieron o se perdieron por esta causa. Esa cifra no se conoce.
+
+### 13.2 Regla de comparabilidad
+**Principio (aprobado conceptualmente).** El ritmo del intervalo y la referencia son cantidades de la **misma base**: XP por unidad de un mismo conjunto de días naturales UTC, sin ningún día parcial en ninguno de los dos.
+
+| | Hoy | Con A5 |
+|---|---|---|
+| Unidad de tiempo del ritmo del intervalo | ms transcurridos entre `since` y `until` | nº de días naturales UTC **contenidos** en la ventana |
+| XP del intervalo | filas con `día(since) < date ≤ día(until)` | filas de los días contenidos |
+| Referencia | filas con `date ≤ día(since)`, dividida entre filas | filas de los días naturales **anteriores** a `since`, dividida con la misma base que el intervalo (§13.5) |
+| Días parciales | el de `until` entra entero; el de `since` queda en la referencia | **no entran** en ninguno; se declaran |
+
+#### 13.2.1 Día contenido
+Un día natural UTC `d` (de `00:00:00Z` a `24:00:00Z`) está **contenido** en la ventana `(since, until]` si empieza en o después de `since` y termina en o antes de `until`. El día que contiene a `since` y el que contiene a `until`, salvo que el extremo caiga en una medianoche, son **parciales**: no suman XP al intervalo ni cuentan en la referencia. La referencia usa los días que terminan en o antes de `since`; **ningún día pertenece a la vez al intervalo y a la referencia**.
+
+`metrics` conserva `partialDaysExcluded` (0, 1 o 2) para que el consumidor pueda decir qué quedó fuera. No se fracciona un día: `xp_summaries` no tiene resolución horaria (alternativa descartada, §13.7).
+
+#### 13.2.2 Invariantes
+1. Homogeneidad: numerador y divisor de ritmo y referencia se calculan sobre conjuntos de días definidos con la misma regla.
+2. Estabilidad: dos ventanas con el mismo conjunto de días contenidos y las mismas filas dan **el mismo ritmo y el mismo estado**, sea cual sea la hora de sus extremos.
+3. Partición: ningún día cuenta en el intervalo y en la referencia.
+4. Un día no observado no se convierte en actividad ni en inactividad (§13.3, §13.5).
+
+### 13.3 Datos desconocidos
+- Un `gainedXp` ausente en la fuente **no es 0** (se alinea con observation-model §4, invariante 6, que hasta hoy solo cubría las tablas de observación). Como `gained_xp` es `NOT NULL`, la regla es: **no se persiste fila** en `xp_summaries` para un día sin `gainedXp` numérico. No requiere migración. Un `gainedXp = 0` observado sí se persiste y es un cero observado.
+- Un ritmo o una referencia sin ningún día con registro **no están definidos**: son `data_unavailable` (§3), nunca «0 XP/día» ni «sin cambio».
+- **La cobertura debe poder calcularse y exponerse antes de decidir cuánto es suficiente.** Campos aditivos en las métricas, **sin ningún umbral asociado**:
+
+  | Campo | Significado |
+  |---|---|
+  | `containedDays` | días naturales UTC contenidos en la ventana (§13.2.1), con o sin fila |
+  | `observedDays` | de ellos, los que tienen fila con `gainedXp` numérico |
+  | `historicalSpanStart` | primer día natural del intervalo histórico de referencia (definición abajo) |
+  | `historicalSpanDays` | días naturales del intervalo histórico: **todos** los de `[historicalSpanStart, último día completo anterior a since]`, tengan o no fila |
+  | `historicalObservedDays` | de ellos, los que tienen fila con `gainedXp` numérico |
+
+- **El intervalo histórico es reproducible y, salvo su extremo inicial, no depende de qué días tienen registro.** Su extremo final es el último día natural completo anterior a `since` (§13.2.1) y su extremo inicial es `historicalSpanStart`, el **primer día natural con alguna fila** del usuario en `xp_summaries`. Todos los días intermedios cuentan en `historicalSpanDays` aunque no tengan fila: un día ausente **nunca sale del denominador** (hacerlo inflaría la cobertura). El primer día con fila es el único elemento que depende de los registros, y es deliberado: antes de él Meridian no tiene evidencia de haber observado la fuente, de modo que esos días no son «ausentes» sino anteriores al registro; se expone `historicalSpanStart` para que sea visible. Un registro anterior que aparezca después (p. ej. un backfill autorizado) amplía el intervalo, nunca lo estrecha. Sin ninguna fila anterior a `since`, `historicalSpanStart`, `historicalSpanDays` e `historicalObservedDays` son `null` (no 0) y la referencia es `data_unavailable`.
+- **Cobertura descriptiva:** `historicalObservedDays / historicalSpanDays`. Es un dato, no un criterio: ninguna condición de emisión depende de él mientras O3 siga abierta. Es la medida de cuánto del intervalo tiene registro; **no dice** si un día sin registro fue inactividad o falta de observación (O1).
+- **No confundir los dos denominadores.** La *cobertura* usa `historicalSpanDays` (todos los días del intervalo). La *tasa de referencia* bajo la base provisional (§13.5) divide el XP entre `historicalObservedDays` (días con registro). Son magnitudes distintas con propósitos distintos y no se sustituyen entre sí.
+
+### 13.4 Estados epistémicos permitidos
+Los motivos de §3 no cambian; cambia **qué mide** cada condición:
+
+| Condición | Motivo | Cambio |
+|---|---|---|
+| días naturales contenidos ≥ `minDays` | `span_too_short` | la unidad pasa de «días transcurridos» a «días naturales contenidos». El valor `minDays = 3` **no se toca**; una ventana de 3 días que empieza a media jornada contiene 2 y pasa a `span_too_short` |
+| XP de los días contenidos ≥ `minXp` | `insufficient_sample` | el XP es el de los días contenidos |
+| referencia definida y > 0 | `data_unavailable` | «definida» = `historicalObservedDays ≥ 1` (§13.3) |
+| ritmo ≥ `minRatio` × referencia | `effect_below_threshold` | ambos sobre la base de §13.5 |
+
+`metrics` conserva el efecto observado aunque no se emita (§4). `metrics.intervalDays` pasa a ser el nº de días contenidos.
+
+### 13.5 Ausencia de una fila en `xp_summaries` — **PENDIENTE de evidencia (no aprobada)**
+**Hechos disponibles.** (a) La clave primaria es `(user_id, date)` y solo se guardan las filas que el payload trae; el payload de ejemplo del contrato de ingesta muestra un bloque de `xpSummaries` y **no dice** si los días sin actividad aparecen como filas con 0. (b) El contrato de analítica define `calendar_days = (max(date) − min(date)) / 86400 + 1` y `activity_density = active_days / calendar_days`: **presupone** que puede haber días sin actividad dentro del rango, y es **mudo** sobre si son filas con 0 o filas ausentes. (c) observation-model: ausencia de observación ≠ `null` ≠ 0. (d) Los fixtures con `gainedXp: 0` (`core.test.ts`, `languagesAnalyticsContract.test.ts`) son inventados y no prueban nada sobre la fuente.
+
+**Lecturas posibles** (ninguna asumida):
+- **L0:** una fila ausente es un día **no observado**.
+- **L1:** una fila ausente es un día **sin actividad** (0 XP): la fuente solo emite días con actividad.
+- **L2:** mixta: ausente dentro del bloque emitido por la fuente = 0; fuera del bloque = no observado.
+
+**Evidencia que decidiría** (lectura de solo lectura, requiere autorización nueva): (1) en los payloads guardados, si hay días con `gainedXp = 0` y si las fechas de cada bloque `xpSummaries` forman una serie contigua de 90 días o solo los días con actividad; (2) si el rango `date` de las filas de un snapshot coincide con el de un bloque contiguo; (3) si existen huecos de `date` entre `min` y `max` en `xp_summaries` que no corresponden a un hueco de sincronización (los hay entre snapshots de cuenta, observation-model §7.2, D-b).
+
+**Regla provisional mientras no se resuelva (aceptada por el propietario para avanzar, no definitiva):** la base de ritmo y referencia es **«día con registro»**: ambos lados se dividen entre el nº de días **contenidos con fila**. Esto cumple el principio de §13.2 bajo L0, L1 y L2 (misma base en los dos lados), y **no afirma nada sobre qué es un día ausente**. Lo que mide cambia de significado, y debe decirse: es «XP por día con registro», no «XP por día natural», y **no demuestra** que represente la actividad diaria real. En consecuencia, la redacción de A3 («Tu XP diario en el periodo fue Nx tu media histórica», §10.2) deja de ser exacta hasta que se resuelva. **Decisión del propietario (C5):** el copy se revisa durante la implementación para que describa exactamente la métrica calculada; no se fija aquí.
+
+**Limitación que se acepta explícitamente:** bajo la regla provisional el ratio depende de si la fuente emite filas con 0 (test 4 y 5 de `tests/e1`): es dependencia de la **fuente**, no del reloj. Un cambio de comportamiento de la fuente cambiaría el ratio sin cambio de conducta del usuario. Solo L1 o una definición explícita de «día natural» la elimina.
+
+**Cuando se resuelva** (nueva enmienda A5.1, no esta): si L1/L2, la base pasa a «día natural» y los días ausentes cuentan como 0 (dentro de lo que la evidencia permita); si L0, quedan como desconocidos y la referencia exige una cobertura mínima **cuyo valor se fija con la distribución real, no ahora** (decisión O3). **O1 permanece abierta:** no se atribuye semántica a una fila inexistente sin verificar el origen.
+
+### 13.6 Excepción acotada a D3 (invariante de oro) — **aprobada (2026-10-13)**
+Como en A4 (§12.5): lo que se preserva es que **emitir y descartar consumen la misma evaluación**, no que los hallazgos anteriores permanezcan idénticos tras corregir una semántica defectuosa.
+
+- A5 puede **cambiar en ambos sentidos** la emisión de `LANG_XP_ACCELERATION`: ventanas que hoy emiten pueden pasar a `span_too_short` o `effect_below_threshold`; ventanas que hoy no emiten pueden emitir. No es una dirección única y no se estima.
+- La excepción cubre solo `LANG_XP_ACCELERATION` y solo por esta causa. El golden de los demás hallazgos sigue byte a byte; `legacyWhatChanged` queda verbatim salvo para este id.
+- No se midió cuántos hallazgos de esta regla se emitieron realmente con ventanas desalineadas. Esa cifra no se conoce.
+
+### 13.7 Alternativas descartadas
+- **Fraccionar el día parcial** con el tiempo transcurrido: no hay datos horarios; inventaría una observación.
+- **Incluir el día parcial por instante de observación** (`updated_at` frente a `until`): puede ser razonable para `until = ahora`, pero introduce una segunda definición de ventana; descartada por el propietario (2026-10-13, O2 resuelta, §13.9).
+- **Alinear las ventanas del cliente a medianoche UTC:** cambia el contrato de la API y oculta la recencia sin resolver la referencia.
+- **Tratar toda fila ausente como 0 por defecto:** inventa una observación mientras L0 sea posible.
+- **Fijar ya una cobertura mínima de la referencia:** no hay distribución real de días con registro que la respalde.
+
+### 13.8 Consecuencias en consumidores (a tratar en la implementación)
+- **Recencia (aceptada por el propietario, C6):** con `until = ahora`, el XP del día en curso no entra en la regla hasta que el día termina. Es un cambio visible en el flujo «desde tu última visita». No se sacrifica comparabilidad para obtener una respuesta más reciente.
+- **`languages.xpGained` y la tarjeta «Actividad en la ventana»:** deben usar la misma definición que la evaluación; dos totales de XP en una respuesta serían una contradicción nueva. Se decide en la implementación.
+- El frontend lee `intervalDays`, `historicalRate` y `criteria` de la evaluación; el texto de `span_too_short` pasa a hablar de «días completos».
+- Puertos: `getLanguagesInterval` y `getHistoricalDailyXpRate` deben devolver también los campos de cobertura de §13.3.
+
+### 13.9 Decisiones
+| ID | Pregunta | Estado |
+|---|---|---|
+| **O1** | ¿Qué significa la ausencia de una fila en `xp_summaries` (L0, L1, L2)? | **Abierta.** Se resuelve con la lectura autorizada de §13.5 |
+| **O2** | ¿Entra el día parcial de `until` (y el de `since`)? | **Resuelta (2026-10-13): no.** Un día parcial no entra; se declara en `partialDaysExcluded`. Reabrir exigiría una enmienda |
+| **O3** | ¿Cobertura mínima de la referencia? | **Abierta, sin cifra.** Primero se calcula y se expone (§13.3); después, con la distribución real, se decide cuánto es suficiente |
+
+### 13.10 Tests exigidos (en el PR de implementación, no en este)
+1. Mismas filas, ventanas con extremos a distinta hora y el mismo conjunto de días contenidos: mismo ritmo y mismo estado (invierte el test 1 de `tests/e1`).
+2. `until` a las 00:01: el día de `until` no entra; `since` a las 23:59: el día de `since` no entra; `partialDaysExcluded` los cuenta.
+3. Partición: ningún día está a la vez en el intervalo y en la referencia (propiedad sobre una rejilla de ventanas).
+4. Ventana de ≥ 3 días transcurridos con 2 días contenidos: `span_too_short`.
+5. Sin ningún día con registro en la referencia: `data_unavailable`, nunca ratio con 0.
+6. `gainedXp` ausente: no se escribe fila (ingesta real); `gainedXp = 0` observado: se escribe y cuenta como día con registro.
+7. Bajo la regla provisional, ritmo y referencia comparten base: mismo `observedDays` usado en ambos (test de unidades).
+8. El resto de evaluaciones y hallazgos no dependen de `xp_summaries` (igualdad con y sin XP), y el golden se mantiene salvo `LANG_XP_ACCELERATION`.
+9. `containedDays`, `observedDays`, `historicalSpanStart`, `historicalSpanDays` e `historicalObservedDays` se exponen y son correctos; **ninguna** condición de emisión depende de su cociente (misma emisión con cobertura 10 % y 100 % para los mismos días con registro).
+9b. El intervalo histórico es reproducible: añadir o quitar filas **interiores** no cambia `historicalSpanDays`; un día sin fila no sale del denominador de cobertura; la tasa de referencia usa `historicalObservedDays` y la cobertura usa `historicalSpanDays`.
+10. `null` y `0` no son equivalentes: un día sin `gainedXp` no cuenta como día con registro; un `gainedXp = 0` observado sí.
+
+---
+
+## 14. Enmienda A6 (2026-10-13) — la ganancia de XP de un curso exige dos observaciones del mismo curso
+
+**Estado:** ✅ **aprobada con condición explícita por el propietario (2026-10-13); sin implementar.**
+- **Aprobado:** la distinción entre ganancia observada, dato desconocido, discontinuidad y curso nuevo (§14.2); mantener `LANG_FOCUS_SHIFT_LONGITUDINAL` en `SIN EVALUAR`; no introducir el filtro `is_auxiliary = 0` sin evidencia adicional (§14.3).
+- **Condición:** (i) P3 queda decidido y precisado (§14.4): el hallazgo **no se emite cuando la evidencia comparable no permite determinar el desplazamiento sin sesgo**; no se sustituyen desconocidos por 0 ni se renormalizan cuotas en silencio, y un `new_course` **no** silencia la regla por el solo hecho de existir; (ii) un descenso del XP acumulado produce una **discontinuidad explícita**, nunca un resultado vacío indistinguible de la falta de actividad (§14.2).
+- **Abierto:** P1 (antigüedad máxima), P2 (fuente) y P4 (emisiones pasadas). La fuente (`raw_json` o `course_observations`) no se mezcla con la corrección semántica.
+
+`LANG_FOCUS_SHIFT_LONGITUDINAL` **permanece `SIN EVALUAR`**: esta enmienda define su **entrada** (la ganancia comparable por curso), no su regla, sus umbrales ni sus motivos (§3.1 sigue en pie) y no fija ninguna cifra. Complementa a observation-model §7 (D-c/D-e, condición de `start` de R4) y no la contradice.
+
+### 14.1 Datos que la motivan
+Reproducción sintética (`tests/e1/courseGainSemantics.test.ts`, 7 tests de caracterización; **sin datos reales**) sobre `getLanguagesTrajectoryData` y la regla de idiomas de `evaluateTrajectory`:
+
+- El XP por curso de un snapshot es **vitalicio** (observation-model, `course_observations.xp`). El adaptador calcula `max(0, xp(mid) − xp(start))` con `xp = 0` si el curso falta en `start`, y `xp(start)` si falta en `mid`.
+- Curso ausente en `start` y presente en `mid` con 4000 de XP vitalicio: «ganó 4000 en H1».
+- Extremo a extremo: con solo +100 de XP real en un curso, la regla **emite** «foco desplazado de B a C» entre dos cursos que no ganaron nada, solo porque entraron en los snapshots en momentos distintos.
+- Un descenso del XP acumulado (5000 → 4000) se recorta a 0 y es indistinguible de «sin actividad».
+- Un curso ausente de `mid` se trata como «sin cambio» y su ganancia cae entera en H2.
+- Un solo snapshot devuelve mitades vacías, con la misma forma que «observado, sin ganancia».
+- Precedente en el propio contrato: observation-model §7 (D-c/D-e) ya midió que, sin condicionar el `start`, «el XP de H1 se multiplica por 120». Es el mismo mecanismo (XP vitalicio leído como ganancia), visto desde otra causa.
+
+**Lo que no se ha podido establecer:** la forma de los snapshots auxiliares reales (observation-model §4 afirma que el catálogo `courses[]` es completo en cualquier snapshot; no se ha vuelto a verificar con datos); con qué frecuencia entran cursos nuevos en el catálogo; si algún hallazgo `LANG_FOCUS_SHIFT_LONGITUDINAL` ya mostrado fue un artefacto. Esa cifra no se conoce.
+
+### 14.2 Regla de ganancia comparable
+**Observación de curso.** La entrada de `courses[]` de un snapshot que (i) tiene `id`, (ii) cumple el predicado vigente de curso de idiomas (D4) y (iii) trae `xp` numérico. Una entrada sin `xp` numérico es una observación **sin XP**, no con 0.
+
+**Observación vigente de un curso.** La observación de un curso `c` en un instante `t` es **la última observación de `c` con `observed_at ≤ t`**, y no «el XP del snapshot de `t`». Un snapshot que no trae `c` **no dice nada de `c`**.
+
+**Estado de un curso `c` en una mitad `H = [a, b]`.** Sea `o_a` la última observación de `c` con `observed_at ≤ a` y `o_b` la última con `observed_at` en `(a, b]`. El estado es **uno** de cuatro, y es explícito:
+
+| Estado | Condición | Valor |
+|---|---|---|
+| **`gain` (ganancia observada)** | existen `o_a` y `o_b`, y ninguna pareja consecutiva de observaciones leídas entre ellas desciende | `xp(o_b) − xp(o_a)` (puede ser 0 **observado**), con `observedFrom`/`observedTo` |
+| **`new_course` (curso nuevo)** | no existe `o_a` pero sí `o_b`: la primera observación de `c` es posterior a `a` | sin ganancia; conserva `firstObservedAt`. Es un hecho observado («apareció»), nunca XP ganado |
+| **`discontinuity` (discontinuidad)** | existen `o_a` y `o_b`, pero alguna pareja consecutiva entre ellas desciende | sin ganancia; conserva las dos observaciones del descenso (`fromAt`, `toAt`, `xpBefore`, `xpAfter`) |
+| **`unknown` (desconocido)** | no existe `o_b`: el curso no fue observado en la mitad | sin ganancia; motivo `not_observed_in_period` |
+
+- **El XP vitalicio no es ganancia, y un descenso no es ganancia negativa ni «sin actividad».** Es una discontinuidad de la serie (corrección, reinicio o reestructuración; la causa no está establecida). **No se recorta a 0 ni se omite el curso del resultado.** La observación se conserva. Una ganancia posterior medida desde una observación **posterior al descenso** es `gain`.
+- **Un curso sin ninguna observación en la mitad** no aparece como 0: aparece como `unknown`. Si no hubo ninguna observación de `c` en toda la span, `c` no existe en el resultado (no se inventa).
+- **Una mitad no se devuelve nunca vacía sin explicación.** Si ningún curso tiene observaciones (p. ej. un solo snapshot), el resultado es «no disponible», un estado distinto de «ningún curso ganó XP».
+- **Límite declarado de la fuente actual (decisión del propietario, 2026-10-13, opción (a)):** la continuidad solo está verificada **entre las observaciones leídas** (el primer snapshot y los últimos de cada frontera; la implementación lee 3 por frontera), no entre todos los snapshots existentes. Una caída y recuperación intermedias no observadas pueden pasar inadvertidas y una ganancia `gain` es entonces la **diferencia neta observada**, no una prueba de continuidad. Esto es una limitación de la fuente, **no una garantía contractual**: ningún consumidor debe presentarla como «serie continua». No se convierte en `unknown` por snapshots no leídos (alternativa descartada, §14.7).
+- La ganancia lleva `observedFrom`/`observedTo` (instantes de `o_a` y `o_b`), porque la distancia real entre ambas puede no coincidir con la mitad. **No se fija una antigüedad máxima admisible** (decisión P1).
+
+#### 14.2.1 Invariantes
+1. XP vitalicio ≠ XP ganado: una ganancia siempre es una diferencia de dos observaciones **del mismo curso**.
+2. Desconocido ≠ 0: ningún curso `unknown`, `new_course` o `discontinuity` se convierte en 0, en «sin cambio» ni en el XP vitalicio, y ninguno **desaparece** del resultado.
+3. Un curso sin observación en un extremo no puede ser resuelto con el valor del otro extremo (se elimina el respaldo `?? startXp`).
+4. Un 0 solo existe como diferencia observada de dos valores iguales.
+5. Evidencia insuficiente se distingue de «sin ganancia»: con un solo snapshot, o sin curso observable, la salida es «no disponible», no mitades vacías.
+6. Una discontinuidad es un **elemento explícito del resultado**, distinguible por su estado de un curso sin ganancia y de un curso sin actividad.
+
+### 14.3 Snapshots auxiliares — **decisión del propietario (C1, 2026-10-13): no introducir el filtro `is_auxiliary = 0` sin evidencia adicional**
+- **Conflicto semántico que esta enmienda resuelve, y que cambia la propuesta de E1:** observation-model §4 establece que el catálogo `courses[]` es completo en cualquier snapshot, por lo que un snapshot auxiliar es una **observación válida del XP por curso** (`course_observations`: «válida»). El contrato de cuenta (§5) filtra `is_auxiliary = 0` para el **estado de cuenta** (`totalXp`, racha, curso activo), no para el XP por curso. Filtrar `is_auxiliary = 0` en el XP por curso descartaría observaciones válidas y dejaría la serie anclada a snapshots de cuenta, que tienen un hueco de 9 días (observation-model §7.2, D-b: 2026-09-26…2026-10-04).
+- **Regla de A6:** la admisibilidad de un snapshot **no depende de `is_auxiliary`** sino de si **trae el curso** (§14.2). Con la regla «última observación del curso», un snapshot auxiliar que no lo traiga no puede ocultar ni alterar la ganancia de ese curso (es el caso del test «auxiliar como fin de span» de `tests/e1`: la ganancia de A se calcula entre las observaciones de A, no entre el último snapshot de cualquier tipo).
+- **Los extremos de la span** (`startedAt`, mitad, `endedAt`) siguen la condición de D-c/D-e: el primer instante con una observación de curso de idiomas, no el primer snapshot cronológico. A6 no la modifica.
+- **Qué NO se afirma:** que ningún auxiliar real traiga un catálogo parcial. La regla es correcta en ambos casos; si el catálogo es completo, sobran observaciones, si es parcial, no se atribuye nada a los cursos que faltan.
+- **Qué reabriría el filtro:** evidencia con datos reales de que el XP por curso de un snapshot auxiliar difiere del de un snapshot de cuenta contemporáneo. Hasta entonces se mantiene la semántica contractual del catálogo completo.
+
+### 14.4 Estados epistémicos, relación con `SIN EVALUAR` y decisión P3
+- A6 **no** añade `Evaluation`, `criteria` ni motivos nuevos al enumerado de §3, y no promueve `LANG_FOCUS_SHIFT_LONGITUDINAL` a evaluable. Sigue sin contrato propio (§3.1) y sigue mostrándose como `SIN EVALUAR`. La regla seguirá sin evaluar hasta que tenga criterios propios aprobados, con sus tests.
+- **P3, decidido y precisado (2026-10-13): la condición de bloqueo es la suficiencia de la evidencia comparable, no la presencia de un estado.** Qué cuenta como evidencia comparable lo fija §14.2; qué se hace con ella lo decide la regla en su contrato propio. A6 solo exige las siguientes invariantes de entrada:
+  1. **Solo las ganancias `gain` son comparables.** El XP vitalicio de un `new_course` **no** se cuenta como ganancia ni entra en las cuotas comparables; un curso `unknown` o `discontinuity` no aporta un valor, ni 0 ni otro.
+  2. **Cada curso no comparable tiene un rango de valores compatibles con la evidencia**, no un valor: `[0, U]`, donde `U` es la cota que la propia serie permite, o sin cota si no la hay. Para un `new_course`, `U` es su XP vitalicio en la primera observación (la ganancia dentro de la mitad no puede exceder lo que ya acumulaba cuando se vio). Para un curso `unknown` con una observación posterior a la mitad, `U` es la diferencia entre esa observación y `o_a`. Para una `discontinuity`, o un `unknown` sin observación posterior, no hay cota.
+  3. **Determinable sin sesgo** significa que la conclusión de la regla (haya desplazamiento de foco o no) es **la misma para todo valor compatible** de los cursos no comparables. Si lo es, el curso no comparable **no silencia** la regla. Si no lo es, o si algún rango no tiene cota y su valor posible altera la conclusión, **no se emite**.
+  4. **La exclusión es explícita, no silenciosa.** Cuando un curso no comparable queda fuera de las cuotas, el resultado lo declara (curso, estado y cota `U`), y las cuotas se presentan como «sobre los cursos comparables». No se renormalizan cuotas sobre los conocidos sin declararlo, y no se sustituye ningún desconocido por 0.
+- **Lo que A6 no define:** la función que toma las ganancias y decide si hay desplazamiento (sus umbrales, cuotas, persistencia): pertenece al contrato propio de la regla (§3.1). Hasta que exista, la implementación aplica las invariantes 1–4 usando como función de decisión la que el código ya tiene, **sin aprobarla ni modificarla**, y el patrón sigue `SIN EVALUAR`. Cómo se comprueba la invariancia sobre los rangos (p. ej. en los extremos de cada `[0, U]`) es un detalle de implementación que debe justificarse con tests, no un criterio de este contrato.
+- Los motivos `data_unavailable`/`insufficient_sample` solo serán vocabulario de este patrón cuando exista su contrato; hoy no se emiten evaluaciones.
+- **Qué no se afirma:** que la cota `U` sea ajustada. Es una cota de seguridad derivada de que el XP vitalicio no es negativo y no decrece sin discontinuidad; puede ser holgada, y entonces la regla bloqueará más de lo estrictamente necesario (falso negativo aceptado).
+
+### 14.5 Qué no cambia
+`CHESS_COLOR_ASYMMETRY_LONGITUDINAL` y su evaluación; `CRITERIA` (los criterios de `LANG_FOCUS_SHIFT_LONGITUDINAL` siguen sin aprobarse y por eso no están allí); el estado de cuenta de What Changed (§5 del contrato de cuenta); el predicado de curso de idiomas (D4): A6 se aplica al conjunto de cursos que ese predicado define en cada momento. La divergencia documentada de R4 (criterio amplio frente a `subject === 'language'`, D-e) **no se toca aquí**.
+
+### 14.6 Excepción acotada a D3 y consecuencias — **aprobada (2026-10-13)**
+- Igual que A4 (§12.5) y A5 (§13.6): lo preservado es que emitir y descartar consumen la misma evaluación. A6 **hace desaparecer** hallazgos `LANG_FOCUS_SHIFT_LONGITUDINAL` que dependan de un curso sin observación en un extremo o de un descenso; **rompe a propósito** el golden byte a byte de Trayectoria (`tests/fixtures/legacyTrajectory.ts`) para ese id, y solo para él.
+- Puede **perder un desplazamiento real** cuando un curso solo se observó a partir de `mid`, o cuando un curso no comparable impide determinar el desplazamiento sin sesgo (§14.4). Es un falso negativo aceptado frente al falso positivo demostrado.
+- Fuente de las observaciones: el adaptador lee hoy tres snapshots de `raw_json`; una regla con «todas las parejas consecutivas» necesita leer más observaciones. `course_observations` existe, pero su cobertura histórica depende de que se haya ejecutado el backfill diseñado en `2026-10-08-observation-backfill-design.md` (**no verificado en este documento**): sin él, conmutar la fuente reduce la historia disponible a las observaciones escritas por la ingesta. **Esta es la decisión P2, que sigue abierta y no se mezcla con la corrección semántica**; A6 es independiente de la fuente. **Siguiente paso acordado (2026-10-13, sin conmutar):** estudiar `course_observations` como fuente de la serie completa y medir antes (1) cobertura histórica, (2) paridad semántica con `raw_json`, (3) coste real de consulta. La migración de fuente se decide aparte de esta corrección.
+
+### 14.7 Alternativas descartadas
+- **Filtrar `is_auxiliary = 0`:** descarta observaciones válidas y deja un hueco de 9 días (§14.3).
+- **Recortar descensos a 0 (hoy):** convierte una discontinuidad en «sin actividad».
+- **Contar el XP vitalicio del curso nuevo como ganancia (hoy):** produce el artefacto de §14.1.
+- **Ganancia neta primero-último de toda la span:** no distingue mitades ni descensos intermedios.
+- **Interpolar el XP en `mid`:** inventa una observación.
+- **Imputar 0 al curso ausente:** es el defecto que se corrige.
+- **Marcar `unknown` cuando haya snapshots intermedios sin leer (2026-10-13):** con la frecuencia actual de snapshots casi todo curso quedaría desconocido y la señal sería inutilizable; es conservadora pero demasiado costosa. La mejora de la serie pertenece a P2.
+
+### 14.8 Decisiones
+| ID | Pregunta | Estado |
+|---|---|---|
+| **P1** | ¿Antigüedad máxima de `o_a`/`o_b` para considerar comparable la ganancia? Sin número | **Abierta.** Se decide con la distribución real de intervalos entre observaciones por curso |
+| **P2** | ¿Fuente de las observaciones: `raw_json` o `course_observations`? | **Abierta.** Decisión del propietario sobre el backfill (no autorizado aquí) y paridad de R4 (observation-model §7.3). No se mezcla con la corrección semántica |
+| **P3** | ¿Qué hace `LANG_FOCUS_SHIFT_LONGITUDINAL` con ganancias no comparables? | **Resuelta y precisada (2026-10-13):** no emite si la evidencia comparable no permite determinar el desplazamiento sin sesgo; un `new_course` no silencia la regla por existir (§14.4) |
+| **P4** | ¿Cuántas emisiones pasadas fueron artefactos? | **Abierta.** Requiere lectura autorizada |
+
+### 14.9 Tests exigidos (en el PR de implementación, no en este)
+1. Curso presente en start, mid y end: `gain` = diferencias de sus propias observaciones.
+2. Curso ausente en `start`: `new_course` (con `firstObservedAt`), nunca su XP vitalicio como ganancia.
+3. Curso ausente en `mid`: `unknown` en la mitad afectada; su ganancia no se desplaza a H2.
+4. XP decreciente: `discontinuity` **explícita** (con las dos observaciones), distinguible de un resultado vacío y de «sin actividad»; nunca 0 ni recortado. Una ganancia posterior medida desde una observación posterior al descenso es `gain`.
+5. Snapshot auxiliar con catálogo parcial como último snapshot: no altera la ganancia de los cursos que no trae; con catálogo completo, aporta observaciones válidas. **No se filtra por `is_auxiliary`.**
+6. Un solo snapshot: «no disponible», distinto de «sin ganancia».
+7. Curso nuevo frente a preexistente con el mismo XP vitalicio: el nuevo no aporta ganancia.
+8. Regla de idiomas (P3, sobre la entrada; los números de los fixtures son los del código actual, no criterios del contrato):
+   - `new_course` cuyo rango `[0, U]` no altera la conclusión: **no silencia** la regla; queda declarado como excluido, con su cota, y su XP vitalicio no entra en las cuotas.
+   - `new_course` cuyo `U` puede alterar la conclusión: no se emite.
+   - `unknown` sin observación posterior (sin cota) o `discontinuity` que puede alterar la conclusión: no se emite.
+   - Ninguna cuota se renormaliza en silencio y ningún desconocido se sustituye por 0.
+   - No hay `Evaluation` para el patrón (sigue `SIN EVALUAR`).
+9. `CHESS_COLOR_ASYMMETRY_LONGITUDINAL` y su golden no cambian.
