@@ -123,20 +123,19 @@ describe("A7 compact XP event series", () => {
     await ingest(d1, "2026-10-01T00:02:00.000Z", 102, [{ id: "A", xp: 90 }]);
     await ingest(d1, "2026-10-01T00:01:00.000Z", 101, [{ id: "A", xp: 95 }]);
 
-    // Start repair, capture its fixed watermark, then insert a later snapshot before the first chunk.
-    const { results: statusRows } = await d1.prepare(
-      "SELECT version,dirty_at FROM observation_series_status WHERE user_id=? AND source=?"
-    ).bind("u-a7", "duolingo-lang").all();
-    const status = statusRows[0] as any;
-    const watermark = await d1.prepare(
-      "SELECT id,created_at FROM snapshots WHERE user_id=? AND source=? ORDER BY created_at DESC,id DESC LIMIT 1"
+    // The real repair call captures its watermark atomically and advances one chunk.
+    const firstPrefixChunk = await repairCompactXpEvents(d1, "u-a7", "duolingo-lang", 1);
+    expect(firstPrefixChunk.status).toBe("progress");
+    expect(firstPrefixChunk.watermarkAt).toBe("2026-10-01T00:02:00.000Z");
+    const afterStart = await d1.prepare(
+      "SELECT head_at,dirty_at,repair_watermark_at,repair_cursor_at FROM observation_series_status WHERE user_id=? AND source=?"
     ).bind("u-a7", "duolingo-lang").first() as any;
-    await d1.prepare(
-      "UPDATE observation_series_status SET repair_watermark_at=?,repair_watermark_id=?,repair_cursor_at=NULL,repair_cursor_id=NULL,repair_version=repair_version+1,version=version+1 WHERE user_id=? AND source=? AND version=? AND dirty_at IS NOT NULL"
-    ).bind(watermark.created_at, watermark.id, "u-a7", "duolingo-lang", status.version).run();
+    expect(afterStart.repair_watermark_at).toBe("2026-10-01T00:02:00.000Z");
+    expect(afterStart.repair_cursor_at).toBe("2026-10-01T00:01:00.000Z");
 
+    // A later-than-watermark arrival changes the general version, not repair_version.
     await ingest(d1, "2026-10-01T00:03:00.000Z", 103, [{ id: "A", xp: 80 }]);
-    const prefix = await repairCompactXpEvents(d1, "u-a7", "duolingo-lang", 2);
+    const prefix = await repairCompactXpEvents(d1, "u-a7", "duolingo-lang", 10);
     expect(prefix.status).toBe("progress");
     const afterPrefix = await d1.prepare(
       "SELECT head_at,dirty_at,repair_watermark_at FROM observation_series_status WHERE user_id=? AND source=?"
@@ -152,5 +151,4 @@ describe("A7 compact XP event series", () => {
     ).bind("u-a7", "duolingo-lang").first() as any;
     expect(finalStatus.head_at).toBe("2026-10-01T00:03:00.000Z");
     expect(finalStatus.dirty_at).toBeNull();
-  });
-});
+  });});
