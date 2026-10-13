@@ -189,11 +189,11 @@ jobs:
           jq -e '.pass == true and .ordered.pass == true and .concurrent.pass == true and .ordered.dirtyCleared == true and .concurrent.snapshotsPreserved == true' /tmp/a7-runtime.json >/dev/null
           {
             echo "## Actual A7 runtime SQL on D1"
-            jq -r '"- Ordered late-arrival repair parity: " + (.ordered.parity|tostring) + "
-- Tail arrival after watermark: " + (.ordered.pass|tostring) + "
-- Concurrent snapshots preserved: " + (.concurrent.snapshotsPreserved|tostring) + "
-- Concurrent repair parity: " + (.concurrent.parity|tostring) + "
-- Final dirty markers cleared: " + (.concurrent.dirtyCleared|tostring)' /tmp/a7-runtime.json
+            echo "- Ordered late-arrival repair parity: $(jq -r '.ordered.parity' /tmp/a7-runtime.json)"
+            echo "- Tail arrival after watermark: $(jq -r '.ordered.pass' /tmp/a7-runtime.json)"
+            echo "- Concurrent snapshots preserved: $(jq -r '.concurrent.snapshotsPreserved' /tmp/a7-runtime.json)"
+            echo "- Concurrent repair parity: $(jq -r '.concurrent.parity' /tmp/a7-runtime.json)"
+            echo "- Final dirty markers cleared: $(jq -r '.concurrent.dirtyCleared' /tmp/a7-runtime.json)"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload measurements
@@ -221,11 +221,13 @@ jobs:
               -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN")
             echo "$db_delete" > /tmp/a7-d1-delete.json
             echo "$db_delete" | jq -e '.success == true' >/dev/null
-            runtime_delete=$(curl --fail-with-body --silent --show-error -X DELETE \
-              "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$A7_RUNTIME_D1_ID" \
-              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN")
-            echo "$runtime_delete" > /tmp/a7-runtime-d1-delete.json
-            echo "$runtime_delete" | jq -e '.success == true' >/dev/null
+            if [ -n "${A7_RUNTIME_D1_ID:-}" ]; then
+              runtime_delete=$(curl --fail-with-body --silent --show-error -X DELETE \
+                "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$A7_RUNTIME_D1_ID" \
+                -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN")
+              echo "$runtime_delete" > /tmp/a7-runtime-d1-delete.json
+              echo "$runtime_delete" | jq -e '.success == true' >/dev/null
+            fi
             echo "Temporary Worker and both D1 databases deletion confirmed."
           fi
           rm -f wrangler.a7-validation.jsonc
