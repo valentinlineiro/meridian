@@ -43,7 +43,7 @@ describe("A7 compact XP event series", () => {
     await ingest(d1, "2026-10-01T00:01:00.000Z", 101, [
       { id: "A", xp: 100 }, { id: "B", xp: 5 }, { id: "CHESS_CH", xp: 7 },
     ]);
-    let rows = d1.prepare(
+    let rows = await d1.prepare(
       "SELECT snapshot_id,course_id,state,xp,prev_state,last_xp,observed_at FROM course_xp_events WHERE user_id=? AND source=? ORDER BY observed_at,course_id"
     ).bind("u-a7", "duolingo-lang").all();
     expect(rows.results).toHaveLength(3); // unchanged values do not create events
@@ -63,7 +63,7 @@ describe("A7 compact XP event series", () => {
       { id: "A", xp: 90 }, { id: "B", xp: 5 }, { id: "CHESS_CH", xp: 7 },
     ]);
 
-    rows = d1.prepare(
+    rows = await d1.prepare(
       "SELECT snapshot_id,course_id,state,xp,prev_state,last_xp,observed_at FROM course_xp_events WHERE user_id=? AND source=? AND course_id='A' ORDER BY observed_at"
     ).bind("u-a7", "duolingo-lang").all();
     expect(rows.results.map((row: any) => [row.state, row.xp, row.prev_state, row.last_xp])).toEqual([
@@ -81,7 +81,7 @@ describe("A7 compact XP event series", () => {
     await ingest(d1, "2026-10-01T00:02:00.000Z", 102, [{ id: "A", xp: 90 }, { id: "B", xp: 1 }]);
     await ingest(d1, "2026-10-01T00:01:00.000Z", 101, [{ id: "A", xp: 95 }, { id: "B", xp: 1 }]);
 
-    let status = d1.prepare(
+    let status = await d1.prepare(
       "SELECT head_at,head_id,dirty_at,dirty_id,repair_watermark_at,repair_cursor_at FROM observation_series_status WHERE user_id=? AND source=?"
     ).bind("u-a7", "duolingo-lang").first() as any;
     expect(status.head_at).toBe("2026-10-01T00:02:00.000Z");
@@ -91,7 +91,7 @@ describe("A7 compact XP event series", () => {
     const first = await repairCompactXpEvents(d1, "u-a7", "duolingo-lang", 1);
     expect(first.status).toBe("progress");
     expect(first.snapshotsProcessed).toBe(1);
-    status = d1.prepare(
+    status = await d1.prepare(
       "SELECT head_at,dirty_at,repair_watermark_at,repair_cursor_at FROM observation_series_status WHERE user_id=? AND source=?"
     ).bind("u-a7", "duolingo-lang").first() as any;
     expect(status.dirty_at).toBe("2026-10-01T00:01:00.000Z");
@@ -107,7 +107,7 @@ describe("A7 compact XP event series", () => {
     expect(status.repair_watermark_at).toBeNull();
     expect(status.repair_cursor_at).toBeNull();
 
-    const events = d1.prepare(
+    const events = await d1.prepare(
       "SELECT observed_at,state,xp,prev_state,last_xp FROM course_xp_events WHERE user_id=? AND source=? AND course_id='A' ORDER BY observed_at"
     ).bind("u-a7", "duolingo-lang").all();
     expect(events.results.map((row: any) => [row.observed_at,row.state,row.xp,row.prev_state,row.last_xp])).toEqual([
@@ -124,21 +124,21 @@ describe("A7 compact XP event series", () => {
     await ingest(d1, "2026-10-01T00:01:00.000Z", 101, [{ id: "A", xp: 95 }]);
 
     // Start repair, capture its fixed watermark, then insert a later snapshot before the first chunk.
-    const { results: statusRows } = d1.prepare(
+    const { results: statusRows } = await d1.prepare(
       "SELECT version,dirty_at FROM observation_series_status WHERE user_id=? AND source=?"
     ).bind("u-a7", "duolingo-lang").all();
     const status = statusRows[0] as any;
-    const watermark = d1.prepare(
+    const watermark = await d1.prepare(
       "SELECT id,created_at FROM snapshots WHERE user_id=? AND source=? ORDER BY created_at DESC,id DESC LIMIT 1"
     ).bind("u-a7", "duolingo-lang").first() as any;
-    d1.prepare(
+    await d1.prepare(
       "UPDATE observation_series_status SET repair_watermark_at=?,repair_watermark_id=?,repair_cursor_at=NULL,repair_cursor_id=NULL,repair_version=repair_version+1,version=version+1 WHERE user_id=? AND source=? AND version=? AND dirty_at IS NOT NULL"
     ).bind(watermark.created_at, watermark.id, "u-a7", "duolingo-lang", status.version).run();
 
     await ingest(d1, "2026-10-01T00:03:00.000Z", 103, [{ id: "A", xp: 80 }]);
     const prefix = await repairCompactXpEvents(d1, "u-a7", "duolingo-lang", 2);
     expect(prefix.status).toBe("progress");
-    const afterPrefix = d1.prepare(
+    const afterPrefix = await d1.prepare(
       "SELECT head_at,dirty_at,repair_watermark_at FROM observation_series_status WHERE user_id=? AND source=?"
     ).bind("u-a7", "duolingo-lang").first() as any;
     expect(afterPrefix.head_at).toBe("2026-10-01T00:02:00.000Z");
@@ -147,7 +147,7 @@ describe("A7 compact XP event series", () => {
 
     const tail = await repairCompactXpEvents(d1, "u-a7", "duolingo-lang", 10);
     expect(tail.status).toBe("clean");
-    const finalStatus = d1.prepare(
+    const finalStatus = await d1.prepare(
       "SELECT head_at,dirty_at FROM observation_series_status WHERE user_id=? AND source=?"
     ).bind("u-a7", "duolingo-lang").first() as any;
     expect(finalStatus.head_at).toBe("2026-10-01T00:03:00.000Z");
