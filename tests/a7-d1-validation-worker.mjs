@@ -196,6 +196,26 @@ async function auditP1(db) {
   };
 }
 
+async function measureChunk(db, chunkSize) {
+  const started = performance.now();
+  const result = await db.prepare("SELECT id, observed_at, raw_json FROM snapshots WHERE user_id='bench' AND source='bench' ORDER BY observed_at, id LIMIT ?").bind(chunkSize).all();
+  let parsedBytes = 0;
+  for (const row of result.results) {
+    JSON.parse(row.raw_json);
+    parsedBytes += row.raw_json.length;
+  }
+  return {
+    requestedChunk: chunkSize,
+    snapshotsRead: result.results.length,
+    payloadBytesParsed: parsedBytes,
+    wallMs: Math.round((performance.now() - started) * 100) / 100,
+    reportedSqlDurationMs: Math.round(Number(result.meta?.duration ?? 0) * 1000) / 1000,
+    rowsRead: Number(result.meta?.rows_read ?? 0),
+    rowsWritten: Number(result.meta?.rows_written ?? 0),
+    note: "Single D1 query + parse, one run; use repeated samples before fixing K.",
+  };
+}
+
 function livenessSimulation() {
   function rng(seed) {
     let x = seed >>> 0;
@@ -248,9 +268,14 @@ export default {
         if (![1, 42, 294, 850].includes(size)) return json({ error: "n must be 1, 42, 294 or 850" }, 400);
         return json(await measure(env.DB, size));
       }
+      if (url.pathname === "/measure-chunk") {
+        const size = Number(url.searchParams.get("k"));
+        if (![1, 3, 10, 25].includes(size)) return json({ error: "k must be 1, 3, 10 or 25" }, 400);
+        return json(await measureChunk(env.DB, size));
+      }
       if (url.pathname === "/p1") return json(await auditP1(env.DB));
       if (url.pathname === "/liveness") return json(livenessSimulation());
-      return json({ service: "meridian-a7-d1-validation", endpoints: ["/setup", "/semantics", "/measure?n=1|42|294|850", "/p1", "/liveness"] });
+      return json({ service: "meridian-a7-d1-validation", endpoints: ["/setup", "/semantics", "/measure?n=1|42|294|850", "/measure-chunk?k=1|3|10|25", "/p1", "/liveness"] });
     } catch (error) {
       return json({ ok: false, error: String(error?.stack ?? error) }, 500);
     }
