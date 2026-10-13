@@ -53,6 +53,7 @@ describe("Languages Read API (Contract v0.1)", () => {
     rawDb.exec(readFileSync(new URL("../migrations/0012_observation_series.sql", import.meta.url).pathname, "utf8"));
     rawDb.exec(readFileSync(new URL("../migrations/0013_xp_summaries_daily_goal.sql", import.meta.url).pathname, "utf8"));
     rawDb.exec(readFileSync(new URL("../migrations/0014_course_path_state.sql", import.meta.url).pathname, "utf8"));
+    rawDb.exec(readFileSync(new URL("../migrations/0017_a7_compact_xp_events.sql", import.meta.url).pathname, "utf8"));
     d1 = createTestD1(rawDb);
   });
 
