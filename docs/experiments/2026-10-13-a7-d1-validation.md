@@ -10,7 +10,7 @@
 - Production raw_json payloads stayed in runner memory; they were not printed or uploaded as artifacts.
 - The temporary Worker and D1 were sent deletion requests in the workflow's always() cleanup step.
 - No migrations, backfill, production writes, or application deployment were performed.
-- Successful validation run: https://github.com/valentinlineiro/meridian/actions/runs/38379185044
+- Successful validation run: https://github.com/valentinlineiro/meridian/actions/runs/38380162543
 
 ## 1. D1 semantics
 
@@ -31,12 +31,12 @@ The benchmark seeded 850 synthetic snapshots with payloads of approximately 72 K
 
 | Snapshots per chunk | Payload parsed | Median wall time | Max wall time | Median D1 SQL time | Rows read |
 |---:|---:|---:|---:|---:|---:|
-| 1 | 71,993 B | 13 ms | 18 ms | 0.620 ms | 1 |
-| 3 | 215,979 B | 18 ms | 29 ms | 1.127 ms | 3 |
-| 10 | 719,930 B | 32 ms | 36 ms | 8.181 ms | 10 |
-| 25 | 1,799,825 B | 31 ms | 57 ms | 7.251 ms | 25 |
+| 1 | 71,993 B | 9 ms | 10 ms | 0.497 ms | 1 |
+| 3 | 215,979 B | 13 ms | 17 ms | 1.206 ms | 3 |
+| 10 | 719,930 B | 15 ms | 26 ms | 2.499 ms | 10 |
+| 25 | 1,799,825 B | 32 ms | 35 ms | 6.830 ms | 25 |
 
-The full 850-snapshot read, paged in chunks of 10, parsed 61,194,050 bytes and recorded 934 rows read, 0 rows written, 376.653 ms summed D1 SQL duration, and 2,848 ms Worker wall time in this run. Wall time is environment-sensitive; the D1 row counters and SQL durations are the stronger cost signals.
+The full 850-snapshot read, paged in chunks of 10, parsed 61,194,050 bytes and recorded 934 rows read, 0 rows written, 271.881 ms summed D1 SQL duration, and 3,152 ms Worker wall time in this run. Wall time is environment-sensitive; the D1 row counters and SQL durations are the stronger cost signals.
 
 **Initial choice: K = 10.** It bounds a chunk to about 720 KB, had a 36 ms maximum in this five-sample run, and leaves headroom versus the 1.8 MB / 57 ms maximum observed at K = 25. This is a conservative starting value for the implementation, not a claim that the entire repair path has already been benchmarked. Re-measure after the real delete/insert/publication statements are implemented.
 
@@ -58,7 +58,7 @@ Read-only audit of the production duolingo-lang source:
 | Descending transitions detected | 1 |
 | Production rows written | **0** |
 | Production rows read by this one-off audit | 76,496 |
-| D1 SQL duration summed across the audit queries | 2,457.863 ms |
+| D1 SQL duration summed across the audit queries | 2,671.611 ms |
 
 The complete parity check reconstructs every snapshot/course state from the event series plus the snapshot timeline and compares it to the observed state extracted from raw_json. It also compares the derived event transitions against an independent direct-transition pass. The raw payloads were not logged or artifacted.
 
@@ -90,10 +90,10 @@ On a separate 120-snapshot synthetic D1 fixture:
 
 At a 90% chance of a new arrival during each repair attempt, with 20 initial snapshots, chunk size 3, 3,000-attempt cap and 100 deterministic seeds:
 
-- Current whole-region invalidation model: **0/100 completed**.
+- Current whole-region invalidation model: **0/100 completed** (median and maximum 3,000 attempts).
 - Fixed-watermark prototype: **100/100 completed**, median and maximum 7 attempts.
 
-The simulation demonstrates why the watermark design is preferable; the D1-backed test above verifies the key publication/interleaving behavior on synthetic rows.
+The simulation demonstrates why the watermark design is preferable; the D1-backed test verifies the key publication/interleaving behavior with a separate repair_version. The final successful run also confirmed that the disposable Worker and D1 were deleted.
 
 ## Decisions for the A7 implementation
 
