@@ -1,7 +1,7 @@
 # Enmienda A7 (borrador): serie compacta de eventos de XP por curso
 
 **Fecha:** 2026-10-13
-**Estado:** 📝 **BORRADOR. Autorización del propietario (2026-10-13): continuar con la implementación en una rama y pruebas aisladas.** A7 no está aún en vigor en producción ni autoriza migraciones, backfill, escrituras remotas o cambio de lectores. La validación D1 de §4.5.12 respalda los primitivos y el protocolo de referencia; el SQL de runtime debe implementarse y P9 debe repetirse contra ese SQL antes de considerar un despliegue. El contrato vigente en producción sigue siendo el [modelo de observaciones](2026-10-05-observation-model-contract.md) (congelado el 2026-10-06, con A1) y las enmiendas A5/A6 del [contrato de señales descartadas](2026-10-06-discarded-signals-contract.md) (§13, §14).
+**Estado:** 📝 **BORRADOR. Autorización del propietario (2026-10-13): continuar con la implementación en una rama y pruebas aisladas.** A7 no está aún en vigor en producción ni autoriza migraciones, backfill, escrituras remotas o cambio de lectores. La validación D1 de §4.5.12 respalda los primitivos y el protocolo de referencia; el runtime está implementado en el borrador de PR #53 y las rutas de ingesta ordenada, tardío, cola posterior al watermark y concurrencia se han probado en D1; los casos P9 de conflicto B1 y corrupción aún deben cubrirse contra el runtime antes de cualquier despliegue. El contrato vigente en producción sigue siendo el [modelo de observaciones](2026-10-05-observation-model-contract.md) (congelado el 2026-10-06, con A1) y las enmiendas A5/A6 del [contrato de señales descartadas](2026-10-06-discarded-signals-contract.md) (§13, §14).
 **Qué enmienda:** extiende el modelo de observaciones con **una serie derivada nueva (K10)**; no modifica el texto congelado de §2b, §3, §4, §7 ni §10 de ese contrato. Resuelve, como propuesta, la parte de la decisión **P2** de A6 (§14.6) que trata de *cómo conservar evidencia suficiente para detectar discontinuidades sin releer toda la historia*. Documenta además **A5.1** (§7 de este documento), que no cambia el comportamiento de A5.
 **Origen:** experimento de solo lectura sobre el histórico real (2026-10-13) y prototipo local. Las cifras de §1 son mediciones; todo lo demás es propuesta y está marcado.
 
@@ -437,16 +437,22 @@ La ejecución se realizó con una D1 y un Worker desechables. El auditor P1 cons
 | P1: escrituras de producción | **0** |
 | P1: filas leídas por la auditoría completa | 76 496; consulta puntual, no coste de una reparación normal |
 
+**Validación del runtime (commit e3995e1a551ec15f724f0e5efee0d4b068095549 de PR #53, módulo importado directamente en un Worker temporal y ejecutado contra una segunda D1 desechable):**
+
+- **Ingesta ordenada + tardío + cola posterior al watermark:** head no retrocede, la llegada tardía marca la serie, la reparación procesa el prefijo y una llegada posterior se procesa en la siguiente generación; 4 eventos A reconstruidos exactamente (100 → 95 → 90 → 80), head final correcto y dirty limpio. **PASS**.
+- **20 ingestas concurrentes:** los 20 snapshots se conservan; la serie queda marcada para reparación; dos llamadas de reparación reconstruyen los 20 eventos en orden, con paridad exacta, head final correcto y dirty limpio. **PASS**.
+- **Límite:** B1 (conflicto de contenido/eventos sobrantes) y corrupción coordinada aún no se han ejercitado con el runtime exacto en D1. P9 local y la auditoría P1 siguen siendo evidencia complementaria; no sustituyen esos casos.
+
 **Lectura y tamaño de trozo (D1 desechable, cinco muestras de lectura + parseo):**
 
 | K | Payload | Mediana Worker | Máximo Worker | SQL D1 mediano | Filas leídas |
 |---:|---:|---:|---:|---:|---:|
-| 1 | 71 993 B | 9 ms | 10 ms | 0,497 ms | 1 |
-| 3 | 215 979 B | 13 ms | 17 ms | 1,206 ms | 3 |
-| 10 | 719 930 B | 15 ms | 26 ms | 2,499 ms | 10 |
-| 25 | 1 799 825 B | 32 ms | 35 ms | 6,830 ms | 25 |
+| 1 | 71 993 B | 106 ms | 111 ms | 0,586 ms | 1 |
+| 3 | 215 979 B | 171 ms | 174 ms | 1,423 ms | 3 |
+| 10 | 719 930 B | 100 ms | 252 ms | 2,944 ms | 10 |
+| 25 | 1 799 825 B | 332 ms | 335 ms | 7,678 ms | 25 |
 
-**Decisión provisional: K = 10.** Es el límite inicial conservador (~720 KB, máximo observado 26 ms). La medición no incluye aún el coste del borrado, la inserción de eventos ni la publicación del runtime; debe repetirse una vez implementadas esas sentencias.
+**Decisión provisional: K = 10.** Es el límite inicial conservador (~720 KB, máximo observado 252 ms). La medición no incluye aún el coste del borrado, la inserción de eventos ni la publicación del runtime; debe repetirse una vez implementadas esas sentencias.
 
 La simulación adversarial previa no terminaba con llegadas dominantes (0/100 ensayos en 3 000 intentos); el prototipo de watermark fijo terminó en 100/100 (mediana y máximo: 7 intentos). La prueba D1 anterior valida el caso de llegadas posteriores al watermark. No elimina el caso adversarial de llegadas tardías repetidas dentro del prefijo, que invalidan `repair_version`.
 
