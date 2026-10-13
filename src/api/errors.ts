@@ -8,6 +8,8 @@ import type { Context } from "hono";
 const DOMAIN_STATUS: Record<string, number> = {
   INVALID_DAILY_GOAL: 400,
   INVALID_SEEN_THROUGH: 400,
+  INVALID_GAME_RESULT: 400,
+  INVALID_PLAY_DATE: 400,
 };
 
 export function mapErrorToResponse(e: unknown): Response | null {
