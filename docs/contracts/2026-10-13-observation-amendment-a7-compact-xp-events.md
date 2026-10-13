@@ -1,7 +1,7 @@
 # Enmienda A7 (borrador): serie compacta de eventos de XP por curso
 
 **Fecha:** 2026-10-13
-**Estado:** 📝 **BORRADOR para decisión del propietario. No está en vigor, no está implementado y no autoriza migración, backfill, escrituras remotas ni cambio de lectores.** Mientras no se apruebe, el contrato vigente es el [modelo de observaciones](2026-10-05-observation-model-contract.md) (congelado el 2026-10-06, con A1) y las enmiendas A5/A6 del [contrato de señales descartadas](2026-10-06-discarded-signals-contract.md) (§13, §14).
+**Estado:** 📝 **BORRADOR. Revisión del propietario (2026-10-13): *aprobado con cambios pendientes, no aprobado para implementación* (§9.1; B1 y B2 tratados en §4.5.9–§4.5.10, a verificar por el propietario). No está en vigor, no está implementado y no autoriza migración, backfill, escrituras remotas ni cambio de lectores.** Mientras no se apruebe, el contrato vigente es el [modelo de observaciones](2026-10-05-observation-model-contract.md) (congelado el 2026-10-06, con A1) y las enmiendas A5/A6 del [contrato de señales descartadas](2026-10-06-discarded-signals-contract.md) (§13, §14).
 **Qué enmienda:** extiende el modelo de observaciones con **una serie derivada nueva (K10)**; no modifica el texto congelado de §2b, §3, §4, §7 ni §10 de ese contrato. Resuelve, como propuesta, la parte de la decisión **P2** de A6 (§14.6) que trata de *cómo conservar evidencia suficiente para detectar discontinuidades sin releer toda la historia*. Documenta además **A5.1** (§7 de este documento), que no cambia el comportamiento de A5.
 **Origen:** experimento de solo lectura sobre el histórico real (2026-10-13) y prototipo local. Las cifras de §1 son mediciones; todo lo demás es propuesta y está marcado.
 
@@ -80,6 +80,8 @@ Prototipo local con la regla de §2.3 tal como está escrita (`last_xp`, estados
 | **Reparación troceada** (trozos de 1, 2 y 3 snapshots y en un solo batch; 2 semillas × 30 000 intercalados cada configuración; invariante «antes de `dirty_from` exacto» comprobada **en cada paso**, también entre trozos) | **0 divergencias** en las tres configuraciones |
 | 600 ensayos mayores con reparación en trozos de 1 snapshot (misma carga y 678 fallos de batch inyectados) y otros 600 con trozos de 3 (709 fallos) | 1 200 / 1 200 convergen, 0 violaciones |
 | **Revisión adversarial de las sentencias (§4.5.9)**: 8 000 batches de ingesta y 1 525 de reparación con conflictos de guarda frecuentes (7 713 y 1 064) | 0 abortos, 0 efectos parciales sin incremento de versión, 0 eventos sin avance de `head`, 0 publicaciones incompletas |
+| **B1 y B2, pruebas dirigidas (§4.5.10)**: conflicto idéntico / de contenido distinto / evento sobrante; tardío forzado por la rama «en orden»; publicación con «último» anterior a `head`; 7 tipos de alteración histórica sobre 60 series | resultados en §4.5.10; 0 falsos positivos en series limpias; 30 / 60 de la alteración coordinada **no detectadas** por las comprobaciones baratas |
+| **Regresión con el SQL endurecido** (predicado temporal, verificación de conflictos, filtros de usuario y fuente, `ON CONFLICT DO NOTHING`): 2 semillas × 2 configuraciones de reparación × 30 000 intercalados, y 600 ensayos mayores con trozos de 2 y 668 fallos inyectados | 0 divergencias; 600 / 600 convergen; 0 violaciones |
 | 600 ensayos mayores (60 snapshots reales, 2 a 4 ingestas en vuelo, reparaciones intercaladas, snapshots que llegan entre la lectura y la escritura de una reparación; con y sin perturbaciones; con 765 fallos de batch inyectados) | **600 / 600** convergen a la serie ordenada; **0** violaciones de la invariante en ningún paso; todos los snapshots almacenados; ninguna marca perdida |
 
 **Dos defectos del diseño que esta prueba encontró y que ahora están corregidos en §4.5** (la primera versión del protocolo divergía en el 2–20 % de los ensayos):
@@ -288,7 +290,7 @@ El hecho de partida: un `UPDATE … WHERE version = :v` que afecta a **0 filas n
 
 **Predicados** (texto del contrato, no código):
 
-- `G_ing` = `version = :V` **y** `dirty_from IS NULL`, ambos leídos de la fila de serie (`user_id`, `source`).
+- `G_ing` = `version = :V` **y** `dirty_from IS NULL` **y** (`head` nulo **o** `(s.observed_at, s.id) > (head_at, head_id)`), todo en la propia sentencia. **El predicado temporal es parte del SQL, no solo de la lógica de aplicación** (B2).
 - `G_rep` = `version = :V` **y** `dirty_from = :D` **y** `repair_cursor = :C` **y** `COUNT(snapshots de (user_id, source) con posición > ó ≥ :inicio) = :n`.
 
 **Sentencias, en orden, y qué lee y modifica cada una:**
@@ -297,11 +299,12 @@ El hecho de partida: un `UPDATE … WHERE version = :v` que afecta a **0 filas n
 |---|---|---|---|
 | I1 | insertar snapshot | clave primaria | `COUNT` de snapshots (lo lee solo la reparación, otro batch) |
 | I2 | insertar evento(s) `ON CONFLICT DO NOTHING` | `G_ing` | no (los eventos no aparecen en `G_ing`) |
-| I3 | avanzar `head`, `version + 1` | `G_ing` | **sí: `version`**, pero ninguna sentencia posterior depende de `version` |
+| I3 | avanzar `head`, `version + 1` | `G_ing` (incluye `s > head`) | **sí: `version`**, pero ninguna sentencia posterior depende de `version` |
+| I3b | verificar el contenido almacenado de cada evento de `s` y el conteo (B1, §4.5.10) | `head = s` | solo **añade** marca (monótona) |
 | I4 | marcar `dirty_from = min(…)`, reiniciar cursor si `s ≤ cursor`, `version + 1` | `head ≠ s` (no depende de `version`) | solo **añade** marca (monótona): no puede publicar |
 | R1 | (solo 1.er trozo) borrar eventos `≥ dirty_from` de **ese usuario** | `G_rep` | eventos; `G_rep` no los lee |
 | R2 | insertar eventos del trozo | `G_rep` | no |
-| R3 | publicar (`head`, limpiar `dirty_from` y cursor, `version + 1`) **o** avanzar cursor y `version + 1` | `G_rep` | **sí: `version`**, y es la **última** sentencia |
+| R3 | publicar (`head`, limpiar `dirty_from` y cursor, `version + 1`) **o** avanzar cursor y `version + 1` | `G_rep`; la publicación añade `(último, id) ≥ (head_at, head_id)` | **sí: `version`**, y es la **última** sentencia |
 
 **Las cuatro condiciones que hay que poder verificar:**
 
@@ -317,9 +320,9 @@ El hecho de partida: un `UPDATE … WHERE version = :v` que afecta a **0 filas n
 | 1 | Las lecturas y conteos de snapshots no filtraban por `user_id` y `source` | Con otros usuarios y una fuente `chess` en la misma tabla, **0 / 60** ensayos convergen con los filtros de #1 y #2 desactivados a la vez (no se aislaron por separado); con ambos, **60 / 60** |
 | 2 | La lectura de eventos para reconstruir el estado no filtraba por `user_id` | Un evento de otro usuario contaminaba el estado del propietario (mismo experimento) |
 | 3 | `DELETE` de eventos sin `user_id` | **No** observado (el dato de prueba quedó fuera del rango); riesgo a nivel de sentencia |
-| 4 | Inserción de eventos sin `ON CONFLICT` | Un evento ya existente abortaría **toda** la ingesta y el snapshot (evidencia) no se guardaría. Con `DO NOTHING` el batch se confirma, el snapshot se guarda y la fila conflictiva se conserva; la corrupción la detecta I2 |
+| 4 | Inserción de eventos sin `ON CONFLICT` | Un evento ya existente abortaría **toda** la ingesta y el snapshot (evidencia) no se guardaría. Con `DO NOTHING` el batch se confirma, el snapshot se guarda y la fila conflictiva se conserva; **`DO NOTHING` por sí solo no la detecta**: la detección es la de §4.5.10 (B1) |
 
-**Sobre el defecto 4:** se elige `DO NOTHING` porque el snapshot es la evidencia y nunca debe rechazarse por una inconsistencia de la serie derivada; el coste es que una corrupción previa no se corrige sola y debe detectarla I2.
+**Sobre el defecto 4:** se elige `DO NOTHING` porque el snapshot es la evidencia y nunca debe rechazarse por una inconsistencia de la serie derivada; `DO NOTHING` no distingue un reintento idéntico de un conflicto inconsistente: esa distinción la hacen las sentencias de verificación de §4.5.10, que en el mismo batch marcan la serie sucia desde `s` si el contenido almacenado difiere del calculado.
 
 **Vivacidad (medida en el modelo; la probabilidad `p` es la de que una ingesta confirme entre la lectura y la escritura de un trozo):**
 
@@ -331,7 +334,48 @@ El hecho de partida: un `UPDATE … WHERE version = :v` que afecta a **0 filas n
 
 20 ensayos por celda, región sucia de 20 snapshots. Es un contraejemplo explícito: **con trozos pequeños y llegadas dominantes la reparación no termina**. El trozo grande tolera más contención pero choca con el límite operativo (§4.5.8).
 
-**Estimación (no medida) de `p` real:** en el histórico la mediana entre snapshots es de ≈ 3 s (los snapshots llegan en ráfagas por sincronización) y de ≈ 42 al día de media; dentro de una ráfaga, una ventana de lectura-escritura de ~1 s daría `p` del orden de 0,3; fuera de ellas, del orden de 10⁻³. **La duración real de la ventana en D1 no está medida.** Regla operativa que se deriva, no contractual: ejecutar la reparación **fuera de las ráfagas de sincronización**.
+**Estimación (no medida) de `p` real:** en el histórico la mediana entre snapshots es de ≈ 3 s (los snapshots llegan en ráfagas por sincronización) y de ≈ 42 al día de media; dentro de una ráfaga, una ventana de lectura-escritura de ~1 s daría `p` del orden de 0,3; fuera de ellas, del orden de 10⁻³. **La duración real de la ventana en D1 no está medida.** Regla operativa que se deriva, no contractual: ejecutar la reparación **fuera de las ráfagas de sincronización**. **Es una política provisional, no una garantía de terminación:** si el sistema no puede asegurar una ventana de contención suficientemente baja, el riesgo de vivacidad sigue abierto.
+
+#### 4.5.10 Ramas del `head` (B2) y detección de eventos inconsistentes (B1) **[MEDIDO en SQLite local; no en D1]**
+
+**Ramas explícitas de la ingesta (B2).** La condición temporal está en el SQL de I2 e I3 (`G_ing`); no depende de que la aplicación haya clasificado bien al snapshot.
+
+| Caso | I2 / I3 | Marca | `head` |
+|---|---|---|---|
+| `s` posterior a `head`, serie limpia | se aplican (eventos + avance) | **ninguna**: ser una observación nueva no ensucia la serie | avanza a `s` |
+| `s` anterior a `head` (tardío; también el empate de `observed_at` con `id` menor) | **no** se aplican: ni eventos ni avance | `dirty_from = min(dirty_from, s)` | **no cambia, nunca retrocede** |
+| `s` posterior a `head`, serie ya sucia | no se aplican | `dirty_from` no cambia (ya es menor) | no cambia |
+| publicación de una reparación | solo si `(último, id) ≥ (head_at, head_id)` | limpia | nunca retrocede |
+
+Medido: un tardío **forzado por la rama «en orden»** (la lectura previa miente) **retrocede `head` y publica sus eventos** si la condición no está en el SQL, y **no** lo hace con ella; una publicación con un «último» anterior a `head` retrocede `head` sin el predicado y es rechazada con él (§1.4 y pruebas dirigidas del PR de implementación, P7).
+
+**Eventos inconsistentes (B1).** Se distinguen tres situaciones y cada una tiene su detección:
+
+| Situación | Detección | Efecto |
+|---|---|---|
+| **Reintento idéntico** (el evento ya existe y coincide) | I3b: el contenido almacenado de cada evento de `s` es igual al calculado y el conteo coincide | **sin marca**, serie limpia |
+| **Conflicto inconsistente** (misma clave, contenido distinto) o **evento sobrante** de `s` | I3b: `state`, `xp`, `prev_state` o `last_xp` distintos, o conteo distinto, con `head = s` | **marca `dirty_from = s` en el mismo batch**; la fila conflictiva se conserva hasta que la reparación la reescribe |
+| **Corrupción histórica** (cadena rota antes de esta ingesta) | verificador I2 (a continuación) y comprobación del `head` | marca `dirty_from` en la **causa** y reparación |
+
+**Verificador I2 (consistencia interna de la cadena).** Para cada evento, ordenados por `(observed_at, id)` dentro de su curso: (a) `prev_state` es el `state` del evento anterior del curso (nulo si es el primero); (b) `last_xp` es el `xp` del último evento **con valor** anterior; (c) un evento no puede repetir el estado de su anterior (sin cambio). La primera violación **no** señala dónde está el daño: la causa está en el evento anterior del mismo curso **o** en el último evento con valor anterior (los `absent`/`invalid` intermedios los salta `last_xp`). **Regla de marcado:** `dirty_from` = la más temprana de esas dos posiciones. Medido: marcar donde se **detecta** la violación recuperaba 0 y 2 de 60 (evento intermedio borrado; `xp` alterado), y marcar solo el evento anterior del curso tampoco bastaba con `absent`/`invalid` intermedios (2 de 30 en la alteración coordinada); con esta regla, 60 / 60 y 30 / 30 de las detectadas.
+
+**Comprobación del `head` (fidelidad barata).** El estado derivado de los eventos en `head` debe coincidir con el estado del payload del snapshot `head` (una lectura de ≈ 72 KB). Detecta lo que la cadena no ve: el último evento de un curso borrado o alterado y los eventos sobrantes. En el primer curso discrepante se marca desde su **primer** evento (o desde el primer snapshot si no tiene eventos).
+
+**Cuándo se ejecutan.** Bajo demanda y al **inicio de cada reparación** (manual al inicio, D-A7-10); no en cada ingesta, salvo I3b, que sí. El coste es del orden del número de eventos (78 hoy) y un payload.
+
+**Medido (60 series reales perturbadas, 120 snapshots, 0 falsos positivos en series limpias):**
+
+| Alteración | Detectada por la cadena | Por el `head` | Recuperada tras marcar y reparar |
+|---|---|---|---|
+| `prev_state` alterado | 60 / 60 | — | 60 / 60 |
+| evento intermedio borrado | 60 / 60 | — | 60 / 60 |
+| `xp` alterado (no último del curso) | 60 / 60 | — | 60 / 60 |
+| último evento de un curso borrado | 0 / 60 | 60 / 60 | 60 / 60 |
+| `xp` alterado (último del curso) | 0 / 60 | 60 / 60 | 60 / 60 |
+| evento sobrante insertado | 0 / 60 | 60 / 60 | 60 / 60 |
+| **`xp` y `last_xp` del siguiente alterados a la vez (intermedio)** | 30 / 60 | 0 / 60 | 30 de los 30 detectados; **30 / 60 no detectadas** |
+
+**Límite declarado:** una alteración coordinada que deje la cadena internamente consistente **no la ve ninguna comprobación barata**. La única detección completa es la **comparación con `raw_json`** (P1 de §6.3): reconstruir el estado de cada snapshot y compararlo con los eventos, fuera de la petición, en lotes. Esta enmienda no garantiza detectar corrupción coordinada entre dos verificaciones P1.
 
 ---
 
@@ -383,6 +427,7 @@ Todos deben cumplirse; **ninguno es un umbral numérico arbitrario**: son iguald
 | P6 | **Tardíos:** con la ingesta en orden aleatorio y la reparación aplicada, la serie final es idéntica a la de la ingesta ordenada. |
 | P7 | **Casos límite** (cubiertos por el prototipo v2, §1.4, y a repetir sobre el código real): descenso a través de una ausencia, `invalid` entre dos valores, cambio de `course_id`, **0 observado frente a ausencia** y tardíos con reparación, con datos sintéticos **y** una copia de producción. La concurrencia y el fallo de batch están modelados en SQLite local (§1.4, §4.5); **P7 exige repetirlos contra D1** (atomicidad real de `db.batch`, y que la guarda condicionada en la propia sentencia se comporta igual que en SQLite). |
 | P8 | **Presupuesto:** la medición real de `rows_written` y `rows_read` por día en D1 atribuibles a K10 debe quedar por debajo de un tope **fijado por el propietario con esa medición** (como A1). Este documento **no inventa** el tope. |
+| P9 | **Casos dirigidos de B1 y B2 sobre el SQL real:** conflicto idéntico (sin marca), de contenido distinto y evento sobrante (marca desde `s`, conservando el snapshot); tardío con `head` ya avanzado (sin eventos, sin retroceso, marca); tardío forzado por la rama «en orden» (rechazado por el predicado temporal); publicación con «último» anterior a `head` (rechazada); verificador I2 sin falsos positivos y con la regla de marcado de §4.5.10. |
 
 **Compatibilidad con A5:** A7 no toca `xp_summaries` ni las reglas de §13; **ningún** cálculo de A5 cambia.
 
@@ -453,7 +498,7 @@ No se corrige ningún dato ni se atribuye el residuo a una causa. Se investigan 
 
 ---
 
-## 9. Decisiones pendientes del propietario
+## 9. Decisiones del propietario
 
 > **Ninguna decisión de esta tabla está aprobada por el hecho de que el prototipo funcione.** La evidencia de §1 y §4.5 respalda el diseño; no sustituye la decisión del propietario ni la medición en D1 (P8).
 
@@ -469,6 +514,23 @@ No se corrige ningún dato ni se atribuye el residuo a una causa. Se investigan 
 | **D-A7-8** | Tope de presupuesto de D1 (P8) | a fijar con medición real | Fijar tras medir en F2 |
 | **D-A7-9** | A5.1 (§7.4): incorporar la redacción a §13.5 | sí / no | Sí, como texto, sin cambio de código |
 | **D-A7-10** | Quién dispara la reparación y cuándo (§4.5, §4.5.9) | en la ingesta siguiente / cron / manual | Manual al inicio (F2), fuera de las ráfagas de sincronización; automatizar tras medir la vivacidad en D1 |
+
+### 9.1 Decisiones del propietario (2026-10-13)
+
+Resumen de la revisión: **A7 aprobado con cambios pendientes; no aprobado para implementación.** Ninguna de estas decisiones autoriza implementación, migraciones, backfill ni escrituras en producción.
+
+| ID | Decisión del propietario | Condición o nota |
+|---|---|---|
+| D-A7-1 | **Aprobar con cambios** | Cerrar B1 y B2 (§4.5.9–§4.5.10) |
+| D-A7-2 | Aprobar PK `(snapshot_id, course_id)`; **sin índices secundarios** inicialmente | Medir antes de añadir coste de escritura; consultas acotadas por usuario y fuente (§4.5.2) |
+| D-A7-3 | Aprobar consultar `T` acotada a la ventana | Sin otra tabla de resúmenes |
+| D-A7-4 | Aprobar mantener los auxiliares sin filtro | — |
+| D-A7-5 | Aprobar no crear una serie aparte por cambios de atributos | Sin evidencia que lo justifique |
+| D-A7-6 | Aprobar `raw_json` como fuente del backfill de K10 | Fuente de verdad declarada |
+| D-A7-7 | Aprobar marca y reparación explícita | **Una vez resueltos B1 y B2** |
+| D-A7-8 | **Posponer** el límite de presupuesto hasta medir en D1 | No fijar umbral arbitrario |
+| D-A7-9 | Aprobar incorporar la redacción A5.1 | Registra el hecho sin alterar A5 ni cerrar O1/O3 |
+| D-A7-10 | Aprobar reparación **manual** inicialmente, fuera de las ráfagas | Automatizar solo tras medir coste, contención y vivacidad en D1; la regla de las ráfagas es una política operativa provisional, **no** una garantía de terminación |
 
 **Sin decidir y fuera de esta enmienda:** el backfill de `course_observations` (requiere autorización de escritura y el presupuesto de D1), la regla longitudinal y sus umbrales, O1, O3, P1 (cota de frescura) y P4 (artefactos pasados).
 
