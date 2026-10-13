@@ -77,8 +77,8 @@ Prototipo local con la regla de §2.3 tal como está escrita (`last_xp`, estados
 | Comprobación | Resultado |
 |---|---|
 | 120 000 intercalados aleatorios pequeños (4 semillas × 30 000; 8 snapshots, 3 cursos con `value`/`invalid`/ausencia, fallos de batch del 20 %), invariante comprobada **en cada paso** en que la serie figura limpia | **0 divergencias** |
-| **Reparación troceada** (trozos de 1 y de 2 snapshots y en un solo batch; 2 semillas × 30 000 intercalados cada configuración; invariante «antes de `dirty_from` exacto» comprobada **en cada paso**, también entre trozos) | **0 divergencias** en las tres configuraciones |
-| 600 ensayos mayores con reparación en trozos de 1 snapshot (misma carga y 678 fallos de batch inyectados) | 600 / 600 convergen, 0 violaciones |
+| **Reparación troceada** (trozos de 1, 2 y 3 snapshots y en un solo batch; 2 semillas × 30 000 intercalados cada configuración; invariante «antes de `dirty_from` exacto» comprobada **en cada paso**, también entre trozos) | **0 divergencias** en las tres configuraciones |
+| 600 ensayos mayores con reparación en trozos de 1 snapshot (misma carga y 678 fallos de batch inyectados) y otros 600 con trozos de 3 (709 fallos) | 1 200 / 1 200 convergen, 0 violaciones |
 | 600 ensayos mayores (60 snapshots reales, 2 a 4 ingestas en vuelo, reparaciones intercaladas, snapshots que llegan entre la lectura y la escritura de una reparación; con y sin perturbaciones; con 765 fallos de batch inyectados) | **600 / 600** convergen a la serie ordenada; **0** violaciones de la invariante en ningún paso; todos los snapshots almacenados; ninguna marca perdida |
 
 **Dos defectos del diseño que esta prueba encontró y que ahora están corregidos en §4.5** (la primera versión del protocolo divergía en el 2–20 % de los ensayos):
