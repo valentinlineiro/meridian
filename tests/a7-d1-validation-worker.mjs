@@ -17,11 +17,11 @@ async function runBatch(db, statements) {
 
 async function ensureRuntimeSchema(db) {
   await runBatch(db, [
-    db.prepare("CREATE TABLE IF NOT EXISTS snapshots (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, source TEXT NOT NULL, created_at TEXT NOT NULL, raw_json TEXT NOT NULL, checksum TEXT UNIQUE)"),
-    db.prepare("CREATE INDEX IF NOT EXISTS idx_snapshots_user_source_created ON snapshots(user_id,source,created_at,id)"),
-    db.prepare("CREATE TABLE IF NOT EXISTS observation_series_status (user_id TEXT NOT NULL, source TEXT NOT NULL, head_at TEXT, head_id TEXT, dirty_at TEXT, dirty_id TEXT, repair_cursor_at TEXT, repair_cursor_id TEXT, repair_watermark_at TEXT, repair_watermark_id TEXT, version INTEGER NOT NULL DEFAULT 0, repair_version INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(user_id,source)) WITHOUT ROWID"),
-    db.prepare("CREATE TABLE IF NOT EXISTS course_xp_events (snapshot_id TEXT NOT NULL REFERENCES snapshots(id), course_id TEXT NOT NULL, user_id TEXT NOT NULL, source TEXT NOT NULL, observed_at TEXT NOT NULL, state TEXT NOT NULL CHECK(state IN ('value','invalid','absent')), xp REAL, prev_state TEXT, last_xp REAL, extractor_version INTEGER NOT NULL, CHECK((state='value' AND xp IS NOT NULL) OR (state<>'value' AND xp IS NULL)), PRIMARY KEY(snapshot_id,course_id)) WITHOUT ROWID"),
-    db.prepare("CREATE INDEX IF NOT EXISTS idx_course_xp_events_latest ON course_xp_events(user_id,source,course_id,observed_at DESC,snapshot_id DESC)"),
+    db.prepare("CREATE TABLE IF NOT EXISTS runtime_snapshots (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, source TEXT NOT NULL, created_at TEXT NOT NULL, raw_json TEXT NOT NULL, checksum TEXT UNIQUE)"),
+    db.prepare("CREATE INDEX IF NOT EXISTS idx_runtime_snapshots_user_source_created ON runtime_snapshots(user_id,source,created_at,id)"),
+    db.prepare("CREATE TABLE IF NOT EXISTS runtime_observation_series_status (user_id TEXT NOT NULL, source TEXT NOT NULL, head_at TEXT, head_id TEXT, dirty_at TEXT, dirty_id TEXT, repair_cursor_at TEXT, repair_cursor_id TEXT, repair_watermark_at TEXT, repair_watermark_id TEXT, version INTEGER NOT NULL DEFAULT 0, repair_version INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(user_id,source)) WITHOUT ROWID"),
+    db.prepare("CREATE TABLE IF NOT EXISTS runtime_course_xp_events (snapshot_id TEXT NOT NULL REFERENCES runtime_snapshots(id), course_id TEXT NOT NULL, user_id TEXT NOT NULL, source TEXT NOT NULL, observed_at TEXT NOT NULL, state TEXT NOT NULL CHECK(state IN ('value','invalid','absent')), xp REAL, prev_state TEXT, last_xp REAL, extractor_version INTEGER NOT NULL, CHECK((state='value' AND xp IS NOT NULL) OR (state<>'value' AND xp IS NULL)), PRIMARY KEY(snapshot_id,course_id)) WITHOUT ROWID"),
+    db.prepare("CREATE INDEX IF NOT EXISTS idx_runtime_course_xp_events_latest ON runtime_course_xp_events(user_id,source,course_id,observed_at DESC,snapshot_id DESC)"),
   ]);
 }
 
@@ -37,12 +37,24 @@ async function runtimeIngest(db, snapshot) {
   ]);
 }
 
+function runtimeDbAdapter(db) {
+  const rewrite = (sql) => sql
+    .replace(/\\bobservation_series_status\\b/g, "runtime_observation_series_status")
+    .replace(/\\bcourse_xp_events\\b/g, "runtime_course_xp_events")
+    .replace(/\\bsnapshots\\b/g, "runtime_snapshots");
+  return {
+    prepare(sql) { return db.prepare(rewrite(sql)); },
+    batch(statements) { return db.batch(statements); },
+  };
+}
+
 async function runtimeScenario(db) {
-  await ensureRuntimeSchema(db);
-  await db.batch([
-    db.prepare("DELETE FROM course_xp_events"),
-    db.prepare("DELETE FROM observation_series_status"),
-    db.prepare("DELETE FROM snapshots"),
+  const runtimeDb = runtimeDbAdapter(db);
+  await ensureRuntimeSchema(runtimeDb);
+  await runtimeDb.batch([
+    runtimeDb.prepare("DELETE FROM course_xp_events"),
+    runtimeDb.prepare("DELETE FROM observation_series_status"),
+    runtimeDb.prepare("DELETE FROM snapshots"),
   ]);
   const source = "duolingo-lang";
   const orderedUser = "runtime-ordered";
@@ -54,24 +66,24 @@ async function runtimeScenario(db) {
     id, user_id:user, source, created_at:at, checksum:id,
     raw_json:JSON.stringify({ user:{ totalXp }, courses:[{ id:"A", xp }, { id:"B", xp:5 }] }),
   });
-  await runtimeIngest(db, make("ordered-1",orderedUser,t1,100,100));
-  await runtimeIngest(db, make("ordered-3",orderedUser,t3,90,102));
-  await runtimeIngest(db, make("ordered-2",orderedUser,t2,95,101));
-  const beforeRepair = await db.prepare(
+  await runtimeIngest(runtimeDb, make("ordered-1",orderedUser,t1,100,100));
+  await runtimeIngest(runtimeDb, make("ordered-3",orderedUser,t3,90,102));
+  await runtimeIngest(runtimeDb, make("ordered-2",orderedUser,t2,95,101));
+  const beforeRepair = await runtimeDb.prepare(
     "SELECT head_at,head_id,dirty_at,dirty_id FROM observation_series_status WHERE user_id=? AND source=?"
   ).bind(orderedUser,source).first();
-  const firstChunk = await repairCompactXpEvents(db,orderedUser,source,1);
-  await runtimeIngest(db, make("ordered-4",orderedUser,t4,80,103));
+  const firstChunk = await repairCompactXpEvents(runtimeDb,orderedUser,source,1);
+  await runtimeIngest(runtimeDb, make("ordered-4",orderedUser,t4,80,103));
   let repairCalls = 1;
   let repairResult = firstChunk;
   while (repairResult.status === "progress" && repairCalls < 8) {
-    repairResult = await repairCompactXpEvents(db,orderedUser,source,10);
+    repairResult = await repairCompactXpEvents(runtimeDb,orderedUser,source,10);
     repairCalls++;
   }
-  const orderedStatus = await db.prepare(
+  const orderedStatus = await runtimeDb.prepare(
     "SELECT head_at,head_id,dirty_at,repair_watermark_at FROM observation_series_status WHERE user_id=? AND source=?"
   ).bind(orderedUser,source).first();
-  const orderedEvents = await db.prepare(
+  const orderedEvents = await runtimeDb.prepare(
     "SELECT observed_at,state,xp,prev_state,last_xp FROM course_xp_events WHERE user_id=? AND source=? AND course_id='A' ORDER BY observed_at"
   ).bind(orderedUser,source).all();
   const expectedOrdered = [
@@ -97,29 +109,29 @@ async function runtimeScenario(db) {
       observedAt:snapshot.created_at, rawJson:snapshot.raw_json,
     });
     await new Promise(resolve => setTimeout(resolve,25));
-    await db.batch([
-      db.prepare("INSERT INTO snapshots(id,user_id,source,created_at,raw_json,checksum) VALUES(?,?,?,?,?,?)")
+    await runtimeDb.batch([
+      runtimeDb.prepare("INSERT INTO snapshots(id,user_id,source,created_at,raw_json,checksum) VALUES(?,?,?,?,?,?)")
         .bind(snapshot.id,snapshot.user_id,snapshot.source,snapshot.created_at,snapshot.raw_json,snapshot.checksum),
       ...statements,
     ]);
   }));
-  const raceAfterIngest = await db.prepare(
+  const raceAfterIngest = await runtimeDb.prepare(
     "SELECT head_at,head_id,dirty_at,dirty_id FROM observation_series_status WHERE user_id=? AND source=?"
   ).bind(raceUser,source).first();
-  const raceSnapshotCount = Number((await db.prepare(
+  const raceSnapshotCount = Number((await runtimeDb.prepare(
     "SELECT COUNT(*) AS n FROM snapshots WHERE user_id=? AND source=?"
   ).bind(raceUser,source).first()).n);
   let raceRepairCalls = 0;
   let raceStatus = raceAfterIngest;
   while (raceStatus?.dirty_at && raceRepairCalls < 8) {
-    const repaired = await repairCompactXpEvents(db,raceUser,source,10);
+    const repaired = await repairCompactXpEvents(runtimeDb,raceUser,source,10);
     if (repaired.status === "conflict") break;
     raceRepairCalls++;
-    raceStatus = await db.prepare(
+    raceStatus = await runtimeDb.prepare(
       "SELECT head_at,head_id,dirty_at,dirty_id FROM observation_series_status WHERE user_id=? AND source=?"
     ).bind(raceUser,source).first();
   }
-  const raceEvents = await db.prepare(
+  const raceEvents = await runtimeDb.prepare(
     "SELECT snapshot_id,observed_at,state,xp,prev_state,last_xp FROM course_xp_events WHERE user_id=? AND source=? AND course_id='A' ORDER BY observed_at"
   ).bind(raceUser,source).all();
   const expectedRace = raceRows.map((row,i) => [
@@ -127,70 +139,70 @@ async function runtimeScenario(db) {
   ]);
   const actualRace = raceEvents.results.map(e => [e.snapshot_id,e.observed_at,e.state,e.xp,e.prev_state,e.last_xp]);
   const raceParity = JSON.stringify(actualRace) === JSON.stringify(expectedRace);
-  const raceStatusFinal = await db.prepare(
+  const raceStatusFinal = await runtimeDb.prepare(
     "SELECT head_at,head_id,dirty_at,repair_watermark_at FROM observation_series_status WHERE user_id=? AND source=?"
   ).bind(raceUser,source).first();
 
   const conflictUser = "runtime-conflict";
-  await runtimeIngest(db, make("conflict-1",conflictUser,t1,100,100));
+  await runtimeIngest(runtimeDb, make("conflict-1",conflictUser,t1,100,100));
   const conflictTarget = make("conflict-2",conflictUser,t2,90,101);
-  await db.prepare("INSERT INTO snapshots(id,user_id,source,created_at,raw_json,checksum) VALUES(?,?,?,?,?,?)")
+  await runtimeDb.prepare("INSERT INTO snapshots(id,user_id,source,created_at,raw_json,checksum) VALUES(?,?,?,?,?,?)")
     .bind(conflictTarget.id,conflictTarget.user_id,conflictTarget.source,conflictTarget.created_at,conflictTarget.raw_json,conflictTarget.checksum).run();
   const conflictStatements = await compactXpIngestStatements(db, {
     snapshotId:conflictTarget.id, userId:conflictTarget.user_id, source:conflictTarget.source,
     observedAt:conflictTarget.created_at, rawJson:conflictTarget.raw_json,
   });
   // Simulate a concurrent writer leaving a conflicting event while advancing head.
-  await db.batch([
-    db.prepare("INSERT INTO course_xp_events(snapshot_id,course_id,user_id,source,observed_at,state,xp,prev_state,last_xp,extractor_version) VALUES(?,?,?,?,?,?,?,?,?,1)")
+  await runtimeDb.batch([
+    runtimeDb.prepare("INSERT INTO course_xp_events(snapshot_id,course_id,user_id,source,observed_at,state,xp,prev_state,last_xp,extractor_version) VALUES(?,?,?,?,?,?,?,?,?,1)")
       .bind(conflictTarget.id,"A",conflictUser,source,t2,"value",89,"value",100),
-    db.prepare("UPDATE observation_series_status SET head_at=?,head_id=?,version=version+1 WHERE user_id=? AND source=? AND head_id=?")
+    runtimeDb.prepare("UPDATE observation_series_status SET head_at=?,head_id=?,version=version+1 WHERE user_id=? AND source=? AND head_id=?")
       .bind(t2,conflictTarget.id,conflictUser,source,"conflict-1"),
   ]);
-  await db.batch(conflictStatements);
-  const conflictStatus = await db.prepare(
+  await runtimeDb.batch(conflictStatements);
+  const conflictStatus = await runtimeDb.prepare(
     "SELECT head_at,head_id,dirty_at FROM observation_series_status WHERE user_id=? AND source=?"
   ).bind(conflictUser,source).first();
   let conflictRepairCalls = 0;
   let conflictRepair = { status: "progress" };
   while (conflictRepair.status === "progress" && conflictRepairCalls < 5) {
-    conflictRepair = await repairCompactXpEvents(db,conflictUser,source,10);
+    conflictRepair = await repairCompactXpEvents(runtimeDb,conflictUser,source,10);
     conflictRepairCalls++;
   }
-  const conflictEvents = await db.prepare(
+  const conflictEvents = await runtimeDb.prepare(
     "SELECT observed_at,xp,prev_state,last_xp FROM course_xp_events WHERE user_id=? AND source=? AND course_id='A' ORDER BY observed_at"
   ).bind(conflictUser,source).all();
   const conflictParity = JSON.stringify(conflictEvents.results.map(e => [e.observed_at,e.xp,e.prev_state,e.last_xp])) ===
     JSON.stringify([[t1,100,null,null],[t2,90,"value",100]]);
-  const conflictFinal = await db.prepare(
+  const conflictFinal = await runtimeDb.prepare(
     "SELECT head_at,dirty_at FROM observation_series_status WHERE user_id=? AND source=?"
   ).bind(conflictUser,source).first();
 
   const extraUser = "runtime-extra";
-  await runtimeIngest(db, make("extra-1",extraUser,t1,100,100));
+  await runtimeIngest(runtimeDb, make("extra-1",extraUser,t1,100,100));
   const extraTarget = make("extra-2",extraUser,t2,100,101);
-  await db.prepare("INSERT INTO snapshots(id,user_id,source,created_at,raw_json,checksum) VALUES(?,?,?,?,?,?)")
+  await runtimeDb.prepare("INSERT INTO snapshots(id,user_id,source,created_at,raw_json,checksum) VALUES(?,?,?,?,?,?)")
     .bind(extraTarget.id,extraTarget.user_id,extraTarget.source,extraTarget.created_at,extraTarget.raw_json,extraTarget.checksum).run();
   const extraStatements = await compactXpIngestStatements(db, {
     snapshotId:extraTarget.id, userId:extraTarget.user_id, source:extraTarget.source,
     observedAt:extraTarget.created_at, rawJson:extraTarget.raw_json,
   });
-  await db.prepare("INSERT INTO course_xp_events(snapshot_id,course_id,user_id,source,observed_at,state,xp,prev_state,last_xp,extractor_version) VALUES(?,?,?,?,?,?,?,?,?,1)")
+  await runtimeDb.prepare("INSERT INTO course_xp_events(snapshot_id,course_id,user_id,source,observed_at,state,xp,prev_state,last_xp,extractor_version) VALUES(?,?,?,?,?,?,?,?,?,1)")
     .bind(extraTarget.id,"A",extraUser,source,t2,"value",100,"value",100).run();
-  await db.batch(extraStatements);
-  const extraStatus = await db.prepare(
+  await runtimeDb.batch(extraStatements);
+  const extraStatus = await runtimeDb.prepare(
     "SELECT head_at,head_id,dirty_at FROM observation_series_status WHERE user_id=? AND source=?"
   ).bind(extraUser,source).first();
   let extraRepairCalls = 0;
   let extraRepair = { status: "progress" };
   while (extraRepair.status === "progress" && extraRepairCalls < 5) {
-    extraRepair = await repairCompactXpEvents(db,extraUser,source,10);
+    extraRepair = await repairCompactXpEvents(runtimeDb,extraUser,source,10);
     extraRepairCalls++;
   }
-  const extraEvents = await db.prepare(
+  const extraEvents = await runtimeDb.prepare(
     "SELECT COUNT(*) AS n FROM course_xp_events WHERE user_id=? AND source=? AND course_id='A'"
   ).bind(extraUser,source).first();
-  const extraFinal = await db.prepare(
+  const extraFinal = await runtimeDb.prepare(
     "SELECT head_at,dirty_at FROM observation_series_status WHERE user_id=? AND source=?"
   ).bind(extraUser,source).first();
 
@@ -628,8 +640,7 @@ export default {
         return json({ ok: true, schema: true, bench, p1 });
       }
       if (url.pathname === "/runtime-scenario") {
-        if (!env.RUNTIME_DB) return json({ pass: false, error: "RUNTIME_DB binding missing" }, 500);
-        const result = await runtimeScenario(env.RUNTIME_DB);
+        const result = await runtimeScenario(env.DB);
         return json(result, result.pass ? 200 : 500);
       }
       if (url.pathname === "/semantics") return json(await semantics(env.DB));
