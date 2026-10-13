@@ -49,6 +49,24 @@ describe("RecordGameResult", () => {
     expect(store.versions.at(-1)!.record.games.zip).toMatchObject({ score: "0:08" });
   });
 
+  it("shouldKeepAverageAndPuzzleNumberWhenOnlyTheTimeIsCorrected", async () => {
+    await record.execute(zip);
+    const day = await record.execute({ ownerEmail: OWNER, date: DAY, game: "zip", score: "0:09" });
+    expect(day.games.zip).toEqual({ number: 449, score: "0:09", scoreSeconds: 9, avg: "0:17", avgSeconds: 17 });
+  });
+
+  it("shouldReplaceAverageAndNumberWhenNewValuesAreGiven", async () => {
+    await record.execute(zip);
+    const day = await record.execute({ ...zip, avg: "0:20", number: 450 });
+    expect(day.games.zip).toMatchObject({ number: 450, avg: "0:20", avgSeconds: 20 });
+  });
+
+  it("shouldKeepMetadataFromAnotherCaptureWhenTheTimeIsCorrected", async () => {
+    store.versions.push({ ownerId: "u1", record: { schema: 1, date: DAY, games: { zip: { number: 449, score: "0:08", scoreSeconds: 8, raw: { from: "other" } } } } });
+    const day = await record.execute({ ownerEmail: OWNER, date: DAY, game: "zip", score: "0:09" });
+    expect(day.games.zip).toMatchObject({ score: "0:09", number: 449, raw: { from: "other" } });
+  });
+
   it("shouldKeepGamesCapturedByOtherSourcesWhenRecordingByHand", async () => {
     store.versions.push({ ownerId: "u1", record: { schema: 1, date: DAY, games: { pinpoint: { number: 530, score: "3", guesses: 3 } } } });
     const day = await record.execute(zip);

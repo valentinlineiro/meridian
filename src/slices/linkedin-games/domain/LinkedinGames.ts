@@ -77,7 +77,15 @@ export interface DayRecord {
 
 export const emptyDay = (date: string, tz?: string): DayRecord => ({ schema: 1, date, ...(tz ? { tz } : {}), games: {} });
 
-export const withGame = (day: DayRecord, game: string, entry: GameEntry): DayRecord => ({ ...day, games: { ...day.games, [game]: entry } });
+// Editing a game updates what was typed and keeps what was not: an empty average or puzzle number never erases a stored
+// one, and metadata from another capture survives. There is deliberately no way to clear a field (see contract L10).
+export function withGame(day: DayRecord, game: string, entry: GameEntry): DayRecord {
+  const prev = day.games[game];
+  const base = prev && typeof prev === "object" && !Array.isArray(prev) ? (prev as Record<string, unknown>) : {};
+  const merged: Record<string, unknown> = { ...base, ...entry };
+  if (entry.number === null && base.number != null) merged.number = base.number;
+  return { ...day, games: { ...day.games, [game]: merged } };
+}
 
 // Same games (ignoring when it was captured): saving it again would only add a duplicate version.
 export const sameGames = (a: DayRecord, b: DayRecord): boolean => JSON.stringify(sortKeys(a.games)) === JSON.stringify(sortKeys(b.games));

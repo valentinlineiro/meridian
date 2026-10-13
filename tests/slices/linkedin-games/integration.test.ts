@@ -54,6 +54,14 @@ describe("linkedin games manual entry over HTTP and D1", () => {
     expect(new Set(rows().map((r: any) => JSON.parse(r.raw_json).capturedAt)).size).toBe(3);
   });
 
+  it("shouldKeepAverageAndPuzzleNumberInTheCurrentVersionWhenOnlyTheTimeIsCorrected", async () => {
+    await put(zip);
+    await new Promise((r) => setTimeout(r, 5));
+    await put({ date: "2026-10-13", game: "zip", score: "0:09", avg: null, number: null });
+    const body: any = await (await get("2026-10-13")).json();
+    expect(body.day.games.zip).toEqual({ number: 449, score: "0:09", scoreSeconds: 9, avg: "0:17", avgSeconds: 17 });
+  });
+
   it("shouldNotAddAVersionWhenTheSameRequestIsRetried", async () => {
     await put(zip);
     await put(zip);
