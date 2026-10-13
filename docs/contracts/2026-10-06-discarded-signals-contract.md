@@ -501,6 +501,7 @@ Reproducción sintética (`tests/e1/courseGainSemantics.test.ts`, 7 tests de car
 - **El XP vitalicio no es ganancia, y un descenso no es ganancia negativa ni «sin actividad».** Es una discontinuidad de la serie (corrección, reinicio o reestructuración; la causa no está establecida). **No se recorta a 0 ni se omite el curso del resultado.** La observación se conserva. Una ganancia posterior medida desde una observación **posterior al descenso** es `gain`.
 - **Un curso sin ninguna observación en la mitad** no aparece como 0: aparece como `unknown`. Si no hubo ninguna observación de `c` en toda la span, `c` no existe en el resultado (no se inventa).
 - **Una mitad no se devuelve nunca vacía sin explicación.** Si ningún curso tiene observaciones (p. ej. un solo snapshot), el resultado es «no disponible», un estado distinto de «ningún curso ganó XP».
+- **Límite declarado de la fuente actual (decisión del propietario, 2026-10-13, opción (a)):** la continuidad solo está verificada **entre las observaciones leídas** (el primer snapshot y los últimos de cada frontera; la implementación lee 3 por frontera), no entre todos los snapshots existentes. Una caída y recuperación intermedias no observadas pueden pasar inadvertidas y una ganancia `gain` es entonces la **diferencia neta observada**, no una prueba de continuidad. Esto es una limitación de la fuente, **no una garantía contractual**: ningún consumidor debe presentarla como «serie continua». No se convierte en `unknown` por snapshots no leídos (alternativa descartada, §14.7).
 - La ganancia lleva `observedFrom`/`observedTo` (instantes de `o_a` y `o_b`), porque la distancia real entre ambas puede no coincidir con la mitad. **No se fija una antigüedad máxima admisible** (decisión P1).
 
 #### 14.2.1 Invariantes
@@ -535,7 +536,7 @@ Reproducción sintética (`tests/e1/courseGainSemantics.test.ts`, 7 tests de car
 ### 14.6 Excepción acotada a D3 y consecuencias — **aprobada (2026-10-13)**
 - Igual que A4 (§12.5) y A5 (§13.6): lo preservado es que emitir y descartar consumen la misma evaluación. A6 **hace desaparecer** hallazgos `LANG_FOCUS_SHIFT_LONGITUDINAL` que dependan de un curso sin observación en un extremo o de un descenso; **rompe a propósito** el golden byte a byte de Trayectoria (`tests/fixtures/legacyTrajectory.ts`) para ese id, y solo para él.
 - Puede **perder un desplazamiento real** cuando un curso solo se observó a partir de `mid`, o cuando un curso no comparable impide determinar el desplazamiento sin sesgo (§14.4). Es un falso negativo aceptado frente al falso positivo demostrado.
-- Fuente de las observaciones: el adaptador lee hoy tres snapshots de `raw_json`; una regla con «todas las parejas consecutivas» necesita leer más observaciones. `course_observations` existe, pero su cobertura histórica depende de que se haya ejecutado el backfill diseñado en `2026-10-08-observation-backfill-design.md` (**no verificado en este documento**): sin él, conmutar la fuente reduce la historia disponible a las observaciones escritas por la ingesta. **Esta es la decisión P2, que sigue abierta y no se mezcla con la corrección semántica**; A6 es independiente de la fuente.
+- Fuente de las observaciones: el adaptador lee hoy tres snapshots de `raw_json`; una regla con «todas las parejas consecutivas» necesita leer más observaciones. `course_observations` existe, pero su cobertura histórica depende de que se haya ejecutado el backfill diseñado en `2026-10-08-observation-backfill-design.md` (**no verificado en este documento**): sin él, conmutar la fuente reduce la historia disponible a las observaciones escritas por la ingesta. **Esta es la decisión P2, que sigue abierta y no se mezcla con la corrección semántica**; A6 es independiente de la fuente. **Siguiente paso acordado (2026-10-13, sin conmutar):** estudiar `course_observations` como fuente de la serie completa y medir antes (1) cobertura histórica, (2) paridad semántica con `raw_json`, (3) coste real de consulta. La migración de fuente se decide aparte de esta corrección.
 
 ### 14.7 Alternativas descartadas
 - **Filtrar `is_auxiliary = 0`:** descarta observaciones válidas y deja un hueco de 9 días (§14.3).
@@ -544,6 +545,7 @@ Reproducción sintética (`tests/e1/courseGainSemantics.test.ts`, 7 tests de car
 - **Ganancia neta primero-último de toda la span:** no distingue mitades ni descensos intermedios.
 - **Interpolar el XP en `mid`:** inventa una observación.
 - **Imputar 0 al curso ausente:** es el defecto que se corrige.
+- **Marcar `unknown` cuando haya snapshots intermedios sin leer (2026-10-13):** con la frecuencia actual de snapshots casi todo curso quedaría desconocido y la señal sería inutilizable; es conservadora pero demasiado costosa. La mejora de la serie pertenece a P2.
 
 ### 14.8 Decisiones
 | ID | Pregunta | Estado |

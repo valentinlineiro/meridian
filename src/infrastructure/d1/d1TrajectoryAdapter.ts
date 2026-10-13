@@ -139,6 +139,8 @@ export function createD1TrajectoryAdapter(db: D1Database): TrajectoryPort {
       // Reading the last few snapshots at each boundary (not just one) lets a course be found in its own last observation even when
       // the very last snapshot is an auxiliary one that does not carry it. The limit is a cost bound tied to the open source decision
       // (P2): if the course is in none of them it is `unknown`, never 0.
+      // Continuity is verified ONLY between the observations read here: a drop and recovery between them can go unseen, and a `gain`
+      // is the observed net difference, not proof of a continuous series (contract §14.2). Reading the whole series is P2.
       const RECENT_PER_BOUNDARY = 3;
       type SnapRow = { id: string; created_at: string; raw_json: string };
       const recent = async (at: string) =>
