@@ -120,6 +120,16 @@ jobs:
             jq -r '"- Current protocol completed: " + (.currentProtocol.completed|tostring) + "/100\n- Current protocol median attempts: " + (.currentProtocol.medianAttempts|tostring) + "\n- Fixed-watermark prototype completed: " + (.fixedWatermarkPrototype.completed|tostring) + "/100\n- Fixed-watermark median attempts: " + (.fixedWatermarkPrototype.medianAttempts|tostring) + "\n\n" + .note' /tmp/a7-liveness.json
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Validate D1-backed watermark repair under interleaving
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --silent --show-error "${{ steps.deploy.outputs.worker_url }}/liveness-d1" | tee /tmp/a7-liveness-d1.json
+          jq -e '.pass == true' /tmp/a7-liveness-d1.json >/dev/null
+          {
+            echo "## D1-backed repair interleaving"
+            jq -r '"- Stale writers: " + (.staleWriterAttempts|tostring) + "\n- Single guarded winner: " + (.oneWinnerEventCount|tostring) + "\n- Old guard rejected after tail arrival: " + (.tailArrivalInvalidatesOldGuard|tostring) + "\n- Prefix published while tail remains dirty: " + (.prefixPublishedBeforeTail|tostring) + "\n- Final raw-state parity: " + (.finalParity|tostring) + "\n- Final head correct: " + (.finalHeadAtLatest|tostring) + "\n- Dirty marker cleared: " + (.dirtyCleared|tostring) + "\n\n" + .note' /tmp/a7-liveness-d1.json
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Upload measurements
         if: always()
         uses: actions/upload-artifact@v4
