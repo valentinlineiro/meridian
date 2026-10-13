@@ -72,7 +72,7 @@ Prototipo local con la regla de §2.3 tal como está escrita (`last_xp`, estados
 | 300 llegadas tardías aleatorias (1–4 snapshots retrasados 1–6 posiciones), serie real | **sin protocolo** (añadir a ciegas): serie incorrecta en **108 / 300**. Con el protocolo de §4.3: 300 / 300 marcadas, **todo lo anterior a la marca ya exacto**, y la reparación deja la serie **idéntica** a la ordenada (300 / 300) y es **idempotente** (300 / 300) |
 | Lo mismo sobre la serie perturbada (2 989 eventos) | sin protocolo: incorrecta en **300 / 300**; con protocolo: 300 / 300 en las tres comprobaciones |
 
-**Salvedades.** (a) La reparación se simuló leyendo el estado de los eventos y recomputando desde los payloads en memoria; no hay coste de D1 medido. (b) El protocolo marca **toda** llegada tardía como sucia, también las que no habrían alterado la serie (en la serie real, la mitad aprox.: 192 / 300 no producían diferencia): es conservador a propósito; cuánto cuesta esa conservadurez no está medido (D-A7-7). (c) No se probaron escrituras concurrentes reales ni fallos a mitad de `db.batch`.
+**Salvedades.** (a) La reparación se simuló leyendo el estado de los eventos y recomputando desde los payloads en memoria; no hay coste de D1 medido. (b) El protocolo marca **toda** llegada tardía como sucia, también las que no habrían alterado la serie (en la serie real, 192 / 300 (64 %) no producían diferencia): es conservador a propósito; cuánto cuesta esa conservadurez no está medido (D-A7-7). (c) No se probaron escrituras concurrentes reales ni fallos a mitad de `db.batch`.
 
 ---
 
