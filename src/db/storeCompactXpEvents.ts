@@ -323,20 +323,22 @@ export async function repairCompactXpEvents(
   }
 
   if (!status.repair_watermark_at || !status.repair_watermark_id) {
-    const latest = await db.prepare(
-      "SELECT id,created_at FROM snapshots WHERE user_id=? AND source=? ORDER BY created_at DESC,id DESC LIMIT 1"
-    ).bind(userId, source).first<{ id: string; created_at: string }>();
-    if (!latest) return { status: "empty", snapshotsProcessed: 0, eventsRebuilt: 0, watermarkAt: null, watermarkId: null, dirtyAt: status.dirty_at };
+    // Capture the watermark atomically in SQL. A tail arrival before this statement is
+    // included; one after it is beyond the watermark and cannot starve repair startup.
     await db.prepare(
-      "UPDATE observation_series_status SET repair_watermark_at=?,repair_watermark_id=?,repair_cursor_at=NULL,repair_cursor_id=NULL,repair_version=repair_version+1,version=version+1 " +
-      "WHERE user_id=? AND source=? AND version=? AND dirty_at IS NOT NULL AND repair_watermark_at IS NULL"
-    ).bind(latest.created_at, latest.id, userId, source, status.version).run();
+      "UPDATE observation_series_status SET " +
+      "repair_watermark_at=(SELECT created_at FROM snapshots WHERE user_id=? AND source=? ORDER BY created_at DESC,id DESC LIMIT 1)," +
+      "repair_watermark_id=(SELECT id FROM snapshots WHERE user_id=? AND source=? ORDER BY created_at DESC,id DESC LIMIT 1)," +
+      "repair_cursor_at=NULL,repair_cursor_id=NULL,repair_version=repair_version+1,version=version+1 " +
+      "WHERE user_id=? AND source=? AND dirty_at IS NOT NULL AND repair_watermark_at IS NULL " +
+      "AND EXISTS (SELECT 1 FROM snapshots WHERE user_id=? AND source=?)"
+    ).bind(userId, source, userId, source, userId, source, userId, source).run();
     status = await db.prepare(
       "SELECT user_id,source,head_at,head_id,dirty_at,dirty_id,repair_cursor_at,repair_cursor_id,repair_watermark_at,repair_watermark_id,version,repair_version " +
       "FROM observation_series_status WHERE user_id=? AND source=?"
     ).bind(userId, source).first<SeriesStatus>();
     if (!status?.repair_watermark_at || !status.repair_watermark_id) {
-      return { status: "conflict", snapshotsProcessed: 0, eventsRebuilt: 0, watermarkAt: null, watermarkId: null, dirtyAt: status?.dirty_at ?? null };
+      return { status: "empty", snapshotsProcessed: 0, eventsRebuilt: 0, watermarkAt: null, watermarkId: null, dirtyAt: status?.dirty_at ?? null };
     }
   }
 
