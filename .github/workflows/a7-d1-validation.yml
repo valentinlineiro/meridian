@@ -73,20 +73,26 @@ jobs:
           echo "worker_url=$url" >> "$GITHUB_OUTPUT"
           # Some accounts keep workers.dev disabled for newly created scripts. Enable
           # the route for this disposable Worker only; cleanup deletes the script.
-          subdomain=$(curl --fail-with-body --silent --show-error \
-            -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$WORKER_NAME/subdomain" \
-            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-            -H "Content-Type: application/json" \
-            --data '{"enabled":true}')
-          echo "$subdomain" | jq -e '.success == true' >/dev/null
-          sleep 2
+          subdomain=""
+          for attempt in 1 2 3 4 5; do
+            subdomain=$(curl --fail-with-body --silent --show-error \
+              -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$WORKER_NAME/subdomain" \
+              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              -H "Content-Type: application/json" \
+              --data '{"enabled":true,"previews_enabled":true}')
+            if echo "$subdomain" | jq -e '.success == true and .result.enabled == true' >/dev/null; then break; fi
+            sleep 2
+          done
+          echo "$subdomain" | jq '{success,result,errors}'
+          echo "$subdomain" | jq -e '.success == true and .result.enabled == true' >/dev/null
+          sleep 3
           echo "Temporary Worker deployed at $url"
 
       - name: Validate D1 atomicity and tuple ordering
         run: |
           set -euo pipefail
-          curl --fail-with-body --silent --show-error "${{ steps.deploy.outputs.worker_url }}/setup" | tee /tmp/a7-setup.json
-          curl --fail-with-body --silent --show-error "${{ steps.deploy.outputs.worker_url }}/semantics" | tee /tmp/a7-semantics.json
+          curl --retry 8 --retry-all-errors --retry-delay 2 --max-time 180 --fail-with-body --silent --show-error "${{ steps.deploy.outputs.worker_url }}/setup" | tee /tmp/a7-setup.json
+          curl --retry 8 --retry-all-errors --retry-delay 2 --max-time 180 --fail-with-body --silent --show-error "${{ steps.deploy.outputs.worker_url }}/semantics" | tee /tmp/a7-semantics.json
           jq -e '.atomicityRollbackPass == true and .tuplePass == true' /tmp/a7-semantics.json >/dev/null
 
       - name: Measure D1 reads and Worker parsing cost
@@ -94,26 +100,26 @@ jobs:
           set -euo pipefail
           for n in 1 42 294 850; do
             echo "### D1 measurement: $n snapshots" >> "$GITHUB_STEP_SUMMARY"
-            curl --fail-with-body --silent --show-error "${{ steps.deploy.outputs.worker_url }}/measure?n=$n" | tee "/tmp/a7-measure-$n.json"
+            curl --retry 8 --retry-all-errors --retry-delay 2 --max-time 180 --fail-with-body --silent --show-error "${{ steps.deploy.outputs.worker_url }}/measure?n=$n" | tee "/tmp/a7-measure-$n.json"
             jq -r '"- Rows read: " + (.rowsRead|tostring) + "\n- Rows written: " + (.rowsWritten|tostring) + "\n- Payload bytes parsed: " + (.payloadBytesParsed|tostring) + "\n- Worker wall time (ms): " + (.wallMs|tostring) + "\n- D1 reported SQL duration (ms): " + (.reportedSqlDurationMs|tostring)' "/tmp/a7-measure-$n.json" >> "$GITHUB_STEP_SUMMARY"
           done
 
           for k in 1 3 10 25; do
             echo "### D1 repair chunk: $k snapshots" >> "$GITHUB_STEP_SUMMARY"
-            curl --fail-with-body --silent --show-error "${{ steps.deploy.outputs.worker_url }}/measure-chunk?k=$k" | tee "/tmp/a7-chunk-$k.json"
+            curl --retry 8 --retry-all-errors --retry-delay 2 --max-time 180 --fail-with-body --silent --show-error "${{ steps.deploy.outputs.worker_url }}/measure-chunk?k=$k" | tee "/tmp/a7-chunk-$k.json"
             jq -r '"- Rows read: " + (.rowsRead|tostring) + "\n- Payload bytes parsed: " + (.payloadBytesParsed|tostring) + "\n- Worker wall time (ms): " + (.wallMs|tostring) + "\n- D1 SQL duration (ms): " + (.reportedSqlDurationMs|tostring)' "/tmp/a7-chunk-$k.json" >> "$GITHUB_STEP_SUMMARY"
           done
 
       - name: Validate full raw_json parity and corruption detection
         run: |
           set -euo pipefail
-          curl --fail-with-body --silent --show-error "${{ steps.deploy.outputs.worker_url }}/p1" | tee /tmp/a7-p1.json
+          curl --retry 8 --retry-all-errors --retry-delay 2 --max-time 180 --fail-with-body --silent --show-error "${{ steps.deploy.outputs.worker_url }}/p1" | tee /tmp/a7-p1.json
           jq -e '.pass == true and .cleanSeriesParityPass == true and .fullRawJsonParityDetectsCorruption == true' /tmp/a7-p1.json >/dev/null
 
       - name: Exercise repair liveness counterexample and watermark prototype
         run: |
           set -euo pipefail
-          curl --fail-with-body --silent --show-error "${{ steps.deploy.outputs.worker_url }}/liveness" | tee /tmp/a7-liveness.json
+          curl --retry 8 --retry-all-errors --retry-delay 2 --max-time 180 --fail-with-body --silent --show-error "${{ steps.deploy.outputs.worker_url }}/liveness" | tee /tmp/a7-liveness.json
           jq -e '.fixedWatermarkPrototype.completed == 100' /tmp/a7-liveness.json >/dev/null
           {
             echo "## A7 liveness model"
@@ -123,7 +129,7 @@ jobs:
       - name: Validate D1-backed watermark repair under interleaving
         run: |
           set -euo pipefail
-          curl --fail-with-body --silent --show-error "${{ steps.deploy.outputs.worker_url }}/liveness-d1" | tee /tmp/a7-liveness-d1.json
+          curl --retry 8 --retry-all-errors --retry-delay 2 --max-time 180 --fail-with-body --silent --show-error "${{ steps.deploy.outputs.worker_url }}/liveness-d1" | tee /tmp/a7-liveness-d1.json
           jq -e '.pass == true' /tmp/a7-liveness-d1.json >/dev/null
           {
             echo "## D1-backed repair interleaving"
