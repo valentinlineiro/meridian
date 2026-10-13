@@ -168,9 +168,12 @@ describe("opening straight on What Changed", () => {
   it("shouldShowTheWindowHeaderWhenThePageOpensOnTheChangesRoute", async () => {
     const wc = { interval: { since: "2026-10-02T00:00:00.000Z", until: "2026-10-09T00:00:00.000Z" }, baseline: { status: "exactOrPrevious", observedAt: "2026-10-02T00:00:00.000Z" },
       chess: { gamesCount: 0 }, languages: { xpGained: 0, sessionsCount: 0, totalSessionMinutes: 0 }, streak: {}, findings: [], evaluations: [] };
+    // The header shows the window the client asked for (anchor or the last 7 days, until = now), not the one in the fixture response:
+    // the expected date comes from the clock, never from a literal.
+    const today = new Date().toISOString().slice(0, 10);
     const rt = createDashboardRuntime("/changes", undefined, fetchOnly("/api/what-changed", async () => ({ ok: true, status: 200, json: async () => wc })));
     await flush();
     expect(rt.getEl("#changesTab").hidden).toBe(false);
-    expect(rt.getEl("#changesHeader").innerHTML).toContain("2026-10-09");
+    expect(rt.getEl("#changesHeader").innerHTML).toContain(today);
   });
 });
