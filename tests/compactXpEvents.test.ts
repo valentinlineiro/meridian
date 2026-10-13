@@ -99,7 +99,7 @@ describe("A7 compact XP event series", () => {
 
     const second = await repairCompactXpEvents(d1, "u-a7", "duolingo-lang", 1);
     expect(second.status).toBe("clean");
-    status = d1.prepare(
+    status = await d1.prepare(
       "SELECT head_at,head_id,dirty_at,repair_watermark_at,repair_cursor_at FROM observation_series_status WHERE user_id=? AND source=?"
     ).bind("u-a7", "duolingo-lang").first() as any;
     expect(status.head_at).toBe("2026-10-01T00:02:00.000Z");
