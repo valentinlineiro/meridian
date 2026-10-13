@@ -1,0 +1,131 @@
+name: A7 isolated D1 validation
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/a7-d1-validation.yml"
+      - "tests/a7-d1-validation-worker.mjs"
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-d1:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'experiments/a7-d1-validation'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      WORKER_NAME: meridian-a7-validation-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      - name: Provision disposable D1
+        shell: bash
+        run: |
+          set -euo pipefail
+          for v in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID; do
+            [ -n "${!v}" ] || { echo "::error::Missing required repository secret $v"; exit 1; }
+          done
+          response=$(curl --fail-with-body --silent --show-error \
+            -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database" \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            -H "Content-Type: application/json" \
+            --data "{\"name\":\"meridian-a7-validation-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}\",\"primary_location_hint\":\"WNAM\"}")
+          echo "$response" > /tmp/a7-d1-create.json
+          echo "$response" | jq -e '.success == true' >/dev/null
+          db_id=$(echo "$response" | jq -r '.result.uuid')
+          [ -n "$db_id" ] && [ "$db_id" != "null" ]
+          echo "A7_TEST_D1_ID=$db_id" >> "$GITHUB_ENV"
+          cat > wrangler.a7-validation.jsonc <<EOF
+          {
+            "name": "$WORKER_NAME",
+            "main": "tests/a7-d1-validation-worker.mjs",
+            "compatibility_date": "2026-10-13",
+            "account_id": "$CLOUDFLARE_ACCOUNT_ID",
+            "workers_dev": true,
+            "d1_databases": [
+              {
+                "binding": "DB",
+                "database_name": "meridian-a7-validation-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}",
+                "database_id": "$db_id"
+              }
+            ]
+          }
+          EOF
+          echo "Created disposable D1: $db_id"
+
+      - name: Deploy temporary validation Worker
+        id: deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx wrangler deploy --config wrangler.a7-validation.jsonc 2>&1 | tee /tmp/a7-deploy.log
+          url=$(grep -Eo 'https://[^[:space:]]+\.workers\.dev' /tmp/a7-deploy.log | tail -1 | sed 's/[[:punct:]]*$//')
+          [ -n "$url" ] || { echo "::error::Could not find temporary Worker URL"; exit 1; }
+          echo "worker_url=$url" >> "$GITHUB_OUTPUT"
+          echo "Temporary Worker deployed at $url"
+
+      - name: Validate D1 atomicity and tuple ordering
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --silent --show-error "${{ steps.deploy.outputs.worker_url }}/setup" | tee /tmp/a7-setup.json
+          curl --fail-with-body --silent --show-error "${{ steps.deploy.outputs.worker_url }}/semantics" | tee /tmp/a7-semantics.json
+          jq -e '.atomicityRollbackPass == true and .tuplePass == true' /tmp/a7-semantics.json >/dev/null
+
+      - name: Measure D1 reads and Worker parsing cost
+        run: |
+          set -euo pipefail
+          for n in 1 42 294 850; do
+            echo "### D1 measurement: $n snapshots" >> "$GITHUB_STEP_SUMMARY"
+            curl --fail-with-body --silent --show-error "${{ steps.deploy.outputs.worker_url }}/measure?n=$n" | tee "/tmp/a7-measure-$n.json"
+            jq -r '"- Rows read: " + (.rowsRead|tostring) + "\n- Rows written: " + (.rowsWritten|tostring) + "\n- Payload bytes parsed: " + (.payloadBytesParsed|tostring) + "\n- Worker wall time (ms): " + (.wallMs|tostring) + "\n- D1 reported SQL duration (ms): " + (.reportedSqlDurationMs|tostring)' "/tmp/a7-measure-$n.json" >> "$GITHUB_STEP_SUMMARY"
+          done
+
+      - name: Validate full raw_json parity and corruption detection
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --silent --show-error "${{ steps.deploy.outputs.worker_url }}/p1" | tee /tmp/a7-p1.json
+          jq -e '.pass == true and .cleanSeriesParityPass == true and .fullRawJsonParityDetectsCorruption == true' /tmp/a7-p1.json >/dev/null
+
+      - name: Exercise repair liveness counterexample and watermark prototype
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --silent --show-error "${{ steps.deploy.outputs.worker_url }}/liveness" | tee /tmp/a7-liveness.json
+          jq -e '.fixedWatermarkPrototype.completed == 100' /tmp/a7-liveness.json >/dev/null
+          {
+            echo "## A7 liveness model"
+            jq -r '"- Current protocol completed: " + (.currentProtocol.completed|tostring) + "/100\n- Current protocol median attempts: " + (.currentProtocol.medianAttempts|tostring) + "\n- Fixed-watermark prototype completed: " + (.fixedWatermarkPrototype.completed|tostring) + "/100\n- Fixed-watermark median attempts: " + (.fixedWatermarkPrototype.medianAttempts|tostring) + "\n\n" + .note' /tmp/a7-liveness.json
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload measurements
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: a7-d1-validation-${{ github.run_id }}
+          path: /tmp/a7-*.json
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Delete temporary Worker and D1
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          if [ -n "${A7_TEST_D1_ID:-}" ]; then
+            curl --silent --show-error -X DELETE \
+              "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$WORKER_NAME" \
+              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" >/tmp/a7-worker-delete.json 2>&1
+            curl --silent --show-error -X DELETE \
+              "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$A7_TEST_D1_ID" \
+              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" >/tmp/a7-d1-delete.json 2>&1
+            echo "Cleanup requested for disposable Worker and D1."
+          fi
+          rm -f wrangler.a7-validation.jsonc
