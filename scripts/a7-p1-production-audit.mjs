@@ -19,7 +19,7 @@ let totalRowsWritten = 0;
 let totalSqlDurationMs = 0;
 
 async function select(sql, params = []) {
-  if (!/^SELECT\\b/i.test(sql.trim())) throw new Error("Production audit permits SELECT only");
+  if (!/^SELECT\b/i.test(sql.trim())) throw new Error("Production audit permits SELECT only");
   const response = await fetch(endpoint, {
     method: "POST",
     headers: {
