@@ -8,6 +8,7 @@ import { buildContainer } from "../composition/index.ts";
 import { dailyGoalRoutes } from "../slices/daily-goal/delivery/routes.ts";
 import { visitAnchorRoutes } from "../slices/visit-anchor/delivery/routes.ts";
 import { handleImport, json } from "./import.ts";
+import { handleCompactXpRepair } from "./compactXpRepair.ts";
 import { handleStats, handleLangStats, handleMatches, handleSnapshots } from "./stats.ts";
 import { handleMeStats } from "./me.ts";
 import { handleSyncRequest, handleSyncStatus } from "./sync.ts";
@@ -162,6 +163,15 @@ const importRoute = async (c: Context<AppEnv>) => {
 
 app.post("/api/import", importRoute);
 app.post("/api/snapshot", importRoute);
+app.post("/api/admin/repair-compact-xp-events", async (c) => {
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return json({ ok: false, error: "invalid json body" }, 400);
+  }
+  return handleCompactXpRepair(c.env.DB, body);
+});
 
 app.get("/api/languages", (c) => handleGetLanguages(c.env.DB, new URL(c.req.url)));
 app.get("/api/languages/courses", (c) => handleGetLanguages(c.env.DB, new URL(c.req.url)));
