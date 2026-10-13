@@ -1,3 +1,5 @@
+import { compactXpIngestStatements, repairCompactXpEvents } from "../src/db/storeCompactXpEvents.ts";
+
 const COURSE_COUNT = 16;
 const BENCH_ROWS = 850;
 const TARGET_BYTES = 72_000;
@@ -11,6 +13,151 @@ function json(data, status = 200) {
 
 async function runBatch(db, statements) {
   if (statements.length) await db.batch(statements);
+}
+
+async function ensureRuntimeSchema(db) {
+  await runBatch(db, [
+    db.prepare("CREATE TABLE IF NOT EXISTS snapshots (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, source TEXT NOT NULL, created_at TEXT NOT NULL, raw_json TEXT NOT NULL, checksum TEXT UNIQUE)"),
+    db.prepare("CREATE INDEX IF NOT EXISTS idx_snapshots_user_source_created ON snapshots(user_id,source,created_at,id)"),
+    db.prepare("CREATE TABLE IF NOT EXISTS observation_series_status (user_id TEXT NOT NULL, source TEXT NOT NULL, head_at TEXT, head_id TEXT, dirty_at TEXT, dirty_id TEXT, repair_cursor_at TEXT, repair_cursor_id TEXT, repair_watermark_at TEXT, repair_watermark_id TEXT, version INTEGER NOT NULL DEFAULT 0, repair_version INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(user_id,source)) WITHOUT ROWID"),
+    db.prepare("CREATE TABLE IF NOT EXISTS course_xp_events (snapshot_id TEXT NOT NULL REFERENCES snapshots(id), course_id TEXT NOT NULL, user_id TEXT NOT NULL, source TEXT NOT NULL, observed_at TEXT NOT NULL, state TEXT NOT NULL CHECK(state IN ('value','invalid','absent')), xp REAL, prev_state TEXT, last_xp REAL, extractor_version INTEGER NOT NULL, CHECK((state='value' AND xp IS NOT NULL) OR (state<>'value' AND xp IS NULL)), PRIMARY KEY(snapshot_id,course_id)) WITHOUT ROWID"),
+    db.prepare("CREATE INDEX IF NOT EXISTS idx_course_xp_events_latest ON course_xp_events(user_id,source,course_id,observed_at DESC,snapshot_id DESC)"),
+  ]);
+}
+
+async function runtimeIngest(db, snapshot) {
+  const statements = await compactXpIngestStatements(db, {
+    snapshotId: snapshot.id, userId: snapshot.user_id, source: snapshot.source,
+    observedAt: snapshot.created_at, rawJson: snapshot.raw_json,
+  });
+  await db.batch([
+    db.prepare("INSERT INTO snapshots(id,user_id,source,created_at,raw_json,checksum) VALUES(?,?,?,?,?,?)")
+      .bind(snapshot.id,snapshot.user_id,snapshot.source,snapshot.created_at,snapshot.raw_json,snapshot.checksum ?? null),
+    ...statements,
+  ]);
+}
+
+async function runtimeScenario(db) {
+  await ensureRuntimeSchema(db);
+  await db.batch([
+    db.prepare("DELETE FROM course_xp_events"),
+    db.prepare("DELETE FROM observation_series_status"),
+    db.prepare("DELETE FROM snapshots"),
+  ]);
+  const source = "duolingo-lang";
+  const orderedUser = "runtime-ordered";
+  const t1 = "2026-10-01T00:00:00.000Z";
+  const t2 = "2026-10-01T00:01:00.000Z";
+  const t3 = "2026-10-01T00:02:00.000Z";
+  const t4 = "2026-10-01T00:03:00.000Z";
+  const make = (id,user,at,xp,totalXp) => ({
+    id, user_id:user, source, created_at:at, checksum:id,
+    raw_json:JSON.stringify({ user:{ totalXp }, courses:[{ id:"A", xp }, { id:"B", xp:5 }] }),
+  });
+  await runtimeIngest(db, make("ordered-1",orderedUser,t1,100,100));
+  await runtimeIngest(db, make("ordered-3",orderedUser,t3,90,102));
+  await runtimeIngest(db, make("ordered-2",orderedUser,t2,95,101));
+  const beforeRepair = await db.prepare(
+    "SELECT head_at,head_id,dirty_at,dirty_id FROM observation_series_status WHERE user_id=? AND source=?"
+  ).bind(orderedUser,source).first();
+  const firstChunk = await repairCompactXpEvents(db,orderedUser,source,1);
+  await runtimeIngest(db, make("ordered-4",orderedUser,t4,80,103));
+  let repairCalls = 1;
+  let repairResult = firstChunk;
+  while (repairResult.status === "progress" && repairCalls < 8) {
+    repairResult = await repairCompactXpEvents(db,orderedUser,source,10);
+    repairCalls++;
+  }
+  const orderedStatus = await db.prepare(
+    "SELECT head_at,head_id,dirty_at,repair_watermark_at FROM observation_series_status WHERE user_id=? AND source=?"
+  ).bind(orderedUser,source).first();
+  const orderedEvents = await db.prepare(
+    "SELECT observed_at,state,xp,prev_state,last_xp FROM course_xp_events WHERE user_id=? AND source=? AND course_id='A' ORDER BY observed_at"
+  ).bind(orderedUser,source).all();
+  const expectedOrdered = [
+    [t1,"value",100,null,null], [t2,"value",95,"value",100],
+    [t3,"value",90,"value",95], [t4,"value",80,"value",90],
+  ];
+  const actualOrdered = orderedEvents.results.map(e => [e.observed_at,e.state,e.xp,e.prev_state,e.last_xp]);
+  const orderedParity = JSON.stringify(actualOrdered) === JSON.stringify(expectedOrdered);
+
+  const raceUser = "runtime-race";
+  const raceRows = Array.from({length:20},(_,i) => {
+    const at = new Date(Date.UTC(2026,9,2,0,0,i)).toISOString();
+    return {
+      id:"race-" + String(i).padStart(2,"0"), user_id:raceUser, source, created_at:at,
+      checksum:"race-" + String(i).padStart(2,"0"),
+      raw_json:JSON.stringify({ user:{ totalXp:200+i }, courses:[{ id:"A", xp:200+i }] }),
+      expectedXp:200+i,
+    };
+  });
+  await Promise.all(raceRows.map(async snapshot => {
+    const statements = await compactXpIngestStatements(db, {
+      snapshotId:snapshot.id, userId:snapshot.user_id, source:snapshot.source,
+      observedAt:snapshot.created_at, rawJson:snapshot.raw_json,
+    });
+    await new Promise(resolve => setTimeout(resolve,25));
+    await db.batch([
+      db.prepare("INSERT INTO snapshots(id,user_id,source,created_at,raw_json,checksum) VALUES(?,?,?,?,?,?)")
+        .bind(snapshot.id,snapshot.user_id,snapshot.source,snapshot.created_at,snapshot.raw_json,snapshot.checksum),
+      ...statements,
+    ]);
+  }));
+  const raceAfterIngest = await db.prepare(
+    "SELECT head_at,head_id,dirty_at,dirty_id FROM observation_series_status WHERE user_id=? AND source=?"
+  ).bind(raceUser,source).first();
+  const raceSnapshotCount = Number((await db.prepare(
+    "SELECT COUNT(*) AS n FROM snapshots WHERE user_id=? AND source=?"
+  ).bind(raceUser,source).first()).n);
+  let raceRepairCalls = 0;
+  let raceStatus = raceAfterIngest;
+  while (raceStatus?.dirty_at && raceRepairCalls < 8) {
+    const repaired = await repairCompactXpEvents(db,raceUser,source,10);
+    if (repaired.status === "conflict") break;
+    raceRepairCalls++;
+    raceStatus = await db.prepare(
+      "SELECT head_at,head_id,dirty_at,dirty_id FROM observation_series_status WHERE user_id=? AND source=?"
+    ).bind(raceUser,source).first();
+  }
+  const raceEvents = await db.prepare(
+    "SELECT snapshot_id,observed_at,state,xp,prev_state,last_xp FROM course_xp_events WHERE user_id=? AND source=? AND course_id='A' ORDER BY observed_at"
+  ).bind(raceUser,source).all();
+  const expectedRace = raceRows.map((row,i) => [
+    row.id,row.created_at,"value",row.expectedXp,i===0?null:"value",i===0?null:row.expectedXp-1,
+  ]);
+  const actualRace = raceEvents.results.map(e => [e.snapshot_id,e.observed_at,e.state,e.xp,e.prev_state,e.last_xp]);
+  const raceParity = JSON.stringify(actualRace) === JSON.stringify(expectedRace);
+  const raceStatusFinal = await db.prepare(
+    "SELECT head_at,head_id,dirty_at,repair_watermark_at FROM observation_series_status WHERE user_id=? AND source=?"
+  ).bind(raceUser,source).first();
+
+  return {
+    ordered: {
+      initialHeadDidNotRewind: beforeRepair?.head_at === t3,
+      lateSnapshotMarkedDirty: beforeRepair?.dirty_at === t2,
+      firstRepairStatus: firstChunk.status,
+      repairCalls,
+      eventCount: orderedEvents.results.length,
+      parity: orderedParity,
+      finalHeadIsLatest: orderedStatus?.head_at === t4,
+      dirtyCleared: orderedStatus?.dirty_at === null,
+      pass: beforeRepair?.head_at === t3 && beforeRepair?.dirty_at === t2 && firstChunk.status === "progress" &&
+        orderedParity && orderedStatus?.head_at === t4 && orderedStatus?.dirty_at === null && orderedStatus?.repair_watermark_at === null,
+    },
+    concurrent: {
+      concurrentIngests: raceRows.length,
+      snapshotsPreserved: raceSnapshotCount === raceRows.length,
+      initiallyMarkedDirty: Boolean(raceAfterIngest?.dirty_at),
+      repairCalls: raceRepairCalls,
+      eventCount: raceEvents.results.length,
+      parity: raceParity,
+      finalHeadIsLatest: raceStatusFinal?.head_at === raceRows[raceRows.length-1]?.created_at,
+      dirtyCleared: raceStatusFinal?.dirty_at === null,
+      pass: raceSnapshotCount === raceRows.length && raceParity && raceStatusFinal?.head_at === raceRows[raceRows.length-1]?.created_at && raceStatusFinal?.dirty_at === null,
+    },
+    pass: orderedParity && orderedStatus?.head_at === t4 && orderedStatus?.dirty_at === null &&
+      raceSnapshotCount === raceRows.length && raceParity && raceStatusFinal?.head_at === raceRows[raceRows.length-1]?.created_at && raceStatusFinal?.dirty_at === null,
+  };
 }
 
 async function ensureSchema(db) {
@@ -400,6 +547,11 @@ export default {
         const bench = await seedBench(env.DB);
         const p1 = await seedP1(env.DB);
         return json({ ok: true, schema: true, bench, p1 });
+      }
+      if (url.pathname === "/runtime-scenario") {
+        if (!env.RUNTIME_DB) return json({ pass: false, error: "RUNTIME_DB binding missing" }, 500);
+        const result = await runtimeScenario(env.RUNTIME_DB);
+        return json(result, result.pass ? 200 : 500);
       }
       if (url.pathname === "/semantics") return json(await semantics(env.DB));
       if (url.pathname === "/measure") {
