@@ -71,6 +71,15 @@ jobs:
           url=$(grep -Eo 'https://[^[:space:]]+\.workers\.dev' /tmp/a7-deploy.log | tail -1 | sed 's/[[:punct:]]*$//')
           [ -n "$url" ] || { echo "::error::Could not find temporary Worker URL"; exit 1; }
           echo "worker_url=$url" >> "$GITHUB_OUTPUT"
+          # Some accounts keep workers.dev disabled for newly created scripts. Enable
+          # the route for this disposable Worker only; cleanup deletes the script.
+          subdomain=$(curl --fail-with-body --silent --show-error \
+            -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$WORKER_NAME/subdomain" \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            -H "Content-Type: application/json" \
+            --data '{"enabled":true}')
+          echo "$subdomain" | jq -e '.success == true' >/dev/null
+          sleep 2
           echo "Temporary Worker deployed at $url"
 
       - name: Validate D1 atomicity and tuple ordering
