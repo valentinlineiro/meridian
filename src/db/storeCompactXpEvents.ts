@@ -1,5 +1,3 @@
-import type { D1PreparedStatement } from "@cloudflare/workers-types";
-
 export const A7_EXTRACTOR_VERSION = 1;
 export type CompactXpState = "value" | "invalid" | "absent";
 
@@ -289,16 +287,6 @@ export async function compactXpIngestStatements(
   ));
 
   return stmts;
-}
-
-function eventInsertStatement(db: D1Database, event: CompactXpEvent): D1PreparedStatement {
-  return db.prepare(
-    "INSERT INTO course_xp_events (snapshot_id,course_id,user_id,source,observed_at,state,xp,prev_state,last_xp,extractor_version) " +
-    "VALUES (?,?,?,?,?,?,?,?,?,?)"
-  ).bind(
-    event.snapshot_id, event.course_id, event.user_id, event.source, event.observed_at,
-    event.state, event.xp, event.prev_state, event.last_xp, event.extractor_version
-  );
 }
 
 function latestHistoryBefore(dbRows: EventRow[]): Map<string, CourseHistory> {
