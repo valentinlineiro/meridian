@@ -6,6 +6,7 @@ import { extractObservations } from "../normalization/observations.ts";
 import { extractPathTree } from "../normalization/pathTree.ts";
 import { applyPathState } from "../db/storePathState.ts";
 import { observationStatements } from "../db/storeObservations.ts";
+import { compactXpIngestStatements } from "../db/storeCompactXpEvents.ts";
 import { insertSnapshot, upsertMatches, recordObservations } from "../db/store.ts";
 import {
   insertLanguageSnapshot,
@@ -75,6 +76,17 @@ export async function ingestSnapshot(db: D1Database, args: IngestArgs): Promise<
     const path = extractPathTree(data);
     if (path) await applyPathState(db, { userId, snapshotId: id, observedAt: now, ...path }); // K5, idempotent like the writes above
 
+    const a7Statements = await compactXpIngestStatements(db, {
+      snapshotId: id,
+      userId,
+      source,
+      observedAt: now,
+      rawJson,
+    });
+    const courseObservationStatements = observationStatements(
+      db,
+      extractObservations(source, rawJson, { snapshotId: id, userId, observedAt: now, isAuxiliary: userState.isAuxiliary })
+    );
     await insertLanguageSnapshot(db, {
       id,
       createdAt: now,
@@ -89,7 +101,7 @@ export async function ingestSnapshot(db: D1Database, args: IngestArgs): Promise<
       isAuxiliary: userState.isAuxiliary,
       originalCourseId: userState.originalCourseId,
       observedCourseId: userState.observedCourseId,
-    }, observationStatements(db, extractObservations(source, rawJson, { snapshotId: id, userId, observedAt: now, isAuxiliary: userState.isAuxiliary })));
+    }, [...a7Statements, ...courseObservationStatements]);
 
     return {
       snapshotId: id,
