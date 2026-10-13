@@ -51,12 +51,28 @@ Prototipo local (función pura `ingestOne` + `decode`; no es código del reposit
 
 ### 1.3 Lo que **no** demuestra el prototipo **[NO DEMOSTRADO]**
 
-1. **Descensos a través de una ausencia.** El prototipo detecta un descenso comparando con el estado del snapshot inmediatamente anterior. La regla propuesta en §2.3 (comparar con la **última observación con valor**, como exige A6 §14.2) no se probó; en los datos reales no hay ausencias ni valores inválidos.
-2. **Llegadas tardías o fuera de orden.** No se simularon.
+1. ~~Descensos a través de una ausencia~~ y 2. ~~llegadas tardías o fuera de orden~~: **cubiertos por el prototipo v2 (§1.4)**, con las salvedades de ese apartado (datos reales sin ausencias; perturbaciones sintéticas; almacén simulado en memoria, no D1). El prototipo v1 solo comparaba con el estado del snapshot inmediatamente anterior.
 3. **D1 real.** La ingesta se simuló en memoria; no se midieron `rows_written`, `rows_read`, CPU del Worker ni el plan. El coste real de D1 **sigue sin estar confirmado**.
 4. **Generalidad.** Un usuario, 20 días, una fuente. El 0,57 % es propiedad de estos datos, no del diseño: la prueba de estrés muestra que el número de eventos crece con la inestabilidad de la fuente.
 5. **Chess.** Solo se probó la fuente de idiomas (los cursos no idiomáticos del mismo payload, como `CHESS_CH`, sí entran en los 16).
 6. **Que el −14 sea una regresión real o una revisión de la fuente** y la discrepancia de +1 061 XP de §7.3 siguen sin explicación.
+
+### 1.4 Casos límite: prototipo v2 **[MEDIDO]**
+
+Prototipo local con la regla de §2.3 tal como está escrita (`last_xp`, estados `value`/`invalid`/`absent`) y el protocolo de §4.3 simulado en memoria. Base: los 850 snapshots reales; las perturbaciones son **sintéticas** (semilla fija).
+
+| Comprobación | Resultado |
+|---|---|
+| Semántica en 7 secuencias mínimas (`100,ausente,90` → 1 descenso; `100,inválido,90` → 1; `100,ausente,100` → 0; `100,ausente,ausente,120` → 0; `100,0,50` → 1 (el 0 **observado** no es ausencia); `ausente,ausente,80,70` → 1; `100,90,100,90` → 2) | 7 / 7 iguales al oráculo calculado directamente de la verdad por snapshot |
+| `0` observado y ausencia producen estados distintos | Sí |
+| Cambio de `course_id` (`A` → `B`) | `A` primera, `A` ausente, `B` primera; **nunca vinculados** |
+| Serie real sin perturbar | 78 eventos, 1 descenso (RU_ES 35 721 → 35 707), 0 cadenas rotas, igual al oráculo |
+| 40 series reales con 6 % de ausencias, 4 % de inválidos y 2 % de descensos inyectados | descensos desde eventos = oráculo en **40 / 40**; 10 813 descensos comparados; **0** violaciones de I2 |
+| I2 detecta corrupción: se altera un `prev_state` | detectada |
+| 300 llegadas tardías aleatorias (1–4 snapshots retrasados 1–6 posiciones), serie real | **sin protocolo** (añadir a ciegas): serie incorrecta en **108 / 300**. Con el protocolo de §4.3: 300 / 300 marcadas, **todo lo anterior a la marca ya exacto**, y la reparación deja la serie **idéntica** a la ordenada (300 / 300) y es **idempotente** (300 / 300) |
+| Lo mismo sobre la serie perturbada (2 989 eventos) | sin protocolo: incorrecta en **300 / 300**; con protocolo: 300 / 300 en las tres comprobaciones |
+
+**Salvedades.** (a) La reparación se simuló leyendo el estado de los eventos y recomputando desde los payloads en memoria; no hay coste de D1 medido. (b) El protocolo marca **toda** llegada tardía como sucia, también las que no habrían alterado la serie (en la serie real, la mitad aprox.: 192 / 300 no producían diferencia): es conservador a propósito; cuánto cuesta esa conservadurez no está medido (D-A7-7). (c) No se probaron escrituras concurrentes reales ni fallos a mitad de `db.batch`.
 
 ---
 
@@ -181,6 +197,7 @@ Leer `T` para una ventana cuesta del orden de una fila por snapshot (≈ 42 por 
 
 - **Camino normal:** leer el último estado de cada curso (≈ 16 filas por ingesta, a medir) y escribir 0 filas en la mayoría de los snapshots (811 de 850, 95,4 %, en el histórico medido, §1.2; depende de la fuente).
 - **Reparación de un tardío:** proporcional a los snapshots posteriores. Con la densidad medida (≈ 42/día), un retraso de un día toca del orden de 40 snapshots; cada uno se lee (≈ 73 KB de `raw_json`) y solo se reescriben los eventos del tramo (unas decenas de filas). Es un coste **de lectura y CPU**, no de escritura.
+- **Conservadurez medida (prototipo v2, §1.4):** el protocolo marca sucia toda llegada tardía; en la serie real el 36 % (108 / 300) habría corrompido la serie con un añadido a ciegas y el resto no, así que **parte de las reparaciones serían innecesarias**. Reducirlo (p. ej. comprobar al llegar si el estado del tardío coincide con el de su predecesor y sucesor) es una optimización posible; **no se propone aquí** porque exige leer al sucesor en la ingesta y no está probada.
 - **Qué pierde la estrategia:** mientras haya marca activa, la serie compacta no sirve a esa ventana y se paga la lectura vigente. Es la contrapartida de **no** corromper.
 - **Alternativa descartada: insertar el tardío y reparar en línea** dentro de la petición de ingesta. Un tardío con muchos sucesores convertiría una escritura en una recomputación sin cota dentro del Worker.
 - **Alternativa descartada: ignorar el tardío** (como hace A1 para el estado del árbol). K5 es un **estado** (el último gana); K10 es una **serie** y perdería una transición real.
@@ -233,7 +250,7 @@ Todos deben cumplirse; **ninguno es un umbral numérico arbitrario**: son iguald
 | P4 | **Integridad I2:** 0 cadenas rotas. |
 | P5 | **Idempotencia:** una segunda pasada escribe 0 filas; el orden de ingesta incremental produce los mismos eventos que el lote. |
 | P6 | **Tardíos:** con la ingesta en orden aleatorio y la reparación aplicada, la serie final es idéntica a la de la ingesta ordenada. |
-| P7 | **Casos que el prototipo no cubrió (§1.3):** descenso a través de una ausencia, `invalid` entre dos valores y cambio de `course_id`, con datos sintéticos **y** una copia de producción. |
+| P7 | **Casos límite** (cubiertos por el prototipo v2, §1.4, y a repetir sobre el código real): descenso a través de una ausencia, `invalid` entre dos valores, cambio de `course_id`, **0 observado frente a ausencia** y tardíos con reparación, con datos sintéticos **y** una copia de producción. Añade escrituras concurrentes y fallo a mitad del batch, no probados aún. |
 | P8 | **Presupuesto:** la medición real de `rows_written` y `rows_read` por día en D1 atribuibles a K10 debe quedar por debajo de un tope **fijado por el propietario con esa medición** (como A1). Este documento **no inventa** el tope. |
 
 **Compatibilidad con A5:** A7 no toca `xp_summaries` ni las reglas de §13; **ningún** cálculo de A5 cambia.
