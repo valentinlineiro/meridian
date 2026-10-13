@@ -1,7 +1,7 @@
 # Enmienda A7 (borrador): serie compacta de eventos de XP por curso
 
 **Fecha:** 2026-10-13
-**Estado:** 📝 **BORRADOR. Revisión del propietario (2026-10-13): *aprobado con cambios pendientes, no aprobado para implementación* (§9.1; B1 y B2 tratados en §4.5.9–§4.5.10, a verificar por el propietario). No está en vigor, no está implementado y no autoriza migración, backfill, escrituras remotas ni cambio de lectores.** Mientras no se apruebe, el contrato vigente es el [modelo de observaciones](2026-10-05-observation-model-contract.md) (congelado el 2026-10-06, con A1) y las enmiendas A5/A6 del [contrato de señales descartadas](2026-10-06-discarded-signals-contract.md) (§13, §14).
+**Estado:** 📝 **BORRADOR. Autorización del propietario (2026-10-13): continuar con la implementación en una rama y pruebas aisladas.** A7 no está aún en vigor en producción ni autoriza migraciones, backfill, escrituras remotas o cambio de lectores. La validación D1 de §4.5.12 respalda los primitivos y el protocolo de referencia; el SQL de runtime debe implementarse y P9 debe repetirse contra ese SQL antes de considerar un despliegue. El contrato vigente en producción sigue siendo el [modelo de observaciones](2026-10-05-observation-model-contract.md) (congelado el 2026-10-06, con A1) y las enmiendas A5/A6 del [contrato de señales descartadas](2026-10-06-discarded-signals-contract.md) (§13, §14).
 **Qué enmienda:** extiende el modelo de observaciones con **una serie derivada nueva (K10)**; no modifica el texto congelado de §2b, §3, §4, §7 ni §10 de ese contrato. Resuelve, como propuesta, la parte de la decisión **P2** de A6 (§14.6) que trata de *cómo conservar evidencia suficiente para detectar discontinuidades sin releer toda la historia*. Documenta además **A5.1** (§7 de este documento), que no cambia el comportamiento de A5.
 **Origen:** experimento de solo lectura sobre el histórico real (2026-10-13) y prototipo local. Las cifras de §1 son mediciones; todo lo demás es propuesta y está marcado.
 
@@ -222,12 +222,14 @@ Leer `T` para una ventana cuesta del orden de una fila por snapshot (≈ 42 por 
 
 ### 4.5 Protocolo de escritura, reparación y lectura **[PROPUESTO; probado en SQLite local, no en D1]**
 
-#### 4.5.1 Estado de serie y versión
+#### 4.5.1 Estado de serie, watermark y versiones
 
-Una fila por (usuario, fuente): `head` (último snapshot aplicado), `dirty_from` (menor posición no confiable, o nulo), `repair_cursor` (hasta dónde ha llegado una reparación en curso, o nulo) y **`version`**.
+Una fila por (usuario, fuente): `head`, `dirty_from`, `repair_cursor`, `repair_watermark` (par `observed_at, id` fijo para una generación de reparación), `version` y `repair_version`.
 
-- **`version` aumenta en 1 en toda escritura de la serie**: (a) una ingesta que avanza `head`; (b) una ingesta que marca o ajusta `dirty_from` o `repair_cursor`; (c) cada trozo de reparación y su publicación. Nunca disminuye ni se reutiliza.
-- No es un reloj ni identifica un snapshot: es **solo una guarda**. Existe porque `head` puede volver a ser el mismo snapshot tras una reparación mientras el contenido cambió (ABA, §1.4).
+- **`version`** aumenta en toda escritura del estado de serie: ingesta, marcas y progreso/publicación de reparación. Es la guarda general de ingesta.
+- **`repair_version`** es la guarda independiente de la generación de reparación. Aumenta al iniciar una reparación, en cada trozo confirmado y cuando una llegada tardía afecta al prefijo `≤ repair_watermark`. Una llegada posterior al watermark aumenta `version`, pero **no** `repair_version`: no invalida el prefijo que ya se está reparando.
+- Ambas versiones son monótonas y no se reutilizan. La separación evita que una ráfaga de snapshots nuevos invalide continuamente un trozo que solo reconstruye un prefijo fijo.
+
 
 #### 4.5.2 La guarda es parte de la escritura, no de la aplicación
 
@@ -245,18 +247,26 @@ Lectura previa + un `db.batch` junto con el snapshot (§4.5 del contrato congela
 2. Batch, en este orden: insertar el snapshot; insertar cada evento **condicionado a `version = leída` y `dirty_from` nulo**, con `ON CONFLICT DO NOTHING` (§5 del contrato congelado); avanzar `head` y `version` con la misma condición; y, si tras ello `head ≠ s`, fijar `dirty_from = min(dirty_from, s)`, reiniciar `repair_cursor` si `s ≤ repair_cursor` e incrementar `version`.
 3. Si la condición no se cumple (otro escribió antes, el snapshot es tardío o la serie ya estaba sucia): **ningún evento**, snapshot guardado y marca en el mismo batch.
 
-#### 4.5.4 Reparación (en trozos)
+#### 4.5.4 Reparación (en trozos, con watermark fijo)
 
-Una reparación **no** es una operación única: se ejecuta en **trozos** de a lo sumo `K` snapshots (§4.5.8).
+La reparación se divide en trozos de a lo sumo `K` snapshots. Una generación trabaja sobre un prefijo fijo delimitado por `repair_watermark = (observed_at, id)`.
 
-1. **Lectura previa:** `dirty_from`, `repair_cursor`, `version`; los snapshots a partir del cursor (exclusivo) o, si es nulo, de `dirty_from` (inclusivo); el estado previo, de los eventos anteriores al trozo.
-2. **Batch del trozo:** en el primer trozo, borrar los eventos desde `dirty_from`; insertar los eventos recomputados del trozo; si el trozo llega al último snapshot, fijar `head`, **limpiar `dirty_from` y `repair_cursor`**; si no, fijar `repair_cursor` al último del trozo; incrementar `version`.
-3. **Guarda de cada sentencia del trozo:** `version`, `dirty_from` y `repair_cursor` iguales a los leídos, **y** que el número de snapshots posteriores al punto de inicio coincida con el leído. Si falla, **no cambia nada**; se vuelve a leer y reintentar. Reintentar es idempotente.
-4. **Llegadas durante la reparación:** una ingesta con snapshot `≤ repair_cursor` reinicia el cursor (la reparación vuelve a empezar en `dirty_from`; borrar los eventos desde allí es idempotente) y, si es anterior a `dirty_from`, lo baja. Una llegada posterior al cursor no lo toca, pero hace fallar la guarda de conteo del trozo en vuelo y se reintenta.
+1. **Inicio de generación:** si no hay watermark activo, capturar el mayor par `(observed_at, id)` existente, guardar `repair_watermark`, poner `repair_cursor = NULL` e incrementar `repair_version` y `version`. El watermark no cambia durante esa generación.
+2. **Lectura del trozo:** leer `dirty_from`, `repair_cursor`, `repair_watermark`, `repair_version`, los snapshots posteriores al cursor (o desde `dirty_from` si el cursor es nulo) **y no posteriores al watermark**, el estado previo y el número esperado de snapshots del intervalo.
+3. **Batch del trozo:** borrar/recrear los eventos del intervalo, avanzar el cursor o publicar el prefijo, todo en un mismo batch y con guarda `repair_version`, `dirty_from`, cursor, watermark y conteo del intervalo. El trozo no lee ni reconstruye snapshots posteriores al watermark.
+4. **Llegada dentro del prefijo** (`s ≤ repair_watermark)): guardar el snapshot, ajustar `dirty_from` si procede, reiniciar el cursor si `s ≤ repair_cursor` e incrementar `repair_version`. La guarda del trozo en vuelo falla y se reintenta desde el punto seguro.
+5. **Llegada posterior al watermark** (`s > repair_watermark)): guardar el snapshot y aumentar `version`, pero no `repair_version` ni el cursor del prefijo. La reparación en curso puede terminar; el snapshot queda en la cola sucia que se procesará en la siguiente generación.
+6. **Guardas:** el conteo cubre solo el intervalo de reparación hasta el watermark. Los snapshots posteriores no lo invalidan; una llegada tardía dentro del prefijo sí lo hace mediante `repair_version`, incluso si el conteo por sí solo no bastara para detectar la carrera.
+
 
 #### 4.5.5 Criterio de terminación y publicación
 
-La reparación está **terminada** cuando, en **un mismo batch**, el último trozo (a) cubre todos los snapshots `≥ dirty_from` existentes (conteo igual al leído, con la guarda de §4.5.4.3), (b) limpia `dirty_from` y `repair_cursor`, (c) fija `head` e (d) incrementa `version`. **La serie se «publica» en ese batch y no antes:** hasta entonces sigue marcada sucia aunque haya trozos confirmados.
+La generación termina cuando un batch confirma el último trozo hasta `repair_watermark`, fija `head` a ese watermark, limpia cursor y watermark e incrementa `version` y `repair_version`.
+
+- Si no hay snapshots posteriores al watermark, limpiar `dirty_from`: la serie queda limpia.
+- Si hay snapshots posteriores, mover `dirty_from` al primer timestamp del tramo posterior y dejar la serie marcada como sucia. El prefijo hasta el watermark queda publicado y es utilizable; los lectores desde el nuevo `dirty_from` siguen usando `raw_json` hasta la siguiente generación.
+- La publicación nunca avanza `head` por delante del watermark ni lo retrocede. Una llegada posterior al watermark durante la reparación no invalida la publicación del prefijo.
+
 
 #### 4.5.6 Recuperación y reintentos
 
@@ -279,10 +289,11 @@ La reparación está **terminada** cuando, en **un mismo batch**, el último tro
 
 #### 4.5.8 Límites operativos
 
-- **Tamaño de trozo `K`: no fijado.** No hay un límite de CPU ni de transferencia confirmado para D1/Workers en este proyecto. Con los 850 payloads medidos, reparar todo supone ≈ 61 MB de lectura (§4.4): **no se puede asegurar que quepa en una invocación**, así que el troceado **no es opcional** y la reparación se ejecuta fuera de la petición de ingesta. `K` se elegirá con la medición real en D1 (P8).
-- **Mientras dura una reparación**, las ingestas siguen guardando snapshots sin eventos: el pendiente crece con el tiempo que la serie permanezca sucia.
-- **Vivacidad:** si llegan ingestas de forma continua, la guarda del trozo puede fallar siempre. **Seguridad no implica terminación.** Medición en el modelo y sus límites en §4.5.9; no se propone todavía una mitigación.
-- **Consecuencias demostradas en el prototipo (§1.4):** el snapshot, sus eventos y la marca son atómicos; la marca no se pierde; antes de `dirty_from` la serie es siempre exacta, incluso entre trozos; la reparación converge y es idempotente.
+- **Tamaño de trozo inicial: `K = 10` [MEDIDO en D1, provisional].** Cinco muestras de lectura + parseo dieron mediana de 32 ms y máximo de 36 ms, con ≈ 720 KB por trozo; `K = 25` alcanzó ≈ 1,8 MB y máximo de 57 ms. Elegimos 10 como punto de partida conservador. Se debe repetir la medición con las sentencias reales de borrado, inserción y publicación antes de fijar el valor final.
+- La reparación completa de 850 snapshots leyó ≈ 61 MB y se paginó; el troceado es obligatorio y la reparación se ejecuta fuera de la petición de ingesta.
+- **Vivacidad:** el watermark fijo más `repair_version` impide que las ingestas posteriores al watermark invaliden el prefijo en curso. Las llegadas tardías dentro del prefijo sí lo invalidan; no se afirma una garantía absoluta si esas llegadas se repiten sin límite.
+- Mientras la serie esté sucia, las ingestas siguen guardando snapshots sin eventos. La cola posterior al watermark se procesa en generaciones sucesivas.
+
 
 #### 4.5.9 Revisión adversarial de las sentencias concretas **[MEDIDO en SQLite local; no en D1]**
 
@@ -294,7 +305,7 @@ El hecho de partida: un `UPDATE … WHERE version = :v` que afecta a **0 filas n
   - En **I2** va como `INSERT … SELECT … WHERE EXISTS (SELECT 1 FROM series_status WHERE user_id = :u AND source = :src AND version = :V AND dirty_at IS NULL AND (head_at IS NULL OR (:at, :id) > (head_at, head_id)))`.
   - En **I3** va en el `WHERE` del `UPDATE` que fija `head` y `version = version + 1`.
   - **Es parte del SQL, no de la lógica de aplicación (B2):** una aplicación que clasifique mal a `s` como «en orden» no puede avanzar `head` ni publicar eventos, porque la sentencia compara por sí misma `s` con el `head` vigente en ese instante.
-- `G_rep` = `version = :V` **y** `dirty_from = :D` **y** `repair_cursor = :C` **y** `COUNT(snapshots de (user_id, source) con posición > ó ≥ :inicio) = :n`.
+- `G_rep` = `repair_version = :R` **y** `dirty_from = :D` **y** `repair_cursor = :C` **y** `repair_watermark = :W` **y** el conteo de snapshots del intervalo pendiente hasta `:W` coincide con `:n`. El watermark se compara como tupla `(observed_at, id)`.
 
 **Sentencias, en orden, y qué lee y modifica cada una:**
 
@@ -305,10 +316,11 @@ El hecho de partida: un `UPDATE … WHERE version = :v` que afecta a **0 filas n
 | I3 | avanzar `head`, `version + 1` | `G_ing` (incluye `s > head`) | **sí: `version`**, pero ninguna sentencia posterior depende de `version` |
 | I3b‑1 | **por cada evento calculado de `s`**: marcar la serie si lo almacenado para `(s, curso)` difiere (`state`, `xp`, `prev_state` o `last_xp`, con comparación nula-segura `IS NOT`) | `head_id = :s` **y** existe esa fila con contenido distinto | solo **añade** marca: `dirty_from = min(dirty_from, s)`, reinicia el cursor si `s ≤ cursor`, `version + 1` |
 | I3b‑2 | marcar la serie si el número de eventos almacenados de `s` difiere del calculado (cubre el evento sobrante y el caso de 0 calculados) | `head_id = :s` **y** `COUNT(eventos de s) ≠ n_calculados` | igual que I3b‑1 |
-| I4 | marcar `dirty_from = min(…)`, reiniciar cursor si `s ≤ cursor`, `version + 1` | `head_id ≠ :s` (no depende de `version`) | solo **añade** marca (monótona): no puede publicar |
-| R1 | (solo 1.er trozo) borrar eventos `≥ dirty_from` de **ese usuario** | `G_rep` | eventos; `G_rep` no los lee |
-| R2 | insertar eventos del trozo | `G_rep` | no |
-| R3 | publicar (`head`, limpiar `dirty_from` y cursor, `version + 1`) **o** avanzar cursor y `version + 1` | `G_rep`; la publicación añade `(último, id) ≥ (head_at, head_id)` | **sí: `version`**, y es la **última** sentencia |
+| I4 | marcar `dirty_from = min(…)`, reiniciar cursor si `s ≤ cursor`, `version + 1`; incrementar `repair_version` solo si `s ≤ repair_watermark` | `head_id ≠ :s` (no depende de `version`) | solo **añade** marca (monótona): una llegada dentro del prefijo invalida la reparación; una llegada posterior al watermark no invalida el prefijo |
+| R0 | iniciar generación: fijar `repair_watermark` al último snapshot, cursor nulo, `repair_version + 1`, `version + 1` | serie sucia y watermark nulo | estado de serie; es la primera sentencia del batch de inicio |
+| R1 | borrar eventos del intervalo del trozo hasta `repair_watermark` | `G_rep` | eventos; `G_rep` no los lee |
+| R2 | insertar eventos recomputados del trozo | `G_rep` | no |
+| R3 | publicar el prefijo (fijar `head` al watermark y mover `dirty_from` al primer snapshot posterior, o limpiarlo si no hay cola), **o** avanzar cursor; incrementar `version` y `repair_version` | `G_rep`; la publicación exige `(watermark_at, watermark_id) ≥ (head_at, head_id)` | **sí: `version` y `repair_version`**, y es la **última** sentencia |
 
 **Orden y exclusión de I3b e I4.** El orden del batch es I1, I2, I3, I3b‑1 (una por evento), I3b‑2, I4. I3b solo actúa si **este mismo batch** dejó `head = s` (es decir, I3 se aplicó); I4 solo si `head ≠ s`. Son **mutuamente excluyentes** (I3b solo con `head = s`, I4 solo con `head ≠ s`). El incremento de `version` por una ingesta es **exactamente 1** si solo actúa I3 o solo I4, y **1 + el número de sentencias I3b que actúan** si I3b marca tras I3 (cada sentencia incrementa; la marca en sí es idempotente por el `min`). Medido con una sola discrepancia: 2 (§4.5.11).
 
@@ -316,8 +328,8 @@ El hecho de partida: un `UPDATE … WHERE version = :v` que afecta a **0 filas n
 
 1. **Cada efecto queda condicionado a una guarda válida.** I2 e I3 comparten `G_ing`; R1, R2 y R3 comparten `G_rep`. Como dentro de un batch nada externo cambia entre sentencias y ninguna modifica antes lo que el predicado lee, o todas ven el predicado verdadero (todo se aplica) o todas lo ven falso (nada se aplica). Las únicas sentencias sin guarda de versión son I3b e I4, que **solo añaden una marca** monótona y no pueden publicar ni retroceder nada.
 2. **Un conflicto no deja eventos parciales ni limpia `dirty_from`.** Solo R3 limpia `dirty_from`, bajo `G_rep` completo. Medido (A de la tabla): 0 casos de cambios de eventos sin incremento de versión, 0 de eventos de un snapshot sin que su `head` avance, 0 publicaciones con la serie incompleta.
-3. **La secuencia no invalida la versión de las sentencias siguientes.** `version` solo se incrementa en I3, I3b, I4 y R3. I3 va después de I2 (que es la última sentencia que lee `G_ing`); I3b e I4 no leen `version`; y R3 es la última del batch de reparación.
-4. **El último trozo publica la serie completa solo si sigue cubriendo el conjunto esperado.** `G_rep` cuenta **todos** los snapshots posteriores al inicio (no los del trozo): un snapshot insertado tras la lectura hace fallar el conteo. **Supuesto declarado:** `snapshots` es de solo añadir; si pudiera borrarse un snapshot, el conteo podría coincidir con un conjunto distinto.
+3. **La secuencia no invalida las guardas de las sentencias siguientes.** `version` se usa para la ingesta; `repair_version` se usa para la reparación. I3 va después de I2 (la última sentencia que lee `G_ing`); I3b e I4 no leen `version` para publicar eventos; R3 es la última sentencia del batch de reparación. Una llegada posterior al watermark cambia `version`, no `repair_version`.
+4. **El último trozo publica solo el prefijo delimitado por el watermark.** `G_rep` cuenta el intervalo pendiente hasta `repair_watermark`; una llegada dentro de ese prefijo incrementa `repair_version` y hace fallar la guarda. Una llegada posterior no altera el conjunto del prefijo y se conserva como cola sucia para la siguiente generación. **Supuesto declarado:** `snapshots` es de solo añadir; si pudiera borrarse un snapshot, el conteo podría coincidir con un conjunto distinto.
 
 **Defectos de especificación encontrados en esta revisión** (el protocolo ya convergía, pero el SQL no estaba acotado):
 
@@ -330,7 +342,7 @@ El hecho de partida: un `UPDATE … WHERE version = :v` que afecta a **0 filas n
 
 **Sobre el defecto 4:** se elige `DO NOTHING` porque el snapshot es la evidencia y nunca debe rechazarse por una inconsistencia de la serie derivada; `DO NOTHING` no distingue un reintento idéntico de un conflicto inconsistente: esa distinción la hacen las sentencias de verificación de §4.5.10, que en el mismo batch marcan la serie sucia desde `s` si el contenido almacenado difiere del calculado.
 
-**Vivacidad (medida en el modelo; la probabilidad `p` es la de que una ingesta confirme entre la lectura y la escritura de un trozo):**
+**Vivacidad del protocolo anterior, sin watermark independiente (modelo adversarial histórico):**
 
 | Trozo | p = 0,1 | p = 0,3 | p = 0,5 | p = 0,7 | p = 0,9 |
 |---|---|---|---|---|---|
@@ -340,7 +352,7 @@ El hecho de partida: un `UPDATE … WHERE version = :v` que afecta a **0 filas n
 
 20 ensayos por celda, región sucia de 20 snapshots. Es un contraejemplo explícito: **con trozos pequeños y llegadas dominantes la reparación no termina**. El trozo grande tolera más contención pero choca con el límite operativo (§4.5.8).
 
-**Estimación (no medida) de `p` real:** en el histórico la mediana entre snapshots es de ≈ 3 s (los snapshots llegan en ráfagas por sincronización) y de ≈ 42 al día de media; dentro de una ráfaga, una ventana de lectura-escritura de ~1 s daría `p` del orden de 0,3; fuera de ellas, del orden de 10⁻³. **La duración real de la ventana en D1 no está medida.** Regla operativa que se deriva, no contractual: ejecutar la reparación **fuera de las ráfagas de sincronización**. **Es una política provisional, no una garantía de terminación:** si el sistema no puede asegurar una ventana de contención suficientemente baja, el riesgo de vivacidad sigue abierto.
+**Resultado nuevo:** la validación D1 de §4.5.12 demuestra que una generación con watermark fijo y `repair_version` separado puede publicar un prefijo aunque lleguen snapshots posteriores. Las llegadas tardías dentro del prefijo siguen invalidando la guarda. Ejecutar fuera de las ráfagas puede reducir contención, pero ya no es el mecanismo principal de vivacidad ni una garantía absoluta.
 
 #### 4.5.10 Ramas del `head` (B2) y detección de eventos inconsistentes (B1) **[MEDIDO en SQLite local; no en D1]**
 
@@ -407,7 +419,37 @@ Ejecución dirigida (21 comprobaciones; no es la regresión masiva, que no se re
 | P9‑V‑3a/b/c | Último evento borrado / `xp` del último alterado / evento sobrante: detectado por el `head` y recuperado | **PASS** (40 / 40 cada uno) |
 | P9‑V‑4 | `xp` y `last_xp` alterados a la vez (intermedio) | **LÍMITE conocido:** 26 de 39 no detectadas por comprobaciones baratas; solo la comparación completa con `raw_json` (P1) |
 
-**Qué no demuestra:** que `db.batch` se comporte igual en D1 (atomicidad, orden, semántica de `WHERE EXISTS` y de la comparación de tuplas), ni la vivacidad, ni el coste real. Ninguna comprobación de P9 está repetida aún contra D1.
+**Qué no demuestra:** que el SQL de runtime de A7 funcione, porque aún no existe en la aplicación. Los primitivos D1, la comparación de tuplas, la paridad P1 y un protocolo de referencia sí se han probado en D1 (§4.5.12). P9 debe repetirse contra las sentencias reales después de implementar A7.
+
+
+#### 4.5.12 Validación D1 y P1 **[MEDIDO; 2026-10-13]**
+
+La ejecución se realizó con una D1 y un Worker desechables. El auditor P1 consultó producción mediante SELECT únicamente; no se escribió ninguna fila de producción y los payloads no se registraron ni se adjuntaron a artefactos.
+
+| Comprobación | Resultado |
+|---|---|
+| Atomicidad de `db.batch` ante una violación NOT NULL | **PASS**: se revirtió la inserción previa del mismo batch |
+| Comparación de tuplas temporales | **4 / 4 PASS** |
+| Ingestas concurrentes con 20 lectores de la misma versión | **PASS**: un ganador publica, los perdedores dejan la serie sucia y los 20 snapshots se conservan |
+| Llegada posterior al watermark tras la lectura de reparación | **PASS**: cambia `version`, no `repair_version`; el guard general antiguo falla y el guard del prefijo puede completar |
+| Reparación del prefijo y de una cola posterior de 5 snapshots | **PASS**: paridad exacta, `head` final correcto y marca limpia |
+| P1 en producción | 850 snapshots, 16 cursos, **13 600 / 13 600 celdas reconstruidas**, 0 discrepancias, 78 eventos derivados, 0 discrepancias de transiciones, 1 descenso |
+| P1: escrituras de producción | **0** |
+| P1: filas leídas por la auditoría completa | 76 496; consulta puntual, no coste de una reparación normal |
+
+**Lectura y tamaño de trozo (D1 desechable, cinco muestras de lectura + parseo):**
+
+| K | Payload | Mediana Worker | Máximo Worker | SQL D1 mediano | Filas leídas |
+|---:|---:|---:|---:|---:|---:|
+| 1 | 71 993 B | 13 ms | 18 ms | 0,620 ms | 1 |
+| 3 | 215 979 B | 18 ms | 29 ms | 1,127 ms | 3 |
+| 10 | 719 930 B | 32 ms | 36 ms | 8,181 ms | 10 |
+| 25 | 1 799 825 B | 31 ms | 57 ms | 7,251 ms | 25 |
+
+**Decisión provisional: K = 10.** Es el límite inicial conservador (~720 KB, máximo observado 36 ms). La medición no incluye aún el coste del borrado, la inserción de eventos ni la publicación del runtime; debe repetirse una vez implementadas esas sentencias.
+
+La simulación adversarial previa no terminaba con llegadas dominantes (0/100 ensayos en 3 000 intentos); el prototipo de watermark fijo terminó en 100/100. La prueba D1 anterior valida el caso de llegadas posteriores al watermark. No elimina el caso adversarial de llegadas tardías repetidas dentro del prefijo, que invalidan `repair_version`.
+
 
 ---
 
@@ -549,20 +591,20 @@ No se corrige ningún dato ni se atribuye el residuo a una causa. Se investigan 
 
 ### 9.1 Decisiones del propietario (2026-10-13)
 
-Resumen de la revisión: **A7 aprobado con cambios pendientes; no aprobado para implementación.** Ninguna de estas decisiones autoriza implementación, migraciones, backfill ni escrituras en producción.
+Resumen actualizado (2026-10-13): **autorizada la implementación de A7 en una rama y las pruebas aisladas**. A7 no está en vigor en producción; esta autorización no permite migraciones, backfill, escrituras remotas ni despliegue.
 
 | ID | Decisión del propietario | Condición o nota |
 |---|---|---|
-| D-A7-1 | **Aprobar con cambios** | Cerrar B1 y B2 (§4.5.9–§4.5.10) |
+| D-A7-1 | **Autorizar implementación en rama** | Incorporar watermark fijo y `repair_version`; P9 contra SQL real antes de cualquier despliegue |
 | D-A7-2 | Aprobar PK `(snapshot_id, course_id)`; **sin índices secundarios** inicialmente | Medir antes de añadir coste de escritura; consultas acotadas por usuario y fuente (§4.5.2) |
 | D-A7-3 | Aprobar consultar `T` acotada a la ventana | Sin otra tabla de resúmenes |
 | D-A7-4 | Aprobar mantener los auxiliares sin filtro | — |
 | D-A7-5 | Aprobar no crear una serie aparte por cambios de atributos | Sin evidencia que lo justifique |
 | D-A7-6 | Aprobar `raw_json` como fuente del backfill de K10 | Fuente de verdad declarada |
-| D-A7-7 | Aprobar marca y reparación explícita | **Una vez resueltos B1 y B2** |
-| D-A7-8 | **Posponer** el límite de presupuesto hasta medir en D1 | No fijar umbral arbitrario |
+| D-A7-7 | Aprobar marca y reparación explícita con watermark fijo | Las llegadas dentro del watermark invalidan por `repair_version`; las posteriores quedan para la siguiente generación |
+| D-A7-8 | **K = 10 inicial** | Medido en D1 para lectura + parseo; re-medición obligatoria con las sentencias reales de reparación |
 | D-A7-9 | Aprobar incorporar la redacción A5.1 | Registra el hecho sin alterar A5 ni cerrar O1/O3 |
-| D-A7-10 | Aprobar reparación **manual** inicialmente, fuera de las ráfagas | Automatizar solo tras medir coste, contención y vivacidad en D1; la regla de las ráfagas es una política operativa provisional, **no** una garantía de terminación |
+| D-A7-10 | Reparación manual inicialmente | El watermark reduce la contención por llegadas posteriores; automatizar después de validar el runtime y sus métricas |
 
 **Sin decidir y fuera de esta enmienda:** el backfill de `course_observations` (requiere autorización de escritura y el presupuesto de D1), la regla longitudinal y sus umbrales, O1, O3, P1 (cota de frescura) y P4 (artefactos pasados).
 
