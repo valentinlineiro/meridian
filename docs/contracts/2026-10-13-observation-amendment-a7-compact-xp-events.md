@@ -290,7 +290,10 @@ El hecho de partida: un `UPDATE … WHERE version = :v` que afecta a **0 filas n
 
 **Predicados** (texto del contrato, no código):
 
-- `G_ing` = `version = :V` **y** `dirty_from IS NULL` **y** (`head` nulo **o** `(s.observed_at, s.id) > (head_at, head_id)`), todo en la propia sentencia. **El predicado temporal es parte del SQL, no solo de la lógica de aplicación** (B2).
+- `G_ing(s, V)` = en la fila de serie del (usuario, fuente): `version = :V` **y** `dirty_at IS NULL` **y** (`head_at IS NULL` **o** `(:s_observed_at, :s_id) > (head_at, head_id)`). La comparación es de **tupla**: `observed_at` (texto ISO-8601 UTC, comparable lexicográficamente, §4.1 del contrato congelado) y, en empate, `id` (§5). Un empate exacto de `(observed_at, id)` no existe: el `id` es único.
+  - En **I2** va como `INSERT … SELECT … WHERE EXISTS (SELECT 1 FROM series_status WHERE user_id = :u AND source = :src AND version = :V AND dirty_at IS NULL AND (head_at IS NULL OR (:at, :id) > (head_at, head_id)))`.
+  - En **I3** va en el `WHERE` del `UPDATE` que fija `head` y `version = version + 1`.
+  - **Es parte del SQL, no de la lógica de aplicación (B2):** una aplicación que clasifique mal a `s` como «en orden» no puede avanzar `head` ni publicar eventos, porque la sentencia compara por sí misma `s` con el `head` vigente en ese instante.
 - `G_rep` = `version = :V` **y** `dirty_from = :D` **y** `repair_cursor = :C` **y** `COUNT(snapshots de (user_id, source) con posición > ó ≥ :inicio) = :n`.
 
 **Sentencias, en orden, y qué lee y modifica cada una:**
@@ -300,17 +303,20 @@ El hecho de partida: un `UPDATE … WHERE version = :v` que afecta a **0 filas n
 | I1 | insertar snapshot | clave primaria | `COUNT` de snapshots (lo lee solo la reparación, otro batch) |
 | I2 | insertar evento(s) `ON CONFLICT DO NOTHING` | `G_ing` | no (los eventos no aparecen en `G_ing`) |
 | I3 | avanzar `head`, `version + 1` | `G_ing` (incluye `s > head`) | **sí: `version`**, pero ninguna sentencia posterior depende de `version` |
-| I3b | verificar el contenido almacenado de cada evento de `s` y el conteo (B1, §4.5.10) | `head = s` | solo **añade** marca (monótona) |
-| I4 | marcar `dirty_from = min(…)`, reiniciar cursor si `s ≤ cursor`, `version + 1` | `head ≠ s` (no depende de `version`) | solo **añade** marca (monótona): no puede publicar |
+| I3b‑1 | **por cada evento calculado de `s`**: marcar la serie si lo almacenado para `(s, curso)` difiere (`state`, `xp`, `prev_state` o `last_xp`, con comparación nula-segura `IS NOT`) | `head_id = :s` **y** existe esa fila con contenido distinto | solo **añade** marca: `dirty_from = min(dirty_from, s)`, reinicia el cursor si `s ≤ cursor`, `version + 1` |
+| I3b‑2 | marcar la serie si el número de eventos almacenados de `s` difiere del calculado (cubre el evento sobrante y el caso de 0 calculados) | `head_id = :s` **y** `COUNT(eventos de s) ≠ n_calculados` | igual que I3b‑1 |
+| I4 | marcar `dirty_from = min(…)`, reiniciar cursor si `s ≤ cursor`, `version + 1` | `head_id ≠ :s` (no depende de `version`) | solo **añade** marca (monótona): no puede publicar |
 | R1 | (solo 1.er trozo) borrar eventos `≥ dirty_from` de **ese usuario** | `G_rep` | eventos; `G_rep` no los lee |
 | R2 | insertar eventos del trozo | `G_rep` | no |
 | R3 | publicar (`head`, limpiar `dirty_from` y cursor, `version + 1`) **o** avanzar cursor y `version + 1` | `G_rep`; la publicación añade `(último, id) ≥ (head_at, head_id)` | **sí: `version`**, y es la **última** sentencia |
 
+**Orden y exclusión de I3b e I4.** El orden del batch es I1, I2, I3, I3b‑1 (una por evento), I3b‑2, I4. I3b solo actúa si **este mismo batch** dejó `head = s` (es decir, I3 se aplicó); I4 solo si `head ≠ s`. Son **mutuamente excluyentes**: una ingesta marca como mucho una vez. El incremento de `version` por una ingesta es por tanto **exactamente 1** (I3 o I4) o **2** si I3b marca tras I3 (medido, §4.5.11).
+
 **Las cuatro condiciones que hay que poder verificar:**
 
-1. **Cada efecto queda condicionado a una guarda válida.** I2 e I3 comparten `G_ing`; R1, R2 y R3 comparten `G_rep`. Como dentro de un batch nada externo cambia entre sentencias y ninguna modifica antes lo que el predicado lee, o todas ven el predicado verdadero (todo se aplica) o todas lo ven falso (nada se aplica). La única sentencia sin guarda de versión es I4, que solo añade una marca.
+1. **Cada efecto queda condicionado a una guarda válida.** I2 e I3 comparten `G_ing`; R1, R2 y R3 comparten `G_rep`. Como dentro de un batch nada externo cambia entre sentencias y ninguna modifica antes lo que el predicado lee, o todas ven el predicado verdadero (todo se aplica) o todas lo ven falso (nada se aplica). Las únicas sentencias sin guarda de versión son I3b e I4, que **solo añaden una marca** monótona y no pueden publicar ni retroceder nada.
 2. **Un conflicto no deja eventos parciales ni limpia `dirty_from`.** Solo R3 limpia `dirty_from`, bajo `G_rep` completo. Medido (A de la tabla): 0 casos de cambios de eventos sin incremento de versión, 0 de eventos de un snapshot sin que su `head` avance, 0 publicaciones con la serie incompleta.
-3. **La secuencia no invalida la versión de las sentencias siguientes.** `version` solo se incrementa en I3, I4 y R3; en el orden de arriba, I3 va después de I2 y R3 es la última del batch.
+3. **La secuencia no invalida la versión de las sentencias siguientes.** `version` solo se incrementa en I3, I3b, I4 y R3. I3 va después de I2 (que es la última sentencia que lee `G_ing`); I3b e I4 no leen `version`; y R3 es la última del batch de reparación.
 4. **El último trozo publica la serie completa solo si sigue cubriendo el conjunto esperado.** `G_rep` cuenta **todos** los snapshots posteriores al inicio (no los del trozo): un snapshot insertado tras la lectura hace fallar el conteo. **Supuesto declarado:** `snapshots` es de solo añadir; si pudiera borrarse un snapshot, el conteo podría coincidir con un conjunto distinto.
 
 **Defectos de especificación encontrados en esta revisión** (el protocolo ya convergía, pero el SQL no estaba acotado):
@@ -377,6 +383,32 @@ Medido: un tardío **forzado por la rama «en orden»** (la lectura previa mient
 
 **Límite declarado:** una alteración coordinada que deje la cadena internamente consistente **no la ve ninguna comprobación barata**. La única detección completa es la **comparación con `raw_json`** (P1 de §6.3): reconstruir el estado de cada snapshot y compararlo con los eventos, fuera de la petición, en lotes. Esta enmienda no garantiza detectar corrupción coordinada entre dos verificaciones P1.
 
+#### 4.5.11 Resultado de P9 contra el SQL actualizado **[MEDIDO en SQLite local; no en D1]**
+
+Ejecución dirigida (21 comprobaciones; no es la regresión masiva, que no se repitió porque la lógica no cambió respecto de la última ejecución). Cada fila se evalúa sobre las sentencias de §4.5.9; «Δversion» es el incremento de `version` causado por la ingesta.
+
+| ID | Comprobación | Resultado |
+|---|---|---|
+| P9‑B2‑1 | Tardío con `head` ya avanzado: `head` intacto, 0 eventos de `s`, marca = `s`, Δversion = 1 | **PASS** |
+| P9‑B2‑2 | Posterior al `head` con serie limpia: avanza, sin marca, Δversion = 1 (I3b no actúa) | **PASS** |
+| P9‑B2‑3 | Tardío forzado por la rama «en orden»: el SQL lo rechaza (`head` intacto, 0 eventos, marca) | **PASS** |
+| P9‑B2‑4 | Empate de `observed_at` con `id` menor = tardío | **PASS** |
+| P9‑B2‑5 | Serie sucia y `s` posterior al `head`: sin eventos, `head` y `dirty_from` intactos | **PASS** |
+| P9‑B2‑6 | Carrera perdida: 0 eventos de `s`, `head` = ganador, marca = `s`, Δversion = 1 (solo I4) | **PASS** |
+| P9‑B2‑7 | Publicación con «último» anterior al `head`: rechazada, sigue sucia | **PASS** |
+| P9‑B2‑8 | Reparación normal tras el tardío: publica con `head` correcto y serie = ordenada | **PASS** |
+| P9‑B1‑1 | Reintento idéntico: sin marca, serie = ordenada, Δversion = 1 | **PASS** |
+| P9‑B1‑2 | Conflicto de contenido distinto: batch confirmado, snapshot guardado, marca = `s`, tras reparar = ordenada, Δversion = 2 | **PASS** |
+| P9‑B1‑3 | Evento sobrante con eventos calculados: marca por conteo, tras reparar = ordenada | **PASS** |
+| P9‑B1‑4 | Evento sobrante con 0 eventos calculados: I3b‑2 marca | **PASS** |
+| P9‑B1‑5 | I3b no actúa con `head ≠ s`: una sola marca, Δversion = 1 | **PASS** |
+| P9‑V‑1 | Verificador I2: 0 falsos positivos en 100 series limpias (con ausencias, inválidos y descensos) | **PASS** (0 / 100) |
+| P9‑V‑2a/b/c | `prev_state` alterado / evento intermedio borrado / `xp` alterado (no último): detectado por la cadena y recuperado | **PASS** (40 / 40 cada uno) |
+| P9‑V‑3a/b/c | Último evento borrado / `xp` del último alterado / evento sobrante: detectado por el `head` y recuperado | **PASS** (40 / 40 cada uno) |
+| P9‑V‑4 | `xp` y `last_xp` alterados a la vez (intermedio) | **LÍMITE conocido:** 26 de 39 no detectadas por comprobaciones baratas; solo la comparación completa con `raw_json` (P1) |
+
+**Qué no demuestra:** que `db.batch` se comporte igual en D1 (atomicidad, orden, semántica de `WHERE EXISTS` y de la comparación de tuplas), ni la vivacidad, ni el coste real. Ninguna comprobación de P9 está repetida aún contra D1.
+
 ---
 
 ## 5. Snapshots auxiliares
@@ -427,7 +459,7 @@ Todos deben cumplirse; **ninguno es un umbral numérico arbitrario**: son iguald
 | P6 | **Tardíos:** con la ingesta en orden aleatorio y la reparación aplicada, la serie final es idéntica a la de la ingesta ordenada. |
 | P7 | **Casos límite** (cubiertos por el prototipo v2, §1.4, y a repetir sobre el código real): descenso a través de una ausencia, `invalid` entre dos valores, cambio de `course_id`, **0 observado frente a ausencia** y tardíos con reparación, con datos sintéticos **y** una copia de producción. La concurrencia y el fallo de batch están modelados en SQLite local (§1.4, §4.5); **P7 exige repetirlos contra D1** (atomicidad real de `db.batch`, y que la guarda condicionada en la propia sentencia se comporta igual que en SQLite). |
 | P8 | **Presupuesto:** la medición real de `rows_written` y `rows_read` por día en D1 atribuibles a K10 debe quedar por debajo de un tope **fijado por el propietario con esa medición** (como A1). Este documento **no inventa** el tope. |
-| P9 | **Casos dirigidos de B1 y B2 sobre el SQL real:** conflicto idéntico (sin marca), de contenido distinto y evento sobrante (marca desde `s`, conservando el snapshot); tardío con `head` ya avanzado (sin eventos, sin retroceso, marca); tardío forzado por la rama «en orden» (rechazado por el predicado temporal); publicación con «último» anterior a `head` (rechazada); verificador I2 sin falsos positivos y con la regla de marcado de §4.5.10. |
+| P9 | **Casos dirigidos de B1 y B2 sobre el SQL real:** conflicto idéntico, de contenido distinto y evento sobrante; tardío con `head` ya avanzado; tardío forzado por la rama «en orden»; carrera perdida; publicación con «último» anterior a `head`; verificadores. **Ejecutada en SQLite local: 20 PASS y 1 LÍMITE conocido (§4.5.11). Pendiente repetirla contra D1.** |
 
 **Compatibilidad con A5:** A7 no toca `xp_summaries` ni las reglas de §13; **ningún** cálculo de A5 cambia.
 
