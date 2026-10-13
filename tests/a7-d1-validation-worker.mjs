@@ -131,6 +131,69 @@ async function runtimeScenario(db) {
     "SELECT head_at,head_id,dirty_at,repair_watermark_at FROM observation_series_status WHERE user_id=? AND source=?"
   ).bind(raceUser,source).first();
 
+  const conflictUser = "runtime-conflict";
+  await runtimeIngest(db, make("conflict-1",conflictUser,t1,100,100));
+  const conflictTarget = make("conflict-2",conflictUser,t2,90,101);
+  await db.prepare("INSERT INTO snapshots(id,user_id,source,created_at,raw_json,checksum) VALUES(?,?,?,?,?,?)")
+    .bind(conflictTarget.id,conflictTarget.user_id,conflictTarget.source,conflictTarget.created_at,conflictTarget.raw_json,conflictTarget.checksum).run();
+  const conflictStatements = await compactXpIngestStatements(db, {
+    snapshotId:conflictTarget.id, userId:conflictTarget.user_id, source:conflictTarget.source,
+    observedAt:conflictTarget.created_at, rawJson:conflictTarget.raw_json,
+  });
+  // Simulate a concurrent writer leaving a conflicting event while advancing head.
+  await db.batch([
+    db.prepare("INSERT INTO course_xp_events(snapshot_id,course_id,user_id,source,observed_at,state,xp,prev_state,last_xp,extractor_version) VALUES(?,?,?,?,?,?,?,?,?,1)")
+      .bind(conflictTarget.id,"A",conflictUser,source,t2,"value",89,"value",100),
+    db.prepare("UPDATE observation_series_status SET head_at=?,head_id=?,version=version+1 WHERE user_id=? AND source=? AND head_id=?")
+      .bind(t2,conflictTarget.id,conflictUser,source,"conflict-1"),
+  ]);
+  await db.batch(conflictStatements);
+  const conflictStatus = await db.prepare(
+    "SELECT head_at,head_id,dirty_at FROM observation_series_status WHERE user_id=? AND source=?"
+  ).bind(conflictUser,source).first();
+  let conflictRepairCalls = 0;
+  let conflictRepair = { status: "progress" };
+  while (conflictRepair.status === "progress" && conflictRepairCalls < 5) {
+    conflictRepair = await repairCompactXpEvents(db,conflictUser,source,10);
+    conflictRepairCalls++;
+  }
+  const conflictEvents = await db.prepare(
+    "SELECT observed_at,xp,prev_state,last_xp FROM course_xp_events WHERE user_id=? AND source=? AND course_id='A' ORDER BY observed_at"
+  ).bind(conflictUser,source).all();
+  const conflictParity = JSON.stringify(conflictEvents.results.map(e => [e.observed_at,e.xp,e.prev_state,e.last_xp])) ===
+    JSON.stringify([[t1,100,null,null],[t2,90,"value",100]]);
+  const conflictFinal = await db.prepare(
+    "SELECT head_at,dirty_at FROM observation_series_status WHERE user_id=? AND source=?"
+  ).bind(conflictUser,source).first();
+
+  const extraUser = "runtime-extra";
+  await runtimeIngest(db, make("extra-1",extraUser,t1,100,100));
+  const extraTarget = make("extra-2",extraUser,t2,100,101);
+  await db.prepare("INSERT INTO snapshots(id,user_id,source,created_at,raw_json,checksum) VALUES(?,?,?,?,?,?)")
+    .bind(extraTarget.id,extraTarget.user_id,extraTarget.source,extraTarget.created_at,extraTarget.raw_json,extraTarget.checksum).run();
+  const extraStatements = await compactXpIngestStatements(db, {
+    snapshotId:extraTarget.id, userId:extraTarget.user_id, source:extraTarget.source,
+    observedAt:extraTarget.created_at, rawJson:extraTarget.raw_json,
+  });
+  await db.prepare("INSERT INTO course_xp_events(snapshot_id,course_id,user_id,source,observed_at,state,xp,prev_state,last_xp,extractor_version) VALUES(?,?,?,?,?,?,?,?,?,1)")
+    .bind(extraTarget.id,"A",extraUser,source,t2,"value",100,"value",100).run();
+  await db.batch(extraStatements);
+  const extraStatus = await db.prepare(
+    "SELECT head_at,head_id,dirty_at FROM observation_series_status WHERE user_id=? AND source=?"
+  ).bind(extraUser,source).first();
+  let extraRepairCalls = 0;
+  let extraRepair = { status: "progress" };
+  while (extraRepair.status === "progress" && extraRepairCalls < 5) {
+    extraRepair = await repairCompactXpEvents(db,extraUser,source,10);
+    extraRepairCalls++;
+  }
+  const extraEvents = await db.prepare(
+    "SELECT COUNT(*) AS n FROM course_xp_events WHERE user_id=? AND source=? AND course_id='A'"
+  ).bind(extraUser,source).first();
+  const extraFinal = await db.prepare(
+    "SELECT head_at,dirty_at FROM observation_series_status WHERE user_id=? AND source=?"
+  ).bind(extraUser,source).first();
+
   return {
     ordered: {
       initialHeadDidNotRewind: beforeRepair?.head_at === t3,
@@ -155,8 +218,24 @@ async function runtimeScenario(db) {
       dirtyCleared: raceStatusFinal?.dirty_at === null,
       pass: raceSnapshotCount === raceRows.length && raceParity && raceStatusFinal?.head_at === raceRows[raceRows.length-1]?.created_at && raceStatusFinal?.dirty_at === null,
     },
+    b1Conflict: {
+      markedDirty: Boolean(conflictStatus?.dirty_at),
+      repairedParity: conflictParity,
+      finalHead: conflictFinal?.head_at === t2,
+      dirtyCleared: conflictFinal?.dirty_at === null,
+      pass: Boolean(conflictStatus?.dirty_at) && conflictParity && conflictFinal?.head_at === t2 && conflictFinal?.dirty_at === null,
+    },
+    b1ExtraWithoutExpectedEvents: {
+      markedDirty: Boolean(extraStatus?.dirty_at),
+      eventCountAfterRepair: Number(extraEvents.n),
+      finalHead: extraFinal?.head_at === t2,
+      dirtyCleared: extraFinal?.dirty_at === null,
+      pass: Boolean(extraStatus?.dirty_at) && Number(extraEvents.n) === 1 && extraFinal?.head_at === t2 && extraFinal?.dirty_at === null,
+    },
     pass: orderedParity && orderedStatus?.head_at === t4 && orderedStatus?.dirty_at === null &&
-      raceSnapshotCount === raceRows.length && raceParity && raceStatusFinal?.head_at === raceRows[raceRows.length-1]?.created_at && raceStatusFinal?.dirty_at === null,
+      raceSnapshotCount === raceRows.length && raceParity && raceStatusFinal?.head_at === raceRows[raceRows.length-1]?.created_at && raceStatusFinal?.dirty_at === null &&
+      Boolean(conflictStatus?.dirty_at) && conflictParity && conflictFinal?.head_at === t2 && conflictFinal?.dirty_at === null &&
+      Boolean(extraStatus?.dirty_at) && Number(extraEvents.n) === 1 && extraFinal?.head_at === t2 && extraFinal?.dirty_at === null,
   };
 }
 
