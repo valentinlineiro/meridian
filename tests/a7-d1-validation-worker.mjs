@@ -120,7 +120,8 @@ async function semantics(db) {
 }
 
 async function measure(db, windowSize) {
-  let cursor = 0;
+  let cursorAt = "0000-01-01T00:00:00.000Z";
+  let cursorId = 0;
   let rows = 0;
   let rowsRead = 0;
   let rowsWritten = 0;
@@ -129,7 +130,7 @@ async function measure(db, windowSize) {
   const started = performance.now();
   while (rows < windowSize) {
     const limit = Math.min(10, windowSize - rows);
-    const result = await db.prepare("SELECT id, raw_json FROM snapshots WHERE user_id='bench' AND source='bench' AND id > ? ORDER BY id LIMIT ?").bind(cursor, limit).all();
+    const result = await db.prepare("SELECT id, observed_at, raw_json FROM snapshots WHERE user_id='bench' AND source='bench' AND (observed_at, id) > (?, ?) ORDER BY observed_at, id LIMIT ?").bind(cursorAt, cursorId, limit).all();
     const meta = result.meta ?? {};
     rowsRead += Number(meta.rows_read ?? 0);
     rowsWritten += Number(meta.rows_written ?? 0);
@@ -138,7 +139,8 @@ async function measure(db, windowSize) {
     for (const row of result.results) {
       JSON.parse(row.raw_json);
       parsedBytes += row.raw_json.length;
-      cursor = row.id;
+      cursorAt = row.observed_at;
+      cursorId = row.id;
       rows++;
     }
   }
