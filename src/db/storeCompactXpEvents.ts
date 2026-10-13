@@ -166,7 +166,7 @@ function markDirtyStatement(
   db: D1Database,
   args: { userId: string; source: string; snapshotId: string; observedAt: string },
   extraWhere: string,
-  extraBindings: unknown[]
+  extraBindings: Array<string | number | null>
 ): D1PreparedStatement {
   const { userId, source, snapshotId, observedAt } = args;
   return db.prepare(
@@ -251,22 +251,24 @@ export async function compactXpIngestStatements(
     "AND (head_at IS NULL OR (?,?) > (head_at,head_id))"
   ).bind(observedAt, snapshotId, userId, source, version, observedAt, snapshotId));
 
-  // I3b-1: a conflicting event is not silently accepted after ON CONFLICT DO NOTHING.
-  for (const event of expectedEvents) {
-    const where = "EXISTS (SELECT 1 FROM course_xp_events WHERE snapshot_id=? AND user_id=? AND source=? AND course_id=? " +
-      "AND (state IS NOT ? OR xp IS NOT ? OR prev_state IS NOT ? OR last_xp IS NOT ?))";
-    stmts.push(markDirtyStatement(db, { userId, source, snapshotId, observedAt }, where, [
-      snapshotId, userId, source, event.course_id, event.state, event.xp, event.prev_state, event.last_xp
-    ]));
-  }
+  if (inOrder) {
+    // I3b-1: a conflicting event is not silently accepted after ON CONFLICT DO NOTHING.
+    for (const event of expectedEvents) {
+      const where = "EXISTS (SELECT 1 FROM course_xp_events WHERE snapshot_id=? AND user_id=? AND source=? AND course_id=? " +
+        "AND (state IS NOT ? OR xp IS NOT ? OR prev_state IS NOT ? OR last_xp IS NOT ?))";
+      stmts.push(markDirtyStatement(db, { userId, source, snapshotId, observedAt }, where, [
+        snapshotId, userId, source, event.course_id, event.state, event.xp, event.prev_state, event.last_xp
+      ]));
+    }
 
-  // I3b-2: also detects extra rows, including an unexpected event when no event was calculated.
-  stmts.push(markDirtyStatement(
-    db,
-    { userId, source, snapshotId, observedAt },
-    "(SELECT COUNT(*) FROM course_xp_events WHERE snapshot_id=? AND user_id=? AND source=?) <> ?",
-    [snapshotId, userId, source, expectedEvents.length]
-  ));
+    // I3b-2: also detects extra rows, including an unexpected event when no event was calculated.
+    stmts.push(markDirtyStatement(
+      db,
+      { userId, source, snapshotId, observedAt },
+      "(SELECT COUNT(*) FROM course_xp_events WHERE snapshot_id=? AND user_id=? AND source=?) <> ?",
+      [snapshotId, userId, source, expectedEvents.length]
+    ));
+  }
 
   // I4: if I2/I3 lost the race or the snapshot is late, retain the snapshot and mark the series dirty.
   stmts.push(db.prepare(
@@ -347,6 +349,9 @@ export async function repairCompactXpEvents(
   const rangeSql = status.repair_cursor_at
     ? "(created_at,id) > (?,?) AND (created_at,id) <= (?,?)"
     : "(created_at,id) >= (?,?) AND (created_at,id) <= (?,?)";
+  const eventRangeSql = status.repair_cursor_at
+    ? "(observed_at,snapshot_id) > (?,?) AND (observed_at,snapshot_id) <= (?,?)"
+    : "(observed_at,snapshot_id) >= (?,?) AND (observed_at,snapshot_id) <= (?,?)";
   const rangeBindings = status.repair_cursor_at
     ? [status.repair_cursor_at, status.repair_cursor_id, watermarkAt, watermarkId]
     : [status.dirty_at, status.dirty_id, watermarkAt, watermarkId];
@@ -407,7 +412,7 @@ export async function repairCompactXpEvents(
 
   const stmts: D1PreparedStatement[] = [];
   stmts.push(db.prepare(
-    "DELETE FROM course_xp_events WHERE user_id=? AND source=? AND " + rangeSql +
+    "DELETE FROM course_xp_events WHERE user_id=? AND source=? AND " + eventRangeSql +
     " AND EXISTS (SELECT 1 FROM observation_series_status WHERE " + guard + ")"
   ).bind(userId, source, ...rangeBindings, ...guardBindings));
 
