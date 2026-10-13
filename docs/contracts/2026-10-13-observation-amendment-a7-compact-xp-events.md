@@ -564,9 +564,9 @@ No se corrige ningún dato ni se atribuye el residuo a una causa. Se investigan 
 
 ### 8.3 Límites
 
-- **El coste real de D1 sigue sin confirmarse** (plan, `rows_written`, `rows_read`, CPU). Todas las cifras de §8.2 son estimaciones; el criterio P8 exige medirlas antes de F4.
+- **D1 se ha medido en una base desechable** para atomicidad, comparaciones temporales, lectura + parseo por trozo y un protocolo de reparación de referencia (§4.5.12). El coste del SQL de runtime A7 —borrado, inserción de eventos, guardas y publicación— sigue pendiente hasta implementar esas sentencias.
 - Las limitaciones del prototipo son las de §1.3.
-- **Reparación y vivacidad (§4.5.8):** el tamaño de trozo no está fijado, una reparación completa (≈ 61 MB) no cabe garantizadamente en una invocación y la vivacidad ante ingestas continuas no está medida.
+- **Reparación y vivacidad (§4.5.8):** K=10 es el punto de partida medido para lectura + parseo. Una reparación completa (≈ 61 MB) no cabe garantizadamente en una invocación; el watermark + repair_version ha pasado una prueba D1 de referencia, pero la vivacidad del runtime aún debe validarse.
 - El número de eventos es **función de la estabilidad de la fuente**, no una constante del diseño.
 - Esta enmienda **no** cambia ninguna regla de emisión: `LANG_FOCUS_SHIFT_LONGITUDINAL` sigue `SIN EVALUAR` y sus puertas temporales (≥ 90 días, ≥ 60 días activos) no se tocan. Con 20 días de historia ninguna de las dos lógicas emite, con o sin las puertas forzadas **[MEDIDO]**.
 
@@ -574,7 +574,7 @@ No se corrige ningún dato ni se atribuye el residuo a una causa. Se investigan 
 
 ## 9. Decisiones del propietario
 
-> **Ninguna decisión de esta tabla está aprobada por el hecho de que el prototipo funcione.** La evidencia de §1 y §4.5 respalda el diseño; no sustituye la decisión del propietario ni la medición en D1 (P8).
+> La autorización del propietario permite implementar en una rama y validar en entornos aislados; no convierte A7 en contrato vigente en producción. Las mediciones D1 de §4.5.12 respaldan los primitivos y un protocolo de referencia, pero el SQL de runtime aún debe implementarse y validarse.
 
 | ID | Decisión | Opciones | Recomendación (no vinculante) |
 |---|---|---|---|
