@@ -1,4 +1,4 @@
-import { compactXpIngestStatements, repairCompactXpEvents } from "../src/db/storeCompactXpEvents.ts";
+import { compactXpIngestStatements, repairCompactXpEvents } from "../implementation/src/db/storeCompactXpEvents.ts";
 
 const COURSE_COUNT = 16;
 const BENCH_ROWS = 850;
