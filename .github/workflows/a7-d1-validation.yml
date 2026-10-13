@@ -98,6 +98,12 @@ jobs:
             jq -r '"- Rows read: " + (.rowsRead|tostring) + "\n- Rows written: " + (.rowsWritten|tostring) + "\n- Payload bytes parsed: " + (.payloadBytesParsed|tostring) + "\n- Worker wall time (ms): " + (.wallMs|tostring) + "\n- D1 reported SQL duration (ms): " + (.reportedSqlDurationMs|tostring)' "/tmp/a7-measure-$n.json" >> "$GITHUB_STEP_SUMMARY"
           done
 
+          for k in 1 3 10 25; do
+            echo "### D1 repair chunk: $k snapshots" >> "$GITHUB_STEP_SUMMARY"
+            curl --fail-with-body --silent --show-error "${{ steps.deploy.outputs.worker_url }}/measure-chunk?k=$k" | tee "/tmp/a7-chunk-$k.json"
+            jq -r '"- Rows read: " + (.rowsRead|tostring) + "\n- Payload bytes parsed: " + (.payloadBytesParsed|tostring) + "\n- Worker wall time (ms): " + (.wallMs|tostring) + "\n- D1 SQL duration (ms): " + (.reportedSqlDurationMs|tostring)' "/tmp/a7-chunk-$k.json" >> "$GITHUB_STEP_SUMMARY"
+          done
+
       - name: Validate full raw_json parity and corruption detection
         run: |
           set -euo pipefail
