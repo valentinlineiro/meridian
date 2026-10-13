@@ -289,7 +289,7 @@ La generación termina cuando un batch confirma el último trozo hasta `repair_w
 
 #### 4.5.8 Límites operativos
 
-- **Tamaño de trozo inicial: `K = 10` [MEDIDO en D1, provisional].** Cinco muestras de lectura + parseo dieron mediana de 32 ms y máximo de 36 ms, con ≈ 720 KB por trozo; `K = 25` alcanzó ≈ 1,8 MB y máximo de 57 ms. Elegimos 10 como punto de partida conservador. Se debe repetir la medición con las sentencias reales de borrado, inserción y publicación antes de fijar el valor final.
+- **Tamaño de trozo inicial: `K = 10` [MEDIDO en D1, provisional].** Cinco muestras de lectura + parseo dieron mediana de 15 ms y máximo de 26 ms, con ≈ 720 KB por trozo; `K = 25` alcanzó ≈ 1,8 MB y máximo de 57 ms. Elegimos 10 como punto de partida conservador. Se debe repetir la medición con las sentencias reales de borrado, inserción y publicación antes de fijar el valor final.
 - La reparación completa de 850 snapshots leyó ≈ 61 MB y se paginó; el troceado es obligatorio y la reparación se ejecuta fuera de la petición de ingesta.
 - **Vivacidad:** el watermark fijo más `repair_version` impide que las ingestas posteriores al watermark invaliden el prefijo en curso. Las llegadas tardías dentro del prefijo sí lo invalidan; no se afirma una garantía absoluta si esas llegadas se repiten sin límite.
 - Mientras la serie esté sucia, las ingestas siguen guardando snapshots sin eventos. La cola posterior al watermark se procesa en generaciones sucesivas.
@@ -441,14 +441,14 @@ La ejecución se realizó con una D1 y un Worker desechables. El auditor P1 cons
 
 | K | Payload | Mediana Worker | Máximo Worker | SQL D1 mediano | Filas leídas |
 |---:|---:|---:|---:|---:|---:|
-| 1 | 71 993 B | 13 ms | 18 ms | 0,620 ms | 1 |
-| 3 | 215 979 B | 18 ms | 29 ms | 1,127 ms | 3 |
-| 10 | 719 930 B | 32 ms | 36 ms | 8,181 ms | 10 |
-| 25 | 1 799 825 B | 31 ms | 57 ms | 7,251 ms | 25 |
+| 1 | 71 993 B | 9 ms | 10 ms | 0,497 ms | 1 |
+| 3 | 215 979 B | 13 ms | 17 ms | 1,206 ms | 3 |
+| 10 | 719 930 B | 15 ms | 26 ms | 2,499 ms | 10 |
+| 25 | 1 799 825 B | 32 ms | 35 ms | 6,830 ms | 25 |
 
-**Decisión provisional: K = 10.** Es el límite inicial conservador (~720 KB, máximo observado 36 ms). La medición no incluye aún el coste del borrado, la inserción de eventos ni la publicación del runtime; debe repetirse una vez implementadas esas sentencias.
+**Decisión provisional: K = 10.** Es el límite inicial conservador (~720 KB, máximo observado 26 ms). La medición no incluye aún el coste del borrado, la inserción de eventos ni la publicación del runtime; debe repetirse una vez implementadas esas sentencias.
 
-La simulación adversarial previa no terminaba con llegadas dominantes (0/100 ensayos en 3 000 intentos); el prototipo de watermark fijo terminó en 100/100. La prueba D1 anterior valida el caso de llegadas posteriores al watermark. No elimina el caso adversarial de llegadas tardías repetidas dentro del prefijo, que invalidan `repair_version`.
+La simulación adversarial previa no terminaba con llegadas dominantes (0/100 ensayos en 3 000 intentos); el prototipo de watermark fijo terminó en 100/100 (mediana y máximo: 7 intentos). La prueba D1 anterior valida el caso de llegadas posteriores al watermark. No elimina el caso adversarial de llegadas tardías repetidas dentro del prefijo, que invalidan `repair_version`.
 
 
 ---
