@@ -137,7 +137,7 @@ export function normalizeLanguagePayload(args: {
 
   // A5 §13.3: a day without a numeric `gainedXp` is unknown, not 0. xp_summaries.gained_xp is NOT NULL, so the row is not written.
   const xpSummaries: NormalizedXpSummary[] = rawSummaries
-    .filter((s) => typeof s?.gainedXp === "number")
+    .filter((s) => typeof s?.gainedXp === "number" && Number.isFinite(s.gainedXp))
     .map((s) => ({
       userId,
       date: typeof s.date === "number" ? s.date : 0,

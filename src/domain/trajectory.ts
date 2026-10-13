@@ -208,8 +208,8 @@ export function evaluateTrajectory(input: TrajectoryInput): TrajectoryEvaluation
     if (totalDays >= 90) {
       const shift = focusShift(lang.h1.courses, lang.h2.courses);
       // A6 §14.4 (P3): a course whose gain is not comparable does not silence the rule by existing, and it is never read as 0.
-      // The rule emits only if its conclusion is the same for every value the series allows those courses (0..U).
-      if (shift && determinableWithoutBias(lang)) {
+      // The rule emits only if its conclusion is PROVEN for every value the series allows those courses (0..U).
+      if (shift && provablyDeterminate(lang, shift)) {
         const excluded = [
           ...(lang.h1.nonComparable ?? []),
           ...(lang.h2.nonComparable ?? []),
@@ -258,6 +258,10 @@ interface FocusShift {
   h2NewShare: number;
 }
 
+// The pre-A6 thresholds, in ONE place so the decision and the bound check cannot diverge. They belong to a contract that does not
+// exist yet and are not approved here (§3.1, §14.4).
+const FOCUS = { minXp: 2000, dominantPct: 60, previousMaxPct: 25 } as const;
+
 // The pre-A6 decision, unchanged (its thresholds belong to a contract that does not exist yet and are not approved here):
 // dominant course in H1 (share >= 60 %, xp >= 2000), another dominant course in H2, the old one <= 25 % in H2, the new one not
 // already dominant in H1.
@@ -266,43 +270,41 @@ function focusShift(h1: LanguageEraCourseActivity[], h2: LanguageEraCourseActivi
   const h2TotalXp = h2.reduce((sum, c) => sum + c.xp, 0);
   if (!(h1TotalXp > 0 && h2TotalXp > 0)) return null;
 
-  const prev = h1.find((c) => c.xp >= 2000 && (c.xp / h1TotalXp) * 100 >= 60.0);
+  const prev = h1.find((c) => c.xp >= FOCUS.minXp && (c.xp / h1TotalXp) * 100 >= FOCUS.dominantPct);
   if (!prev) return null;
-  const next = h2.find((c) => c.courseId !== prev.courseId && c.xp >= 2000 && (c.xp / h2TotalXp) * 100 >= 60.0);
+  const next = h2.find((c) => c.courseId !== prev.courseId && c.xp >= FOCUS.minXp && (c.xp / h2TotalXp) * 100 >= FOCUS.dominantPct);
   if (!next) return null;
 
   const h2PrevShare = ((h2.find((c) => c.courseId === prev.courseId)?.xp ?? 0) / h2TotalXp) * 100;
   const h1NewShare = ((h1.find((c) => c.courseId === next.courseId)?.xp ?? 0) / h1TotalXp) * 100;
-  if (!(h2PrevShare <= 25.0 && h1NewShare < 60.0)) return null;
+  if (!(h2PrevShare <= FOCUS.previousMaxPct && h1NewShare < FOCUS.dominantPct)) return null;
 
   return { prev, next, h1TotalXp, h2TotalXp, h1PrevShare: (prev.xp / h1TotalXp) * 100, h2PrevShare, h2NewShare: (next.xp / h2TotalXp) * 100 };
 }
 
-const UNBOUNDED_XP = 1e9; // stands for "no bound": larger than any lifetime XP, so the share it could take is ~100 %
-const MAX_RANGE_COURSES = 12; // 2^12 combinations; beyond that the rule does not claim to be determinable
+// A6 §14.4.3, by construction and not by sampling. The rule emits only a shift, so it is enough to PROVE that the shift holds for
+// every value the non-comparable courses can take (0..U, U = Infinity when the series gives no bound). The shares are monotone in
+// those values, so the worst case of each condition is at a corner, and the proof is the worst case of each condition:
+//   dominance of the previous course in H1 and of the new one in H2: worst case = every non-comparable course at its bound (it only
+//     enlarges the total). Holding there, no other course can be dominant at any assignment (shares sum to at most 100 %), and the
+//     new course cannot already have been dominant in H1.
+//   the previous course at most previousMaxPct in H2: worst case = the previous course's own non-comparable XP at its bound and the
+//     rest at 0 (anything else only enlarges the total).
+// Integer cross-multiplication, no tolerance: a share exactly on a threshold is on the side the decision puts it. A conclusion that
+// cannot be proven this way is NOT emitted (conservative: some real shifts are lost, never a false one asserted).
+function provablyDeterminate(lang: LanguagesTrajectoryInput, shift: FocusShift): boolean {
+  const bound = (c: NonComparableCourse) => (c.boundXp === null ? Infinity : c.boundXp);
+  const nc1 = lang.h1.nonComparable ?? [], nc2 = lang.h2.nonComparable ?? [];
+  const t1Max = shift.h1TotalXp + nc1.reduce((n, c) => n + bound(c), 0);
+  const t2Max = shift.h2TotalXp + nc2.reduce((n, c) => n + bound(c), 0);
 
-// A6 §14.4.3: the conclusion must be the same for every value compatible with the evidence of the non-comparable courses.
-// Checked at the extremes of each range [0, U] (a safety check, not a proof for every interior value; contract §14.4 leaves
-// the method to the implementation).
-function determinableWithoutBias(lang: LanguagesTrajectoryInput): boolean {
-  const ranges: Array<{ half: 1 | 2; courseId: string; u: number }> = [];
-  for (const [half, h] of [[1, lang.h1], [2, lang.h2]] as const)
-    for (const c of h.nonComparable ?? []) ranges.push({ half, courseId: c.courseId, u: c.boundXp === null ? UNBOUNDED_XP : c.boundXp });
-  if (ranges.length === 0) return true;
-  if (ranges.length > MAX_RANGE_COURSES) return false;
+  // previous dominant in H1 and new dominant in H2, with every unknown at its largest
+  if (!Number.isFinite(t1Max) || !Number.isFinite(t2Max)) return false;
+  if (shift.prev.xp * 100 < FOCUS.dominantPct * t1Max) return false;
+  if (shift.next.xp * 100 < FOCUS.dominantPct * t2Max) return false;
 
-  const key = (h1: LanguageEraCourseActivity[], h2: LanguageEraCourseActivity[]) => {
-    const r = focusShift(h1, h2);
-    return r ? `${r.prev.courseId}>${r.next.courseId}` : "none";
-  };
-  const base = key(lang.h1.courses, lang.h2.courses);
-  for (let mask = 1; mask < 1 << ranges.length; mask++) {
-    const h1 = [...lang.h1.courses], h2 = [...lang.h2.courses];
-    ranges.forEach((r, i) => {
-      if (!(mask & (1 << i)) || r.u <= 0) return;
-      (r.half === 1 ? h1 : h2).push({ courseId: r.courseId, xp: r.u });
-    });
-    if (key(h1, h2) !== base) return false;
-  }
-  return true;
+  // previous course in H2: its comparable XP plus whatever it could have as a non-comparable course
+  const prevH2 = lang.h2.courses.find((c) => c.courseId === shift.prev.courseId)?.xp ?? 0;
+  const prevExtra = nc2.filter((c) => c.courseId === shift.prev.courseId).reduce((n, c) => n + bound(c), 0);
+  return (prevH2 + prevExtra) * 100 <= FOCUS.previousMaxPct * (shift.h2TotalXp + prevExtra);
 }

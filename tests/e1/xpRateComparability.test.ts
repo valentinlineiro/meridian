@@ -3,7 +3,7 @@ import { setupTestDb } from "../helpers/testDb.ts";
 import { createD1WhatChangedAdapter } from "../../src/infrastructure/d1/d1WhatChangedAdapter.ts";
 import { getWhatChangedUseCase } from "../../src/application/getWhatChangedUseCase.ts";
 import { normalizeLanguagePayload } from "../../src/normalization/languages.ts";
-import { containedUtcDays } from "../../src/domain/utcDays.ts";
+import { containedUtcDays, lastReferenceDaySec } from "../../src/domain/utcDays.ts";
 
 // Amendment A5 (docs/contracts/2026-10-06-discarded-signals-contract.md §13), tests exigidos §13.10. Synthetic data only. These began
 // as the E1 characterization tests of defect F1 and now state the approved contract; the numbers are the same fixtures.
@@ -133,6 +133,19 @@ describe("A5: contained days of a window", () => {
   });
 });
 
+describe("A5: the reference ends at the last whole day at or before since", () => {
+  it("shouldEndTheReferenceTheDayBeforeWhenSinceIsExactlyMidnightBecauseThatDayStartsAtSince", async () => {
+    // since = 14T00:00: day 14 STARTS at since (it is the interval's first day); the last day that ENDS at or before since is day 13.
+    expect(lastReferenceDaySec("2026-09-14T00:00:00.000Z")).toBe(day("2026-09-13"));
+    expect(lastReferenceDaySec("2026-09-14T12:00:00.000Z")).toBe(day("2026-09-13")); // day 14 is partial: in neither side
+    expect(containedUtcDays("2026-09-14T00:00:00.000Z", "2026-09-16T00:00:00.000Z").firstDaySec).toBe(day("2026-09-14"));
+    // and in the data: the row of day 14 is in the interval when since is midnight, never in the reference
+    const a = world([["2026-09-13", 100], ["2026-09-14", 5], ["2026-09-15", 7]]);
+    expect((await a.getLanguagesInterval("u1", "2026-09-14T00:00:00.000Z", "2026-09-16T00:00:00.000Z")).xpGained).toBe(12);
+    expect(await a.getHistoricalDailyXpRate("u1", "2026-09-14T00:00:00.000Z")).toBe(100);
+  });
+});
+
 describe("A5: unknown is not zero at the XP layer", () => {
   it("shouldNotWriteARowWhenGainedXpIsAbsentAndKeepAnObservedZero", () => {
     const { xpSummaries } = normalizeLanguagePayload({
@@ -140,6 +153,14 @@ describe("A5: unknown is not zero at the XP layer", () => {
       data: { xpSummaries: [{ date: 1790121600 }, { date: 1790208000, gainedXp: 0 }] },
     });
     expect(xpSummaries.map((s) => [s.date, s.gainedXp])).toEqual([[1790208000, 0]]);
+  });
+
+  it("shouldNotWriteARowWhenGainedXpIsNotAFiniteNumber", () => {
+    const { xpSummaries } = normalizeLanguagePayload({
+      userId: "u1",
+      data: { xpSummaries: [{ date: 1, gainedXp: NaN }, { date: 2, gainedXp: Infinity }, { date: 3, gainedXp: -Infinity }, { date: 4, gainedXp: 12 }] },
+    });
+    expect(xpSummaries.map((x) => x.date)).toEqual([4]);
   });
 
   it("shouldCountAnObservedZeroAsADayWithARecordWhenGainedXpIsZero", async () => {

@@ -154,4 +154,48 @@ describe("A6 P3: the rule does not emit when the comparable evidence cannot dete
     expect(m.h1PreviousCourseShare).toBeCloseTo((5000 / 6000) * 100, 5); // over the comparable courses only, declared as excluded
     expect(out.evaluations.some((e) => e.id === "LANG_FOCUS_SHIFT_LONGITUDINAL")).toBe(false); // still SIN EVALUAR
   });
+
+  // Proof by worst case (provablyDeterminate): thresholds are exact and interactions between courses are counted together.
+  const prev = (xp: number) => ({ courseId: "B", xp });
+  const exact = (h1nc: NonComparableCourse[], h2nc: NonComparableCourse[] = [], h2: Array<{ courseId: string; xp: number }> = [{ courseId: "C", xp: 5000 }]): LanguagesTrajectoryInput => ({
+    startedAt: T0, endedAt: T1, activeDays: 70,
+    h1: { courses: [prev(6000)], nonComparable: h1nc },
+    h2: { courses: h2, nonComparable: h2nc },
+  });
+
+  it("shouldCountSeveralNonComparableCoursesTogetherWhenEachAloneWouldNotChangeTheConclusion", () => {
+    const one = (u: number) => [nc({ courseId: "X", state: "new_course", boundXp: u })];
+    const two = (u: number) => [...one(u), nc({ courseId: "Y", state: "new_course", boundXp: u })];
+    // B has 5000 of 6000; with X alone at 1500 it keeps 5000/7500 = 66.7 %, with X and Y at 1500 each 5000/9000 = 55.6 %
+    expect(shift(base({ h1: one(1500) }))).toBeDefined();
+    expect(shift(base({ h1: two(1500) }))).toBeUndefined();
+    expect(shift(base({ h1: two(1000) }))).toBeDefined(); // 5000/8000 = 62.5 %
+  });
+
+  it("shouldEmitExactlyOnTheDominanceThresholdAndNotOneXpBeyondIt", () => {
+    // B = 6000 of 6000 + U: exactly 60 % at U = 4000
+    expect(shift(exact([nc({ courseId: "X", state: "new_course", boundXp: 4000 })]))).toBeDefined();
+    expect(shift(exact([nc({ courseId: "X", state: "new_course", boundXp: 4001 })]))).toBeUndefined();
+  });
+
+  it("shouldRespectThePreviousCourseCeilingInH2WhenItHasAnUnknownGainThere", () => {
+    // B has 1000 in H2 (of 6000 with C). As unknown, B could add U: (1000 + U) / (6000 + U) <= 25 % holds up to U = 666
+    const h2 = [{ courseId: "C", xp: 5000 }, { courseId: "B", xp: 1000 }];
+    const unknownB = (u: number) => [nc({ courseId: "B", state: "unknown", reason: "not_observed_in_period", boundXp: u })];
+    expect(shift(exact([], unknownB(666), h2))).toBeDefined();
+    expect(shift(exact([], unknownB(667), h2))).toBeUndefined();
+  });
+
+  it("shouldNotTreatAnUnboundedCourseAsFiniteWhenItsBoundIsUnknown", () => {
+    const unbounded = [nc({ courseId: "X", state: "unknown", reason: "not_observed_in_period", boundXp: null })];
+    expect(shift(exact(unbounded))).toBeUndefined();
+    expect(shift(exact([], unbounded))).toBeUndefined();
+    // a huge FINITE bound is not unbounded, and still proves nothing when it can move the shares
+    expect(shift(exact([nc({ courseId: "X", state: "new_course", boundXp: 1e12 })]))).toBeUndefined();
+  });
+
+  it("shouldKeepTheComparableOnlyResultWhenThereAreNoNonComparableCourses", () => {
+    expect(shift(exact([]))).toBeDefined();
+  });
 });
+
