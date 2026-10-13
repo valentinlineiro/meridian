@@ -310,7 +310,7 @@ El hecho de partida: un `UPDATE … WHERE version = :v` que afecta a **0 filas n
 | R2 | insertar eventos del trozo | `G_rep` | no |
 | R3 | publicar (`head`, limpiar `dirty_from` y cursor, `version + 1`) **o** avanzar cursor y `version + 1` | `G_rep`; la publicación añade `(último, id) ≥ (head_at, head_id)` | **sí: `version`**, y es la **última** sentencia |
 
-**Orden y exclusión de I3b e I4.** El orden del batch es I1, I2, I3, I3b‑1 (una por evento), I3b‑2, I4. I3b solo actúa si **este mismo batch** dejó `head = s` (es decir, I3 se aplicó); I4 solo si `head ≠ s`. Son **mutuamente excluyentes**: una ingesta marca como mucho una vez. El incremento de `version` por una ingesta es por tanto **exactamente 1** (I3 o I4) o **2** si I3b marca tras I3 (medido, §4.5.11).
+**Orden y exclusión de I3b e I4.** El orden del batch es I1, I2, I3, I3b‑1 (una por evento), I3b‑2, I4. I3b solo actúa si **este mismo batch** dejó `head = s` (es decir, I3 se aplicó); I4 solo si `head ≠ s`. Son **mutuamente excluyentes** (I3b solo con `head = s`, I4 solo con `head ≠ s`). El incremento de `version` por una ingesta es **exactamente 1** si solo actúa I3 o solo I4, y **1 + el número de sentencias I3b que actúan** si I3b marca tras I3 (cada sentencia incrementa; la marca en sí es idempotente por el `min`). Medido con una sola discrepancia: 2 (§4.5.11).
 
 **Las cuatro condiciones que hay que poder verificar:**
 
