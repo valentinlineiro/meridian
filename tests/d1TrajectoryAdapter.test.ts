@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { materializeObservations } from "./helpers/materializeObservations.ts";
 import { setupTestDb } from "./helpers/testDb.ts";
 import { createD1TrajectoryAdapter } from "../src/infrastructure/d1/d1TrajectoryAdapter.ts";
 
@@ -92,8 +93,8 @@ describe("d1TrajectoryAdapter", () => {
         tStartIso,
         JSON.stringify({
           courses: [
-            { id: "DUOLINGO_XC_EN", xp: 1000 },
-            { id: "DUOLINGO_XB_EN", xp: 0 },
+            { id: "DUOLINGO_XC_EN", subject: "language", xp: 1000 },
+            { id: "DUOLINGO_XB_EN", subject: "language", xp: 0 },
           ],
         })
       );
@@ -106,8 +107,8 @@ describe("d1TrajectoryAdapter", () => {
         tMidIso,
         JSON.stringify({
           courses: [
-            { id: "DUOLINGO_XC_EN", xp: 6000 },
-            { id: "DUOLINGO_XB_EN", xp: 200 },
+            { id: "DUOLINGO_XC_EN", subject: "language", xp: 6000 },
+            { id: "DUOLINGO_XB_EN", subject: "language", xp: 200 },
           ],
         })
       );
@@ -120,8 +121,8 @@ describe("d1TrajectoryAdapter", () => {
         tEndIso,
         JSON.stringify({
           courses: [
-            { id: "DUOLINGO_XC_EN", xp: 6500 },
-            { id: "DUOLINGO_XB_EN", xp: 8200 },
+            { id: "DUOLINGO_XC_EN", subject: "language", xp: 6500 },
+            { id: "DUOLINGO_XB_EN", subject: "language", xp: 8200 },
           ],
         })
       );
@@ -136,18 +137,20 @@ describe("d1TrajectoryAdapter", () => {
         VALUES ('u1', ?, 50, 1, 10, '2026-05-01')
       `).run(Math.floor(new Date("2026-05-05T00:00:00Z").getTime() / 1000));
 
+      await materializeObservations(db, d1);
       const langData = await adapter.getLanguagesTrajectoryData("u1");
 
       expect(langData.startedAt).toBe(tStartIso);
       expect(langData.endedAt).toBe(tEndIso);
       expect(langData.activeDays).toBeGreaterThanOrEqual(2);
+      // Courses are returned ordered by id: observation rows do not keep the payload order.
       expect(langData.h1.courses).toEqual([
-        { courseId: "DUOLINGO_XC_EN", xp: 5000 },
         { courseId: "DUOLINGO_XB_EN", xp: 200 },
+        { courseId: "DUOLINGO_XC_EN", xp: 5000 },
       ]);
       expect(langData.h2.courses).toEqual([
-        { courseId: "DUOLINGO_XC_EN", xp: 500 },
         { courseId: "DUOLINGO_XB_EN", xp: 8000 },
+        { courseId: "DUOLINGO_XC_EN", xp: 500 },
       ]);
     });
 
@@ -158,7 +161,7 @@ describe("d1TrajectoryAdapter", () => {
         db.prepare(`
           INSERT INTO snapshots (id, created_at, source, user_id, raw_json, games_count, pages_count, checksum, size_bytes)
           VALUES (?, ?, 'duolingo-lang', 'u1', ?, 0, 0, ?, 100)
-        `).run(id, at, JSON.stringify({ courses: [{ id: "DUOLINGO_XC_EN", xp: fr }, { id: "DUOLINGO_XB_EN", xp: ru }] }), id);
+        `).run(id, at, JSON.stringify({ courses: [{ id: "DUOLINGO_XC_EN", subject: "language", xp: fr }, { id: "DUOLINGO_XB_EN", subject: "language", xp: ru }] }), id);
       snap("a", "2026-03-01T00:00:00.000Z", 0, 0);
       snap("b", "2026-05-01T00:00:00.000Z", 3000, 0);
       snap("c", "2026-07-01T00:00:00.000Z", 3000, 3000);
@@ -171,6 +174,7 @@ describe("d1TrajectoryAdapter", () => {
       day("2026-04-05T00:00:00Z"); // inside span
       day("2026-12-05T00:00:00Z"); // after last snapshot
 
+      await materializeObservations(db, d1);
       const langData = await adapter.getLanguagesTrajectoryData("u1");
 
       expect(langData.startedAt).toBe("2026-03-01T00:00:00.000Z");

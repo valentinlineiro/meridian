@@ -166,20 +166,20 @@ describe("RG4 auxiliary snapshot carrying a valid Path", () => {
   });
 });
 
-describe("RG5 R4 course entry whose `id` is not a string (found by reading d1TrajectoryAdapter.parseCourses)", () => {
+describe("RG5 course entry whose `id` is not a string", () => {
   const withCourses = (xp: number) => ({ user: { id: 1000001 }, courses: [{ id: 123, courseId: "DUOLINGO_XA_EN", subject: "language", xp }, { id: "DUOLINGO_XB_EN", subject: "language", xp: 50 }] });
 
-  it("shouldSkipTheEntryInR4ButStoreItUnderCourseIdWhenIdIsNumeric [OBSERVED]", async () => {
+  it("shouldReadTheEntryUnderCourseIdInBothReadersWhenIdIsNumeric [OBSERVED]", async () => {
     const w = await world([{ id: "a", day: 10, payload: withCourses(100) }, { id: "b", day: 20, payload: withCourses(160) }]);
     // extractor: str(123) is null, so it falls back to `courseId`
     expect(await w.courses()).toEqual([
       { snapshot_id: "a", course_id: "DUOLINGO_XA_EN", xp: 100 }, { snapshot_id: "a", course_id: "DUOLINGO_XB_EN", xp: 50 },
       { snapshot_id: "b", course_id: "DUOLINGO_XA_EN", xp: 160 }, { snapshot_id: "b", course_id: "DUOLINGO_XB_EN", xp: 50 },
     ]);
-    // R4: `typeof id === "string"` fails on 123 and `courseId` is never consulted, so XA is invisible to the trajectory
+    // R4 now reads those rows: it sees XA too (it used to skip it: `typeof id === "string"` on the raw entry)
     const t = await w.r4();
     const seen = [...t.h1.courses, ...t.h2.courses].map((c: any) => c.courseId).concat([...(t.h1.nonComparable ?? []), ...(t.h2.nonComparable ?? [])].map((c: any) => c.courseId));
-    expect(seen).toContain("DUOLINGO_XB_EN"); // control: the string-id course IS read, so the absence of XA is not an empty result
-    expect(seen).not.toContain("DUOLINGO_XA_EN");
+    expect(seen).toContain("DUOLINGO_XB_EN");
+    expect(seen).toContain("DUOLINGO_XA_EN");
   });
 });

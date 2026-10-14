@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { setupTestDb } from "../helpers/testDb.ts";
+import { materializeObservations } from "../helpers/materializeObservations.ts";
 import { createD1TrajectoryAdapter } from "../../src/infrastructure/d1/d1TrajectoryAdapter.ts";
 import { evaluateTrajectory, type LanguagesTrajectoryInput, type NonComparableCourse } from "../../src/domain/trajectory.ts";
 
@@ -20,7 +21,9 @@ function world(snaps: Snap[], activeXpDays = 0) {
     db.prepare(`INSERT INTO xp_summaries (user_id, date, gained_xp, num_sessions, total_session_time, updated_at)
       VALUES ('u1', ?, 50, 1, 60, '2026-12-31')`).run(Math.floor(new Date(T0).getTime() / 1000) + d * 86400);
   }
-  return createD1TrajectoryAdapter(d1);
+  const adapter = createD1TrajectoryAdapter(d1);
+  // R4 reads course_observations: materialise them from the inserted snapshots, as the backfill does.
+  return { ...adapter, getLanguagesTrajectoryData: async (u: string) => { await materializeObservations(db, d1); return adapter.getLanguagesTrajectoryData(u); } };
 }
 
 const NO_GAMES = { whiteGames: 0, whiteDecided: 0, whiteWins: 0, blackGames: 0, blackDecided: 0, blackWins: 0 };

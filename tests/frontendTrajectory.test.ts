@@ -27,6 +27,12 @@ describe("Frontend Trajectory Tab", () => {
     expect(html).toContain("Tu foco principal de aprendizaje se ha desplazado de");
   });
 
+  it("shouldStateThatLanguageXpIsANetObservedGainWithoutVerifiedContinuity", () => {
+    // A6 §14.2 declared limit: the gain is the observed net difference, never presented as a continuous series.
+    expect(html).toContain("XP neto observado entre capturas");
+    expect(html).toContain("no se ha verificado que la serie sea continua");
+  });
+
   it("shouldDisplayQuietEmptyMessageWhenNoFindingsArePresent", () => {
     expect(html).toContain("No hay patrones longitudinales suficientemente estables registrados en tu historial.");
   });
