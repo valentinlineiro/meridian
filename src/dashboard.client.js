@@ -922,6 +922,7 @@ function renderChessView(stats, matches){
 }
 
 // One bundle serves the overview and chess sections; if it fails, each stat falls back to its own route once (no bundle retry).
+// Boot-only: init() resets both, so a failed boot is never reused by a later load.
 let statsBundlePromise=null; const statCache={};
 function statsBundle(){
  return statsBundlePromise||(statsBundlePromise=j('/api/stats/bundle').then(b=>{ if(!b||!b.summary) throw new Error('bundle'); return b; }).catch(()=>null));

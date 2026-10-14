@@ -80,6 +80,19 @@ describe("GET /api/stats/bundle", () => {
     for (const [key, kind] of KEYS) expect(JSON.stringify(bundle[key])).toBe(JSON.stringify(await body(d1, kind)));
   });
 
+  it("shouldOrderEndConditionsLikeGroupByWhenTheyDifferInCaseAccentsAndShape", async () => {
+    const { db, d1 } = createDb();
+    // SQLite sorts BINARY (UTF-8 bytes); the bundle must land on the same key order for these.
+    for (const ec of ["resign", "Resign", "Zeta", "alpha", "é", "ñandú", "", "10", "2", "unknown", "a b", "日本"]) {
+      for (const result of ["win", "loss", null]) match(db, { result, ec, opp: null });
+    }
+    match(db, { result: "draw" }); // no match_details row: end_condition 'unknown'
+    const bundle = await body(d1, "bundle");
+    const single = await body(d1, "results");
+    expect(Object.keys(bundle.results.endConditions)).toEqual(Object.keys(single.endConditions));
+    expect(JSON.stringify(bundle.results)).toBe(JSON.stringify(single));
+  });
+
   it("shouldExposeExactlyTheSevenKeys", async () => {
     const { d1 } = createDb();
     expect(Object.keys(await body(d1, "bundle")).sort()).toEqual(KEYS.map(([k]) => k).sort());
