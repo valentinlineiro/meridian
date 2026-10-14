@@ -184,4 +184,21 @@ describe("R4/A6 reads course_observations", () => {
     await createD1TrajectoryAdapter(spy).getLanguagesTrajectoryData(U);
     expect(seen.filter((s) => /raw_json/i.test(s))).toEqual([]);
   });
+
+  it("shouldCompleteASnapshotThatWasOnlyPartiallyMaterialised", async () => {
+    // Guards the fixture helper itself: a snapshot that already has some families must still get the missing ones.
+    const { db, d1 } = seed([
+      { h: 0, courses: [{ id: "DUOLINGO_XA_EN", xp: 10 }] },
+      { h: 10, courses: [{ id: "DUOLINGO_XA_EN", xp: 90 }] },
+    ]);
+    // partial state: only the account family exists for s0 (an unrelated row), no course rows
+    db.prepare("INSERT INTO account_observations (snapshot_id, user_id, observed_at, total_xp, streak, declared_course_id, extractor_version) VALUES ('s0', ?, ?, 1, 1, NULL, 1)").run(U, at(0));
+    const before = db.prepare("SELECT COUNT(*) n FROM course_observations WHERE snapshot_id = 's0'").get() as any;
+    expect(before.n).toBe(0);
+    await materializeObservations(db, d1);
+    const after = db.prepare("SELECT COUNT(*) n FROM course_observations WHERE snapshot_id = 's0'").get() as any;
+    expect(after.n).toBe(1);
+    const acc = db.prepare("SELECT total_xp FROM account_observations WHERE snapshot_id = 's0'").get() as any;
+    expect(acc.total_xp).toBe(1); // the pre-existing row is left untouched
+  });
 });
