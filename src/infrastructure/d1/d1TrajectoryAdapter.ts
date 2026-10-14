@@ -105,10 +105,12 @@ export function createD1TrajectoryAdapter(db: D1Database): TrajectoryPort {
       // in (created_at, id) order, that has at least one observation satisfying the predicate. Snapshots are walked in pages and only
       // the page's ids are looked up by primary-key prefix: the first snapshot is the only one that usually lacks `subject`, so this
       // reads a few dozen rows instead of scanning every observation of the user.
-      const PAGE = 20, MAX_PAGES = 50;
+      const PAGE = 20;
       let startRow: { id: string; first_obs: string } | null = null;
       let cursor: { at: string; id: string } | null = null;
-      for (let page = 0; page < MAX_PAGES && !startRow; page++) {
+      // Walks until a qualifying snapshot is found or the snapshots are exhausted: no arbitrary page cap, because stopping early would be
+      // indistinguishable from "no qualifying snapshot exists". The cursor advances strictly, so the loop always terminates.
+      while (!startRow) {
         const snaps: Array<{ id: string; created_at: string }> = (await db
           .prepare(`
             SELECT id, created_at FROM snapshots
