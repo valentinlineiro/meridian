@@ -223,4 +223,16 @@ describe("R4/A6 reads course_observations", () => {
     const out = await createD1TrajectoryAdapter(d1).getLanguagesTrajectoryData(U);
     expect(out).toMatchObject({ startedAt: null, endedAt: null, activeDays: 0, h1: { courses: [] }, h2: { courses: [] } });
   });
+
+  it("shouldNotSkipOrRepeatSnapshotsWhenTiesOnCreatedAtSpanSeveralPages", async () => {
+    // 45 snapshots at the SAME instant (ids s0..s44; string order puts s9 last). Only s9 qualifies, so the page cursor must walk
+    // every tie in id order across 3 pages of 20 without losing s9 and without stopping early.
+    const tied: S[] = Array.from({ length: 45 }, (_, i) => ({ h: 0, courses: [{ id: "DUOLINGO_XA_EN", xp: i === 9 ? 10 : 5, ...(i === 9 ? {} : { subject: null }) }] }));
+    const { db, d1 } = seed([...tied, { h: 10, courses: [{ id: "DUOLINGO_XA_EN", xp: 60 }] }, { h: 20, courses: [{ id: "DUOLINGO_XA_EN", xp: 90 }] }]);
+    await materializeObservations(db, d1);
+    const out = await createD1TrajectoryAdapter(d1).getLanguagesTrajectoryData(U);
+    expect(out.startedAt).toBe(at(0));
+    // start obs is s9's xp (10): h1 (0, 10] ends at h10 (60) -> 50; h2 (10, 20] -> 30
+    expect(shape(out)).toEqual({ h1: { g: { DUOLINGO_XA_EN: 50 }, nc: {} }, h2: { g: { DUOLINGO_XA_EN: 30 }, nc: {} } });
+  });
 });
