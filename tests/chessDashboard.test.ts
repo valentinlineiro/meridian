@@ -25,9 +25,16 @@ const api: Record<string, unknown> = {
   "/api/stats/recent": { limit: 50, games: 50, wins: 25, losses: 20, draws: 5, winRate: 0.5, before: null },
   "/api/matches": { rows: [], total: 0 },
 };
+// The bundle is the same seven bodies as the per-route entries above, so a test overrides one route and the page sees it either way.
+const BUNDLE_ROUTES = { summary: "summary", results: "results", color: "color", opponents: "opponents", opponentElo: "opponent-elo", timeline: "timeline", recent: "recent" };
+const requests: string[] = [];
 const fetchApi = async (url: string) => {
+  requests.push(url);
   const key = Object.keys(api).find((k) => url.startsWith(k));
-  return { ok: true, status: 200, json: async () => (key ? api[key] : emptyAccountPayload(url)) };
+  const body = key ? api[key]
+    : url.startsWith("/api/stats/bundle") ? Object.fromEntries(Object.entries(BUNDLE_ROUTES).map(([k, r]) => [k, api[`/api/stats/${r}`]]))
+    : emptyAccountPayload(url);
+  return { ok: true, status: 200, json: async () => body };
 };
 
 async function openChess(overrides: Record<string, unknown> = {}) {
@@ -141,5 +148,25 @@ describe("chess tab: recent form colour split", () => {
     expect(form(8, 12)).toContain("♔ Blancas");
     expect(form(0, 20)).not.toContain("♔ Blancas");
     expect(form(20, 0)).not.toContain("♚ Negras");
+  });
+});
+
+describe("chess tab: stats bundle", () => {
+  const STATS = ["summary", "results", "color", "opponents", "opponent-elo", "timeline", "recent"];
+  const statRequests = (route: string) => requests.filter((u) => u.startsWith(`/api/stats/${route}`));
+
+  it("shouldAskForTheBundleOnceAndNotForTheSevenRoutesWhenThePageOpens", async () => {
+    requests.length = 0;
+    await openChess();
+    expect(statRequests("bundle")).toHaveLength(1);
+    for (const r of STATS) expect(statRequests(r)).toHaveLength(0);
+  });
+
+  it("shouldFallBackToEachRouteOnceAndKeepRenderingWhenTheBundleFails", async () => {
+    requests.length = 0;
+    const rt = await openChess({ "/api/stats/bundle": { ok: false } });
+    expect(statRequests("bundle")).toHaveLength(1);
+    for (const r of STATS) expect(statRequests(r)).toHaveLength(1);
+    expect(text(rt, "#colDiff")).toBe("Blancas 70.0% · Negras 45.0% → +25.0 pp · IC95 [+4, +43]");
   });
 });

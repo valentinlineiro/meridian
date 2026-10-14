@@ -68,62 +68,156 @@ function summarizeBy<T extends { result: unknown; outcome: unknown }>(rows: T[],
 
 const num = (v: unknown) => (typeof v === "number" ? v : v == null ? null : Number(v));
 
-const ROWS_KINDS = new Set(["recent", "summary", "results", "color", "opponent-elo"]);
+type Row = Record<string, any>;
+
+// Response bodies as pure functions of already-read rows: the individual routes and the bundle read differently but build the same body.
+function recentBody(rows: Row[], n: number) {
+  const slice = rows.slice(-n);
+  const s = summarize(slice as any);
+  // The games before the window: the baseline the window is compared with. It never overlaps the window.
+  const before = summarize(rows.slice(0, rows.length - slice.length) as any);
+  const m = new Map<string, any[]>();
+  for (const r of slice) { const k = String(r.user_color ?? "unknown").toLowerCase(); if (!m.has(k)) m.set(k, []); m.get(k)!.push(r); }
+  const colorGroups = [...m.entries()].map(([k, v]) => ({ key: k, ...summarize(v as any) }));
+  // window − before, as a fraction with its 95% interval (the groups are disjoint)
+  const delta = newcombeDiff({ wins: s.wins, n: s.decided }, { wins: before.wins, n: before.decided });
+  return { limit: n, delta, games: s.games, wins: s.wins, losses: s.losses, draws: s.draws, unknown: s.unknown, decided: s.decided, winRate: s.winRate, winRateCi: s.winRateCi, scoreRate: s.scoreRate, colorGroups, before };
+}
+
+// eloRows: snapshots with a non-null eloRating, oldest first.
+function summaryBody(rows: Row[], eloRows: { elo: unknown }[]) {
+  const sum = summarize(rows as any);
+  const elo = eloStats(rows.map((r) => num(r.opponent_elo)));
+  const st = streaks(rows.map((r) => resultOf(r as any)));
+  const by = (pred: (r: any) => boolean) => rows.filter(pred);
+  const firstElo = eloRows.length > 0 ? num(eloRows[0]!.elo) : null;
+  const latestElo = eloRows.length > 0 ? num(eloRows[eloRows.length - 1]!.elo) : null;
+
+  const bots = by((r) => (r.opponent_type ?? "").toLowerCase().includes("bot") || r.opponent_elo == null && (r.opponent_type ?? "") === "").length;
+  // Bots = explicit bot type OR null-elo non-pvp; PvP = rest. Keep simple: opponent_type==='bot' (case-insens) OR (null elo and no pvp marker) is ambiguous -> count explicit.
+  const explicitBots = by((r) => String(r.opponent_type ?? "").toLowerCase() === "bot").length;
+  const pvp = rows.length - explicitBots;
+  const reviewed = by((r) => r.reviewed === 1).length;
+  return { games: sum.games, wins: sum.wins, losses: sum.losses, draws: sum.draws, winRate: sum.winRate, winRateCi: sum.winRateCi, scoreRate: sum.scoreRate,
+    currentElo: latestElo, firstElo, latestElo, bots: explicitBots || bots, pvp, reviewed,
+    knownOpponentElo: elo.count, opponentEloMin: elo.min, opponentEloMax: elo.max, opponentEloAvg: elo.avg,
+    currentStreak: st.currentStreak, currentStreakKind: st.currentKind, longestWin: st.longestWin, longestLoss: st.longestLoss };
+}
+
+// ecRows: (end_condition, result) groups with their count, end_condition already COALESCEd to 'unknown'.
+function resultsBody(rows: Row[], ecRows: { end_condition: unknown; result: unknown; count: unknown }[]) {
+  const sum = summarize(rows as any);
+  const endConditions: Record<string, { total: number; win: number; loss: number; draw: number }> = {};
+  for (const row of ecRows) {
+    const ec = String(row.end_condition);
+    if (!endConditions[ec]) {
+      endConditions[ec] = { total: 0, win: 0, loss: 0, draw: 0 };
+    }
+    const cnt = Number(row.count);
+    endConditions[ec].total += cnt;
+    const resKey = resultOf({ result: row.result as any });
+    if (resKey === "win") endConditions[ec].win += cnt;
+    else if (resKey === "loss") endConditions[ec].loss += cnt;
+    else if (resKey === "draw") endConditions[ec].draw += cnt;
+  }
+  return {
+    ...sum,
+    percentages: {
+      win: sum.decided ? sum.wins / sum.decided : null,
+      loss: sum.decided ? sum.losses / sum.decided : null,
+      draw: sum.decided ? sum.draws / sum.decided : null,
+    },
+    endConditions,
+  };
+}
+
+function colorBody(rows: Row[]) {
+  const groups = summarizeBy(rows as any, (r: any) => String(r.user_color ?? "unknown").toLowerCase()).map(({ k, rows: _rows, ...g }) => ({ key: k, ...g }));
+  const wh = groups.find((g) => g.key === "white"), bl = groups.find((g) => g.key === "black");
+  // white − black, a fraction with its 95% interval; null unless both colours have decided games
+  const difference = wh && bl ? newcombeDiff({ wins: wh.wins, n: wh.decided }, { wins: bl.wins, n: bl.decided }) : null;
+  return { groups, difference };
+}
+
+function opponentsBody(oppRows: Row[]) {
+  const segMap = new Map<OpponentSegment, any[]>();
+  for (const r of oppRows) {
+    const seg = classifyOpponentSegment(r.opponent_id, r.opponent_type);
+    if (!segMap.has(seg)) segMap.set(seg, []);
+    segMap.get(seg)!.push(r);
+  }
+  const segments = [...segMap.entries()]
+    .map(([k, v]) => ({
+      key: k,
+      label: OPPONENT_SEGMENT_LABELS[k] ?? k,
+      ...summarize(v),
+    }))
+    .sort((a, b) => b.games - a.games || a.key.localeCompare(b.key));
+
+  const macroMap = new Map<string, any[]>();
+  for (const r of oppRows) {
+    const seg = classifyOpponentSegment(r.opponent_id, r.opponent_type);
+    const k = seg === "pvp" ? "pvp" : "bot";
+    if (!macroMap.has(k)) macroMap.set(k, []);
+    macroMap.get(k)!.push(r);
+  }
+  const macroLabels: Record<string, string> = {
+    bot: "Bots",
+    pvp: "PvP",
+  };
+  const macro = [...macroMap.entries()]
+    .map(([k, v]) => ({
+      key: k,
+      label: macroLabels[k] ?? k,
+      ...summarize(v),
+    }))
+    .sort((a, b) => b.games - a.games || a.key.localeCompare(b.key));
+
+  return { segments, macro, groups: macro };
+}
+
+function opponentEloBody(rows: Row[]) {
+  const elo = eloStats(rows.map((r) => num(r.opponent_elo)));
+  return { count: elo.count, min: elo.min, max: elo.max, average: elo.avg, median: elo.median, buckets: elo.buckets, note: `${elo.count} / ${rows.length} matches have known opponent ELO` };
+}
+
+function timelineBody(snaps: { id: unknown; created_at: unknown; elo: unknown }[]) {
+  return { snapshots: snaps.map((s) => ({ id: s.id, createdAt: s.created_at, elo: num(s.elo) })), note: "ELO is snapshot-observed (page/snapshot level), not verified per-match ELO." };
+}
+
+const SNAPSHOT_ELO_SQL = "SELECT id, created_at, json_extract(raw_json, '$.eloRating') as elo FROM snapshots";
+
+async function snapshotElos(db: D1Database, userId: string | null): Promise<{ id: unknown; created_at: unknown; elo: unknown }[]> {
+  const stmt = userId
+    ? db.prepare(`${SNAPSHOT_ELO_SQL} WHERE user_id=? ORDER BY created_at ASC`).bind(userId)
+    : db.prepare(`${SNAPSHOT_ELO_SQL} ORDER BY created_at ASC`);
+  return (await stmt.all<any>()).results ?? [];
+}
+
+const withElo = (snaps: { elo: unknown }[]) => snaps.filter((s) => s.elo != null);
 
 export async function handleStats(db: D1Database, kind: string, url: URL): Promise<Response> {
   const userId = url.searchParams.get("userId");
   if (kind === "lang") return handleLangStats(db, url);
   if (kind === "openings") return handleStatsOpenings(db, url);
   if (kind === "phases") return handleStatsPhases(db, url);
-
-  // Only these kinds aggregate over matches in JS; the others (opponents, timeline) run their own queries and never read `rows`.
-  const rows = ROWS_KINDS.has(kind) ? await allMatches(db, userId) : [];
-  const sum = summarize(rows as any);
-  const elos = rows.map((r) => num(r.opponent_elo));
-  const elo = eloStats(elos);
-  const by = (pred: (r: any) => boolean) => rows.filter(pred);
-  const grp = (key: (r: any) => string) => {
-    const m = new Map<string, any[]>();
-    for (const r of rows) { const k = key(r); if (!m.has(k)) m.set(k, []); m.get(k)!.push(r); }
-    return [...m.entries()].map(([k, v]) => ({ key: k, ...summarize(v as any) }));
-  };
-  const res = rows.map((r) => resultOf(r as any));
-  const st = streaks(res);
+  if (kind === "bundle") return handleStatsBundle(db, url);
 
   switch (kind) {
     case "recent": {
       const raw = Number(url.searchParams.get("limit") ?? 50);
       const n = Math.min(Math.max(Number.isFinite(raw) ? raw : 50, 1), 200);
-      const slice = rows.slice(-n);
-      const s = summarize(slice as any);
-      // The games before the window: the baseline the window is compared with. It never overlaps the window.
-      const before = summarize(rows.slice(0, rows.length - slice.length) as any);
-      const m = new Map<string, any[]>();
-      for (const r of slice) { const k = String((r as any).user_color ?? "unknown").toLowerCase(); if (!m.has(k)) m.set(k, []); m.get(k)!.push(r); }
-      const colorGroups = [...m.entries()].map(([k, v]) => ({ key: k, ...summarize(v as any) }));
-      // window − before, as a fraction with its 95% interval (the groups are disjoint)
-      const delta = newcombeDiff({ wins: s.wins, n: s.decided }, { wins: before.wins, n: before.decided });
-      return json({ limit: n, delta, games: s.games, wins: s.wins, losses: s.losses, draws: s.draws, unknown: s.unknown, decided: s.decided, winRate: s.winRate, winRateCi: s.winRateCi, scoreRate: s.scoreRate, colorGroups, before });
+      return json(recentBody(await allMatches(db, userId), n));
     }
     case "summary": {
-      const snapStmt = userId
+      const rows = await allMatches(db, userId);
+      const eloStmt = userId
         ? db.prepare("SELECT json_extract(raw_json, '$.eloRating') as elo FROM snapshots WHERE user_id=? AND json_extract(raw_json, '$.eloRating') IS NOT NULL ORDER BY created_at ASC").bind(userId)
         : db.prepare("SELECT json_extract(raw_json, '$.eloRating') as elo FROM snapshots WHERE json_extract(raw_json, '$.eloRating') IS NOT NULL ORDER BY created_at ASC");
-      const eloRows = (await snapStmt.all<any>()).results ?? [];
-      const firstElo = eloRows.length > 0 ? num(eloRows[0].elo) : null;
-      const latestElo = eloRows.length > 0 ? num(eloRows[eloRows.length - 1].elo) : null;
-
-      const bots = by((r) => (r.opponent_type ?? "").toLowerCase().includes("bot") || r.opponent_elo == null && (r.opponent_type ?? "") === "").length;
-      // Bots = explicit bot type OR null-elo non-pvp; PvP = rest. Keep simple: opponent_type==='bot' (case-insens) OR (null elo and no pvp marker) is ambiguous -> count explicit.
-      const explicitBots = by((r) => String(r.opponent_type ?? "").toLowerCase() === "bot").length;
-      const pvp = rows.length - explicitBots;
-      const reviewed = by((r) => r.reviewed === 1).length;
-      return json({ games: sum.games, wins: sum.wins, losses: sum.losses, draws: sum.draws, winRate: sum.winRate, winRateCi: sum.winRateCi, scoreRate: sum.scoreRate,
-        currentElo: latestElo, firstElo, latestElo, bots: explicitBots || bots, pvp, reviewed,
-        knownOpponentElo: elo.count, opponentEloMin: elo.min, opponentEloMax: elo.max, opponentEloAvg: elo.avg,
-        currentStreak: st.currentStreak, currentStreakKind: st.currentKind, longestWin: st.longestWin, longestLoss: st.longestLoss });
+      return json(summaryBody(rows, (await eloStmt.all<any>()).results ?? []));
     }
     case "results": {
+      const rows = await allMatches(db, userId);
       const ecRows = (await db.prepare(`
         SELECT 
           COALESCE(md.end_condition, 'unknown') as end_condition,
@@ -134,39 +228,9 @@ export async function handleStats(db: D1Database, kind: string, url: URL): Promi
         ${userId ? "WHERE m.user_id = ?" : ""}
         GROUP BY 1, 2
       `).bind(...(userId ? [userId] : [])).all<any>()).results ?? [];
-
-      const endConditions: Record<string, { total: number; win: number; loss: number; draw: number }> = {};
-
-      for (const row of ecRows) {
-        const ec = String(row.end_condition);
-        if (!endConditions[ec]) {
-          endConditions[ec] = { total: 0, win: 0, loss: 0, draw: 0 };
-        }
-        const cnt = Number(row.count);
-        endConditions[ec].total += cnt;
-        const resKey = resultOf({ result: row.result });
-        if (resKey === "win") endConditions[ec].win += cnt;
-        else if (resKey === "loss") endConditions[ec].loss += cnt;
-        else if (resKey === "draw") endConditions[ec].draw += cnt;
-      }
-
-      return json({
-        ...sum,
-        percentages: {
-          win: sum.decided ? sum.wins / sum.decided : null,
-          loss: sum.decided ? sum.losses / sum.decided : null,
-          draw: sum.decided ? sum.draws / sum.decided : null,
-        },
-        endConditions,
-      });
+      return json(resultsBody(rows, ecRows));
     }
-    case "color": {
-      const groups = grp((r) => String(r.user_color ?? "unknown").toLowerCase());
-      const wh = groups.find((g) => g.key === "white"), bl = groups.find((g) => g.key === "black");
-      // white − black, a fraction with its 95% interval; null unless both colours have decided games
-      const difference = wh && bl ? newcombeDiff({ wins: wh.wins, n: wh.decided }, { wins: bl.wins, n: bl.decided }) : null;
-      return json({ groups, difference });
-    }
+    case "color": return json(colorBody(await allMatches(db, userId)));
     case "opponents": {
       const q = `
         SELECT 
@@ -179,54 +243,49 @@ export async function handleStats(db: D1Database, kind: string, url: URL): Promi
         ${userId ? "WHERE m.user_id = ?" : ""}
       `;
       const stmt = userId ? db.prepare(q).bind(userId) : db.prepare(q);
-      const oppRows = (await stmt.all<any>()).results ?? [];
-
-      const segMap = new Map<OpponentSegment, any[]>();
-      for (const r of oppRows) {
-        const seg = classifyOpponentSegment(r.opponent_id, r.opponent_type);
-        if (!segMap.has(seg)) segMap.set(seg, []);
-        segMap.get(seg)!.push(r);
-      }
-      const segments = [...segMap.entries()]
-        .map(([k, v]) => ({
-          key: k,
-          label: OPPONENT_SEGMENT_LABELS[k] ?? k,
-          ...summarize(v),
-        }))
-        .sort((a, b) => b.games - a.games || a.key.localeCompare(b.key));
-
-      const macroMap = new Map<string, any[]>();
-      for (const r of oppRows) {
-        const seg = classifyOpponentSegment(r.opponent_id, r.opponent_type);
-        const k = seg === "pvp" ? "pvp" : "bot";
-        if (!macroMap.has(k)) macroMap.set(k, []);
-        macroMap.get(k)!.push(r);
-      }
-      const macroLabels: Record<string, string> = {
-        bot: "Bots",
-        pvp: "PvP",
-      };
-      const macro = [...macroMap.entries()]
-        .map(([k, v]) => ({
-          key: k,
-          label: macroLabels[k] ?? k,
-          ...summarize(v),
-        }))
-        .sort((a, b) => b.games - a.games || a.key.localeCompare(b.key));
-
-      return json({ segments, macro, groups: macro });
+      return json(opponentsBody((await stmt.all<any>()).results ?? []));
     }
-    case "opponent-elo": return json({ count: elo.count, min: elo.min, max: elo.max, average: elo.avg, median: elo.median, buckets: elo.buckets, note: `${elo.count} / ${rows.length} matches have known opponent ELO` });
-    case "timeline": {
-      const snapStmt = userId
-        ? db.prepare("SELECT id, created_at, json_extract(raw_json, '$.eloRating') as elo FROM snapshots WHERE user_id=? ORDER BY created_at ASC").bind(userId)
-        : db.prepare("SELECT id, created_at, json_extract(raw_json, '$.eloRating') as elo FROM snapshots ORDER BY created_at ASC");
-      const snaps = ((await snapStmt.all<any>()).results ?? []).map((s) => ({ id: s.id, createdAt: s.created_at, elo: num(s.elo) }));
-      return json({ snapshots: snaps, note: "ELO is snapshot-observed (page/snapshot level), not verified per-match ELO." });
-    }
-    case "lang": return handleLangStats(db, url);
+    case "opponent-elo": return json(opponentEloBody(await allMatches(db, userId)));
+    case "timeline": return json(timelineBody(await snapshotElos(db, userId)));
     default: return json({ ok: false, error: "unknown stats kind" }, 404);
   }
+}
+
+// One read of matches (joined with match_details) and one of snapshots serve the seven bodies the dashboard opens with. Each key is
+// byte-for-byte the body of the individual route (recent at its default limit of 50), which stays the reference.
+export async function handleStatsBundle(db: D1Database, url: URL): Promise<Response> {
+  const userId = url.searchParams.get("userId");
+  const stmt = db.prepare(`
+    SELECT m.result, m.outcome, m.opponent_elo, m.opponent_type, m.user_color, m.reviewed,
+           md.end_condition, md.opponent_id
+    FROM matches m
+    LEFT JOIN match_details md ON md.match_id = m.match_id
+    ${userId ? "WHERE m.user_id = ?" : ""}
+    ORDER BY COALESCE(m.played_at, 0) ASC, m.rowid ASC
+  `);
+  const rows = ((await (userId ? stmt.bind(userId) : stmt).all<any>()).results ?? []) as Row[];
+  const snaps = await snapshotElos(db, userId);
+
+  // GROUP BY end_condition, result as SQLite returns it: sorted, NULL result first.
+  const groups = new Map<string, { end_condition: string; result: string | null; count: number }>();
+  for (const r of rows) {
+    const end_condition = r.end_condition ?? "unknown", result = r.result ?? null;
+    const k = JSON.stringify([end_condition, result]);
+    const g = groups.get(k);
+    if (g) g.count++; else groups.set(k, { end_condition, result, count: 1 });
+  }
+  const cmp = (a: string | null, b: string | null) => (a === b ? 0 : a === null ? -1 : b === null ? 1 : a < b ? -1 : 1);
+  const ecRows = [...groups.values()].sort((a, b) => cmp(a.end_condition, b.end_condition) || cmp(a.result, b.result));
+
+  return json({
+    summary: summaryBody(rows, withElo(snaps)),
+    results: resultsBody(rows, ecRows),
+    color: colorBody(rows),
+    opponents: opponentsBody(rows),
+    opponentElo: opponentEloBody(rows),
+    timeline: timelineBody(snaps),
+    recent: recentBody(rows, 50),
+  });
 }
 
 export async function handleStatsOpenings(db: D1Database, url: URL): Promise<Response> {

@@ -921,15 +921,23 @@ function renderChessView(stats, matches){
  }
 }
 
+// One bundle serves the overview and chess sections; if it fails, each stat falls back to its own route once (no bundle retry).
+let statsBundlePromise=null; const statCache={};
+function statsBundle(){
+ return statsBundlePromise||(statsBundlePromise=j('/api/stats/bundle').then(b=>{ if(!b||!b.summary) throw new Error('bundle'); return b; }).catch(()=>null));
+}
+function stat(key,route){
+ return statCache[key]||(statCache[key]=statsBundle().then(b=>b?b[key]:j(route)));
+}
 async function loadOverviewDashboard(){
  try {
   const [langs, xpData, stats, recent, matches, timeline] = await Promise.all([
    j('/api/languages').catch(()=>null),
    j('/api/languages/xp?days=30').catch(()=>({summaries:[]})),
-   j('/api/stats/summary').catch(()=>null),
-   j('/api/stats/recent?limit=50').catch(()=>null),
+   stat('summary','/api/stats/summary').catch(()=>null),
+   stat('recent','/api/stats/recent?limit=50').catch(()=>null),
    j('/api/matches?limit=100').catch(()=>({rows:[],total:0})),
-   j('/api/stats/timeline').catch(()=>null)
+   stat('timeline','/api/stats/timeline').catch(()=>null)
   ]);
   let activeDetail = null;
   if(langs && langs.courses && langs.courses.length){
@@ -1006,7 +1014,7 @@ function populateOpeningFilter(op){
  }
 }
 function arrow(a,b){ if(a==null||b==null) return ''; return a>b?' ↑':a<b?' ↓':' ·'; }
-async function setRecent(n){ recentN=n; for(const k of [20,50,100]){ const el=q('#b'+k); if(el){ el.className=n===k?'btn btn-p':'btn btn-g'; } } const r=await j('/api/stats/recent?limit='+n); lastRecent=r; renderForm(r); renderChessView({ recent: r }, lastRows); }
+async function setRecent(n,preloaded){ recentN=n; for(const k of [20,50,100]){ const el=q('#b'+k); if(el){ el.className=n===k?'btn btn-p':'btn btn-g'; } } const r=preloaded||await j('/api/stats/recent?limit='+n); lastRecent=r; renderForm(r); renderChessView({ recent: r }, lastRows); }
 function fmtDelta(d){ // d in percentage points: {diff,lower,upper}. Never shown without its interval.
  if(!d) return '—';
  const sg=(v,dec,raw)=>{ const t=Math.abs(v).toFixed(dec); return v===0||(!raw&&Number(t)===0)?t:(v>0?'+':'−')+t; }; // raw: a limit keeps its true sign even when it rounds to 0, so [+0, …] reads as "excludes 0"
@@ -1112,6 +1120,7 @@ function renderRows(){
 }
 
 async function init(){
+ statsBundlePromise=null; for(const k of Object.keys(statCache)) delete statCache[k];
  const overviewPromise=loadOverviewDashboard();
  const langPromise=loadLanguagesDashboard();
  await loadChessDashboard();
@@ -1126,8 +1135,8 @@ async function init(){
 
 async function loadChessDashboard(){
  try{
-  const [s,r,c,o,e,t,op,ph]=await Promise.all([j('/api/stats/summary'),j('/api/stats/results'),j('/api/stats/color'),j('/api/stats/opponents'),j('/api/stats/opponent-elo'),j('/api/stats/timeline'),j('/api/stats/openings'),j('/api/stats/phases')]);
-  const rec50=await j('/api/stats/recent?limit=50').catch(()=>null);
+  const [s,r,c,o,e,t,op,ph]=await Promise.all([stat('summary','/api/stats/summary'),stat('results','/api/stats/results'),stat('color','/api/stats/color'),stat('opponents','/api/stats/opponents'),stat('opponentElo','/api/stats/opponent-elo'),stat('timeline','/api/stats/timeline'),j('/api/stats/openings'),j('/api/stats/phases')]);
+  const rec50=await stat('recent','/api/stats/recent?limit=50').catch(()=>null);
   if(rec50) lastRecent=rec50;
   hist=s; hist.groups=c.groups;
 
@@ -1149,7 +1158,7 @@ async function loadChessDashboard(){
   q('#streak').innerHTML= (s.currentStreak? '<b>Racha actual: '+s.currentStreak+' '+sk+'</b> · ':'') + 'Mejor racha: '+ (s.longestWin||0)+'W' + (s.longestLoss? ' · Peor: '+s.longestLoss+'L':'');
   // forma actual default 50
   for(const k of [20,50,100]){ const el=q('#b'+k); if(el) el.className='btn '+(k===50?'btn-p':'btn-g'); }
-  setRecent(50).catch(()=>{});
+  setRecent(50, rec50).catch(()=>{});
 
   // evolution - dedup by day keep last elo
   const byDay=new Map();
