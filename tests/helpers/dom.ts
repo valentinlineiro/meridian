@@ -117,6 +117,10 @@ export function emptyAccountPayload(url: string): unknown {
   if (url.startsWith("/api/stats/opponents")) return { segments: [], macro: [] };
   if (url.startsWith("/api/stats/opponent-elo")) return { count: 0, buckets: [], min: null, max: null, average: null };
   if (url.startsWith("/api/stats/timeline")) return { snapshots: [] };
+  if (url.startsWith("/api/stats/bundle")) {
+    const [summary, color, opponents, opponentElo, timeline] = ["summary", "color", "opponents", "opponent-elo", "timeline"].map((k) => emptyAccountPayload(`/api/stats/${k}`));
+    return { summary, results: {}, color, opponents, opponentElo, timeline, recent: {} };
+  }
   return {};
 }
 
