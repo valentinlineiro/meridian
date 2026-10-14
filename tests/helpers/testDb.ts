@@ -25,6 +25,7 @@ export function setupTestDb(): TestDbInstance {
     "0012_observation_series.sql",
     "0013_xp_summaries_daily_goal.sql",
     "0014_course_path_state.sql",
+    "0017_a7_compact_xp_events.sql",
   ];
 
   for (const file of migrationFiles) {

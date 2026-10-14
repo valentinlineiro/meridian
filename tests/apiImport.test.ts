@@ -53,6 +53,7 @@ describe("POST /api/import boundary", () => {
     db.exec(readFileSync(new URL("../migrations/0012_observation_series.sql", import.meta.url).pathname, "utf8"));
     db.exec(readFileSync(new URL("../migrations/0013_xp_summaries_daily_goal.sql", import.meta.url).pathname, "utf8"));
     db.exec(readFileSync(new URL("../migrations/0014_course_path_state.sql", import.meta.url).pathname, "utf8"));
+    db.exec(readFileSync(new URL("../migrations/0017_a7_compact_xp_events.sql", import.meta.url).pathname, "utf8"));
     env = { DB: createTestD1(db), IMPORT_TOKEN: "secret" } as unknown as Env;
   });
 
