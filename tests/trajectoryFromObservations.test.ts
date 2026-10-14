@@ -201,4 +201,49 @@ describe("R4/A6 reads course_observations", () => {
     const acc = db.prepare("SELECT total_xp FROM account_observations WHERE snapshot_id = 's0'").get() as any;
     expect(acc.total_xp).toBe(1); // the pre-existing row is left untouched
   });
+
+  it("shouldFindTheStartAcrossSeveralPagesOfSnapshotsWithoutQualifyingObservations", async () => {
+    // 45 leading snapshots whose entries carry no `subject` (more than two pages of 20), then the first qualifying one.
+    const lead: S[] = Array.from({ length: 45 }, (_, i) => ({ h: i * 0.1, courses: [{ id: "DUOLINGO_XA_EN", xp: 5, subject: null }] }));
+    const { db, d1 } = seed([
+      ...lead,
+      { h: 10, courses: [{ id: "DUOLINGO_XA_EN", xp: 100 }] },
+      { h: 20, courses: [{ id: "DUOLINGO_XA_EN", xp: 150 }] },
+      { h: 30, courses: [{ id: "DUOLINGO_XA_EN", xp: 190 }] },
+    ]);
+    await materializeObservations(db, d1);
+    const out = await createD1TrajectoryAdapter(d1).getLanguagesTrajectoryData(U);
+    expect(out.startedAt).toBe(at(10));
+    expect(shape(out)).toEqual({ h1: { g: { DUOLINGO_XA_EN: 50 }, nc: {} }, h2: { g: { DUOLINGO_XA_EN: 40 }, nc: {} } });
+  });
+
+  it("shouldReturnEmptyWhenNoSnapshotHasQualifyingObservations", async () => {
+    const { db, d1 } = seed([{ h: 0, courses: [{ id: "DUOLINGO_XA_EN", xp: 1, subject: null }] }, { h: 5, courses: [{ id: "DUOLINGO_XA_EN", xp: 9, subject: null }] }]);
+    await materializeObservations(db, d1);
+    const out = await createD1TrajectoryAdapter(d1).getLanguagesTrajectoryData(U);
+    expect(out).toMatchObject({ startedAt: null, endedAt: null, activeDays: 0, h1: { courses: [] }, h2: { courses: [] } });
+  });
+
+  it("shouldNotSkipOrRepeatSnapshotsWhenTiesOnCreatedAtSpanSeveralPages", async () => {
+    // 45 snapshots at the SAME instant (ids s0..s44; string order puts s9 last). Only s9 qualifies, so the page cursor must walk
+    // every tie in id order across 3 pages of 20 without losing s9 and without stopping early.
+    const tied: S[] = Array.from({ length: 45 }, (_, i) => ({ h: 0, courses: [{ id: "DUOLINGO_XA_EN", xp: i === 9 ? 10 : 5, ...(i === 9 ? {} : { subject: null }) }] }));
+    const { db, d1 } = seed([...tied, { h: 10, courses: [{ id: "DUOLINGO_XA_EN", xp: 60 }] }, { h: 20, courses: [{ id: "DUOLINGO_XA_EN", xp: 90 }] }]);
+    await materializeObservations(db, d1);
+    const out = await createD1TrajectoryAdapter(d1).getLanguagesTrajectoryData(U);
+    expect(out.startedAt).toBe(at(0));
+    // start obs is s9's xp (10): h1 (0, 10] ends at h10 (60) -> 50; h2 (10, 20] -> 30
+    expect(shape(out)).toEqual({ h1: { g: { DUOLINGO_XA_EN: 50 }, nc: {} }, h2: { g: { DUOLINGO_XA_EN: 30 }, nc: {} } });
+  });
+
+  it("shouldFindTheStartEvenWhenMoreThanAThousandSnapshotsComeBeforeTheFirstQualifyingOne", async () => {
+    // 1,030 leading snapshots (52 pages of 20) with no `subject`, then the first qualifying one: an arbitrary page cap must not turn
+    // this into an empty result.
+    const lead: S[] = Array.from({ length: 1030 }, (_, i) => ({ h: i * 0.01, courses: [{ id: "DUOLINGO_XA_EN", xp: 5, subject: null }] }));
+    const { db, d1 } = seed([...lead, { h: 100, courses: [{ id: "DUOLINGO_XA_EN", xp: 100 }] }, { h: 200, courses: [{ id: "DUOLINGO_XA_EN", xp: 150 }] }, { h: 300, courses: [{ id: "DUOLINGO_XA_EN", xp: 190 }] }]);
+    await materializeObservations(db, d1);
+    const out = await createD1TrajectoryAdapter(d1).getLanguagesTrajectoryData(U);
+    expect(out.startedAt).toBe(at(100));
+    expect(shape(out)).toEqual({ h1: { g: { DUOLINGO_XA_EN: 50 }, nc: {} }, h2: { g: { DUOLINGO_XA_EN: 40 }, nc: {} } });
+  });
 });
