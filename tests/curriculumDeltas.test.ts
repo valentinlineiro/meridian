@@ -6,7 +6,7 @@ import { getCurriculumDeltas } from "../src/api/languagesAnalytics.ts";
 const USER = "1000001";
 const course = (id: string, completed: number, total = 40) => ({
   user: { id: 1000001 },
-  currentCourse: { id, pathSectioned: [{ id: "s0", index: 0, completedUnits: completed, totalUnits: total }] },
+  currentCourse: { id, pathSectioned: [{ id: "s0", index: 0, units: [], completedUnits: completed, totalUnits: total }] },
 });
 const at = (day: number) => `2026-09-${String(day).padStart(2, "0")}T10:00:00.000Z`;
 const seed = async (d1: D1Database, data: unknown, createdAt: string) =>

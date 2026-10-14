@@ -12,61 +12,47 @@ import {
 
 export async function getCurriculumDeltas(db: D1Database, userId: string): Promise<CurriculumObservationDelta[]> {
   try {
-    // Only the first and last observation of each course are compared, so only those cross the D1 boundary
-    // (a row is both when the course was observed once). Selecting the whole history grew by ~3 MB/day per request.
+    // R5 reads observation rows (contract 2026-10-05 §7), not raw_json. Only the first and last observation of each course
+    // cross the D1 boundary (a row is both when the course was observed once). Order is (observed_at, snapshot_id), so ties
+    // are deterministic. A snapshot whose Path had a format error, or no usable course id, is not an observation of a course
+    // Path: the extractor stores it with format_error / NULL course_id and no sections.
     const rows = ((await db.prepare(`
-      SELECT created_at, raw_json FROM (
-        SELECT created_at, raw_json,
-          ROW_NUMBER() OVER (PARTITION BY course_id ORDER BY created_at ASC) AS from_start,
-          ROW_NUMBER() OVER (PARTITION BY course_id ORDER BY created_at DESC) AS from_end
-        FROM (
-          SELECT created_at, raw_json,
-            CASE WHEN json_valid(raw_json) AND json_type(raw_json, '$.currentCourse.pathSectioned') = 'array'
-              THEN json_extract(raw_json, '$.currentCourse.id') END AS course_id
-          FROM snapshots
-          WHERE user_id = ? AND source = 'duolingo-lang' AND raw_json LIKE '%pathSectioned%'
-        )
-        WHERE course_id IS NOT NULL AND course_id <> ''
+      WITH ranked AS (
+        SELECT snapshot_id, course_id, observed_at,
+          ROW_NUMBER() OVER (PARTITION BY course_id ORDER BY observed_at ASC, snapshot_id ASC) AS from_start,
+          ROW_NUMBER() OVER (PARTITION BY course_id ORDER BY observed_at DESC, snapshot_id DESC) AS from_end
+        FROM path_observations
+        WHERE user_id = ? AND format_error IS NULL AND course_id IS NOT NULL AND course_id <> ''
       )
-      WHERE from_start = 1 OR from_end = 1
-      ORDER BY created_at ASC
+      SELECT r.course_id, r.observed_at, r.snapshot_id, s.section_index, s.completed_units, s.total_units
+      FROM ranked r
+      LEFT JOIN section_observations s ON s.snapshot_id = r.snapshot_id
+      WHERE r.from_start = 1 OR r.from_end = 1
+      ORDER BY r.course_id, r.observed_at ASC, r.snapshot_id ASC, s.section_index ASC
     `).bind(userId).all<any>()).results ?? []);
 
     if (rows.length === 0) return [];
 
-    const courseObservations = new Map<string, CurriculumSnapshotInput[]>();
-
-    for (const row of rows) {
-      try {
-        const parsed = JSON.parse(row.raw_json);
-        const course = parsed.currentCourse;
-        if (!course?.id || !Array.isArray(course.pathSectioned)) continue;
-
-        const obs: CurriculumSnapshotInput = {
-          courseId: course.id,
-          observedAt: row.created_at,
-          sections: course.pathSectioned.map((s: any) => ({
-            sectionIndex: s.index ?? 0,
-            completedUnits: s.completedUnits ?? 0,
-            totalUnits: s.totalUnits ?? 0,
-          })),
-        };
-
-        const list = courseObservations.get(course.id) ?? [];
-        list.push(obs);
-        courseObservations.set(course.id, list);
-      } catch {}
+    // Group the flat rows by (course, snapshot), keeping the first and last snapshot of each course in time order.
+    const bySnapshot = new Map<string, CurriculumSnapshotInput & { key: string }>();
+    const courseSnapshots = new Map<string, string[]>();
+    for (const r of rows) {
+      const key = `${r.course_id}\u0000${r.snapshot_id}`;
+      let snap = bySnapshot.get(key);
+      if (!snap) {
+        snap = { key, courseId: String(r.course_id), observedAt: String(r.observed_at), sections: [] };
+        bySnapshot.set(key, snap);
+        (courseSnapshots.get(snap.courseId) ?? courseSnapshots.set(snap.courseId, []).get(snap.courseId)!).push(key);
+      }
+      // ponytail: NULL counts become 0 to keep the previous R5 behaviour (`?? 0`); preserving NULL (D-d) is a separate change.
+      if (r.section_index !== null) snap.sections.push({ sectionIndex: Number(r.section_index), completedUnits: r.completed_units ?? 0, totalUnits: r.total_units ?? 0 });
     }
 
     const deltas: CurriculumObservationDelta[] = [];
-    for (const [, obsList] of courseObservations.entries()) {
-      if (obsList.length >= 2) {
-        const first = obsList[0];
-        const last = obsList[obsList.length - 1];
-        deltas.push(compareCurriculumSnapshots(first, last));
-      } else if (obsList.length === 1) {
-        deltas.push(compareCurriculumSnapshots(null, obsList[0]));
-      }
+    for (const keys of courseSnapshots.values()) {
+      const first = bySnapshot.get(keys[0]!)!;
+      const last = bySnapshot.get(keys[keys.length - 1]!)!;
+      deltas.push(keys.length >= 2 ? compareCurriculumSnapshots(first, last) : compareCurriculumSnapshots(null, first));
     }
     return deltas;
   } catch {
