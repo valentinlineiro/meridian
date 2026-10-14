@@ -68,13 +68,16 @@ function summarizeBy<T extends { result: unknown; outcome: unknown }>(rows: T[],
 
 const num = (v: unknown) => (typeof v === "number" ? v : v == null ? null : Number(v));
 
+const ROWS_KINDS = new Set(["recent", "summary", "results", "color", "opponent-elo"]);
+
 export async function handleStats(db: D1Database, kind: string, url: URL): Promise<Response> {
   const userId = url.searchParams.get("userId");
   if (kind === "lang") return handleLangStats(db, url);
   if (kind === "openings") return handleStatsOpenings(db, url);
   if (kind === "phases") return handleStatsPhases(db, url);
 
-  const rows = await allMatches(db, userId);
+  // Only these kinds aggregate over matches in JS; the others (opponents, timeline) run their own queries and never read `rows`.
+  const rows = ROWS_KINDS.has(kind) ? await allMatches(db, userId) : [];
   const sum = summarize(rows as any);
   const elos = rows.map((r) => num(r.opponent_elo));
   const elo = eloStats(elos);
