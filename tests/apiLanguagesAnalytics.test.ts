@@ -185,7 +185,7 @@ describe("Languages Analytics API (Contract v0.1)", () => {
         currentCourse: {
           id: "DUOLINGO_XA_EN",
           pathSectioned: [
-            { id: "sec-0", index: 0, completedUnits: 10, totalUnits: 40 },
+            { id: "sec-0", index: 0, units: [], completedUnits: 10, totalUnits: 40 },
           ],
         },
       },
@@ -202,7 +202,7 @@ describe("Languages Analytics API (Contract v0.1)", () => {
         currentCourse: {
           id: "DUOLINGO_XA_EN",
           pathSectioned: [
-            { id: "sec-0", index: 0, completedUnits: 15, totalUnits: 40 },
+            { id: "sec-0", index: 0, units: [], completedUnits: 15, totalUnits: 40 },
           ],
         },
       },
