@@ -1288,7 +1288,8 @@ function trajectoryCopy(f){
  if(f.type === 'LANG_FOCUS_SHIFT_LONGITUDINAL'){
   return { title: 'Desplazamiento de foco',
    claim: 'Tu foco principal de aprendizaje se ha desplazado de ' + trajectoryCourseName(m.previousCourseId) + ' a ' + trajectoryCourseName(m.newCourseId) + '.',
-   evidence: Math.round(m.h1PreviousCourseShare) + '% de tu XP en la primera mitad (' + m.h1PreviousCourseXp + ' XP) → ' + Math.round(m.h2NewCourseShare) + '% en la segunda (' + m.h2NewCourseXp + ' XP)' };
+   evidence: Math.round(m.h1PreviousCourseShare) + '% de tu XP en la primera mitad (' + m.h1PreviousCourseXp + ' XP) → ' + Math.round(m.h2NewCourseShare) + '% en la segunda (' + m.h2NewCourseXp + ' XP)' +
+    ' · XP neto observado entre capturas; no se ha verificado que la serie sea continua' };
  }
  return null;
 }

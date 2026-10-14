@@ -95,18 +95,25 @@ export function createD1TrajectoryAdapter(db: D1Database): TrajectoryPort {
     },
 
     async getLanguagesTrajectoryData(userId: string): Promise<LanguagesTrajectoryInput> {
-      // Per-course XP exists only in snapshots (xp_summaries has no course dimension), so the
-      // snapshot span is the observed history: eras and active days are anchored to it.
-      const snapSpan = await db
+      // Per-course XP exists only in snapshots (xp_summaries has no course dimension), so the snapshot span is the observed
+      // history: eras and active days are anchored to it. R4 reads course_observations (contract 2026-10-05 §7.2, D-c+D-e):
+      // one predicate, `subject = 'language'`, and an XP that is NULL is an observation WITHOUT XP, never 0.
+      // The start is the FIRST SNAPSHOT WHOSE OBSERVATIONS SATISFY the predicate, not the first snapshot chronologically
+      // (§7.2 condition): otherwise the 13 DUOLINGO_* entries the first snapshot carries without `subject` look like new courses.
+      const startRow = await db
         .prepare(`
-          SELECT MIN(created_at) as first_snap, MAX(created_at) as last_snap
-          FROM snapshots
-          WHERE source = 'duolingo-lang' AND user_id = ?
+          SELECT MIN(observed_at) as first_obs
+          FROM course_observations
+          WHERE user_id = ? AND subject = 'language' AND xp IS NOT NULL
         `)
         .bind(userId)
-        .first<{ first_snap: string | null; last_snap: string | null }>();
+        .first<{ first_obs: string | null }>();
+      const endRow = await db
+        .prepare(`SELECT MAX(created_at) as last_snap FROM snapshots WHERE source = 'duolingo-lang' AND user_id = ?`)
+        .bind(userId)
+        .first<{ last_snap: string | null }>();
 
-      if (!snapSpan?.first_snap || !snapSpan.last_snap) {
+      if (!startRow?.first_obs || !endRow?.last_snap) {
         return {
           startedAt: null,
           endedAt: null,
@@ -116,8 +123,8 @@ export function createD1TrajectoryAdapter(db: D1Database): TrajectoryPort {
         };
       }
 
-      const startMs = new Date(snapSpan.first_snap).getTime();
-      const endMs = new Date(snapSpan.last_snap).getTime();
+      const startMs = new Date(startRow.first_obs).getTime();
+      const endMs = new Date(endRow.last_snap).getTime();
       const midMs = Math.floor(startMs + (endMs - startMs) / 2);
 
       const startedAt = new Date(startMs).toISOString();
@@ -134,59 +141,46 @@ export function createD1TrajectoryAdapter(db: D1Database): TrajectoryPort {
         .first<{ active_days: number }>();
       const activeDays = Number(xpDays?.active_days ?? 0);
 
-      // 2. Fetch boundary snapshots: start, mid, end. Auxiliary snapshots are NOT filtered (A6 §14.3): the catalog is complete in any
-      // snapshot (observation-model §4) and a snapshot that does not carry a course says nothing about it (§14.2).
-      // Reading the last few snapshots at each boundary (not just one) lets a course be found in its own last observation even when
-      // the very last snapshot is an auxiliary one that does not carry it. The limit is a cost bound tied to the open source decision
-      // (P2): if the course is in none of them it is `unknown`, never 0.
+      // 2. Boundary snapshots: the start, and the last few at the mid and at the end. Auxiliary snapshots are NOT filtered (A6 §14.3):
+      // the catalog is complete in any snapshot and a snapshot that does not carry a course says nothing about it (§14.2). Reading
+      // the last few at each boundary (not just one) lets a course be found in its own last observation even when the very last
+      // snapshot is an auxiliary one that does not carry it. The limit is a cost bound tied to the open source decision (P2): if the
+      // course is in none of them it is `unknown`, never 0.
       // Continuity is verified ONLY between the observations read here: a drop and recovery between them can go unseen, and a `gain`
-      // is the observed net difference, not proof of a continuous series (contract §14.2). Reading the whole series is P2.
+      // is the observed NET difference, not proof of a continuous series (contract §14.2). Reading the whole series is not done.
       const RECENT_PER_BOUNDARY = 3;
-      type SnapRow = { id: string; created_at: string; raw_json: string };
+      type SnapRow = { id: string; created_at: string };
       const recent = async (at: string) =>
         (await db
-          .prepare(`SELECT id, created_at, raw_json FROM snapshots WHERE source = 'duolingo-lang' AND user_id = ? AND created_at <= ? ORDER BY created_at DESC LIMIT ${RECENT_PER_BOUNDARY}`)
+          .prepare(`SELECT id, created_at FROM snapshots WHERE source = 'duolingo-lang' AND user_id = ? AND created_at <= ? ORDER BY created_at DESC LIMIT ${RECENT_PER_BOUNDARY}`)
           .bind(userId, at)
           .all<SnapRow>()).results ?? [];
       const [startSnap, midSnaps, endSnaps] = await Promise.all([
-        db.prepare(`SELECT id, created_at, raw_json FROM snapshots WHERE source = 'duolingo-lang' AND user_id = ? ORDER BY created_at ASC LIMIT 1`).bind(userId).first<SnapRow>(),
+        db.prepare(`
+          SELECT s.id, s.created_at FROM snapshots s
+          WHERE s.source = 'duolingo-lang' AND s.user_id = ? AND s.created_at = ?
+          ORDER BY s.id LIMIT 1`).bind(userId, startRow.first_obs).first<SnapRow>(),
         recent(midAt),
         recent(endedAt),
       ]);
 
-      // Lifetime XP per course in one snapshot. An entry without a numeric `xp` is an observation WITHOUT XP: it is not a 0.
-      function parseCourses(rawJson?: string | null): Map<string, number> {
-        const map = new Map<string, number>();
-        if (!rawJson) return map;
-        try {
-          const parsed = JSON.parse(rawJson);
-          const rawCourses = Array.isArray(parsed?.courses)
-            ? parsed.courses
-            : Array.isArray(parsed?.user?.courses)
-            ? parsed.user.courses
-            : [];
-          for (const c of rawCourses) {
-            const id = c.id ?? c.courseId;
-            if (
-              typeof id === "string" &&
-              typeof c.xp === "number" && Number.isFinite(c.xp) &&
-              (c.subject === "language" || c.learningLanguage || id.startsWith("DUOLINGO_"))
-            ) {
-              map.set(id, c.xp);
-            }
-          }
-        } catch {
-          // ignore parse error
-        }
-        return map;
-      }
-
-      // The observations read (at most three snapshots), one per snapshot id, in time order.
+      // The observations read (at most seven snapshots), one per snapshot id, in time order. Courses come out ordered by id (observation
+      // rows carry no payload position, so the order the payload listed them in is not available and must not matter).
       const seenIds = new Set<string>();
-      const snaps = [startSnap, ...midSnaps, ...endSnaps]
+      const snapRows = [startSnap, ...midSnaps, ...endSnaps]
         .filter((x): x is NonNullable<typeof x> => Boolean(x))
-        .filter((x) => (seenIds.has(x.id) ? false : (seenIds.add(x.id), true)))
-        .map((x) => ({ at: new Date(x.created_at).getTime(), xp: parseCourses(x.raw_json) }))
+        .filter((x) => (seenIds.has(x.id) ? false : (seenIds.add(x.id), true)));
+      const xpBySnapshot = new Map<string, Map<string, number>>();
+      if (snapRows.length > 0) {
+        const ids = snapRows.map((x) => x.id);
+        const obs = (await db
+          .prepare(`SELECT snapshot_id, course_id, xp FROM course_observations WHERE subject = 'language' AND xp IS NOT NULL AND snapshot_id IN (${ids.map(() => "?").join(",")}) ORDER BY course_id`)
+          .bind(...ids)
+          .all<{ snapshot_id: string; course_id: string; xp: number }>()).results ?? [];
+        for (const o of obs) (xpBySnapshot.get(o.snapshot_id) ?? xpBySnapshot.set(o.snapshot_id, new Map()).get(o.snapshot_id)!).set(o.course_id, o.xp);
+      }
+      const snaps = snapRows
+        .map((x) => ({ at: new Date(x.created_at).getTime(), xp: xpBySnapshot.get(x.id) ?? new Map<string, number>() }))
         .sort((a, b) => a.at - b.at);
 
       const series = new Map<string, Array<{ at: number; xp: number }>>();
