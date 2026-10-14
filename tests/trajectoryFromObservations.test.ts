@@ -41,6 +41,22 @@ async function legacy(d1: D1Database) {
     return { g, nc }; };
   return { h1: half(startMs, midMs), h2: half(midMs, endMs) };
 }
+// The variant the contract rules out: same observations and boundaries, but the start is the CHRONOLOGICAL first snapshot.
+async function naiveFromObservations(d1: D1Database) {
+  const snaps = ((await d1.prepare(`SELECT id, created_at FROM snapshots WHERE source='duolingo-lang' AND user_id=? ORDER BY created_at`).bind(U).all<any>()).results ?? []);
+  const obs = ((await d1.prepare(`SELECT snapshot_id, course_id, xp FROM course_observations WHERE subject='language' AND xp IS NOT NULL`).all<any>()).results ?? []);
+  const xp = new Map<string, Map<string, number>>(); for (const o of obs) (xp.get(o.snapshot_id) ?? xp.set(o.snapshot_id, new Map()).get(o.snapshot_id)!).set(o.course_id, o.xp);
+  const startMs = Date.parse(snaps[0].created_at), endMs = Date.parse(snaps[snaps.length - 1].created_at), midMs = Math.floor(startMs + (endMs - startMs) / 2);
+  const recent = (ms: number) => snaps.filter((s: any) => Date.parse(s.created_at) <= ms).slice(-3);
+  const ids = new Map([snaps[0], ...recent(midMs), ...recent(endMs)].map((s: any) => [s.id, s]));
+  const series = new Map<string, Array<{ at: number; xp: number }>>();
+  for (const s of [...ids.values()].sort((a: any, b: any) => a.created_at.localeCompare(b.created_at))) for (const [id, v] of xp.get(s.id) ?? []) (series.get(id) ?? series.set(id, []).get(id)!).push({ at: Date.parse(s.created_at), xp: v });
+  const half = (a: number, b: number) => { const g: Record<string, number> = {}; const nc: Record<string, string> = {};
+    for (const [id, o] of series) { const oa = [...o].reverse().find((x) => x.at <= a); const inH = o.filter((x) => x.at > a && x.at <= b); const ob = inH[inH.length - 1];
+      if (!ob) { nc[id] = "unknown"; continue; } if (!oa) { nc[id] = "new_course"; continue; }
+      if (ob.xp - oa.xp > 0) g[id] = ob.xp - oa.xp; } return { g, nc }; };
+  return { startedAt: new Date(startMs).toISOString(), shape: { h1: half(startMs, midMs), h2: half(midMs, endMs) } };
+}
 const shape = (o: any) => ({ h1: { g: Object.fromEntries(o.h1.courses.map((c: any) => [c.courseId, c.xp])), nc: Object.fromEntries((o.h1.nonComparable ?? []).map((c: any) => [c.courseId, c.state])) }, h2: { g: Object.fromEntries(o.h2.courses.map((c: any) => [c.courseId, c.xp])), nc: Object.fromEntries((o.h2.nonComparable ?? []).map((c: any) => [c.courseId, c.state])) } });
 
 describe("R4/A6 reads course_observations", () => {
@@ -63,25 +79,69 @@ describe("R4/A6 reads course_observations", () => {
       { h: 10, courses: [{ id: "DUOLINGO_XA_EN", xp: 400 }, { id: "DUOLINGO_XB_EN", xp: 90 }] },
     ];
     const { d1, out } = await run(snaps);
-    expect(out.startedAt).toBe(at(1)); // contractual start, 1 h after the chronological first
-    expect(out.h1.nonComparable ?? []).toEqual([]);          // contractual: no course looks new
-    expect(out.h1.courses).toEqual([{ courseId: "DUOLINGO_XA_EN", xp: 200 }]);
-    // naive variant (chronological start over the SAME observations) must FAIL the contract: every course turns into `new_course`
-    const naive = await d1.prepare(`SELECT COUNT(*) n FROM course_observations WHERE snapshot_id = 's0' AND subject = 'language'`).first<any>();
-    expect(naive.n).toBe(0); // the chronological first snapshot has no qualifying observation: a start there would see no course
+    const naive = await naiveFromObservations(d1);   // same observations, same end, chronological start
+    // contractual: starts at h1, A gains 200 in h1, nothing looks new
+    expect(out.startedAt).toBe(at(1));
+    expect(shape(out)).toEqual({
+      h1: { g: { DUOLINGO_XA_EN: 200 }, nc: {} },
+      h2: { g: { DUOLINGO_XA_EN: 100, DUOLINGO_XB_EN: 40 }, nc: {} },
+    });
+    // naive: starts at h0, where no entry satisfies the predicate, so BOTH courses are reported as new_course in h1 and A's gain is lost
+    expect(naive.startedAt).toBe(at(0));
+    expect(naive.shape).toEqual({
+      h1: { g: {}, nc: { DUOLINGO_XA_EN: "new_course", DUOLINGO_XB_EN: "new_course" } },
+      h2: { g: { DUOLINGO_XA_EN: 100, DUOLINGO_XB_EN: 40 }, nc: {} },
+    });
+    expect(shape(out)).not.toEqual(naive.shape); // the contract is what separates them
+  });
+
+  it("shouldIdentifyTheStartSnapshotByItsKeyEvenWhenObservedAtDiffersFromCreatedAt", async () => {
+    const { db, d1 } = seed([
+      { h: 0, courses: [{ id: "DUOLINGO_XA_EN", xp: 10, subject: null }] },
+      { h: 1, courses: [{ id: "DUOLINGO_XA_EN", xp: 10 }] },
+      { h: 6, courses: [{ id: "DUOLINGO_XA_EN", xp: 70 }] },
+      { h: 10, courses: [{ id: "DUOLINGO_XA_EN", xp: 90 }] },
+    ]);
+    await materializeObservations(db, d1);
+    db.prepare("UPDATE course_observations SET observed_at = '2099-01-01T00:00:00.000Z' WHERE snapshot_id = 's1'").run(); // clock column drifts
+    const out = await createD1TrajectoryAdapter(d1).getLanguagesTrajectoryData(U);
+    expect(out.startedAt).toBe(at(1)); // snapshot s1's created_at, not the observation's observed_at
+    // mid = h5.5: no snapshot lies in (h1, h5.5], so h1 is `unknown`; h2 is the net difference between the start (10) and the end (90)
+    expect(shape(out)).toEqual({ h1: { g: {}, nc: { DUOLINGO_XA_EN: "unknown" } }, h2: { g: { DUOLINGO_XA_EN: 80 }, nc: {} } });
+  });
+
+  it("shouldPickTheSmallestSnapshotIdWhenTwoQualifyingSnapshotsShareTheTimestamp", async () => {
+    // s0 and s1 are the first two snapshots at the SAME instant with different XP; later snapshots keep them out of the boundary reads
+    // at mid and end, so only the start choice decides the h1 gain: 80 - 10 = 70 with s0 (smallest id), 80 - 50 = 30 with s1.
+    const { db, d1 } = seed([
+      { h: 0, courses: [{ id: "DUOLINGO_XA_EN", xp: 10 }] },
+      { h: 0, courses: [{ id: "DUOLINGO_XA_EN", xp: 50 }] },
+      { h: 1, courses: [{ id: "DUOLINGO_XA_EN", xp: 60 }] },
+      { h: 2, courses: [{ id: "DUOLINGO_XA_EN", xp: 70 }] },
+      { h: 3, courses: [{ id: "DUOLINGO_XA_EN", xp: 80 }] },
+      { h: 10, courses: [{ id: "DUOLINGO_XA_EN", xp: 100 }] },
+    ]);
+    await materializeObservations(db, d1);
+    const a = await createD1TrajectoryAdapter(d1).getLanguagesTrajectoryData(U);
+    expect(await createD1TrajectoryAdapter(d1).getLanguagesTrajectoryData(U)).toEqual(a); // repeatable
+    expect(a.startedAt).toBe(at(0));
+    expect(a.h1.courses).toEqual([{ courseId: "DUOLINGO_XA_EN", xp: 70 }]);
   });
 
   it("shouldTreatNullXpAsAnObservationWithoutXpNeverAsZero", async () => {
     const { out } = await run([
       { h: 0, courses: [{ id: "A", xp: 100 }, { id: "B", xp: 500 }] },
-      { h: 5, courses: [{ id: "A", xp: 200 }, { id: "B", xp: null }] }, // B reported without a numeric xp
+      { h: 5, courses: [{ id: "A", xp: 200 }, { id: "B", xp: null }] }, // B reported without a numeric xp: NOT an observation of B's XP
       { h: 10, courses: [{ id: "A", xp: 300 }, { id: "B", xp: 900 }] },
     ]);
-    // B's mid observation does not exist (not 0): its h1 is `unknown`/not-comparable-or-bridged from start to end, never a gain from 0
-    const all = [...out.h1.courses, ...out.h2.courses].filter((c) => c.courseId === "B");
-    expect(all.every((c) => c.xp <= 400)).toBe(true); // never 900 - 0 or 500 - 0
-    const inNc = [...(out.h1.nonComparable ?? []), ...(out.h2.nonComparable ?? [])].some((c) => c.courseId === "B");
-    expect(all.length > 0 || inNc).toBe(true);
+    // A is unaffected. B has observations only at h0 (500) and h10 (900):
+    //  h1: B was not observed in the period (the h5 entry has no xp, it is not 0) -> `unknown`, bounded by what the series shows (900 - 500)
+    //  h2: its own previous observation is h0, so the NET difference 400 is reported there; nothing is read as 0 (900 - 0 or 500 - 0)
+    expect(shape(out)).toEqual({
+      h1: { g: { A: 100 }, nc: { B: "unknown" } },
+      h2: { g: { A: 100, B: 400 }, nc: {} },
+    });
+    expect(out.h1.nonComparable).toEqual([{ courseId: "B", state: "unknown", reason: "not_observed_in_period", boundXp: 400 }]);
   });
 
   it("shouldKeepTheTotalWhenTheContractualStartMovesTheMidpointAcrossASnapshot", async () => {

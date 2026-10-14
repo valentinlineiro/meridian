@@ -100,14 +100,19 @@ export function createD1TrajectoryAdapter(db: D1Database): TrajectoryPort {
       // one predicate, `subject = 'language'`, and an XP that is NULL is an observation WITHOUT XP, never 0.
       // The start is the FIRST SNAPSHOT WHOSE OBSERVATIONS SATISFY the predicate, not the first snapshot chronologically
       // (§7.2 condition): otherwise the 13 DUOLINGO_* entries the first snapshot carries without `subject` look like new courses.
+      // The start snapshot is identified by the observation's `snapshot_id` (the model's key) joined to `snapshots`; its clock is the
+      // snapshot's `created_at`, the same one the end uses, so no equality between two timestamp columns is assumed.
       const startRow = await db
         .prepare(`
-          SELECT MIN(observed_at) as first_obs
-          FROM course_observations
-          WHERE user_id = ? AND subject = 'language' AND xp IS NOT NULL
+          SELECT s.id AS id, s.created_at AS first_obs
+          FROM course_observations o
+          JOIN snapshots s ON s.id = o.snapshot_id
+          WHERE o.user_id = ? AND o.subject = 'language' AND o.xp IS NOT NULL AND s.source = 'duolingo-lang'
+          ORDER BY s.created_at ASC, s.id ASC
+          LIMIT 1
         `)
         .bind(userId)
-        .first<{ first_obs: string | null }>();
+        .first<{ id: string; first_obs: string | null }>();
       const endRow = await db
         .prepare(`SELECT MAX(created_at) as last_snap FROM snapshots WHERE source = 'duolingo-lang' AND user_id = ?`)
         .bind(userId)
@@ -152,14 +157,11 @@ export function createD1TrajectoryAdapter(db: D1Database): TrajectoryPort {
       type SnapRow = { id: string; created_at: string };
       const recent = async (at: string) =>
         (await db
-          .prepare(`SELECT id, created_at FROM snapshots WHERE source = 'duolingo-lang' AND user_id = ? AND created_at <= ? ORDER BY created_at DESC LIMIT ${RECENT_PER_BOUNDARY}`)
+          .prepare(`SELECT id, created_at FROM snapshots WHERE source = 'duolingo-lang' AND user_id = ? AND created_at <= ? ORDER BY created_at DESC, id DESC LIMIT ${RECENT_PER_BOUNDARY}`)
           .bind(userId, at)
           .all<SnapRow>()).results ?? [];
       const [startSnap, midSnaps, endSnaps] = await Promise.all([
-        db.prepare(`
-          SELECT s.id, s.created_at FROM snapshots s
-          WHERE s.source = 'duolingo-lang' AND s.user_id = ? AND s.created_at = ?
-          ORDER BY s.id LIMIT 1`).bind(userId, startRow.first_obs).first<SnapRow>(),
+        db.prepare(`SELECT id, created_at FROM snapshots WHERE id = ?`).bind(startRow.id).first<SnapRow>(),
         recent(midAt),
         recent(endedAt),
       ]);
