@@ -201,4 +201,26 @@ describe("R4/A6 reads course_observations", () => {
     const acc = db.prepare("SELECT total_xp FROM account_observations WHERE snapshot_id = 's0'").get() as any;
     expect(acc.total_xp).toBe(1); // the pre-existing row is left untouched
   });
+
+  it("shouldFindTheStartAcrossSeveralPagesOfSnapshotsWithoutQualifyingObservations", async () => {
+    // 45 leading snapshots whose entries carry no `subject` (more than two pages of 20), then the first qualifying one.
+    const lead: S[] = Array.from({ length: 45 }, (_, i) => ({ h: i * 0.1, courses: [{ id: "DUOLINGO_XA_EN", xp: 5, subject: null }] }));
+    const { db, d1 } = seed([
+      ...lead,
+      { h: 10, courses: [{ id: "DUOLINGO_XA_EN", xp: 100 }] },
+      { h: 20, courses: [{ id: "DUOLINGO_XA_EN", xp: 150 }] },
+      { h: 30, courses: [{ id: "DUOLINGO_XA_EN", xp: 190 }] },
+    ]);
+    await materializeObservations(db, d1);
+    const out = await createD1TrajectoryAdapter(d1).getLanguagesTrajectoryData(U);
+    expect(out.startedAt).toBe(at(10));
+    expect(shape(out)).toEqual({ h1: { g: { DUOLINGO_XA_EN: 50 }, nc: {} }, h2: { g: { DUOLINGO_XA_EN: 40 }, nc: {} } });
+  });
+
+  it("shouldReturnEmptyWhenNoSnapshotHasQualifyingObservations", async () => {
+    const { db, d1 } = seed([{ h: 0, courses: [{ id: "DUOLINGO_XA_EN", xp: 1, subject: null }] }, { h: 5, courses: [{ id: "DUOLINGO_XA_EN", xp: 9, subject: null }] }]);
+    await materializeObservations(db, d1);
+    const out = await createD1TrajectoryAdapter(d1).getLanguagesTrajectoryData(U);
+    expect(out).toMatchObject({ startedAt: null, endedAt: null, activeDays: 0, h1: { courses: [] }, h2: { courses: [] } });
+  });
 });

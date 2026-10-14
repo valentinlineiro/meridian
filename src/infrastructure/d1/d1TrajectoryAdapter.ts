@@ -100,25 +100,43 @@ export function createD1TrajectoryAdapter(db: D1Database): TrajectoryPort {
       // one predicate, `subject = 'language'`, and an XP that is NULL is an observation WITHOUT XP, never 0.
       // The start is the FIRST SNAPSHOT WHOSE OBSERVATIONS SATISFY the predicate, not the first snapshot chronologically
       // (§7.2 condition): otherwise the 13 DUOLINGO_* entries the first snapshot carries without `subject` look like new courses.
-      // The start snapshot is identified by the observation's `snapshot_id` (the model's key) joined to `snapshots`; its clock is the
-      // snapshot's `created_at`, the same one the end uses, so no equality between two timestamp columns is assumed.
-      const startRow = await db
-        .prepare(`
-          SELECT s.id AS id, s.created_at AS first_obs
-          FROM course_observations o
-          JOIN snapshots s ON s.id = o.snapshot_id
-          WHERE o.user_id = ? AND o.subject = 'language' AND o.xp IS NOT NULL AND s.source = 'duolingo-lang'
-          ORDER BY s.created_at ASC, s.id ASC
-          LIMIT 1
-        `)
-        .bind(userId)
-        .first<{ id: string; first_obs: string | null }>();
+      // The start snapshot is identified by the observation's `snapshot_id` (the model's key), and its clock is the snapshot's
+      // `created_at`, the same one the end uses, so no equality between two timestamp columns is assumed. It is the first snapshot,
+      // in (created_at, id) order, that has at least one observation satisfying the predicate. Snapshots are walked in pages and only
+      // the page's ids are looked up by primary-key prefix: the first snapshot is the only one that usually lacks `subject`, so this
+      // reads a few dozen rows instead of scanning every observation of the user.
+      const PAGE = 20, MAX_PAGES = 50;
+      let startRow: { id: string; first_obs: string } | null = null;
+      let cursor: { at: string; id: string } | null = null;
+      for (let page = 0; page < MAX_PAGES && !startRow; page++) {
+        const snaps: Array<{ id: string; created_at: string }> = (await db
+          .prepare(`
+            SELECT id, created_at FROM snapshots
+            WHERE source = 'duolingo-lang' AND user_id = ?
+              AND (? IS NULL OR created_at > ? OR (created_at = ? AND id > ?))
+            ORDER BY created_at ASC, id ASC
+            LIMIT ${PAGE}
+          `)
+          .bind(userId, cursor?.at ?? null, cursor?.at ?? null, cursor?.at ?? null, cursor?.id ?? null)
+          .all<{ id: string; created_at: string }>()).results ?? [];
+        if (snaps.length === 0) break;
+        const ids = snaps.map((x) => x.id);
+        const have = new Set(
+          ((await db
+            .prepare(`SELECT DISTINCT snapshot_id FROM course_observations WHERE subject = 'language' AND xp IS NOT NULL AND snapshot_id IN (${ids.map(() => "?").join(",")})`)
+            .bind(...ids)
+            .all<{ snapshot_id: string }>()).results ?? []).map((r) => r.snapshot_id),
+        );
+        const hit = snaps.find((x) => have.has(x.id));
+        if (hit) startRow = { id: hit.id, first_obs: hit.created_at };
+        else cursor = { at: snaps[snaps.length - 1]!.created_at, id: snaps[snaps.length - 1]!.id };
+      }
       const endRow = await db
         .prepare(`SELECT MAX(created_at) as last_snap FROM snapshots WHERE source = 'duolingo-lang' AND user_id = ?`)
         .bind(userId)
         .first<{ last_snap: string | null }>();
 
-      if (!startRow?.first_obs || !endRow?.last_snap) {
+      if (!startRow || !endRow?.last_snap) {
         return {
           startedAt: null,
           endedAt: null,
