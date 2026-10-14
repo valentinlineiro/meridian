@@ -120,4 +120,46 @@ describe("R5 parity: observations vs raw_json", () => {
     await getCurriculumDeltas(spy, USER);
     expect(seen.join("\n")).not.toMatch(/raw_json|FROM snapshots/i);
   });
+
+  // Ties: the old query left them undefined; the new reader orders by (observed_at, snapshot_id). Pin it.
+  it("shouldBreakTiesOnObservedAtBySnapshotIdAtTheStartOfTheInterval", async () => {
+    const { db, d1 } = setupTestDb();
+    const same = at(10);
+    await ingestSnapshot(d1, { source: "duolingo-lang", userId: USER, data: snap("DUOLINGO_XA_EN", [sec(0, 1, 40)]), createdAt: same });
+    await ingestSnapshot(d1, { source: "duolingo-lang", userId: USER, data: snap("DUOLINGO_XA_EN", [sec(0, 7, 40)]), createdAt: same });
+    await ingestSnapshot(d1, { source: "duolingo-lang", userId: USER, data: snap("DUOLINGO_XA_EN", [sec(0, 20, 40)]), createdAt: at(20) });
+    const tied = db.prepare("SELECT p.snapshot_id id, s.completed_units done FROM path_observations p JOIN section_observations s USING (snapshot_id) WHERE p.observed_at = ? ORDER BY p.snapshot_id").all(same) as any[];
+    expect(tied).toHaveLength(2);
+    const first = tied[0].done as number; // smallest snapshot_id wins as the interval start
+    const d = await getCurriculumDeltas(d1, USER);
+    expect(d).toHaveLength(1);
+    expect(d[0]).toMatchObject({ previousObservedAt: same, deltaCompletedUnits: 20 - first, status: "comparable" });
+    expect(await getCurriculumDeltas(d1, USER)).toEqual(d); // repeatable
+  });
+
+  it("shouldBreakTiesOnObservedAtBySnapshotIdAtTheEndOfTheInterval", async () => {
+    const { db, d1 } = setupTestDb();
+    const same = at(20);
+    await ingestSnapshot(d1, { source: "duolingo-lang", userId: USER, data: snap("DUOLINGO_XA_EN", [sec(0, 2, 40)]), createdAt: at(10) });
+    await ingestSnapshot(d1, { source: "duolingo-lang", userId: USER, data: snap("DUOLINGO_XA_EN", [sec(0, 11, 40)]), createdAt: same });
+    await ingestSnapshot(d1, { source: "duolingo-lang", userId: USER, data: snap("DUOLINGO_XA_EN", [sec(0, 30, 40)]), createdAt: same });
+    const tied = db.prepare("SELECT p.snapshot_id id, s.completed_units done FROM path_observations p JOIN section_observations s USING (snapshot_id) WHERE p.observed_at = ? ORDER BY p.snapshot_id").all(same) as any[];
+    const last = tied[tied.length - 1].done as number; // largest snapshot_id wins as the interval end
+    const d = await getCurriculumDeltas(d1, USER);
+    expect(d[0]).toMatchObject({ latestObservedAt: same, deltaCompletedUnits: last - 2 });
+  });
+
+  // The documented frontier of the parity: an invalid Path is not an observation (RG2), so R5 does not see it. Legacy would.
+  it("shouldIgnoreALatestSnapshotWhosePathHasAFormatErrorAndDifferFromLegacyOnPurpose", async () => {
+    const d1 = await world([
+      { day: 10, data: snap("DUOLINGO_XA_EN", [sec(0, 1, 40)]) },
+      { day: 20, data: snap("DUOLINGO_XA_EN", [sec(0, 9, 40)]) },
+      { day: 25, data: snap("DUOLINGO_XA_EN", [{ id: "s0", type: "learning", units: [], completedUnits: 99, totalUnits: 40 } as any]) }, // no `index`
+    ]);
+    const d = await getCurriculumDeltas(d1, USER);
+    expect(d).toHaveLength(1);
+    expect(d[0]).toMatchObject({ latestObservedAt: at(20, 9), deltaCompletedUnits: 8 }); // ends at the last VALID observation
+    const old = await legacy(d1, USER);
+    expect(old[0]).toMatchObject({ latestObservedAt: at(25, 10), deltaCompletedUnits: 98 }); // legacy read the malformed one with index ?? 0
+  });
 });
