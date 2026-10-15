@@ -228,6 +228,7 @@ export function createDashboardRuntime(initialPath = "/languages", html: string 
     },
     console: { ...console, error: (...a: unknown[]) => { errors.push(a.map((x) => (typeof (x as Error)?.stack === "string" ? `${(x as Error).message} @ ${((x as Error).stack ?? "").split("\n")[1]?.trim() ?? ""}` : String(x))).join(" ")); } },
     setTimeout: (_fn: any) => 0,
+    AbortController,
     clearTimeout: () => {},
     URLSearchParams,
     URL,

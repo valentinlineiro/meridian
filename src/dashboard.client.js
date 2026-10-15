@@ -121,7 +121,14 @@ let off=0, lastRows=[], lastTotal=0;
 const _fetch=window.fetch.bind(window);
 window.fetch=async(...a)=>{const r=await _fetch(...a); if(r.status===401) location.href='/login?next='+encodeURIComponent(location.pathname+location.search); return r;};
 // An HTTP error rejects: its body is never data. Callers turn the rejection into null ("no disponible"), never into a zero.
-const j=async u=>{ const r=await fetch(u); if(!r.ok) throw new Error('http '+r.status); return r.json(); };
+// A request that never answers aborts after REQUEST_TIMEOUT_MS (hypothesis, not measured) and rejects with .timedOut, so it is "no disponible" instead of a page stuck on "Cargando".
+const REQUEST_TIMEOUT_MS=10000;
+const j=async u=>{
+ const c=new AbortController(); const t=setTimeout(()=>c.abort(),REQUEST_TIMEOUT_MS);
+ try{ const r=await fetch(u,{signal:c.signal}); if(!r.ok) throw new Error('http '+r.status); return await r.json(); }
+ catch(e){ if(e&&e.name==='AbortError') throw Object.assign(new Error('timeout'),{timedOut:true}); throw e; }
+ finally{ clearTimeout(t); }
+};
 const NA='No disponible';
 const xpText=v=>v==null?'—':Number(v).toLocaleString('es-ES');
 const pc=v=>v==null?'—':Math.round(v)+'%';
@@ -939,12 +946,13 @@ function renderChessView(stats, matches){
 
 // One bundle serves the overview and chess sections; if it fails, each stat falls back to its own route once (no bundle retry).
 // Boot-only: init() resets both, so a failed boot is never reused by a later load.
-let statsBundlePromise=null; const statCache={};
+// A bundle that timed out means the backend is slow: the per-route fallback would send seven more reads at it, so it is not attempted.
+let statsBundlePromise=null, bundleTimedOut=false; const statCache={};
 function statsBundle(){
- return statsBundlePromise||(statsBundlePromise=j('/api/stats/bundle').then(b=>{ if(!b||!b.summary) throw new Error('bundle'); return b; }).catch(()=>null));
+ return statsBundlePromise||(statsBundlePromise=j('/api/stats/bundle').then(b=>{ if(!b||!b.summary) throw new Error('bundle'); return b; }).catch(e=>{ bundleTimedOut=!!(e&&e.timedOut); return null; }));
 }
 function stat(key,route){
- return statCache[key]||(statCache[key]=statsBundle().then(b=>b?b[key]:j(route)));
+ return statCache[key]||(statCache[key]=statsBundle().then(b=>b?b[key]:bundleTimedOut?Promise.reject(new Error('timeout')):j(route)));
 }
 async function loadOverviewDashboard(){
  try {
@@ -1032,7 +1040,8 @@ function populateOpeningFilter(op){
 }
 function phasesMeta(ph){ const h=ph.population&&ph.population.hydrated; return 'Mediana: '+(ph.medianPlies!=null?ph.medianPlies:'—')+' plies · Hidratadas: '+(h!=null?h:'—')+' partidas'; }
 function arrow(a,b){ if(a==null||b==null) return ''; return a>b?' ↑':a<b?' ↓':' ·'; }
-async function setRecent(n,preloaded){ recentN=n; for(const k of [20,50,100]){ const el=q('#b'+k); if(el){ el.className=n===k?'btn btn-p':'btn btn-g'; } } let r=preloaded; if(!r){ try{ r=await j('/api/stats/recent?limit='+n); }catch(e){ lastRecent=null; q('#form').innerHTML='<div class="muted">'+NA+'</div>'; renderChessView({ recent: null }, lastRows); return; } } lastRecent=r; renderForm(r); renderChessView({ recent: r }, lastRows); }
+let recentSeq=0;
+async function setRecent(n,preloaded){ const seq=++recentSeq; recentN=n; for(const k of [20,50,100]){ const el=q('#b'+k); if(el){ el.className=n===k?'btn btn-p':'btn btn-g'; } } let r=preloaded; if(!r){ try{ r=await j('/api/stats/recent?limit='+n); }catch(e){ if(seq!==recentSeq) return; lastRecent=null; q('#form').innerHTML='<div class="muted">'+NA+'</div>'; renderChessView({ recent: null }, lastRows); return; } } if(seq!==recentSeq) return; lastRecent=r; renderForm(r); renderChessView({ recent: r }, lastRows); }
 function fmtDelta(d){ // d in percentage points: {diff,lower,upper}. Never shown without its interval.
  if(!d) return '—';
  const sg=(v,dec,raw)=>{ const t=Math.abs(v).toFixed(dec); return v===0||(!raw&&Number(t)===0)?t:(v>0?'+':'−')+t; }; // raw: a limit keeps its true sign even when it rounds to 0, so [+0, …] reads as "excludes 0"
@@ -1138,7 +1147,7 @@ function renderRows(){
 }
 
 async function init(){
- statsBundlePromise=null; for(const k of Object.keys(statCache)) delete statCache[k];
+ statsBundlePromise=null; bundleTimedOut=false; for(const k of Object.keys(statCache)) delete statCache[k];
  const overviewPromise=loadOverviewDashboard();
  const langPromise=loadLanguagesDashboard();
  await loadChessDashboard();
@@ -1274,7 +1283,9 @@ async function loadChessDashboard(){
  }catch(err){ console.error(err); q('#kpis').innerHTML='<div class="muted">Error cargando estadísticas</div>'; }
 }
 
+let matchesSeq=0;
 async function loadM(o){
+ const seq=++matchesSeq;
  off=Math.max(0,o);
  const lim=pageSize();
  const p=new URLSearchParams({limit:lim,offset:off});
@@ -1297,10 +1308,12 @@ async function loadM(o){
  let d;
  try{ d=await j('/api/matches?'+p); }
  catch(e){
+  if(seq!==matchesSeq) return;
   q('#mb').innerHTML=''; q('#empty').style.display='block'; q('#empty').textContent='No se pudieron cargar las partidas.';
   q('#mc').textContent='—'; q('#prev').disabled=true; q('#next').disabled=true;
   return;
  }
+ if(seq!==matchesSeq) return;
  lastRows=d.rows||[]; lastTotal=d.total||0;
  renderRows();
  renderChessView(null, lastRows);
