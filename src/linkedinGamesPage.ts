@@ -50,8 +50,11 @@ function render(day){
   li.textContent=k.replace('_',' ')+': '+(e.score??'?')+(e.avg?'  (media '+e.avg+')':'')+(e.number?'  #'+e.number:''); ul.appendChild(li); });
 }
 async function loadDay(){
- try{ const b=await (await fetch('/api/me/linkedin-games?date='+encodeURIComponent(q('#date').value))).json(); render(b.day); }
- catch(e){ q('#status').textContent='No se pudo cargar el día.'; }
+ try{
+  const res=await fetch('/api/me/linkedin-games?date='+encodeURIComponent(q('#date').value));
+  if(!res.ok) throw new Error('http '+res.status);
+  render((await res.json()).day);
+ }catch(e){ q('#day').textContent=''; q('#status').textContent='No se pudo cargar el día.'; }
 }
 async function saveResult(){
  const status=q('#status');

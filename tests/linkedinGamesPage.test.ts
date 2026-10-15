@@ -42,3 +42,11 @@ describe("linkedin games page", () => {
     expect(LINKEDIN_GAMES_HTML).not.toMatch(/pinpoint|crossclimb/i);
   });
 });
+
+describe("linkedin games page: a failed load is not an empty day", () => {
+  it("shouldSayTheDayCouldNotBeLoadedWhenTheRequestFails", async () => {
+    const { rt, status } = setup(() => reply({ ok: false, error: "internal error" }, false, 500));
+    await rt.sandbox.loadDay();
+    expect(status.textContent).toBe("No se pudo cargar el día.");
+  });
+});
