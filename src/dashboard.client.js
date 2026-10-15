@@ -900,7 +900,8 @@ function renderChessView(stats, matches){
   elHeroDistMeta.textContent=recentKnown? rWins+'W · '+rLosses+'L · '+rDraws+'D' : '—';
  }
  const elHeroDist=q('#chessHeroDist');
- if(elHeroDist && rTotal>0){
+ if(elHeroDist && !recentKnown) elHeroDist.innerHTML='';
+ else if(elHeroDist && rTotal>0){
   const sumR=rWins+rLosses+rDraws||1;
   const wP=(rWins/sumR*100).toFixed(1);
   const lP=(rLosses/sumR*100).toFixed(1);
@@ -1028,7 +1029,7 @@ function populateOpeningFilter(op){
 }
 function phasesMeta(ph){ const h=ph.population&&ph.population.hydrated; return 'Mediana: '+(ph.medianPlies!=null?ph.medianPlies:'—')+' plies · Hidratadas: '+(h!=null?h:'—')+' partidas'; }
 function arrow(a,b){ if(a==null||b==null) return ''; return a>b?' ↑':a<b?' ↓':' ·'; }
-async function setRecent(n,preloaded){ recentN=n; for(const k of [20,50,100]){ const el=q('#b'+k); if(el){ el.className=n===k?'btn btn-p':'btn btn-g'; } } let r=preloaded; if(!r){ try{ r=await j('/api/stats/recent?limit='+n); }catch(e){ q('#form').innerHTML='<div class="muted">'+NA+'</div>'; return; } } lastRecent=r; renderForm(r); renderChessView({ recent: r }, lastRows); }
+async function setRecent(n,preloaded){ recentN=n; for(const k of [20,50,100]){ const el=q('#b'+k); if(el){ el.className=n===k?'btn btn-p':'btn btn-g'; } } let r=preloaded; if(!r){ try{ r=await j('/api/stats/recent?limit='+n); }catch(e){ lastRecent=null; q('#form').innerHTML='<div class="muted">'+NA+'</div>'; renderChessView({ recent: null }, lastRows); return; } } lastRecent=r; renderForm(r); renderChessView({ recent: r }, lastRows); }
 function fmtDelta(d){ // d in percentage points: {diff,lower,upper}. Never shown without its interval.
  if(!d) return '—';
  const sg=(v,dec,raw)=>{ const t=Math.abs(v).toFixed(dec); return v===0||(!raw&&Number(t)===0)?t:(v>0?'+':'−')+t; }; // raw: a limit keeps its true sign even when it rounds to 0, so [+0, …] reads as "excludes 0"

@@ -154,3 +154,20 @@ describe("review of PR #60: combined fallback and stale state", () => {
     expect(text(rt, "#langWeekSummary")).toBe("No disponible");
   });
 });
+
+describe("review of PR #60 (round 2): a failed refresh replaces the last recent form", () => {
+  it("shouldShowUnavailableWhenARecentWindowFailsAfterOneSucceeded", async () => {
+    let fail = false;
+    const bundle = { ...(emptyAccountPayload("/api/stats/bundle") as object), recent: { limit: 50, games: 10, wins: 6, losses: 3, draws: 1, winRate: 0.6, before: null } };
+    const rt = createDashboardRuntime("/chess", undefined, fetchOnly(["/api/stats/bundle", "/api/stats/recent"], async (url: string) =>
+      url.startsWith("/api/stats/bundle") ? ok(bundle)() : fail ? http500() : ok({ ...bundle.recent, limit: 20 })()));
+    await settle();
+    expect(text(rt, "#chessHeroDistMeta")).toBe("6W · 3L · 1D");
+    fail = true;
+    await rt.sandbox.setRecent(20);
+    expect(text(rt, "#chessHeroDistMeta")).toBe("—");
+    expect(rt.getEl("#chessHeroDist").innerHTML).not.toContain("bar-win");
+    rt.sandbox.renderChessView(null, []); // a later render (e.g. the matches table) must not bring the old window back
+    expect(text(rt, "#chessHeroDistMeta")).toBe("—");
+  });
+});
