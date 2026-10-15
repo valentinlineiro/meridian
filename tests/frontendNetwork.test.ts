@@ -120,13 +120,12 @@ describe("timeouts on What Changed, trajectory and sync", () => {
     expect(rt.getEl("#trajectoryFindings").innerHTML).toBe("");
   });
 
-  it("shouldStopPollingSyncWhenTheStatusRequestNeverAnswers", async () => {
+  it("shouldGiveUpPollingSyncAfterThreeStatusRequestsThatNeverAnswer", async () => {
     const rt = createDashboardRuntime("/overview", undefined, fetchOnly(["/api/me/sync/status"], (_u, init) => hang(init)));
     await settle();
     const timers = manualTimers(rt);
     const run = vm.runInContext("trackSync('r1')", rt.sandbox);
-    await settle();
-    timers.forEach((f) => f());
+    for (let i = 0; i < 6; i++) { await settle(); timers.splice(0).forEach((f) => f()); } // each expiry, then the wait before the next poll
     const outcome = await Promise.race([run.then(() => "done"), settle().then(() => "hung")]);
     expect(outcome).toBe("done");
   });

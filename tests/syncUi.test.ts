@@ -128,4 +128,65 @@ describe("sync now button", () => {
     expect(states.some((s) => s.includes("Sigue en marcha. Puedes salir de esta página; la sincronización continuará."))).toBe(true);
     expect(states.some((s) => /fallida/.test(s))).toBe(false);
   });
+  it("shouldKeepTrackingWhenAStatusReadFailsOnceAndThenAnswers", async () => {
+    let polls = 0;
+    const { rt, btn, note, stored } = setup((url, init) => {
+      if (init?.method === "POST") return { body: { ok: true, runId: 7 } };
+      polls++;
+      return polls === 1 ? { ok: false, status: 503, body: {} } : { body: { status: "completed", conclusion: "success" } };
+    });
+    await rt.sandbox.doSync();
+    expect(btn.textContent).toBe("✓ Sincronizado");
+    expect(note.textContent).toBe("Sincronización completada.");
+    expect(stored()).toBeNull(); // cleared because it finished, not because of the failure
+  });
+
+  it("shouldStopAfterThreeFailuresInARowButKeepTheRunIdToResume", async () => {
+    let polls = 0;
+    const { rt, btn, note, stored } = setup((url, init) => {
+      if (init?.method === "POST") return { body: { ok: true, runId: 7 } };
+      polls++;
+      return { ok: false, status: 503, body: {} };
+    });
+    await rt.sandbox.doSync();
+    expect(polls).toBe(3);
+    expect(btn.textContent).toBe("Sincronizar");
+    expect(note.textContent).toContain("Puede seguir en marcha");
+    expect(note.textContent).not.toMatch(/fallida/);
+    expect(stored()).toBe("7");
+  });
+
+  it("shouldCountOnlyConsecutiveFailures", async () => {
+    let polls = 0;
+    const { rt, btn } = setup((url, init) => {
+      if (init?.method === "POST") return { body: { ok: true, runId: 7 } };
+      polls++;
+      return polls % 3 === 0 ? { body: { status: "in_progress" } } : polls > 9 ? { body: { status: "completed", conclusion: "success" } } : { ok: false, status: 503, body: {} };
+    });
+    await rt.sandbox.doSync();
+    expect(btn.textContent).toBe("✓ Sincronizado");
+  });
+
+  it("shouldDropTheRunIdWhenTheServerSaysItIsNotValid", async () => {
+    const { rt, stored } = setup((url, init) =>
+      init?.method === "POST" ? { body: { ok: true, runId: 7 } } : { ok: false, status: 404, body: {} });
+    await rt.sandbox.doSync();
+    expect(stored()).toBeNull();
+  });
+
+  it("shouldStopPollingAfterFifteenMinutesWithoutCallingItAFailureOrDroppingTheRun", async () => {
+    let polls = 0;
+    const { rt, btn, note, stored } = setup((url, init) => {
+      if (init?.method === "POST") return { body: { ok: true, runId: 7 } };
+      polls++;
+      return { body: { status: "in_progress" } };
+    });
+    await rt.sandbox.doSync();
+    expect(polls).toBeGreaterThan(20); // it polled for a long time...
+    expect(polls).toBeLessThan(200); // ...and then stopped
+    expect(btn.textContent).toBe("Sincronizar");
+    expect((btn as any).disabled).toBe(false);
+    expect(note.textContent).toContain("Sigue en marcha; puedes salir");
+    expect(stored()).toBe("7");
+  });
 });
