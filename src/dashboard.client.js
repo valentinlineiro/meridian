@@ -50,7 +50,7 @@ let changesSeq=0; // latest What Changed request: an older answer is dropped (de
 const _fetch=window.fetch.bind(window);
 window.fetch=async(...a)=>{const r=await _fetch(...a); if(r.status===401) location.href='/login?next='+encodeURIComponent(location.pathname+location.search); return r;};
 // An HTTP error rejects: its body is never data. Callers turn the rejection into null ("no disponible"), never into a zero.
-// A request that never answers aborts after REQUEST_TIMEOUT_MS (hypothesis, NOT calibrated: no p99 latency measured yet) and rejects with .timedOut, so it is "no disponible" instead of a page stuck on "Cargando".
+// A request that never answers aborts after REQUEST_TIMEOUT_MS (10 s is a ceiling, not a tuned value: 2026-10-15, n=30 per route, one client, warm, p50 0.1-0.5 s and max 0.7 s; cold starts and the cron window not sampled) and rejects with .timedOut, so it is "no disponible" instead of a page stuck on "Cargando".
 const REQUEST_TIMEOUT_MS=10000;
 // The one place a dashboard request is made. The timer also covers reading the body. Resolves {ok,status,data}; data is null when a non-ok body is not JSON.
 const req=async(u,o)=>{
