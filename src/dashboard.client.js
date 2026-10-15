@@ -385,15 +385,16 @@ function renderGoalSummary(days7, summaries){
  const met=days7.filter(d=>xpOf(d.date)>=dailyGoalXp).length;
  el.textContent='Hoy: '+today.toLocaleString('es-ES')+' / '+dailyGoalXp.toLocaleString('es-ES')+' XP'+(today>=dailyGoalXp? ' · objetivo cumplido':'')+' · '+met+' de 7 días con objetivo cumplido';
 }
+// xpData: undefined = not passed, keep the last response; null = the load failed, the series is unavailable (never the previous one).
 function renderLanguagesView(langData, analyticsData, xpData, activeDetail){
  if(langData) lastLangsData=langData;
  if(analyticsData) lastAnalyticsData=analyticsData;
- if(xpData) lastLangXpData=xpData;
+ if(xpData!==undefined) lastLangXpData=xpData;
  if(activeDetail) lastActiveDetail=activeDetail;
 
  const langs=langData||lastLangsData;
  const analytics=analyticsData||lastAnalyticsData;
- const xp=xpData||lastLangXpData||null;
+ const xp=xpData!==undefined? xpData : lastLangXpData;
  const actDetail=activeDetail||lastActiveDetail;
  if(!langs) return;
 
@@ -773,7 +774,8 @@ function renderOverview(data){
  if(elWrMeta){
   elWrMeta.textContent = recentKnown ? wins + ' W · ' + losses + ' L · ' + draws + ' D' : '—';
  }
- if(elDist){
+ if(elDist && !(recentKnown && wins + losses + draws > 0)) elDist.innerHTML = '';
+ else if(elDist){
   const sumR = wins + losses + draws || 1;
   const wP = (wins / sumR * 100).toFixed(1);
   const lP = (losses / sumR * 100).toFixed(1);
@@ -857,6 +859,7 @@ function renderChessView(stats, matches){
  const o=st.opponents||{};
  const ph=st.phases||{};
  const op=st.openings||{};
+ const recentKnown=(st.recent||lastRecent)!=null;
  const recent=st.recent||lastRecent||{};
 
  // 1. HeroCard (Orientación 3s)
@@ -894,7 +897,7 @@ function renderChessView(stats, matches){
  }
  const elHeroDistMeta=q('#chessHeroDistMeta');
  if(elHeroDistMeta){
-  elHeroDistMeta.textContent=rWins+'W · '+rLosses+'L · '+rDraws+'D';
+  elHeroDistMeta.textContent=recentKnown? rWins+'W · '+rLosses+'L · '+rDraws+'D' : '—';
  }
  const elHeroDist=q('#chessHeroDist');
  if(elHeroDist && rTotal>0){
@@ -1146,16 +1149,18 @@ async function init(){
 
 async function loadChessDashboard(){
  try{
-  const [s,r,c,o,e,t,op,ph]=await Promise.all([stat('summary','/api/stats/summary'),stat('results','/api/stats/results'),stat('color','/api/stats/color'),stat('opponents','/api/stats/opponents'),stat('opponentElo','/api/stats/opponent-elo'),stat('timeline','/api/stats/timeline'),j('/api/stats/openings').catch(()=>null),j('/api/stats/phases').catch(()=>null)]);
-  const rec50=await stat('recent','/api/stats/recent?limit=50').catch(()=>null);
+  // summary is essential (without it nothing here means anything: the outer catch). Every other card degrades on its own to "No disponible".
+  const opt=(k,route)=>stat(k,route).catch(()=>null);
+  const [s,r,c,o,e,t,op,ph]=await Promise.all([stat('summary','/api/stats/summary'),opt('results','/api/stats/results'),opt('color','/api/stats/color'),opt('opponents','/api/stats/opponents'),opt('opponentElo','/api/stats/opponent-elo'),opt('timeline','/api/stats/timeline'),j('/api/stats/openings').catch(()=>null),j('/api/stats/phases').catch(()=>null)]);
+  const rec50=await opt('recent','/api/stats/recent?limit=50');
   if(rec50) lastRecent=rec50;
-  hist=s; hist.groups=c.groups;
+  hist=s; hist.groups=c? c.groups : undefined;
 
   // header
   const elo=s.currentElo??s.latestElo??null;
   const delta=(elo!=null && s.firstElo!=null)? elo - s.firstElo : null;
   const deltaLabel = delta!=null ? (delta>0?'▲ +'+delta:delta<0?'▼ '+Math.abs(delta):'0')+' vs primer snapshot' : '';
-  const lastSnap=t.snapshots?.[t.snapshots.length-1];
+  const lastSnap=t?.snapshots?.[t.snapshots.length-1];
   const lastDate= lastSnap?.createdAt ? lastSnap.createdAt.slice(0,10) : null;
   q('#syncMeta').textContent= lastDate ? 'Actualizado '+lastDate+' · '+s.games.toLocaleString('es-ES')+' partidas' : s.games.toLocaleString('es-ES')+' partidas';
 
@@ -1169,18 +1174,19 @@ async function loadChessDashboard(){
   q('#streak').innerHTML= (s.currentStreak? '<b>Racha actual: '+s.currentStreak+' '+sk+'</b> · ':'') + 'Mejor racha: '+ (s.longestWin!=null? s.longestWin+'W' : '—') + (s.longestLoss? ' · Peor: '+s.longestLoss+'L':'');
   // forma actual default 50
   for(const k of [20,50,100]){ const el=q('#b'+k); if(el) el.className='btn '+(k===50?'btn-p':'btn-g'); }
-  setRecent(50, rec50).catch(()=>{});
+  if(rec50) setRecent(50, rec50).catch(()=>{}); else q('#form').innerHTML='<div class="muted">'+NA+'</div>';
 
   // evolution - dedup by day keep last elo
   const byDay=new Map();
-  for(const snap of (t.snapshots||[])){
+  for(const snap of ((t&&t.snapshots)||[])){
    if(snap.elo==null) continue;
    const d=snap.createdAt.slice(0,10);
    byDay.set(d, snap.elo);
   }
   const points=[...byDay.entries()].map(([date,elo])=>({date,elo})).sort((a,b)=>a.date.localeCompare(b.date));
-  q('#evo').innerHTML=sparkline(points);
-  if(!points.length) q('#evoNote').textContent='Sin snapshots';
+  q('#evo').innerHTML=t? sparkline(points) : '<div class="muted">'+NA+'</div>';
+  if(!t) q('#evoNote').textContent='';
+  else if(!points.length) q('#evoNote').textContent='Sin snapshots';
   else if(points.length===1) q('#evoNote').textContent='';
   else {
    const elos=points.map(p=>p.elo); const mx=Math.max(...elos), mn=Math.min(...elos);
@@ -1190,7 +1196,7 @@ async function loadChessDashboard(){
 
   // results
   q('#res').innerHTML=donut(s.wins,s.losses,s.draws);
-  if(r.endConditions){
+  if(r&&r.endConditions){
    const ec = r.endConditions;
    const discon = ec.disconnection?.loss || 0;
    const mates = ec.checkmate?.loss || 0;
@@ -1222,16 +1228,16 @@ async function loadChessDashboard(){
 
   // color / bots
   const totalGames=s.games||1;
-   q('#col').innerHTML=renderCompare(c.groups, totalGames);
-   setColDiff(c);
-  if(o.macro && o.macro.length && q('#oppMacro')){
+  q('#col').innerHTML=c? renderCompare(c.groups, totalGames) : '<div class="muted">'+NA+'</div>';
+  if(c) setColDiff(c);
+  if(o&&o.macro && o.macro.length && q('#oppMacro')){
    const b=o.macro.find(m=>m.key==='bot'), p=o.macro.find(m=>m.key==='pvp');
    if(b && p){
     const fWr=v=>v!=null?(v*100).toFixed(1).replace('.',',')+' %':'—';
     q('#oppMacro').textContent='Bots: '+b.games.toLocaleString('es-ES')+' ('+fWr(b.winRate)+') · PvP: '+p.games.toLocaleString('es-ES')+' ('+fWr(p.winRate)+')';
    }
   }
-  q('#opp').innerHTML=renderCompare(o.segments || o.groups || [], totalGames);
+  q('#opp').innerHTML=o? renderCompare(o.segments || o.groups || [], totalGames) : '<div class="muted">'+NA+'</div>';
 
   // openings
   if(op&&!op.error&&q('#openingsCard')){
@@ -1250,12 +1256,15 @@ async function loadChessDashboard(){
   }
 
   // elo
+  if(!e){ q('#elo').innerHTML='<div class="muted">'+NA+'</div>'; q('#eloNote').textContent=''; }
+  else{
   const known=e.count, total=s.games;
   q('#elo').innerHTML='<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:baseline"><span style="font-size:22px;font-weight:700">'+known+' <span class="muted" style="font-size:13px;font-weight:400">con ELO</span></span><span class="muted">'+(total? (known/total*100).toFixed(1):'0')+'% de '+total.toLocaleString('es-ES')+' · media '+(e.average?.toFixed(0)??'—')+' · '+fmt(e.min)+' – '+fmt(e.max)+'</span></div><div class="hist">'+histBuckets(e.buckets,known)+'</div>';
   q('#eloNote').textContent=e.note || (known+' / '+total+' partidas con ELO rival conocido — la mayoría son bots sin ELO');
   const eloSummaryMeta=q('#eloSummaryMeta');
   if(eloSummaryMeta && total){
     eloSummaryMeta.textContent = '· muestra conocida: '+known+' ('+(known/total*100).toFixed(1)+'%)';
+  }
   }
   renderChessView({ summary: s, results: r, color: c, opponents: o, elo: e, timeline: t, openings: op, phases: ph, recent: rec50 }, lastRows);
  }catch(err){ console.error(err); q('#kpis').innerHTML='<div class="muted">Error cargando estadísticas</div>'; }

@@ -117,3 +117,40 @@ describe("what changed / trajectory: absent values are not zero", () => {
     expect(rt.getEl("#trajectoryFindings").innerHTML).not.toContain("0% blancas");
   });
 });
+
+describe("review of PR #60: combined fallback and stale state", () => {
+  it("shouldKeepTheKpisAndSayNoDisponiblePerCardWhenTheBundleAndEveryOtherStatsRouteFail", async () => {
+    const routes = ["/api/stats/bundle", "/api/stats/results", "/api/stats/color", "/api/stats/opponents", "/api/stats/opponent-elo", "/api/stats/timeline", "/api/stats/recent"];
+    const summary = { games: 5, wins: 2, losses: 2, draws: 1, winRate: 0.4, scoreRate: 0.5, currentElo: 1000, firstElo: 1000, currentStreak: 0 };
+    const rt = createDashboardRuntime("/chess", undefined, fetchOnly([...routes, "/api/stats/summary"], async (url: string) =>
+      url.startsWith("/api/stats/summary") ? ok(summary)() : http500()));
+    await settle();
+    expect(rt.getEl("#kpis").innerHTML).toContain("Partidas");
+    for (const sel of ["#col", "#opp", "#evo", "#elo"]) expect(rt.getEl(sel).innerHTML).toContain("No disponible");
+  });
+
+  it("shouldNotPrintZeroCountsInTheChessHeroWhenTheRecentFormIsUnavailable", () => {
+    const rt = createDashboardRuntime("/chess");
+    rt.sandbox.renderChessView({ summary: { games: 3, winRate: 0.5 } }, []);
+    expect(text(rt, "#chessHeroDistMeta")).toBe("—");
+  });
+
+  it("shouldClearTheOverviewDistributionBarWhenTheRecentFormBecomesUnavailable", () => {
+    const rt = createDashboardRuntime("/overview");
+    const base = { langs: langs, stats: {}, matches: [], xp_summaries: [] };
+    rt.sandbox.renderOverview({ ...base, recent: { wins: 5, losses: 3, draws: 2, games: 10 } });
+    expect(rt.getEl("#overviewChessDist").innerHTML).toContain("bar-win");
+    rt.sandbox.renderOverview({ ...base, recent: null });
+    expect(text(rt, "#overviewChessWrMeta")).toBe("—");
+    expect(rt.getEl("#overviewChessDist").innerHTML).not.toContain("bar-win");
+  });
+
+  it("shouldNotReuseTheLastXpWhenALaterLoadFails", () => {
+    const rt = createDashboardRuntime("/languages");
+    const today = Math.floor(Date.now() / 1000);
+    rt.renderLanguagesView(langs, null, { summaries: [{ date: today, gainedXp: 50, numSessions: 1, totalSessionTime: 60 }] }, null);
+    expect(text(rt, "#langWeekSummary")).toContain("50 XP");
+    rt.renderLanguagesView(langs, null, null, null);
+    expect(text(rt, "#langWeekSummary")).toBe("No disponible");
+  });
+});
