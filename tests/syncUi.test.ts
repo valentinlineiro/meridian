@@ -167,7 +167,7 @@ describe("sync now button", () => {
     expect(btn.textContent).toBe("✓ Sincronizado");
   });
 
-  it("shouldDropTheRunIdWhenTheServerSaysItIsNotValid", async () => {
+  it("shouldDropTheRunIdOnlyWhenTheServerAnswers404", async () => {
     const { rt, stored } = setup((url, init) =>
       init?.method === "POST" ? { body: { ok: true, runId: 7 } } : { ok: false, status: 404, body: {} });
     await rt.sandbox.doSync();
@@ -187,6 +187,12 @@ describe("sync now button", () => {
     expect(btn.textContent).toBe("Sincronizar");
     expect((btn as any).disabled).toBe(false);
     expect(note.textContent).toContain("Sigue en marcha; puedes salir");
+    expect(stored()).toBe("7");
+  });
+  it.each([401, 403, 429])("shouldKeepTheRunIdWhenTheStatusReadAnswers%i", async (status) => {
+    const { rt, stored } = setup((url, init) =>
+      init?.method === "POST" ? { body: { ok: true, runId: 7 } } : { ok: false, status, body: {} });
+    await rt.sandbox.doSync();
     expect(stored()).toBe("7");
   });
 });
