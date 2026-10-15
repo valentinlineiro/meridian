@@ -64,3 +64,70 @@ describe("late responses never overwrite a later choice", () => {
     expect(rt.getEl("#chessHeroDistMeta").textContent).toBe("9W · 1L · 0D");
   });
 });
+
+// What Changed, trajectory and sync use the same timeout as every other read, and a request that expires after a newer one started changes nothing.
+const hang = (init: any) => new Promise((_, rej) => init.signal.addEventListener("abort", () => rej(abortError())));
+const changesBody = { interval: { since: "2026-10-01T00:00:00.000Z", until: "2026-10-08T00:00:00.000Z" },
+  chess: { gamesCount: 3, intervalWinRate: 50, historicalDelta: null },
+  languages: { xpGained: 5, sessionsCount: 1, totalSessionMinutes: null, baselineCourseId: null, currentCourseId: "X", courseChanged: false },
+  streak: { baselineStreak: null, currentStreak: null, streakDelta: null, status: "active" }, findings: [], evaluations: [] };
+// timers[i] fires the abort of the i-th request after boot
+const manualTimers = (rt: any) => { const timers: Array<() => void> = []; rt.sandbox.setTimeout = (fn: () => void) => timers.push(fn); return timers; };
+
+describe("timeouts on What Changed, trajectory and sync", () => {
+  it("shouldShowTheConnectionErrorWhenWhatChangedNeverAnswers", async () => {
+    const rt = createDashboardRuntime("/overview", undefined, fetchOnly(["/api/what-changed"], (_u, init) => hang(init)));
+    await settle();
+    const timers = manualTimers(rt);
+    const run = vm.runInContext("fetchWhatChanged(new Date(Date.now()-86400000).toISOString())", rt.sandbox);
+    await settle();
+    timers.forEach((f) => f());
+    await run;
+    expect(rt.getEl("#changesEmpty").textContent).toBe("Error de conexión al cargar cambios.");
+  });
+
+  it("shouldKeepTheLaterWindowWhenAnEarlierRequestTimesOutAfterIt", async () => {
+    let n = 0;
+    const rt = createDashboardRuntime("/overview", undefined, fetchOnly(["/api/what-changed"], (_u, init) => (n++ === 0 ? hang(init) : Promise.resolve(ok(changesBody)))));
+    await settle();
+    n = 0;
+    const timers = manualTimers(rt);
+    const since = "new Date(Date.now()-86400000).toISOString()";
+    const first = vm.runInContext(`fetchWhatChanged(${since})`, rt.sandbox);
+    await settle();
+    await vm.runInContext(`fetchWhatChanged(${since})`, rt.sandbox);
+    const shown = rt.getEl("#changesActivity").innerHTML;
+    expect(shown).not.toBe("");
+    timers.forEach((f) => f());
+    await first;
+    expect(rt.getEl("#changesActivity").innerHTML).toBe(shown);
+    expect(rt.getEl("#changesEmpty").textContent).not.toContain("Error");
+  });
+
+  it("shouldKeepTheLaterTrajectoryWhenAnEarlierOneAnswersLast", async () => {
+    const slow = deferred<unknown>();
+    let n = 0;
+    const finding = { type: "CHESS_COLOR_ASYMMETRY_LONGITUDINAL", sample: { gamesCount: 10 }, metrics: { dominantColor: "white", globalWhiteWinRate: 60, globalBlackWinRate: 40 } };
+    const rt = createDashboardRuntime("/overview", undefined, fetchOnly(["/api/trajectory"], async () =>
+      n++ === 0 ? slow.promise : ok({ evaluations: [], temporalSpan: null, findings: [] })));
+    await settle();
+    n = 0;
+    const first = vm.runInContext("fetchTrajectory()", rt.sandbox);
+    await settle();
+    await vm.runInContext("fetchTrajectory()", rt.sandbox);
+    slow.resolve(ok({ evaluations: [], temporalSpan: null, findings: [finding] }));
+    await first;
+    expect(rt.getEl("#trajectoryFindings").innerHTML).toBe("");
+  });
+
+  it("shouldStopPollingSyncWhenTheStatusRequestNeverAnswers", async () => {
+    const rt = createDashboardRuntime("/overview", undefined, fetchOnly(["/api/me/sync/status"], (_u, init) => hang(init)));
+    await settle();
+    const timers = manualTimers(rt);
+    const run = vm.runInContext("trackSync('r1')", rt.sandbox);
+    await settle();
+    timers.forEach((f) => f());
+    const outcome = await Promise.race([run.then(() => "done"), settle().then(() => "hung")]);
+    expect(outcome).toBe("done");
+  });
+});
