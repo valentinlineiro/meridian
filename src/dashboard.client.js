@@ -45,6 +45,8 @@ function parseCanonicalRoute(pathOrHash, hashOrSearch, searchQuery){
  }
  return { tab: 'overview', courseId: null, canonicalPath: '/overview', canonicalHash: '#/overview', hasLegacyQuery };
 }
+let changesSeq=0; // latest What Changed request: an older answer is dropped (declared before initTab, which already loads a tab)
+let trajectoryEmptyCopy=null; // declared before initTab(): the first tab render may already call fetchTrajectory
 let selectedCourseId=null, lastLangsData=null, lastAnalyticsData=null, lastLangXpData=null, lastActiveDetail=null, activeChangesInterval=null, changesAnchor=null, changesShownUntil=null;
 function showTab(name){
  const tab=(name==='languages'||name==='chess')?name:'overview';
@@ -721,8 +723,9 @@ function renderOverviewLangCard(langs, activeDetail){
  const elCatalog = q('#overviewLangCatalogXp');
  if(elCatalog){
   const numCourses = (langs.courses || []).length;
-  const totalCatXp = langs.totalXp ?? (langs.courses || []).reduce((a, c) => a + (c.xp || 0), 0);
-  elCatalog.textContent = numCourses + ' cursos · ' + Number(totalCatXp).toLocaleString('es-ES') + ' XP';
+  const cs = langs.courses || [];
+  const totalCatXp = langs.totalXp ?? (cs.length && cs.every(c => c.xp != null) ? cs.reduce((a, c) => a + c.xp, 0) : null);
+  elCatalog.textContent = numCourses + ' cursos · ' + xpText(totalCatXp) + ' XP';
  }
 }
 function renderOverview(data){
@@ -1332,6 +1335,7 @@ function trajectoryCopy(f){
 async function fetchTrajectory(){
  const elEmpty = q('#trajectoryEmpty');
  const elFindings = q('#trajectoryFindings');
+ if(trajectoryEmptyCopy === null) trajectoryEmptyCopy = elEmpty.textContent; // the page's own text, before an error overwrites it
  try{
   const res = await fetch('/api/trajectory');
   if(!res.ok) throw new Error('http ' + res.status);
@@ -1349,6 +1353,7 @@ async function fetchTrajectory(){
    + '<span class="pill pill-scope">SIN EVALUAR</span></div>'
    + '<div style="font-size:13px;font-weight:600;color:#c8d7ea;margin-bottom:6px">' + esc(x.c.claim) + '</div>'
    + '<div class="muted" style="font-size:12px"><strong>Evidencia:</strong> ' + esc(x.c.evidence) + '</div></div>');
+  elEmpty.textContent = trajectoryEmptyCopy;
   elEmpty.style.display = cards.length || plain.length ? 'none' : 'block';
   elFindings.innerHTML = cards.concat(plain).join('');
  } catch(err){
@@ -1388,10 +1393,13 @@ async function loadChangesAnchor(){
  changesAnchor=anchor;
  return {anchor,readable};
 }
+function clearChangesBody(){ const f=q('#changesFindings'), a=q('#changesActivity'); if(f) f.innerHTML=''; if(a) a.innerHTML=''; }
 async function fetchWhatChanged(sinceOverride){
+ const seq=++changesSeq;
  const now=new Date();
  changesShownUntil=null;
  const {anchor,readable}=await loadChangesAnchor();
+ if(seq!==changesSeq) return;
  const visit=!sinceOverride;
  const since=sinceOverride || anchor || new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
  let until=now.toISOString();
@@ -1434,7 +1442,9 @@ async function fetchWhatChanged(sinceOverride){
 
  try {
   const res=await fetch('/api/what-changed?since=' + encodeURIComponent(since) + '&until=' + encodeURIComponent(until));
+  if(seq!==changesSeq) return;
   if(!res.ok){
+   clearChangesBody();
    if(elEmpty){
     elEmpty.style.display = 'block';
     elEmpty.textContent = 'Error al cargar cambios (/api/what-changed).';
@@ -1442,10 +1452,13 @@ async function fetchWhatChanged(sinceOverride){
    return;
   }
   const data=await res.json();
+  if(seq!==changesSeq) return;
   // what is marked is what was shown: the until of this response, not the time of the click
   changesShownUntil=(data.interval && data.interval.until) || until;
   renderWhatChanged(data);
  } catch(err){
+  if(seq!==changesSeq) return;
+  clearChangesBody();
   if(elEmpty){
    elEmpty.style.display = 'block';
    elEmpty.textContent = 'Error de conexión al cargar cambios.';
@@ -1595,6 +1608,10 @@ function renderWhatChanged(data){
  const elActivity = q('#changesActivity');
 
  if(!data || !data.chess || !data.languages || !data.streak){
+  // never leave the previous window's body under a header that now names another one
+  if(elEmpty){ elEmpty.style.display = 'block'; elEmpty.textContent = 'Respuesta incompleta al cargar cambios (/api/what-changed).'; }
+  if(elFindings) elFindings.innerHTML = '';
+  if(elActivity) elActivity.innerHTML = '';
   return;
  }
 
@@ -1608,7 +1625,8 @@ function renderWhatChanged(data){
    elEmpty.style.display = 'block';
    elEmpty.textContent = 'No hay actividad registrada entre ' + data.interval.since + ' y ' + data.interval.until + '.';
   }
-  if(elFindings) elFindings.innerHTML = '';
+  // the evaluations are the answer to "could this window be judged?": a quiet window keeps them (INSUFICIENTE, SIN INDICIO)
+  if(elFindings) elFindings.innerHTML = renderEvaluations(data);
   if(elActivity) elActivity.innerHTML = '';
   return;
  }
