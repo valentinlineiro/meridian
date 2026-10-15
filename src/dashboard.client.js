@@ -45,6 +45,7 @@ function parseCanonicalRoute(pathOrHash, hashOrSearch, searchQuery){
  }
  return { tab: 'overview', courseId: null, canonicalPath: '/overview', canonicalHash: '#/overview', hasLegacyQuery };
 }
+let changesSeq=0; // latest What Changed request: an older answer is dropped (declared before initTab, which already loads a tab)
 let trajectoryEmptyCopy=null; // declared before initTab(): the first tab render may already call fetchTrajectory
 let selectedCourseId=null, lastLangsData=null, lastAnalyticsData=null, lastLangXpData=null, lastActiveDetail=null, activeChangesInterval=null, changesAnchor=null, changesShownUntil=null;
 function showTab(name){
@@ -1394,9 +1395,11 @@ async function loadChangesAnchor(){
 }
 function clearChangesBody(){ const f=q('#changesFindings'), a=q('#changesActivity'); if(f) f.innerHTML=''; if(a) a.innerHTML=''; }
 async function fetchWhatChanged(sinceOverride){
+ const seq=++changesSeq;
  const now=new Date();
  changesShownUntil=null;
  const {anchor,readable}=await loadChangesAnchor();
+ if(seq!==changesSeq) return;
  const visit=!sinceOverride;
  const since=sinceOverride || anchor || new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
  let until=now.toISOString();
@@ -1439,6 +1442,7 @@ async function fetchWhatChanged(sinceOverride){
 
  try {
   const res=await fetch('/api/what-changed?since=' + encodeURIComponent(since) + '&until=' + encodeURIComponent(until));
+  if(seq!==changesSeq) return;
   if(!res.ok){
    clearChangesBody();
    if(elEmpty){
@@ -1448,10 +1452,12 @@ async function fetchWhatChanged(sinceOverride){
    return;
   }
   const data=await res.json();
+  if(seq!==changesSeq) return;
   // what is marked is what was shown: the until of this response, not the time of the click
   changesShownUntil=(data.interval && data.interval.until) || until;
   renderWhatChanged(data);
  } catch(err){
+  if(seq!==changesSeq) return;
   clearChangesBody();
   if(elEmpty){
    elEmpty.style.display = 'block';

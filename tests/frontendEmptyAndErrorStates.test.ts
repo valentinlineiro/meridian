@@ -75,3 +75,36 @@ describe("overview: the catalogue total", () => {
     expect(text(rt, "#overviewLangCatalogXp")).toBe("2 cursos · — XP");
   });
 });
+
+describe("what changed: an old response never overwrites a window chosen later", () => {
+  const withXp = (xp: number) => ({ ...activePayload, languages: { ...activePayload.languages, xpGained: xp } });
+  const bootDeferred = async () => {
+    const pending: Array<(r: unknown) => void> = [];
+    const rt = createDashboardRuntime("/changes", undefined, fetchOnly(["/api/what-changed"], () => new Promise((res) => { pending.push(res); })));
+    await settle();
+    const first = rt.sandbox.fetchWhatChanged("2026-09-01T00:00:00.000Z"); // older choice, request in flight
+    await settle();
+    const second = rt.sandbox.fetchWhatChanged("2026-09-20T00:00:00.000Z"); // later choice
+    await settle();
+    return { rt, pending, done: Promise.all([first, second]) };
+  };
+  const reply = (body: unknown, good = true) => ({ ok: good, status: good ? 200 : 500, json: async () => body });
+
+  it("shouldKeepTheLaterWindowWhenTheEarlierOneAnswersLast", async () => {
+    const { rt, pending, done } = await bootDeferred();
+    const [, early, late] = pending as [unknown, (r: unknown) => void, (r: unknown) => void];
+    late(reply(withXp(77))); await settle();
+    early(reply(withXp(11))); await done; await settle();
+    expect(rt.getEl("#changesActivity").innerHTML).toContain("+77");
+    expect(rt.getEl("#changesActivity").innerHTML).not.toContain("+11");
+  });
+
+  it("shouldNotWipeTheLaterWindowWhenTheEarlierRequestFailsLate", async () => {
+    const { rt, pending, done } = await bootDeferred();
+    const [, early, late] = pending as [unknown, (r: unknown) => void, (r: unknown) => void];
+    late(reply(withXp(77))); await settle();
+    early(reply({ ok: false }, false)); await done; await settle();
+    expect(rt.getEl("#changesActivity").innerHTML).toContain("+77");
+    expect(rt.getEl("#changesEmpty").style.display).toBe("none");
+  });
+});
