@@ -118,7 +118,11 @@ function relDate(iso){
 let off=0, lastRows=[], lastTotal=0;
 const _fetch=window.fetch.bind(window);
 window.fetch=async(...a)=>{const r=await _fetch(...a); if(r.status===401) location.href='/login?next='+encodeURIComponent(location.pathname+location.search); return r;};
-const j=async u=>(await fetch(u)).json();
+// An HTTP error rejects: its body is never data. Callers turn the rejection into null ("no disponible"), never into a zero.
+const j=async u=>{ const r=await fetch(u); if(!r.ok) throw new Error('http '+r.status); return r.json(); };
+const NA='No disponible';
+const xpText=v=>v==null?'—':Number(v).toLocaleString('es-ES');
+const pc=v=>v==null?'—':Math.round(v)+'%';
 const SYNC_KEY='meridian.syncRun';
 const syncStore={
  get(){ try{ return Number(localStorage.getItem(SYNC_KEY))||null; }catch(e){ return null; } },
@@ -255,14 +259,14 @@ function showLanguagesGlobal(){
 async function showCourseDetail(courseId){
  try{
   selectCourse(courseId, false);
-  const data=await j('/api/languages/courses/'+encodeURIComponent(courseId));
+  const data=await j('/api/languages/courses/'+encodeURIComponent(courseId)).catch(()=>null);
   if(!data||data.error) return;
   const g=q('#langGlobalView'), d=q('#langDetailView');
   if(g&&d){ g.style.display='none'; d.style.display='block'; }
   const c=data.course;
   q('#langDetailTitle').textContent=(c.learningLanguage? flag(c.learningLanguage)+' ':'')+(c.title||c.courseId);
   q('#langDetailSub').textContent=(c.fromLanguage? c.fromLanguage.toUpperCase()+' → ':'')+(c.learningLanguage? c.learningLanguage.toUpperCase():'')+' · ID: '+c.courseId;
-  q('#langDetailXpPill').textContent=(c.xp!=null? c.xp.toLocaleString('es-ES'):0)+' XP';
+  q('#langDetailXpPill').textContent=xpText(c.xp)+' XP';
 
   const bar=(r,color)=>'<div class="bar" style="height:8px"><i style="width:'+(r!=null?(r*100).toFixed(1):0)+'%;background:'+color+'"></i></div>';
   const sections=data.sections||[];
@@ -323,6 +327,9 @@ function renderLanguagesLevel1(langs, xpData, activeDetail){
   const totalSecs=summaries.reduce((a,s)=>a+s.totalSessionTime,0);
   const hours=Math.round(totalSecs/3600);
   q('#langXpSummary').textContent=totalGained.toLocaleString('es-ES')+' XP acumulados en '+summaries.length+' días · '+totalSes+' sesiones · ~'+hours+' horas de práctica';
+ } else if(!xpData){
+  q('#langXpTimeline').innerHTML='<div class="muted">'+NA+'</div>';
+  q('#langXpSummary').textContent='';
  } else {
   q('#langXpTimeline').innerHTML='<div class="muted">Sin actividad registrada en los últimos 90 días</div>';
   q('#langXpSummary').textContent='';
@@ -372,6 +379,7 @@ function renderGoalSummary(days7, summaries){
  const el=q('#langGoalToday');
  if(!el) return;
  if(dailyGoalXp==null){ el.textContent='Sin objetivo diario configurado.'; return; }
+ if(summaries===null){ el.textContent=NA; return; }
  const xpOf=iso=>{ const s=summaries.find(x=>{ const xIso=typeof x.date==='string'? x.date.slice(0,10):new Date(x.date>1e11? x.date:x.date*1000).toISOString().slice(0,10); return xIso===iso; }); return s? (s.gainedXp||0):0; };
  const today=xpOf(days7[days7.length-1].date);
  const met=days7.filter(d=>xpOf(d.date)>=dailyGoalXp).length;
@@ -385,11 +393,11 @@ function renderLanguagesView(langData, analyticsData, xpData, activeDetail){
 
  const langs=langData||lastLangsData;
  const analytics=analyticsData||lastAnalyticsData;
- const xp=xpData||lastLangXpData||{summaries:[]};
+ const xp=xpData||lastLangXpData||null;
  const actDetail=activeDetail||lastActiveDetail;
  if(!langs) return;
 
- const summaries=xp.summaries||[];
+ const summaries=xp? (xp.summaries||[]) : [];
  const duolingoCurrentCourseId=langs.currentCourseId;
  const courses=langs.courses||[];
  // Resolve selectedCourseId using 3-tier hierarchy (Canonical Route > localStorage > max XP)
@@ -403,7 +411,7 @@ function renderLanguagesView(langData, analyticsData, xpData, activeDetail){
  // 1. HeroCard (Orientación 3s) - populate course selector
  const elSelect=q('#langCourseSelect');
  if(elSelect){
-  elSelect.innerHTML=courses.map(c=>'<option value="'+esc(c.courseId)+'">'+(c.learningLanguage?flag(c.learningLanguage)+' ':'')+esc(c.title||c.courseId)+' ('+Number(c.xp||0).toLocaleString('es-ES')+' XP)</option>').join('');
+  elSelect.innerHTML=courses.map(c=>'<option value="'+esc(c.courseId)+'">'+(c.learningLanguage?flag(c.learningLanguage)+' ':'')+esc(c.title||c.courseId)+' ('+xpText(c.xp)+' XP)</option>').join('');
   elSelect.value=selectedCourseId||'';
  }
  const elFlag=q('#langCourseFlag');
@@ -415,10 +423,10 @@ function renderLanguagesView(langData, analyticsData, xpData, activeDetail){
   return dIso===todayIso;
  });
  const todayXp=todaySummary? (todaySummary.gainedXp||0):0;
- const courseXp=activeCourse? (activeCourse.xp||0):0;
+ const courseXp=activeCourse? activeCourse.xp:null;
  const elHeroMeta=q('#langActiveHeroMeta');
  if(elHeroMeta){
-  const xpCourseStr=Number(courseXp).toLocaleString('es-ES')+' XP acumulado en el curso';
+  const xpCourseStr=xpText(courseXp)+' XP acumulado en el curso';
   elHeroMeta.textContent=xpCourseStr+(fromTo?' · '+fromTo:'');
  }
 
@@ -472,7 +480,7 @@ function renderLanguagesView(langData, analyticsData, xpData, activeDetail){
  const elWeekSum=q('#langWeekSummary');
  if(elActivityStrip){
   let wXp=0, wSes=0, wSec=0;
-  elActivityStrip.innerHTML=days7.map(day=>{
+  elActivityStrip.innerHTML=!xp? '' : days7.map(day=>{
    const s=summaries.find(x=>{
     const xIso=typeof x.date==='string'? x.date.slice(0,10):new Date(x.date>1e11? x.date:x.date*1000).toISOString().slice(0,10);
     return xIso===day.date;
@@ -491,10 +499,10 @@ function renderLanguagesView(langData, analyticsData, xpData, activeDetail){
   }).join('');
   if(elWeekSum){
    const wMin=Math.round(wSec/60);
-   elWeekSum.textContent=wXp.toLocaleString('es-ES')+' XP · '+wSes+' ses'+(wMin>0?' · '+wMin+' min':'');
+   elWeekSum.textContent=!xp? NA : wXp.toLocaleString('es-ES')+' XP · '+wSes+' ses'+(wMin>0?' · '+wMin+' min':'');
   }
  }
- renderGoalSummary(days7, summaries);
+ renderGoalSummary(days7, xp? summaries : null);
 
  // 3. Tus Cursos (Comprensión 1m) - Orden canónico del catálogo (/api/languages: xp DESC)
  const deterministicCourses=courses;
@@ -507,7 +515,7 @@ function renderLanguagesView(langData, analyticsData, xpData, activeDetail){
   elCoursesList.innerHTML=deterministicCourses.length? deterministicCourses.map(c=>{
    const isSelected=c.courseId===selectedCourseId;
    const cFromTo=(c.fromLanguage? c.fromLanguage.toUpperCase()+' → ':'')+(c.learningLanguage? c.learningLanguage.toUpperCase():'');
-   const cXp=(c.xp!=null? c.xp.toLocaleString('es-ES'):'0')+' XP';
+   const cXp=xpText(c.xp)+' XP';
 
    let sectionsHtml='';
    let unitsPill='';
@@ -733,8 +741,8 @@ function renderOverview(data){
   elSyncMeta.textContent = langSync + ' · ' + chessSync;
  }
 
- const summaries = data.xp_summaries || data.xpData?.summaries || data.summaries || [];
- const matches = data.matches || [];
+ const summaries = data.xp_summaries !== undefined ? data.xp_summaries : (data.xpData?.summaries || data.summaries || []);
+ const matches = data.matches === null ? null : (data.matches || []);
  const langs = data.langs || (data.courses ? data : null);
  const activeCourse = (langs?.courses || []).find(c => c.courseId === selectedCourseId);
 
@@ -751,6 +759,7 @@ function renderOverview(data){
  const elEloMeta = q('#overviewChessEloMeta');
  if(elEloMeta) elEloMeta.textContent = (stats.currentElo ?? stats.latestElo ?? null) != null && data.lastChessSyncedAt ? 'último snapshot de Chess: ' + relDate(data.lastChessSyncedAt) : '';
 
+ const recentKnown = data.recent != null;
  const recent = data.recent || {};
  const wins = recent.wins || 0, losses = recent.losses || 0, draws = recent.draws || 0;
  const rTotal = wins + losses + draws || (recent.games || 0);
@@ -762,7 +771,7 @@ function renderOverview(data){
   elWrLabel.textContent = wrVal !== '—' ? wrVal + '% victorias (últimas ' + (recent.limit || 50) + ' partidas, todos los rivales)' : 'Win rate (últimas 50 partidas, todos los rivales)';
  }
  if(elWrMeta){
-  elWrMeta.textContent = wins + ' W · ' + losses + ' L · ' + draws + ' D';
+  elWrMeta.textContent = recentKnown ? wins + ' W · ' + losses + ' L · ' + draws + ' D' : '—';
  }
  if(elDist){
   const sumR = wins + losses + draws || 1;
@@ -790,7 +799,7 @@ function renderOverview(data){
  const elLangWeekSum = q('#overviewLangWeekSummary');
  if(elLangWeek){
   let wXp = 0, wSes = 0;
-  elLangWeek.innerHTML = days7.map(day => {
+  elLangWeek.innerHTML = summaries === null ? '' : days7.map(day => {
    const s = summaries.find(x => {
     const xIso = typeof x.date === 'string' ? x.date.slice(0, 10) : new Date(x.date > 1e11 ? x.date : x.date * 1000).toISOString().slice(0, 10);
     return xIso === day.date;
@@ -806,7 +815,7 @@ function renderOverview(data){
     + '</div>';
   }).join('');
   if(elLangWeekSum){
-   elLangWeekSum.textContent = wXp.toLocaleString('es-ES') + ' XP · ' + wSes + ' ses';
+   elLangWeekSum.textContent = summaries === null ? NA : wXp.toLocaleString('es-ES') + ' XP · ' + wSes + ' ses';
   }
  }
 
@@ -814,7 +823,7 @@ function renderOverview(data){
  const elChessWeekSum = q('#overviewChessWeekSummary');
  if(elChessWeek){
   let wGames = 0;
-  elChessWeek.innerHTML = days7.map(day => {
+  elChessWeek.innerHTML = matches === null ? '' : days7.map(day => {
    const mList = matches.filter(m => {
     if (m.played_at) return new Date(m.played_at > 1e11 ? m.played_at : m.played_at * 1000).toISOString().slice(0, 10) === day.date;
     if (m.first_seen_at) return m.first_seen_at.slice(0, 10) === day.date;
@@ -830,7 +839,7 @@ function renderOverview(data){
     + '</div>';
   }).join('');
   if(elChessWeekSum){
-   elChessWeekSum.textContent = wGames + (wGames === 1 ? ' partida en 7 días' : ' partidas en 7 días');
+   elChessWeekSum.textContent = matches === null ? NA : wGames + (wGames === 1 ? ' partida en 7 días' : ' partidas en 7 días');
   }
  }
 }
@@ -916,7 +925,7 @@ function renderChessView(stats, matches){
  if(ph&&ph.phases&&q('#phasesCard')&&q('#phasesBody')){
   q('#phasesBody').innerHTML=renderCompare(ph.phases, totalGames);
   if(q('#phasesMeta')){
-   q('#phasesMeta').textContent='Mediana: '+(ph.medianPlies||0)+' plies · Hidratadas: '+((ph.population&&ph.population.hydrated)||0)+' partidas';
+   q('#phasesMeta').textContent=phasesMeta(ph);
   }
  }
 }
@@ -934,10 +943,10 @@ async function loadOverviewDashboard(){
  try {
   const [langs, xpData, stats, recent, matches, timeline] = await Promise.all([
    j('/api/languages').catch(()=>null),
-   j('/api/languages/xp?days=30').catch(()=>({summaries:[]})),
+   j('/api/languages/xp?days=30').catch(()=>null),
    stat('summary','/api/stats/summary').catch(()=>null),
    stat('recent','/api/stats/recent?limit=50').catch(()=>null),
-   j('/api/matches?limit=100').catch(()=>({rows:[],total:0})),
+   j('/api/matches?limit=100').catch(()=>null),
    stat('timeline','/api/stats/timeline').catch(()=>null)
   ]);
   let activeDetail = null;
@@ -950,12 +959,12 @@ async function loadOverviewDashboard(){
   renderOverview({
    userState: langs,
    langs,
-   xp_summaries: xpData?.summaries || [],
+   xp_summaries: xpData? (xpData.summaries||[]) : null,
    xpData,
    activeDetail,
    stats,
    recent,
-   matches: matches?.rows || [],
+   matches: matches? (matches.rows||[]) : null,
    lastChessSyncedAt: lastSnap?.createdAt || null
   });
  } catch(err){
@@ -965,7 +974,7 @@ async function loadOverviewDashboard(){
 
 async function loadLanguagesDashboard(){
  try{
-  const langs=await j('/api/languages');
+  const langs=await j('/api/languages').catch(()=>null);
   if(!langs||langs.error||!langs.courses||!langs.courses.length){
    const legacy=await j('/api/stats/lang').catch(()=>null);
    if(legacy&&!legacy.error){ renderLang(legacy); return; }
@@ -974,7 +983,7 @@ async function loadLanguagesDashboard(){
    return;
   }
   const [xpData, analytics, settings]=await Promise.all([
-   j('/api/languages/xp?days=90').catch(()=>({summaries:[]})),
+   j('/api/languages/xp?days=90').catch(()=>null),
    j('/api/languages/analytics').catch(()=>null),
    j('/api/me/settings').catch(()=>null),
   ]);
@@ -1014,8 +1023,9 @@ function populateOpeningFilter(op){
   if(optgroup.children.length) select.appendChild(optgroup);
  }
 }
+function phasesMeta(ph){ const h=ph.population&&ph.population.hydrated; return 'Mediana: '+(ph.medianPlies!=null?ph.medianPlies:'—')+' plies · Hidratadas: '+(h!=null?h:'—')+' partidas'; }
 function arrow(a,b){ if(a==null||b==null) return ''; return a>b?' ↑':a<b?' ↓':' ·'; }
-async function setRecent(n,preloaded){ recentN=n; for(const k of [20,50,100]){ const el=q('#b'+k); if(el){ el.className=n===k?'btn btn-p':'btn btn-g'; } } const r=preloaded||await j('/api/stats/recent?limit='+n); lastRecent=r; renderForm(r); renderChessView({ recent: r }, lastRows); }
+async function setRecent(n,preloaded){ recentN=n; for(const k of [20,50,100]){ const el=q('#b'+k); if(el){ el.className=n===k?'btn btn-p':'btn btn-g'; } } let r=preloaded; if(!r){ try{ r=await j('/api/stats/recent?limit='+n); }catch(e){ q('#form').innerHTML='<div class="muted">'+NA+'</div>'; return; } } lastRecent=r; renderForm(r); renderChessView({ recent: r }, lastRows); }
 function fmtDelta(d){ // d in percentage points: {diff,lower,upper}. Never shown without its interval.
  if(!d) return '—';
  const sg=(v,dec,raw)=>{ const t=Math.abs(v).toFixed(dec); return v===0||(!raw&&Number(t)===0)?t:(v>0?'+':'−')+t; }; // raw: a limit keeps its true sign even when it rounds to 0, so [+0, …] reads as "excludes 0"
@@ -1136,7 +1146,7 @@ async function init(){
 
 async function loadChessDashboard(){
  try{
-  const [s,r,c,o,e,t,op,ph]=await Promise.all([stat('summary','/api/stats/summary'),stat('results','/api/stats/results'),stat('color','/api/stats/color'),stat('opponents','/api/stats/opponents'),stat('opponentElo','/api/stats/opponent-elo'),stat('timeline','/api/stats/timeline'),j('/api/stats/openings'),j('/api/stats/phases')]);
+  const [s,r,c,o,e,t,op,ph]=await Promise.all([stat('summary','/api/stats/summary'),stat('results','/api/stats/results'),stat('color','/api/stats/color'),stat('opponents','/api/stats/opponents'),stat('opponentElo','/api/stats/opponent-elo'),stat('timeline','/api/stats/timeline'),j('/api/stats/openings').catch(()=>null),j('/api/stats/phases').catch(()=>null)]);
   const rec50=await stat('recent','/api/stats/recent?limit=50').catch(()=>null);
   if(rec50) lastRecent=rec50;
   hist=s; hist.groups=c.groups;
@@ -1156,7 +1166,7 @@ async function loadChessDashboard(){
     + kpi('ELO actual', fmt(elo), deltaLabel);
   // racha
   const sk=s.currentStreakKind==='win'?'victorias':s.currentStreakKind==='loss'?'derrotas':s.currentStreakKind||'—';
-  q('#streak').innerHTML= (s.currentStreak? '<b>Racha actual: '+s.currentStreak+' '+sk+'</b> · ':'') + 'Mejor racha: '+ (s.longestWin||0)+'W' + (s.longestLoss? ' · Peor: '+s.longestLoss+'L':'');
+  q('#streak').innerHTML= (s.currentStreak? '<b>Racha actual: '+s.currentStreak+' '+sk+'</b> · ':'') + 'Mejor racha: '+ (s.longestWin!=null? s.longestWin+'W' : '—') + (s.longestLoss? ' · Peor: '+s.longestLoss+'L':'');
   // forma actual default 50
   for(const k of [20,50,100]){ const el=q('#b'+k); if(el) el.className='btn '+(k===50?'btn-p':'btn-g'); }
   setRecent(50, rec50).catch(()=>{});
@@ -1236,7 +1246,7 @@ async function loadChessDashboard(){
   if(ph&&!ph.error&&q('#phasesCard')){
    var phTotal=s.games||1;
    q('#phasesBody').innerHTML=renderCompare(ph.phases||[],phTotal);
-   if(q('#phasesMeta')) q('#phasesMeta').textContent='Mediana: '+(ph.medianPlies||0)+' plies · Hidratadas: '+((ph.population&&ph.population.hydrated)||0)+' partidas';
+   if(q('#phasesMeta')) q('#phasesMeta').textContent=phasesMeta(ph);
   }
 
   // elo
@@ -1271,7 +1281,13 @@ async function loadM(o){
  if(fPhase&&fPhase.value) p.set('phase',fPhase.value);
  const fOpening=q('#fOpening');
  if(fOpening&&fOpening.value) p.set('opening',fOpening.value);
- const d=await j('/api/matches?'+p);
+ let d;
+ try{ d=await j('/api/matches?'+p); }
+ catch(e){
+  q('#mb').innerHTML=''; q('#empty').style.display='block'; q('#empty').textContent='No se pudieron cargar las partidas.';
+  q('#mc').textContent='—'; q('#prev').disabled=true; q('#next').disabled=true;
+  return;
+ }
  lastRows=d.rows||[]; lastTotal=d.total||0;
  renderRows();
  renderChessView(null, lastRows);
@@ -1293,12 +1309,12 @@ function trajectoryCopy(f){
   const w = m.dominantColor === 'white';
   return { title: 'Asimetría por color',
    claim: 'Tu rendimiento con ' + (w ? 'blancas' : 'negras') + ' ha sido consistentemente superior al de ' + (w ? 'negras' : 'blancas') + '.',
-   evidence: f.sample.gamesCount + ' partidas · ' + Math.round(m.globalWhiteWinRate) + '% blancas · ' + Math.round(m.globalBlackWinRate) + '% negras · patrón consistente en ambas mitades' };
+   evidence: f.sample.gamesCount + ' partidas · ' + pc(m.globalWhiteWinRate) + ' blancas · ' + pc(m.globalBlackWinRate) + ' negras · patrón consistente en ambas mitades' };
  }
  if(f.type === 'LANG_FOCUS_SHIFT_LONGITUDINAL'){
   return { title: 'Desplazamiento de foco',
    claim: 'Tu foco principal de aprendizaje se ha desplazado de ' + trajectoryCourseName(m.previousCourseId) + ' a ' + trajectoryCourseName(m.newCourseId) + '.',
-   evidence: Math.round(m.h1PreviousCourseShare) + '% de tu XP en la primera mitad (' + m.h1PreviousCourseXp + ' XP) → ' + Math.round(m.h2NewCourseShare) + '% en la segunda (' + m.h2NewCourseXp + ' XP)' +
+   evidence: pc(m.h1PreviousCourseShare) + ' de tu XP en la primera mitad (' + m.h1PreviousCourseXp + ' XP) → ' + pc(m.h2NewCourseShare) + ' en la segunda (' + m.h2NewCourseXp + ' XP)' +
     ' · XP neto observado entre capturas; no se ha verificado que la serie sea continua' };
  }
  return null;
@@ -1612,7 +1628,7 @@ function renderWhatChanged(data){
    + block('Idiomas', [
       row('XP ganado', xpText),
       row('Sesiones completadas', l.sessionsCount),
-      row('Tiempo invertido', l.totalSessionMinutes + ' min'),
+      row('Tiempo invertido', l.totalSessionMinutes == null ? '—' : l.totalSessionMinutes + ' min'),
       row('Curso activo', courseText)])
    + block('Racha', [
       row('Racha actual', '🔥 ' + (s.currentStreak ?? '—')),
