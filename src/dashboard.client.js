@@ -46,6 +46,21 @@ function parseCanonicalRoute(pathOrHash, hashOrSearch, searchQuery){
  return { tab: 'overview', courseId: null, canonicalPath: '/overview', canonicalHash: '#/overview', hasLegacyQuery };
 }
 let changesSeq=0; // latest What Changed request: an older answer is dropped (declared before initTab, which already loads a tab)
+// Request plumbing sits above initTab(): the first tab render already fetches.
+const _fetch=window.fetch.bind(window);
+window.fetch=async(...a)=>{const r=await _fetch(...a); if(r.status===401) location.href='/login?next='+encodeURIComponent(location.pathname+location.search); return r;};
+// An HTTP error rejects: its body is never data. Callers turn the rejection into null ("no disponible"), never into a zero.
+// A request that never answers aborts after REQUEST_TIMEOUT_MS (hypothesis, NOT calibrated: no p99 latency measured yet) and rejects with .timedOut, so it is "no disponible" instead of a page stuck on "Cargando".
+const REQUEST_TIMEOUT_MS=10000;
+// The one place a dashboard request is made. The timer also covers reading the body. Resolves {ok,status,data}; data is null when a non-ok body is not JSON.
+const req=async(u,o)=>{
+ const c=new AbortController(); const t=setTimeout(()=>c.abort(),REQUEST_TIMEOUT_MS);
+ try{ const r=await fetch(u,{...o,signal:c.signal}); let data=null; try{ data=await r.json(); }catch(e){ if(r.ok) throw e; } return {ok:r.ok,status:r.status,data}; }
+ catch(e){ if(e&&e.name==='AbortError') throw Object.assign(new Error('timeout'),{timedOut:true}); throw e; }
+ finally{ clearTimeout(t); }
+};
+const j=async u=>{ const r=await req(u); if(!r.ok) throw new Error('http '+r.status); return r.data; };
+let trajectorySeq=0; // same reason: the first tab render may already call fetchTrajectory
 let trajectoryEmptyCopy=null; // declared before initTab(): the first tab render may already call fetchTrajectory
 let selectedCourseId=null, lastLangsData=null, lastAnalyticsData=null, lastLangXpData=null, lastActiveDetail=null, activeChangesInterval=null, changesAnchor=null, changesShownUntil=null;
 function showTab(name){
@@ -118,10 +133,6 @@ function relDate(iso){
  return days<=0?'hoy':days===1?'ayer':'hace '+days+'d';
 }
 let off=0, lastRows=[], lastTotal=0;
-const _fetch=window.fetch.bind(window);
-window.fetch=async(...a)=>{const r=await _fetch(...a); if(r.status===401) location.href='/login?next='+encodeURIComponent(location.pathname+location.search); return r;};
-// An HTTP error rejects: its body is never data. Callers turn the rejection into null ("no disponible"), never into a zero.
-const j=async u=>{ const r=await fetch(u); if(!r.ok) throw new Error('http '+r.status); return r.json(); };
 const NA='No disponible';
 const xpText=v=>v==null?'—':Number(v).toLocaleString('es-ES');
 const pc=v=>v==null?'—':Math.round(v)+'%';
@@ -145,9 +156,7 @@ async function trackSync(runId){
  for(;;){
   let s;
   try{
-   const r=await fetch('/api/me/sync/status?runId='+runId);
-   if(!r.ok) throw new Error('status '+r.status);
-   s=await r.json();
+   s=await j('/api/me/sync/status?runId='+runId);
   }catch(e){ syncStore.clear(); return syncIdle('Sincronizar','No se pudo consultar el estado de la sincronización.'); }
   if(s.status==='completed'){
    syncStore.clear();
@@ -167,7 +176,7 @@ async function trackSync(runId){
 async function doSync(){
  syncUi('Iniciando…',true,'');
  let res, body;
- try{ res=await fetch('/api/me/sync',{method:'POST'}); body=await res.json().catch(()=>({})); }
+ try{ res=await req('/api/me/sync',{method:'POST'}); body=res.data||{}; }
  catch(e){ return syncIdle('Sincronizar','No se pudo iniciar la sincronización.'); }
  if(!(res.ok||res.status===409) || !body.runId) return syncIdle('Sincronizar','Sincronización fallida. Inténtalo de nuevo.');
  syncStore.set(body.runId); // 409: a run is already going, follow that one
@@ -939,12 +948,13 @@ function renderChessView(stats, matches){
 
 // One bundle serves the overview and chess sections; if it fails, each stat falls back to its own route once (no bundle retry).
 // Boot-only: init() resets both, so a failed boot is never reused by a later load.
-let statsBundlePromise=null; const statCache={};
+// A bundle that timed out means the backend is slow: the per-route fallback would send seven more reads at it, so it is not attempted.
+let statsBundlePromise=null, bundleTimedOut=false; const statCache={};
 function statsBundle(){
- return statsBundlePromise||(statsBundlePromise=j('/api/stats/bundle').then(b=>{ if(!b||!b.summary) throw new Error('bundle'); return b; }).catch(()=>null));
+ return statsBundlePromise||(statsBundlePromise=j('/api/stats/bundle').then(b=>{ if(!b||!b.summary) throw new Error('bundle'); return b; }).catch(e=>{ bundleTimedOut=!!(e&&e.timedOut); return null; }));
 }
 function stat(key,route){
- return statCache[key]||(statCache[key]=statsBundle().then(b=>b?b[key]:j(route)));
+ return statCache[key]||(statCache[key]=statsBundle().then(b=>b?b[key]:bundleTimedOut?Promise.reject(new Error('timeout')):j(route)));
 }
 async function loadOverviewDashboard(){
  try {
@@ -1032,7 +1042,8 @@ function populateOpeningFilter(op){
 }
 function phasesMeta(ph){ const h=ph.population&&ph.population.hydrated; return 'Mediana: '+(ph.medianPlies!=null?ph.medianPlies:'—')+' plies · Hidratadas: '+(h!=null?h:'—')+' partidas'; }
 function arrow(a,b){ if(a==null||b==null) return ''; return a>b?' ↑':a<b?' ↓':' ·'; }
-async function setRecent(n,preloaded){ recentN=n; for(const k of [20,50,100]){ const el=q('#b'+k); if(el){ el.className=n===k?'btn btn-p':'btn btn-g'; } } let r=preloaded; if(!r){ try{ r=await j('/api/stats/recent?limit='+n); }catch(e){ lastRecent=null; q('#form').innerHTML='<div class="muted">'+NA+'</div>'; renderChessView({ recent: null }, lastRows); return; } } lastRecent=r; renderForm(r); renderChessView({ recent: r }, lastRows); }
+let recentSeq=0;
+async function setRecent(n,preloaded){ const seq=++recentSeq; recentN=n; for(const k of [20,50,100]){ const el=q('#b'+k); if(el){ el.className=n===k?'btn btn-p':'btn btn-g'; } } let r=preloaded; if(!r){ try{ r=await j('/api/stats/recent?limit='+n); }catch(e){ if(seq!==recentSeq) return; lastRecent=null; q('#form').innerHTML='<div class="muted">'+NA+'</div>'; renderChessView({ recent: null }, lastRows); return; } } if(seq!==recentSeq) return; lastRecent=r; renderForm(r); renderChessView({ recent: r }, lastRows); }
 function fmtDelta(d){ // d in percentage points: {diff,lower,upper}. Never shown without its interval.
  if(!d) return '—';
  const sg=(v,dec,raw)=>{ const t=Math.abs(v).toFixed(dec); return v===0||(!raw&&Number(t)===0)?t:(v>0?'+':'−')+t; }; // raw: a limit keeps its true sign even when it rounds to 0, so [+0, …] reads as "excludes 0"
@@ -1138,7 +1149,7 @@ function renderRows(){
 }
 
 async function init(){
- statsBundlePromise=null; for(const k of Object.keys(statCache)) delete statCache[k];
+ statsBundlePromise=null; bundleTimedOut=false; for(const k of Object.keys(statCache)) delete statCache[k];
  const overviewPromise=loadOverviewDashboard();
  const langPromise=loadLanguagesDashboard();
  await loadChessDashboard();
@@ -1274,7 +1285,9 @@ async function loadChessDashboard(){
  }catch(err){ console.error(err); q('#kpis').innerHTML='<div class="muted">Error cargando estadísticas</div>'; }
 }
 
+let matchesSeq=0;
 async function loadM(o){
+ const seq=++matchesSeq;
  off=Math.max(0,o);
  const lim=pageSize();
  const p=new URLSearchParams({limit:lim,offset:off});
@@ -1297,10 +1310,12 @@ async function loadM(o){
  let d;
  try{ d=await j('/api/matches?'+p); }
  catch(e){
+  if(seq!==matchesSeq) return;
   q('#mb').innerHTML=''; q('#empty').style.display='block'; q('#empty').textContent='No se pudieron cargar las partidas.';
   q('#mc').textContent='—'; q('#prev').disabled=true; q('#next').disabled=true;
   return;
  }
+ if(seq!==matchesSeq) return;
  lastRows=d.rows||[]; lastTotal=d.total||0;
  renderRows();
  renderChessView(null, lastRows);
@@ -1333,13 +1348,13 @@ function trajectoryCopy(f){
  return null;
 }
 async function fetchTrajectory(){
+ const seq=++trajectorySeq;
  const elEmpty = q('#trajectoryEmpty');
  const elFindings = q('#trajectoryFindings');
  if(trajectoryEmptyCopy === null) trajectoryEmptyCopy = elEmpty.textContent; // the page's own text, before an error overwrites it
  try{
-  const res = await fetch('/api/trajectory');
-  if(!res.ok) throw new Error('http ' + res.status);
-  const data = await res.json();
+  const data = await j('/api/trajectory');
+  if(seq !== trajectorySeq) return;
   const evals = data.evaluations || [];
   const evalIds = new Set(evals.map(e => e.id));
   const copies = (data.findings || []).map(f => ({type: f.type, c: trajectoryCopy(f)})).filter(x => x.c);
@@ -1357,6 +1372,7 @@ async function fetchTrajectory(){
   elEmpty.style.display = cards.length || plain.length ? 'none' : 'block';
   elFindings.innerHTML = cards.concat(plain).join('');
  } catch(err){
+  if(seq !== trajectorySeq) return;
   elFindings.innerHTML = '';
   elEmpty.style.display = 'block';
   elEmpty.textContent = 'Error al cargar tu trayectoria.';
@@ -1365,10 +1381,9 @@ async function fetchTrajectory(){
 function fmtWhen(iso){ const t = new Date(iso); return isNaN(t.getTime()) ? String(iso) : t.toISOString().slice(0, 10) + ' ' + t.toISOString().slice(11, 16) + ' UTC'; }
 async function putChangesAnchor(iso){
  try{
-  const res=await fetch('/api/me/changes-anchor',{method:'PUT',headers:{'content-type':'application/json'},body:JSON.stringify({seenThrough:iso})});
+  const res=await req('/api/me/changes-anchor',{method:'PUT',headers:{'content-type':'application/json'},body:JSON.stringify({seenThrough:iso})});
   if(!res.ok) return {ok:false,status:res.status};
-  const d=await res.json();
-  return {ok:true,seenThrough:d.seenThrough||null};
+  return {ok:true,seenThrough:res.data.seenThrough||null};
  }catch(e){ return {ok:false,status:0}; }
 }
 // The anchor lives on the server ("the changes up to this instant have been seen"). Reading never moves it.
@@ -1376,8 +1391,8 @@ async function putChangesAnchor(iso){
 async function loadChangesAnchor(){
  let anchor=null, readable=false;
  try{
-  const res=await fetch('/api/me/changes-anchor');
-  if(res.ok){ const d=await res.json(); anchor=d.seenThrough||null; readable=true; }
+  const res=await req('/api/me/changes-anchor');
+  if(res.ok){ anchor=res.data.seenThrough||null; readable=true; }
  }catch(e){}
  let legacy=null;
  try{ legacy=localStorage.getItem('lastVisitedAt'); }catch(e){}
@@ -1441,7 +1456,7 @@ async function fetchWhatChanged(sinceOverride){
  }
 
  try {
-  const res=await fetch('/api/what-changed?since=' + encodeURIComponent(since) + '&until=' + encodeURIComponent(until));
+  const res=await req('/api/what-changed?since=' + encodeURIComponent(since) + '&until=' + encodeURIComponent(until));
   if(seq!==changesSeq) return;
   if(!res.ok){
    clearChangesBody();
@@ -1451,8 +1466,7 @@ async function fetchWhatChanged(sinceOverride){
    }
    return;
   }
-  const data=await res.json();
-  if(seq!==changesSeq) return;
+  const data=res.data;
   // what is marked is what was shown: the until of this response, not the time of the click
   changesShownUntil=(data.interval && data.interval.until) || until;
   renderWhatChanged(data);
