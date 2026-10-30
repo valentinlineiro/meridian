@@ -151,13 +151,24 @@ function syncIdle(label,note,after){
  syncUi(label,false,note);
  if(after) setTimeout(()=>syncUi('Sincronizar',false,''),after);
 }
+// A failed status read says nothing about the run: it keeps going remotely. Tolerate a few in a row, and never drop the run id for
+// a transient failure or for the wait limit, so leaving and coming back resumes the same run. Only a 404 (the API's "no such account/run") clears it; 401 (session, redirects to login), 403 and 429 may well be recoverable.
+const SYNC_MAX_FAILS=3, SYNC_MAX_WAIT_MS=15*60*1000;
 async function trackSync(runId){
  const t0=Date.now();
+ let fails=0;
  for(;;){
   let s;
   try{
    s=await j('/api/me/sync/status?runId='+runId);
-  }catch(e){ syncStore.clear(); return syncIdle('Sincronizar','No se pudo consultar el estado de la sincronización.'); }
+   fails=0;
+  }catch(e){
+   if((e&&e.message)==='http 404'){ syncStore.clear(); return syncIdle('Sincronizar','No se pudo consultar el estado de la sincronización.'); }
+   if(++fails>=SYNC_MAX_FAILS) return syncIdle('Sincronizar','No se pudo consultar el estado de la sincronización. Puede seguir en marcha; vuelve a abrir la página para retomarlo.');
+   await new Promise(r=>setTimeout(r,3000));
+   continue;
+  }
+  if(Date.now()-t0>SYNC_MAX_WAIT_MS && s.status!=='completed') return syncIdle('Sincronizar','Sigue en marcha; puedes salir. La sincronización continuará.');
   if(s.status==='completed'){
    syncStore.clear();
    if(s.conclusion!=='success') return syncIdle('Sincronizar','Sincronización fallida. Inténtalo de nuevo.');
