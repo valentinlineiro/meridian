@@ -32,7 +32,7 @@ describe("GET /api/export/matches.csv", () => {
   let db: ReturnType<typeof createSqliteD1>["db"];
   let env: Env;
   beforeEach(() => {
-    const s = createSqliteD1(["0001_init.sql", "0004_users.sql", "0005_played_at.sql", "0006_match_details.sql", "0007_openings_and_phases.sql"]);
+    const s = createSqliteD1(["0001_init.sql", "0004_users.sql", "0005_played_at.sql", "0006_match_details.sql", "0007_openings_and_phases.sql", "0017_opening_family_mate_type.sql"]);
     db = s.db;
     env = { DB: s.d1, IMPORT_TOKEN: "secret", SESSION_SECRET: SECRET, ADMIN_EMAIL: ADMIN, ADMIN_PASSWORD_HASH: "x" } as unknown as Env;
     db.exec(`
@@ -43,8 +43,8 @@ describe("GET /api/export/matches.csv", () => {
         VALUES ('m1', 'u1', 's', 'd', 'd', '{}', 1700000000, 'win', 'white', 'Ana, "la" rival', 1200),
                ('m2', 'u1', 's', 'd', 'd', '{}', 1700000100, 'loss', 'black', 'Bob', 1300),
                ('other', 'u2', 's', 'd', 'd', '{}', 1700000200, 'win', 'white', 'Eve', 900);
-      INSERT INTO match_details (match_id, user_id, status, move_history, move_timestamps, elo_after, end_condition, opening_key, ply_count)
-        VALUES ('m1', 'u1', 'done', '[]', '[]', 1010, 'checkmate', 'italian', 41);
+      INSERT INTO match_details (match_id, user_id, status, move_history, move_timestamps, elo_after, end_condition, opening_key, ply_count, opening_family, mate_type)
+        VALUES ('m1', 'u1', 'done', '[]', '[]', 1010, 'checkmate', 'italian', 41, 'sicilian', 'back_rank');
     `);
   });
   const get = async (withSession = true) =>
@@ -56,9 +56,9 @@ describe("GET /api/export/matches.csv", () => {
     expect(res.headers.get("content-type")).toContain("text/csv");
     expect(res.headers.get("content-disposition")).toMatch(/^attachment; filename="meridian-partidas-\d{4}-\d{2}-\d{2}\.csv"$/);
     const lines = (await res.text()).replace(/^﻿/, "").trimEnd().split("\r\n");
-    expect(lines[0]).toBe("match_id,played_at,user_color,result,outcome,opponent_name,opponent_type,opponent_elo,pvp_match_type,elo_after,end_condition,opening_key,phase_key,ply_count,session_duration");
+    expect(lines[0]).toBe("match_id,played_at,user_color,result,outcome,opponent_name,opponent_type,opponent_elo,pvp_match_type,elo_after,end_condition,opening_key,phase_key,ply_count,session_duration,opening_family,mate_type");
     expect(lines).toHaveLength(3);
-    expect(lines[1]).toBe('m1,2023-11-14T22:13:20Z,white,win,,"Ana, ""la"" rival",,1200,,1010,checkmate,italian,,41,');
+    expect(lines[1]).toBe('m1,2023-11-14T22:13:20Z,white,win,,"Ana, ""la"" rival",,1200,,1010,checkmate,italian,,41,,Siciliana,Mate del pasillo');
   });
 
   it("shouldOrderByPlayedAtWithUndatedFirstWhenRowsWereInsertedOutOfOrder", async () => {
@@ -70,7 +70,13 @@ describe("GET /api/export/matches.csv", () => {
 
   it("shouldLeaveDetailColumnsEmptyWhenMatchHasNoDetail", async () => {
     const lines = (await (await get()).text()).trimEnd().split("\r\n");
-    expect(lines[2]).toBe("m2,2023-11-14T22:15:00Z,black,loss,,Bob,,1300,,,,,,,");
+    expect(lines[2]).toBe("m2,2023-11-14T22:15:00Z,black,loss,,Bob,,1300,,,,,,,,,");
+  });
+
+  it("shouldWriteTheNamesAndNotTheKeysForOpeningFamilyAndMateType", async () => {
+    db.exec("UPDATE match_details SET opening_family = 'ruy_lopez', mate_type = 'smothered' WHERE match_id = 'm1'");
+    const lines = (await (await get()).text()).replace(/^﻿/, "").trimEnd().split("\r\n");
+    expect(lines[1]!.endsWith(",Española (Ruy López),Mate ahogado")).toBe(true);
   });
 
   it("shouldStartWithUtf8BomWhenExcelMustReadAccents", async () => {
