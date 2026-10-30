@@ -12,6 +12,7 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
   <div class="h-right">
     <button id="syncBtn" class="btn btn-p" onclick="doSync()">Sincronizar</button>
     <small id="syncNote" class="muted" style="max-width:260px"></small>
+    <a class="btn btn-g" href="/api/export/matches.csv" download style="text-decoration:none">Exportar partidas</a>
     <a class="btn btn-g" href="/settings" style="text-decoration:none">Configuración</a>
     <form method="post" action="/logout" style="margin:0"><button class="btn btn-g" type="submit">Salir</button></form>
   </div>

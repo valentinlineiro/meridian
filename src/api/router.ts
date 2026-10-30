@@ -12,6 +12,7 @@ import { visitAnchorRoutes } from "../slices/visit-anchor/delivery/routes.ts";
 import { handleImport, json } from "./import.ts";
 import { handleStats, handleLangStats, handleMatches, handleSnapshots } from "./stats.ts";
 import { handleMeStats } from "./me.ts";
+import { handleExportMatches } from "./export.ts";
 import { handleSyncRequest, handleSyncStatus } from "./sync.ts";
 import { handleSaveMatchDetail, handleGetMatchDetail, handleGetPendingMatchDetails } from "./chessDetail.ts";
 import { handleGetLanguages, handleGetLanguageCourse, handleGetLanguageXp } from "./languages.ts";
@@ -195,6 +196,7 @@ app.post("/api/chess/matches/:id/detail", (c) =>
   handleSaveMatchDetail(c.env.DB, c.req.raw, c.req.param("id")));
 app.get("/api/chess/matches/:id/detail", (c) => handleGetMatchDetail(c.env.DB, c.req.param("id")));
 
+app.get("/api/export/matches.csv", (c) => handleExportMatches(c.env.DB, emailOf(c), new Date().toISOString().slice(0, 10)));
 app.get("/api/matches", (c) => handleMatches(c.env.DB, new URL(c.req.url)));
 app.get("/api/snapshots", (c) => handleSnapshots(c.env.DB, new URL(c.req.url), null));
 app.get("/api/snapshots/:id", (c) => handleSnapshots(c.env.DB, new URL(c.req.url), c.req.param("id")));
