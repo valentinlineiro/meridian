@@ -1,0 +1,96 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - heading "Meridian" [level=1] [ref=e4]
+      - generic [ref=e5]: —
+    - generic [ref=e6]:
+      - button "Sincronizar" [ref=e7] [cursor=pointer]
+      - link "Exportar partidas" [ref=e8] [cursor=pointer]:
+        - /url: /api/export/matches.csv
+      - link "Configuración" [ref=e9] [cursor=pointer]:
+        - /url: /settings
+      - button "Salir" [ref=e11] [cursor=pointer]
+  - main [ref=e12]:
+    - generic [ref=e13]:
+      - button "Overview" [ref=e14] [cursor=pointer]
+      - button "Languages" [ref=e15] [cursor=pointer]
+      - button "Chess" [ref=e16] [cursor=pointer]
+      - button "What Changed?" [ref=e17] [cursor=pointer]
+      - button "Trayectoria" [ref=e18] [cursor=pointer]
+    - generic [ref=e19]:
+      - generic [ref=e20]:
+        - generic [ref=e21]:
+          - generic [ref=e22]:
+            - generic [ref=e23]: Ajedrez · Nivel actual
+            - generic [ref=e24]:
+              - generic [ref=e25]: —
+              - generic [ref=e26]: ELO
+            - generic [ref=e27]: —
+          - generic [ref=e28]:
+            - generic [ref=e29]: —
+            - generic [ref=e30]: —
+        - generic [ref=e32]:
+          - generic [ref=e33]: Win rate (últimas 50 partidas, todos los rivales)
+          - generic [ref=e34]: —
+      - generic [ref=e36]:
+        - heading "Forma actual" [level=2] [ref=e37]
+        - generic [ref=e38]:
+          - generic [ref=e39]: Últimas
+          - button "20" [ref=e40] [cursor=pointer]
+          - button "50" [ref=e41] [cursor=pointer]
+          - button "100" [ref=e42] [cursor=pointer]
+      - heading "Comparativa por color y oponente" [level=2] [ref=e43]
+      - generic [ref=e44]:
+        - heading "Rendimiento por color" [level=2] [ref=e46]
+        - generic [ref=e47]:
+          - heading "Oponentes por familia" [level=2] [ref=e48]
+          - generic [ref=e49]: Las diferencias por familia de oponente no aíslan la dificultad del rival.
+      - heading "Repertorio de aperturas & fases" [level=2] [ref=e50]
+      - generic [ref=e51]:
+        - generic [ref=e52]:
+          - heading "Repertorio de aperturas" [level=2] [ref=e53]
+          - generic [ref=e54]:
+            - button "Blancas" [ref=e55] [cursor=pointer]
+            - button "Negras" [ref=e56] [cursor=pointer]
+        - heading "Fases de partida" [level=2] [ref=e58]
+      - heading "Evolución & detalle" [level=2] [ref=e59]
+      - generic [ref=e60]:
+        - generic [ref=e61]:
+          - heading "Evolución · ELO" [level=2] [ref=e62]
+          - generic [ref=e63]: ELO observado en sincronizaciones
+        - heading "Resultados" [level=2] [ref=e65]
+      - group [ref=e66]:
+        - generic "ELO del rival" [ref=e67] [cursor=pointer]
+      - generic [ref=e68]:
+        - generic [ref=e69]:
+          - heading "Partidas" [level=2] [ref=e70]
+          - generic [ref=e71]: Partidas recientes
+        - generic [ref=e72]:
+          - button "Todos" [ref=e73] [cursor=pointer]
+          - button "Bots" [ref=e74] [cursor=pointer]
+          - button "PvP" [ref=e75] [cursor=pointer]
+          - button "Todos" [ref=e76] [cursor=pointer]
+          - button "Victorias" [ref=e77] [cursor=pointer]
+          - button "Derrotas" [ref=e78] [cursor=pointer]
+          - button "Tablas" [ref=e79] [cursor=pointer]
+          - button "Todos" [ref=e80] [cursor=pointer]
+          - button "Blancas" [ref=e81] [cursor=pointer]
+          - button "Negras" [ref=e82] [cursor=pointer]
+        - table [ref=e83]:
+          - rowgroup [ref=e84]:
+            - row [ref=e85]:
+              - columnheader "Fecha" [ref=e86]
+              - columnheader "Rival" [ref=e87]
+              - columnheader "Tipo" [ref=e88]
+              - columnheader "ELO" [ref=e89]
+              - columnheader "Color" [ref=e90]
+              - columnheader "Resultado" [ref=e91]
+              - columnheader "Fin" [ref=e92]
+              - columnheader "Rev." [ref=e93]
+          - rowgroup
+        - button "Ver todas las partidas" [ref=e94] [cursor=pointer]
+      - group [ref=e95]:
+        - generic "¿Cómo sabemos esto? · Integridad epistemológica y taxonomía canónica" [ref=e96] [cursor=pointer]
+    - paragraph [ref=e97]:
+      - link "Datos técnicos" [ref=e98] [cursor=pointer]:
+        - /url: /raw
