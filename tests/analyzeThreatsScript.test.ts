@@ -26,7 +26,7 @@ function fakeWorker(initial: ReturnType<typeof item>[], opts: { postStatus?: (id
   return { fetch: fakeFetch, queue, posts, gets: () => gets };
 }
 const run = (w: ReturnType<typeof fakeWorker>, over: Partial<Parameters<typeof analyze>[0]> = {}) =>
-  analyze({ fetch: w.fetch, worker: WORKER, importToken: "t", ...over });
+  analyze({ fetch: w.fetch, worker: WORKER, importToken: "t", sleep: async () => {}, ...over });
 
 describe("analyze", () => {
   it("shouldChainBatchesUntilNothingIsPending", async () => {
@@ -88,8 +88,10 @@ describe("analyze", () => {
     expect(get401.aborted).toBe("worker rejected IMPORT_TOKEN (401)");
   });
 
-  it("shouldAbortWhenThePendingRouteFails", async () => {
-    expect((await run(fakeWorker([], { pendingStatus: 500 }))).aborted).toBe("pending-threats 500");
+  it("shouldAbortWithoutRetryingWhenThePendingRouteAnswersAFunctionalError", async () => {
+    const w = fakeWorker([], { pendingStatus: 404 });
+    expect((await run(w)).aborted).toBe("pending-threats 404");
+    expect(w.gets()).toBe(1);
   });
 
   it("shouldCapTheBatchAtOneHundred", async () => {
@@ -137,5 +139,121 @@ describe("analyze", () => {
     expect(rows[0]).toEqual(["a", expect.objectContaining({ v: 1, status: "ok", missed: 1, missedPlies: [6] })]);
     expect(rows[1]).toEqual(["b", { v: 1, status: "invalid", reason: "illegal_game" }]);
     expect(rows[2]).toEqual(["c", expect.objectContaining({ v: 1, status: "ok", faced: 0 })]);
+  });
+
+  describe("transport failures", () => {
+    const noWait = { sleep: async () => {} };
+    // wraps a worker so chosen calls fail first: kind "throw" is a connection error, a number is an HTTP status
+    const flaky = (w: ReturnType<typeof fakeWorker>, plan: (url: string, call: number) => "throw" | number | null) => {
+      const calls = new Map<string, number>(); const log: string[] = [];
+      const fetch = (async (url: string, init?: RequestInit) => {
+        const key = (init?.method ?? "GET") + " " + (url.includes("pending-threats") ? "pending" : "post");
+        const n = (calls.get(key) ?? 0) + 1; calls.set(key, n); log.push(key);
+        const f = plan(url, n);
+        if (f === "throw") throw Object.assign(new TypeError("fetch failed"), { cause: { code: "ECONNRESET" } });
+        if (typeof f === "number") return new Response("{}", { status: f });
+        return w.fetch(url, init);
+      }) as unknown as typeof globalThis.fetch;
+      return { fetch, log };
+    };
+
+    it("shouldRetryAConnectionErrorOnTheQueueReadAndCarryOn", async () => {
+      const w = fakeWorker([item("g", "black", SCHOLAR_LOSS)]);
+      const f = flaky(w, (url, n) => (url.includes("pending-threats") && n === 1 ? "throw" : null));
+      const m = await analyze({ fetch: f.fetch, worker: WORKER, importToken: "t", ...noWait });
+      expect(m).toMatchObject({ ok: 1, aborted: null });
+    });
+
+    it("shouldRetryAServerErrorOnAPostAndStoreTheResult", async () => {
+      const w = fakeWorker([item("g", "black", SCHOLAR_LOSS)]);
+      const f = flaky(w, (url, n) => (!url.includes("pending-threats") && n <= 2 ? 503 : null));
+      const m = await analyze({ fetch: f.fetch, worker: WORKER, importToken: "t", ...noWait });
+      expect(m).toMatchObject({ ok: 1, failed: 0 });
+      expect(w.posts).toHaveLength(1); // retried requests are replacements, never duplicates
+    });
+
+    it("shouldNotRetryAFunctionalError", async () => {
+      const w = fakeWorker([item("g", "black", SCHOLAR_LOSS)]);
+      const f = flaky(w, (url) => (!url.includes("pending-threats") ? 422 : null));
+      const m = await analyze({ fetch: f.fetch, worker: WORKER, importToken: "t", ...noWait });
+      expect(f.log.filter((l) => l === "POST post")).toHaveLength(1);
+      expect(m.failed).toBe(1);
+    });
+
+    it("shouldBackOffProgressively", async () => {
+      const waits: number[] = [];
+      const w = fakeWorker([]);
+      const f = flaky(w, (url, n) => (url.includes("pending-threats") && n <= 3 ? "throw" : null));
+      await analyze({ fetch: f.fetch, worker: WORKER, importToken: "t", sleep: async (ms) => { waits.push(ms); } });
+      expect(waits).toEqual([1000, 2000, 4000]);
+    });
+
+    it("shouldGiveUpAfterFourAttemptsWithAOneLineReason", async () => {
+      const w = fakeWorker([]);
+      const down = flaky(w, () => "throw");
+      const m = await analyze({ fetch: down.fetch, worker: WORKER, importToken: "t", ...noWait });
+      expect(down.log).toHaveLength(4);
+      expect(m.aborted).toBe("pending-threats unreachable after 4 attempts");
+      const err5 = flaky(fakeWorker([]), () => 502);
+      expect((await analyze({ fetch: err5.fetch, worker: WORKER, importToken: "t", ...noWait })).aborted).toBe("pending-threats 502 after 4 attempts");
+    });
+
+    it("shouldCountAPostThatNeverGetsThroughAsFailedAndKeepGoing", async () => {
+      const w = fakeWorker([item("bad", "black", SCHOLAR_LOSS), item("good", "black", SCHOLAR_LOSS)]);
+      let postCalls = 0;
+      const f = flaky(w, (url) => { if (url.includes("pending-threats")) return null; postCalls++; return postCalls <= 4 ? "throw" : null; });
+      const m = await analyze({ fetch: f.fetch, worker: WORKER, importToken: "t", ...noWait, limit: 100 });
+      expect(m.ok).toBeGreaterThanOrEqual(1);
+      expect(m.failed).toBeGreaterThanOrEqual(1);
+    });
+
+    // undici reports every network failure as TypeError("fetch failed") with the system error in `cause`
+    const netError = (code: string) => Object.assign(new TypeError("fetch failed"), { cause: Object.assign(new Error(code), { code }) });
+    const throwing = (err: unknown) => { let calls = 0; return { fetch: (async () => { calls++; throw err; }) as unknown as typeof globalThis.fetch, calls: () => calls }; };
+
+    it.each(["ECONNRESET", "ECONNREFUSED", "ETIMEDOUT", "EPIPE", "EAI_AGAIN", "UND_ERR_SOCKET", "UND_ERR_CONNECT_TIMEOUT"])("shouldRetryTheTransientTransportFailure_%s", async (code) => {
+      const t = throwing(netError(code));
+      const m = await analyze({ fetch: t.fetch, worker: WORKER, importToken: "t", ...noWait });
+      expect(t.calls()).toBe(4);
+      expect(m.aborted).toBe("pending-threats unreachable after 4 attempts");
+    });
+
+    it.each([
+      ["anAbort", Object.assign(new Error("aborted"), { name: "AbortError" })],
+      ["aTimeoutSignal", Object.assign(new Error("timed out"), { name: "TimeoutError" })],
+      ["anUnexpectedError", new Error("boom")],
+      ["anInvalidUrl", new TypeError("Invalid URL")],
+      ["aCertificateFailure", netError("UNABLE_TO_VERIFY_LEAF_SIGNATURE")],
+      ["aMissingHost", netError("ENOTFOUND")],
+      ["aFetchFailureWithoutAReason", new TypeError("fetch failed")],
+    ])("shouldNotRetryAndShouldSurface_%s", async (_n, err) => {
+      const t = throwing(err);
+      await expect(analyze({ fetch: t.fetch, worker: WORKER, importToken: "t", ...noWait })).rejects.toBe(err);
+      expect(t.calls()).toBe(1);
+    });
+
+    it("shouldNotRetryAnUnexpectedErrorOnAPostEither", async () => {
+      const w = fakeWorker([item("g", "black", SCHOLAR_LOSS)]);
+      const boom = new Error("boom"); let posts = 0;
+      const f = flaky(w, (url) => { if (url.includes("pending-threats")) return null; posts++; throw boom; });
+      await expect(analyze({ fetch: f.fetch, worker: WORKER, importToken: "t", ...noWait })).rejects.toBe(boom);
+      expect(posts).toBe(1);
+    });
+
+    it("shouldStillAbortOn401WithoutRetrying", async () => {
+      const w = fakeWorker([], { pendingStatus: 401 });
+      const f = flaky(w, () => null);
+      const m = await analyze({ fetch: f.fetch, worker: WORKER, importToken: "t", ...noWait });
+      expect(m.aborted).toBe("worker rejected IMPORT_TOKEN (401)");
+      expect(f.log).toHaveLength(1);
+    });
+
+    it("shouldNotLogIdsWhileRetrying", async () => {
+      const logs: string[] = [];
+      const w = fakeWorker([item("secret-id", "black", SCHOLAR_LOSS)]);
+      const f = flaky(w, (url, n) => (!url.includes("pending-threats") && n <= 1 ? "throw" : null));
+      await analyze({ fetch: f.fetch, worker: WORKER, importToken: "t", ...noWait, log: (s) => logs.push(s) });
+      expect(logs.join("\n")).not.toContain("secret-id");
+    });
   });
 });
