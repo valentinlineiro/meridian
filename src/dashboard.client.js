@@ -1184,7 +1184,7 @@ async function openGame(id){
   if(!res.ok||!b||!b.ok) throw new Error(b&&b.code==='ILLEGAL_GAME'?'Las jugadas guardadas no son una partida válida.':'No hay partida completa guardada para esta partida.');
   if(gameId!==id) return;
   game=b; gamePly=0;
-  q('#gTitle').textContent='vs '+(b.opponent||'—')+' · '+(b.userColor==='black'?'negras':'blancas');
+  q('#gTitle').textContent='vs '+(b.opponent||'rival sin nombre')+' · '+(b.userColor==='black'?'negras':'blancas');
   q('#gPgn').href='/api/me/matches/'+encodeURIComponent(id)+'/game.pgn';
   q('#gBody').style.display='block'; paintGame();
  }catch(e){ if(gameId===id){ q('#gTitle').textContent='Partida'; q('#gErr').textContent=e.message; } }
