@@ -6,6 +6,7 @@ import { buildCourseProgressHistory } from "../analytics/courseHistory.ts";
 import { classifyOpponentSegment, OPPONENT_SEGMENT_LABELS, type OpponentSegment } from "../analytics/opponent.ts";
 import { OPENING_FAMILY_LABELS } from "../domain/openingFamily.ts";
 import { MATE_TYPE_LABELS } from "../domain/mateType.ts";
+import { readMateThreats, type MateThreatsOk, type ThreatPhase } from "../domain/mateThreats.ts";
 import { median } from "../analytics/median.ts";
 import { PHASE_META, type PhaseKey } from "../analytics/phases.ts";
 
@@ -202,6 +203,7 @@ export async function handleStats(db: D1Database, kind: string, url: URL): Promi
   if (kind === "lang") return handleLangStats(db, url);
   if (kind === "openings") return handleStatsOpenings(db, url);
   if (kind === "mates") return handleStatsMates(db, url);
+  if (kind === "threats") return handleStatsThreats(db, url);
   if (kind === "phases") return handleStatsPhases(db, url);
   if (kind === "bundle") return handleStatsBundle(db, url);
 
@@ -344,6 +346,48 @@ export async function handleStatsMates(db: D1Database, url: URL): Promise<Respon
   return json({ given: tally("win"), received: tally("loss"), unclassified: rows.filter((r) => !r.mate_type).length });
 }
 
+// How the owner meets mate-in-1 threats, from the results the scheduled analysis stored. Only well-formed `ok` results count; pending, invalid
+// and unreadable ones are reported apart so the denominator is never silently shrunk. Rates are descriptive, with no interval:
+// the threats of one game are not independent observations.
+const RECENT_THREAT_GAMES = 100;
+type ThreatTally = { faced: number; neutralized: number; missed: number; unpunished: number; rate: number | null };
+const tallyOf = (neutralized: number, missed: number, unpunished: number): ThreatTally => {
+  const faced = neutralized + missed + unpunished;
+  return { faced, neutralized, missed, unpunished, rate: faced ? neutralized / faced : null };
+};
+const sumTally = (games: MateThreatsOk[]) => tallyOf(games.reduce((a, g) => a + g.neutralized, 0), games.reduce((a, g) => a + g.missed, 0), games.reduce((a, g) => a + g.unpunished, 0));
+
+export async function handleStatsThreats(db: D1Database, url: URL): Promise<Response> {
+  const userId = url.searchParams.get("userId");
+  const q = `
+    SELECT md.mate_threats FROM matches m JOIN match_details md ON md.match_id = m.match_id
+    ${userId ? "WHERE m.user_id = ?" : ""}
+    ORDER BY COALESCE(m.played_at, 0) DESC, m.rowid DESC
+  `;
+  const rows = ((await (userId ? db.prepare(q).bind(userId) : db.prepare(q)).all<{ mate_threats: string | null }>()).results ?? []);
+
+  const games: MateThreatsOk[] = []; // newest first
+  let pending = 0, invalid = 0, unknownVersion = 0;
+  for (const r of rows) {
+    const read = readMateThreats(r.mate_threats);
+    if (read.state === "ok") games.push(read.value);
+    else if (read.state === "pending") pending++;
+    else if (read.state === "invalid") invalid++;
+    else unknownVersion++;
+  }
+  const phase = (p: ThreatPhase) => tallyOf(
+    games.reduce((a, g) => a + g.byPhase[p][0], 0), games.reduce((a, g) => a + g.byPhase[p][1], 0), games.reduce((a, g) => a + g.byPhase[p][2], 0));
+  const recent = games.slice(0, RECENT_THREAT_GAMES), rest = games.slice(RECENT_THREAT_GAMES);
+  return json({
+    analysed: games.length, pending, invalid, unknownVersion,
+    totals: sumTally(games),
+    byPhase: { opening: phase("opening"), middlegame: phase("middlegame"), endgame: phase("endgame") },
+    recent: { games: recent.length, ...sumTally(recent) },
+    rest: { games: rest.length, ...sumTally(rest) },
+    gamesWithMissed: games.filter((g) => g.missed > 0).length,
+  });
+}
+
 export async function handleStatsPhases(db: D1Database, url: URL): Promise<Response> {
   const userId = url.searchParams.get("userId");
   const population = await getMatchPopulation(db, userId);
@@ -418,6 +462,9 @@ export async function handleLangStats(db: D1Database, url: URL): Promise<Respons
   }
 }
 
+// The missed-threat count of a stored result; NULL unless it is a readable `ok` one (CASE keeps malformed JSON from ever reaching json_extract).
+const MISSED_THREATS_SQL = `CASE WHEN json_valid(md.mate_threats) THEN CASE WHEN json_extract(md.mate_threats, '$.v') = 1 AND json_extract(md.mate_threats, '$.status') = 'ok' THEN json_extract(md.mate_threats, '$.missed') END END`;
+
 const withLabels = (r: any) => ({
   ...r,
   opening_family_label: r.opening_family ? OPENING_FAMILY_LABELS[r.opening_family] ?? null : null,
@@ -441,6 +488,7 @@ export async function handleMatches(db: D1Database, url: URL): Promise<Response>
   if (url.searchParams.get("userId")) { conds.push("m.user_id=?"); args.push(url.searchParams.get("userId")); }
   const q = url.searchParams.get("q")?.trim();
   if (q) { conds.push("m.opponent_name LIKE '%'||?||'%'"); args.push(q); }
+  if (url.searchParams.get("missedThreat") === "1") conds.push(`${MISSED_THREATS_SQL} > 0`);
   const oppSegment = url.searchParams.get("opponentSegment");
   const where = conds.length ? "WHERE " + conds.join(" AND ") : "";
 
@@ -448,7 +496,8 @@ export async function handleMatches(db: D1Database, url: URL): Promise<Response>
     const candidateRows = ((await db.prepare(
       `SELECT 
          m.match_id, m.opponent_name, m.opponent_type, m.opponent_elo, m.user_color, m.result, m.outcome, m.reviewed, m.first_seen_at, m.played_at,
-         md.end_condition, md.opponent_id, md.opening_key, md.opening_family, md.mate_type, md.phase_key, md.ply_count
+         md.end_condition, md.opponent_id, md.opening_key, md.opening_family, md.mate_type, md.phase_key, md.ply_count,
+         ${MISSED_THREATS_SQL} AS mate_threats_missed
        FROM matches m
        LEFT JOIN match_details md ON m.match_id = md.match_id
        ${where}
@@ -481,7 +530,8 @@ export async function handleMatches(db: D1Database, url: URL): Promise<Response>
   const rawRows = ((await db.prepare(
     `SELECT 
        m.match_id, m.opponent_name, m.opponent_type, m.opponent_elo, m.user_color, m.result, m.outcome, m.reviewed, m.first_seen_at, m.played_at,
-       md.end_condition, md.opponent_id, md.opening_key, md.opening_family, md.mate_type, md.phase_key, md.ply_count
+       md.end_condition, md.opponent_id, md.opening_key, md.opening_family, md.mate_type, md.phase_key, md.ply_count,
+         ${MISSED_THREATS_SQL} AS mate_threats_missed
      FROM matches m
      LEFT JOIN match_details md ON m.match_id = md.match_id
      ${where}
