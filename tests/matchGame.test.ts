@@ -23,11 +23,13 @@ describe("GET /api/me/matches/:id/game", () => {
         VALUES ('m1', 'u1', 's', 'd', 'd', '{}', 1700000000, 'win', 'white', 'Ana'),
                ('nodetail', 'u1', 's', 'd', 'd', '{}', 1700000100, 'loss', 'black', 'Bob'),
                ('bad', 'u1', 's', 'd', 'd', '{}', 1700000200, 'loss', 'black', 'Cy'),
+               ('junk', 'u1', 's', 'd', 'd', '{}', 1700000250, 'loss', 'black', 'Di'),
                ('theirs', 'u2', 's', 'd', 'd', '{}', 1700000300, 'win', 'white', 'Eve');
       INSERT INTO match_details (match_id, user_id, status, move_history, move_timestamps, final_fen)
         VALUES ('m1', 'u1', 'done', '["e2e4","e7e5"]', '[5,9]', 'f'),
                ('bad', 'u1', 'done', '["e2e4","e2e4"]', '[]', null),
-               ('theirs', 'u2', 'done', '["e2e4"]', '[]', null);
+               ('theirs', 'u2', 'done', '["e2e4"]', '[]', null),
+               ('junk', 'u1', 'done', '{not json', '[]', null);
     `);
   });
   const get = async (path: string, withSession = true) =>
@@ -68,6 +70,16 @@ describe("GET /api/me/matches/:id/game", () => {
     const res = await get("bad/game");
     expect(res.status).toBe(422);
     expect(((await res.json()) as any).code).toBe("ILLEGAL_GAME");
+  });
+
+  it("shouldRespond422CorruptGameWhenStoredJsonIsMalformed", async () => {
+    const res = await get("junk/game");
+    expect(res.status).toBe(422);
+    expect(((await res.json()) as any).code).toBe("CORRUPT_GAME");
+  });
+
+  it("shouldReturnStartFenInTheGameBody", async () => {
+    expect(((await (await get("m1/game")).json()) as any).startFen).toMatch(/^rnbqkbnr\/pppppppp/);
   });
 
   it("shouldRefuseWhenNoSession", async () => {

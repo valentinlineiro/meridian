@@ -366,7 +366,7 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
 </main>
 <div id="gameModal" class="modal" style="display:none" role="dialog" aria-modal="true" aria-labelledby="gTitle">
  <div class="card gamecard">
-  <div class="gamehead"><b id="gTitle"></b><button class="btn btn-g" onclick="closeGame()" aria-label="Cerrar">✕</button></div>
+  <div class="gamehead"><b id="gTitle"></b><button class="btn btn-g" id="gClose" onclick="closeGame()" aria-label="Cerrar">✕</button></div>
   <div id="gErr" class="muted"></div>
   <div id="gBody" style="display:none">
    <div class="gamegrid"><div id="gBoard" class="board"></div><div id="gMoves" class="moves"></div></div>

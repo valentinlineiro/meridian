@@ -11,6 +11,7 @@ const DOMAIN_STATUS: Record<string, number> = {
   INVALID_GAME_RESULT: 400,
   INVALID_PLAY_DATE: 400,
   ILLEGAL_GAME: 422,
+  CORRUPT_GAME: 422,
 };
 
 export function mapErrorToResponse(e: unknown): Response | null {
