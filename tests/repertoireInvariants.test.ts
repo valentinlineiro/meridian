@@ -11,6 +11,7 @@ function createTestDb() {
   db.exec(readFileSync(new URL("../migrations/0005_played_at.sql", import.meta.url).pathname, "utf8"));
   db.exec(readFileSync(new URL("../migrations/0006_match_details.sql", import.meta.url).pathname, "utf8"));
   db.exec(readFileSync(new URL("../migrations/0007_openings_and_phases.sql", import.meta.url).pathname, "utf8"));
+  db.exec(readFileSync(new URL("../migrations/0017_opening_family_mate_type.sql", import.meta.url).pathname, "utf8"));
 
   const d1 = {
     prepare(sql: string) {
@@ -55,14 +56,14 @@ describe("Repertoire and Phases Contract Invariants", () => {
     `).run();
 
     db.prepare(`
-      INSERT INTO match_details (match_id, user_id, status, move_history, move_timestamps, opening_key, phase_key, ply_count)
+      INSERT INTO match_details (match_id, user_id, status, move_history, move_timestamps, opening_family, phase_key, ply_count)
       VALUES 
-        ('m1', 'u1', 'completed', '[]', '[]', 'e2e4', 'opening', 20),
-        ('m2', 'u1', 'completed', '[]', '[]', 'd2d4', 'middlegame', 50),
-        ('m3', 'u1', 'completed', '[]', '[]', 'e2e3', 'endgame', 90),
-        ('m4', 'u1', 'completed', '[]', '[]', 'e2e4 e7e5', 'opening', 30),
-        ('m5', 'u1', 'completed', '[]', '[]', 'd2d4 d7d5', 'middlegame', 70),
-        ('m6', 'u1', 'completed', '[]', '[]', 'e2e4 e7e6', 'endgame', 110)
+        ('m1', 'u1', 'completed', '[]', '[]', 'sicilian', 'opening', 20),
+        ('m2', 'u1', 'completed', '[]', '[]', 'queens_gambit', 'middlegame', 50),
+        ('m3', 'u1', 'completed', '[]', '[]', 'vant_kruijs', 'endgame', 90),
+        ('m4', 'u1', 'completed', '[]', '[]', 'open_game', 'opening', 30),
+        ('m5', 'u1', 'completed', '[]', '[]', 'closed_game', 'middlegame', 70),
+        ('m6', 'u1', 'completed', '[]', '[]', 'french', 'endgame', 110)
     `).run();
 
     const [openingsRes, phasesRes] = await Promise.all([

@@ -11,6 +11,7 @@ function createTestDb() {
   db.exec(readFileSync(new URL("../migrations/0005_played_at.sql", import.meta.url).pathname, "utf8"));
   db.exec(readFileSync(new URL("../migrations/0006_match_details.sql", import.meta.url).pathname, "utf8"));
   db.exec(readFileSync(new URL("../migrations/0007_openings_and_phases.sql", import.meta.url).pathname, "utf8"));
+  db.exec(readFileSync(new URL("../migrations/0017_opening_family_mate_type.sql", import.meta.url).pathname, "utf8"));
 
   const d1 = {
     prepare(sql: string) {
@@ -39,115 +40,68 @@ function createTestDb() {
 }
 
 describe("GET /api/stats/openings", () => {
-  it("shouldReturnOpeningsSortedByGamesDescWithMetadata", async () => {
-    const { db, d1 } = createTestDb();
-
+  const seed = (db: any) => {
     db.prepare(`
       INSERT INTO matches (match_id, user_id, snapshot_id, first_seen_at, last_seen_at, raw_json, played_at, result, user_color)
-      VALUES 
-        ('m1', 'u1', 's1', '2026-09-28', '2026-09-28', '{}', 100, 'win', 'white'),
-        ('m2', 'u1', 's1', '2026-09-28', '2026-09-28', '{}', 200, 'loss', 'white'),
-        ('m3', 'u1', 's1', '2026-09-28', '2026-09-28', '{}', 300, 'draw', 'white'),
-        ('m4', 'u1', 's1', '2026-09-28', '2026-09-28', '{}', 400, 'win', 'white'),
-        ('m5', 'u1', 's1', '2026-09-28', '2026-09-28', '{}', 500, 'win', 'white'),
-        ('m6', 'u1', 's1', '2026-09-28', '2026-09-28', '{}', 600, 'win', 'black'),
-        ('m7', 'u1', 's1', '2026-09-28', '2026-09-28', '{}', 700, 'loss', 'black'),
-        ('m8', 'u1', 's1', '2026-09-28', '2026-09-28', '{}', 800, 'draw', 'black'),
-        ('m9', 'u1', 's1', '2026-09-28', '2026-09-28', '{}', 900, 'win', 'black')
+      VALUES
+        ('m1', 'u1', 's1', 'd', 'd', '{}', 100, 'win', 'white'),
+        ('m2', 'u1', 's1', 'd', 'd', '{}', 200, 'loss', 'white'),
+        ('m3', 'u1', 's1', 'd', 'd', '{}', 300, 'draw', 'white'),
+        ('m4', 'u1', 's1', 'd', 'd', '{}', 400, 'win', 'white'),
+        ('m5', 'u1', 's1', 'd', 'd', '{}', 500, 'win', 'black'),
+        ('m6', 'u1', 's1', 'd', 'd', '{}', 600, 'loss', 'black'),
+        ('m7', 'u1', 's1', 'd', 'd', '{}', 700, 'win', 'black'),
+        ('m8', 'u1', 's1', 'd', 'd', '{}', 800, 'win', 'white'),
+        ('m9', 'u1', 's1', 'd', 'd', '{}', 900, 'win', 'white')
     `).run();
-
     db.prepare(`
-      INSERT INTO match_details (match_id, user_id, status, move_history, move_timestamps, opening_key, phase_key, ply_count)
-      VALUES 
-        ('m1', 'u1', 'completed', '[]', '[]', 'e2e4', 'middlegame', 50),
-        ('m2', 'u1', 'completed', '[]', '[]', 'e2e4', 'middlegame', 60),
-        ('m3', 'u1', 'completed', '[]', '[]', 'e2e4', 'endgame', 90),
-        ('m4', 'u1', 'completed', '[]', '[]', 'd2d4', 'opening', 30),
-        ('m5', 'u1', 'completed', '[]', '[]', 'other_white', 'opening', 20),
-        ('m6', 'u1', 'completed', '[]', '[]', 'e2e4 e7e5', 'middlegame', 70),
-        ('m7', 'u1', 'completed', '[]', '[]', 'e2e4 e7e5', 'middlegame', 75),
-        ('m8', 'u1', 'completed', '[]', '[]', 'e2e4 c7c5', 'endgame', 100),
-        ('m9', 'u1', 'completed', '[]', '[]', 'other_black', 'opening', 15)
+      INSERT INTO match_details (match_id, user_id, status, move_history, move_timestamps, opening_family, ply_count)
+      VALUES
+        ('m1', 'u1', 'completed', '[]', '[]', 'italian', 50),
+        ('m2', 'u1', 'completed', '[]', '[]', 'italian', 60),
+        ('m3', 'u1', 'completed', '[]', '[]', 'italian', 90),
+        ('m4', 'u1', 'completed', '[]', '[]', 'queens_gambit', 30),
+        ('m5', 'u1', 'completed', '[]', '[]', 'sicilian', 70),
+        ('m6', 'u1', 'completed', '[]', '[]', 'sicilian', 75),
+        ('m7', 'u1', 'completed', '[]', '[]', 'other', 15),
+        ('m8', 'u1', 'completed', '[]', '[]', NULL, 20),
+        ('m9', 'u1', 'completed', '[]', '[]', 'unclassified', 1)
     `).run();
+  };
 
+  it("shouldGroupByFamilyPerColourSortedByGamesWithSpanishNames", async () => {
+    const { db, d1 } = createTestDb();
+    seed(db);
     const res = await handleStats(d1, "openings", new URL("http://localhost/api/stats/openings"));
-    expect(res.status).toBe(200);
     const body = await res.json() as any;
 
-    expect(body.population).toEqual({
-      hydrated: 9,
-      totalMatches: 9,
-    });
+    expect(body.white.map((w: any) => w.key)).toEqual(["italian", "queens_gambit"]);
+    const italian = body.white[0];
+    expect(italian.name).toBe("Italiana");
+    expect(italian).toMatchObject({ games: 3, wins: 1, losses: 1, draws: 1 });
+    expect(italian.winRate).toBe(1 / 3);
+    expect(body.white[1].name).toBe("Gambito de Dama");
 
-    // White openings sorted by games DESC
-    expect(body.white).toBeDefined();
-    expect(body.white.length).toBe(3);
+    expect(body.black.map((b: any) => [b.key, b.name, b.games])).toEqual([["sicilian", "Siciliana", 2], ["other", "Otra apertura", 1]]);
+  });
 
-    // e2e4: 3 games (1 win, 1 loss, 1 draw)
-    const e4 = body.white[0];
-    expect(e4.key).toBe("e2e4");
-    expect(e4.name).toBe("Peón de Rey");
-    expect(e4.notation).toBe("1. e4");
-    expect(e4.games).toBe(3);
-    expect(e4.wins).toBe(1);
-    expect(e4.losses).toBe(1);
-    expect(e4.draws).toBe(1);
-    expect(e4.winRate).toBe(1 / 3);
-    expect(e4.scoreRate).toBe((1 + 0.5) / 3);
-
-    // other_white fallback
-    const otherW = body.white.find((w: any) => w.key === "other_white");
-    expect(otherW).toBeDefined();
-    expect(otherW.name).toBe("Otras secuencias con Blancas");
-    expect(otherW.notation).toBe("-");
-
-    // Black openings sorted by games DESC
-    expect(body.black).toBeDefined();
-    expect(body.black.length).toBe(3);
-
-    // e2e4 e7e5: 2 games (1 win, 1 loss, 0 draws)
-    const openGame = body.black[0];
-    expect(openGame.key).toBe("e2e4 e7e5");
-    expect(openGame.name).toBe("Partida Abierta");
-    expect(openGame.notation).toBe("1. e4 e5");
-    expect(openGame.games).toBe(2);
-    expect(openGame.wins).toBe(1);
-    expect(openGame.losses).toBe(1);
-    expect(openGame.draws).toBe(0);
-    expect(openGame.winRate).toBe(0.5);
-    expect(openGame.scoreRate).toBe(0.5);
-
-    // other_black fallback
-    const otherB = body.black.find((b: any) => b.key === "other_black");
-    expect(otherB).toBeDefined();
-    expect(otherB.name).toBe("Otras secuencias con Negras");
-    expect(otherB.notation).toBe("-");
+  it("shouldCountRowsWithoutFamilyAsUnclassifiedInsteadOfListingThem", async () => {
+    const { db, d1 } = createTestDb();
+    seed(db);
+    const body = await (await handleStats(d1, "openings", new URL("http://localhost/api/stats/openings"))).json() as any;
+    expect(body.unclassified).toBe(2);
+    expect(JSON.stringify(body.white) + JSON.stringify(body.black)).not.toContain("unclassified");
+    expect(body.population).toEqual({ hydrated: 9, totalMatches: 9 });
   });
 
   it("shouldFilterOpeningsStatsByUserIdWhenProvided", async () => {
     const { db, d1 } = createTestDb();
-
-    db.prepare(`
-      INSERT INTO matches (match_id, user_id, snapshot_id, first_seen_at, last_seen_at, raw_json, played_at, result, user_color)
-      VALUES 
-        ('m1', 'u1', 's1', '2026-09-28', '2026-09-28', '{}', 100, 'win', 'white'),
-        ('m2', 'u2', 's1', '2026-09-28', '2026-09-28', '{}', 200, 'win', 'white')
-    `).run();
-
-    db.prepare(`
-      INSERT INTO match_details (match_id, user_id, status, move_history, move_timestamps, opening_key, phase_key, ply_count)
-      VALUES 
-        ('m1', 'u1', 'completed', '[]', '[]', 'e2e4', 'opening', 30),
-        ('m2', 'u2', 'completed', '[]', '[]', 'd2d4', 'opening', 30)
-    `).run();
-
-    const res = await handleStats(d1, "openings", new URL("http://localhost/api/stats/openings?userId=u1"));
-    expect(res.status).toBe(200);
-    const body = await res.json() as any;
-
+    db.prepare(`INSERT INTO matches (match_id, user_id, snapshot_id, first_seen_at, last_seen_at, raw_json, played_at, result, user_color)
+      VALUES ('m1', 'u1', 's1', 'd', 'd', '{}', 100, 'win', 'white'), ('m2', 'u2', 's1', 'd', 'd', '{}', 200, 'win', 'white')`).run();
+    db.prepare(`INSERT INTO match_details (match_id, user_id, status, move_history, move_timestamps, opening_family, ply_count)
+      VALUES ('m1', 'u1', 'completed', '[]', '[]', 'italian', 30), ('m2', 'u2', 'completed', '[]', '[]', 'scotch', 30)`).run();
+    const body = await (await handleStats(d1, "openings", new URL("http://localhost/api/stats/openings?userId=u1"))).json() as any;
     expect(body.population.totalMatches).toBe(1);
-    expect(body.population.hydrated).toBe(1);
-    expect(body.white.length).toBe(1);
-    expect(body.white[0].key).toBe("e2e4");
+    expect(body.white.map((w: any) => w.key)).toEqual(["italian"]);
   });
 });

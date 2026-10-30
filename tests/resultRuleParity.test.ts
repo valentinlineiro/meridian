@@ -16,7 +16,7 @@ async function seed() {
   const { db, d1 } = setupTestDb();
   RESULTS.forEach(([result, outcome], i) => {
     db.prepare("INSERT INTO matches (match_id, user_id, snapshot_id, first_seen_at, last_seen_at, raw_json, played_at, result, outcome, user_color) VALUES (?, 'u1', 's1', 'x', 'x', '{}', ?, ?, ?, 'white')").run(`m${i}`, 100 + i, result, outcome);
-    db.prepare("INSERT INTO match_details (match_id, user_id, status, move_history, move_timestamps, opening_key, phase_key, ply_count) VALUES (?, 'u1', 'completed', '[]', '[]', 'e2e4', 'middlegame', 50)").run(`m${i}`);
+    db.prepare("INSERT INTO match_details (match_id, user_id, status, move_history, move_timestamps, opening_family, phase_key, ply_count) VALUES (?, 'u1', 'completed', '[]', '[]', 'sicilian', 'middlegame', 50)").run(`m${i}`);
   });
   return d1;
 }
@@ -24,7 +24,7 @@ const get = async (d1: any, kind: string) => (await handleStats(d1, kind, new UR
 
 describe("result rule parity", () => {
   it("shouldClassifyOpeningResultsLikeSummarizeWhenResultsAreVariantsOrMissing", async () => {
-    const o = (await get(await seed(), "openings")).white.find((x: any) => x.key === "e2e4");
+    const o = (await get(await seed(), "openings")).white.find((x: any) => x.key === "sicilian");
     expect(o).toMatchObject(EXPECTED);
   });
 

@@ -11,7 +11,7 @@ function seed(opts: { opponentType?: string } = {}) {
   const { db, d1 } = setupTestDb();
   RESULTS.forEach((result, i) => {
     db.prepare("INSERT INTO matches (match_id, user_id, snapshot_id, first_seen_at, last_seen_at, raw_json, played_at, result, user_color, opponent_type) VALUES (?, 'u1', 's1', 'x', 'x', '{}', ?, ?, 'white', ?)").run(`m${i}`, 100 + i, result, opts.opponentType ?? "bot");
-    db.prepare("INSERT INTO match_details (match_id, user_id, status, move_history, move_timestamps, opening_key, phase_key, ply_count) VALUES (?, 'u1', 'completed', '[]', '[]', 'e2e4', 'middlegame', 50)").run(`m${i}`);
+    db.prepare("INSERT INTO match_details (match_id, user_id, status, move_history, move_timestamps, opening_family, phase_key, ply_count) VALUES (?, 'u1', 'completed', '[]', '[]', 'sicilian', 'middlegame', 50)").run(`m${i}`);
   });
   return d1;
 }

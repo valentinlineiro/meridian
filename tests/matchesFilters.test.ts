@@ -11,6 +11,7 @@ function createTestDb() {
   db.exec(readFileSync(new URL("../migrations/0005_played_at.sql", import.meta.url).pathname, "utf8"));
   db.exec(readFileSync(new URL("../migrations/0006_match_details.sql", import.meta.url).pathname, "utf8"));
   db.exec(readFileSync(new URL("../migrations/0007_openings_and_phases.sql", import.meta.url).pathname, "utf8"));
+  db.exec(readFileSync(new URL("../migrations/0017_opening_family_mate_type.sql", import.meta.url).pathname, "utf8"));
 
   const d1 = {
     prepare(sql: string) {
@@ -45,26 +46,32 @@ describe("GET /api/matches with opening and phase filters", () => {
     `).run();
 
     db.prepare(`
-      INSERT INTO match_details (match_id, user_id, status, move_history, move_timestamps, opening_key, phase_key, ply_count)
+      INSERT INTO match_details (match_id, user_id, status, move_history, move_timestamps, opening_family, mate_type, end_condition, phase_key, ply_count)
       VALUES 
-        ('m1', 'u1', 'completed', '[]', '[]', 'e2e4', 'opening', 30),
-        ('m2', 'u1', 'completed', '[]', '[]', 'e2e4', 'endgame', 95),
-        ('m3', 'u1', 'completed', '[]', '[]', 'e2e4 e7e5', 'middlegame', 65)
+        ('m1', 'u1', 'completed', '[]', '[]', 'sicilian', NULL, NULL, 'opening', 30),
+        ('m2', 'u1', 'completed', '[]', '[]', 'sicilian', 'back_rank', 'checkmate', 'endgame', 95),
+        ('m3', 'u1', 'completed', '[]', '[]', 'italian', NULL, NULL, 'middlegame', 65)
     `).run();
 
-    // 1. Verify rows include opening_key, phase_key, ply_count
+    // 1. Verify rows include opening_family, phase_key, ply_count
     const resAll = await handleMatches(d1, new URL("http://localhost/api/matches"));
     const dataAll = await resAll.json() as any;
     expect(dataAll.total).toBe(3);
-    expect(dataAll.rows[0].opening_key).toBeDefined();
+    expect(dataAll.rows[0].opening_family).toBeDefined();
     expect(dataAll.rows[0].phase_key).toBeDefined();
     expect(dataAll.rows[0].ply_count).toBeDefined();
 
-    // 2. Filter by ?opening=e2e4
-    const resOpening = await handleMatches(d1, new URL("http://localhost/api/matches?opening=e2e4"));
+    // 2. Filter by ?opening=sicilian
+    const resOpening = await handleMatches(d1, new URL("http://localhost/api/matches?opening=sicilian"));
     const dataOpening = await resOpening.json() as any;
     expect(dataOpening.total).toBe(2);
-    expect(dataOpening.rows.every((r: any) => r.opening_key === "e2e4")).toBe(true);
+    expect(dataOpening.rows.every((r: any) => r.opening_family === "sicilian")).toBe(true);
+
+    // 2b. Rows carry Spanish labels for the family and the mate type
+    const m2 = dataAll.rows.find((r: any) => r.match_id === "m2");
+    expect(m2.opening_family_label).toBe("Siciliana");
+    expect(m2.mate_type_label).toBe("Mate del pasillo");
+    expect(dataAll.rows.find((r: any) => r.match_id === "m1").mate_type_label).toBeNull();
 
     // 3. Filter by ?phase=endgame
     const resPhase = await handleMatches(d1, new URL("http://localhost/api/matches?phase=endgame"));
@@ -73,12 +80,12 @@ describe("GET /api/matches with opening and phase filters", () => {
     expect(dataPhase.rows[0].match_id).toBe("m2");
     expect(dataPhase.rows[0].phase_key).toBe("endgame");
 
-    // 4. Combined filter ?opening=e2e4&phase=opening
-    const resBoth = await handleMatches(d1, new URL("http://localhost/api/matches?opening=e2e4&phase=opening"));
+    // 4. Combined filter ?opening=sicilian&phase=opening
+    const resBoth = await handleMatches(d1, new URL("http://localhost/api/matches?opening=sicilian&phase=opening"));
     const dataBoth = await resBoth.json() as any;
     expect(dataBoth.total).toBe(1);
     expect(dataBoth.rows[0].match_id).toBe("m1");
-    expect(dataBoth.rows[0].opening_key).toBe("e2e4");
+    expect(dataBoth.rows[0].opening_family).toBe("sicilian");
     expect(dataBoth.rows[0].phase_key).toBe("opening");
   });
 
@@ -94,18 +101,18 @@ describe("GET /api/matches with opening and phase filters", () => {
     `).run();
 
     db.prepare(`
-      INSERT INTO match_details (match_id, user_id, status, move_history, move_timestamps, opening_key, phase_key, ply_count, opponent_id)
+      INSERT INTO match_details (match_id, user_id, status, move_history, move_timestamps, opening_family, phase_key, ply_count, opponent_id)
       VALUES 
-        ('m1', 'u1', 'completed', '[]', '[]', 'e2e4', 'opening', 30, 'stockfish'),
-        ('m2', 'u1', 'completed', '[]', '[]', 'e2e4', 'opening', 35, 'noisy_neural_v2'),
-        ('m3', 'u1', 'completed', '[]', '[]', 'e2e4', 'opening', 25, '12345678')
+        ('m1', 'u1', 'completed', '[]', '[]', 'sicilian', 'opening', 30, 'stockfish'),
+        ('m2', 'u1', 'completed', '[]', '[]', 'sicilian', 'opening', 35, 'noisy_neural_v2'),
+        ('m3', 'u1', 'completed', '[]', '[]', 'sicilian', 'opening', 25, '12345678')
     `).run();
 
-    const res = await handleMatches(d1, new URL("http://localhost/api/matches?opponentSegment=stockfish&opening=e2e4&phase=opening"));
+    const res = await handleMatches(d1, new URL("http://localhost/api/matches?opponentSegment=stockfish&opening=sicilian&phase=opening"));
     const data = await res.json() as any;
     expect(data.total).toBe(1);
     expect(data.rows[0].match_id).toBe("m1");
-    expect(data.rows[0].opening_key).toBe("e2e4");
+    expect(data.rows[0].opening_family).toBe("sicilian");
     expect(data.rows[0].phase_key).toBe("opening");
     expect(data.rows[0].opponent_segment).toBe("stockfish");
   });
