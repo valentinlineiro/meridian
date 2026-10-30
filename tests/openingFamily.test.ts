@@ -51,6 +51,25 @@ describe("classifyOpeningFamily", () => {
     expect(OPENING_FAMILY_LABELS.other).toBe("Otra apertura");
   });
 
+  it.each([
+    [["e4", "e5", "Nf3", "Nc6", "Bb5"]],
+    [["zz", "zz"]],
+    [["e2e5", "e7e5"]],
+  ])("shouldReturnUnclassifiedWhenTheOpeningMovesAreNotLegalCoordinateMoves(%j)", (moves) => {
+    expect(classifyOpeningFamily(moves)).toBe("unclassified");
+  });
+
+  it("shouldKeepTheFamilyWhenOnlyPliesAfterTheMatchedLineAreIllegal", () => {
+    expect(classifyOpeningFamily(["e2e4", "e7e5", "g1f3", "b8c6", "f1e2x"])).toBe("open_game");
+  });
+
+  it.each([
+    ["d2d4 g8f6 c2c4 e7e6 b1c3 d7d5"],
+    ["d2d4 g8f6 c2c4 e7e6 g1f3 d7d5"],
+  ])("shouldCallItQueensGambitWhenAnIndianMoveOrderReachesD5(%s)", (moves) => {
+    expect(classifyOpeningFamily(g(moves))).toBe("queens_gambit");
+  });
+
   it("shouldIgnoreCaseAndSurroundingSpacesWhenMovesAreSloppy", () => {
     expect(classifyOpeningFamily([" E2E4 ", "C7C5"])).toBe("sicilian");
   });

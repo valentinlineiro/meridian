@@ -1,5 +1,7 @@
+import { Chess } from "chess.js";
+
 // Opening families (no variants), named from the first plies of the game in coordinate notation. The longest matching prefix wins, so a specific line
-// beats the generic "open game" / "closed game" buckets. Prefixes are at most 5 plies long.
+// beats the generic "open game" / "closed game" buckets. Prefixes are at most 6 plies long. The plies a family rests on are replayed, so SAN or illegal moves are "unclassified", never "other"; plies after the matched line are not validated.
 const LINES: ReadonlyArray<readonly [key: string, prefix: string]> = [
   ["ruy_lopez", "e2e4 e7e5 g1f3 b8c6 f1b5"],
   ["italian", "e2e4 e7e5 g1f3 b8c6 f1c4"],
@@ -18,6 +20,8 @@ const LINES: ReadonlyArray<readonly [key: string, prefix: string]> = [
   ["pirc", "e2e4 d7d6"],
   ["pirc", "e2e4 g7g6"],
   ["queens_gambit", "d2d4 d7d5 c2c4"],
+  ["queens_gambit", "d2d4 g8f6 c2c4 e7e6 b1c3 d7d5"], // declined, reached through an Indian move order
+  ["queens_gambit", "d2d4 g8f6 c2c4 e7e6 g1f3 d7d5"],
   ["london", "d2d4 d7d5 c1f4"],
   ["closed_game", "d2d4 d7d5"],
   ["indian", "d2d4 g8f6"],
@@ -68,6 +72,13 @@ const PARSED = LINES.map(([key, prefix]) => ({ key, plies: prefix.split(" ") }))
 
 export function classifyOpeningFamily(moves: readonly string[]): string {
   if (moves.length < 2) return "unclassified";
-  const head = moves.slice(0, 5).map((m) => m.trim().toLowerCase());
-  return PARSED.find((l) => l.plies.every((p, i) => head[i] === p))?.key ?? "other";
+  const head = moves.slice(0, 6).map((m) => m.trim().toLowerCase());
+  const line = PARSED.find((l) => l.plies.every((p, i) => head[i] === p));
+  const chess = new Chess();
+  try {
+    for (const m of line ? line.plies : head) chess.move({ from: m.slice(0, 2), to: m.slice(2, 4), promotion: m.slice(4, 5) || undefined });
+  } catch {
+    return "unclassified";
+  }
+  return line?.key ?? "other";
 }

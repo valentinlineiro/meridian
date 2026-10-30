@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { classifyMate, MATE_TYPE_LABELS } from "../src/domain/mateType.ts";
+import { Chess } from "chess.js";
+import { classifyMate, classifyMatePosition, MATE_TYPE_LABELS } from "../src/domain/mateType.ts";
 import { classifyGame } from "../src/domain/gameClassification.ts";
 import { FOOLS, SCHOLARS, SMOTHERED, QUEEN, BISHOP, BACK_RANK, ROOK, PAWN, STALEMATE } from "./fixtures/mateGames.ts";
 
@@ -33,6 +34,15 @@ describe("classifyMate", () => {
   it("shouldReturnNullWithoutThrowingWhenMovesAreIllegal", () => {
     expect(classifyMate(["e2e4", "e2e4"])).toBeNull();
     expect(classifyMate(["zz"])).toBeNull();
+  });
+});
+
+describe("classifyMatePosition", () => {
+  it("shouldNameTheCheckingBishopWhenAKnightDiscoversTheMate", () => {
+    const chess = new Chess("6bk/7p/8/4N3/8/8/1B6/K7 w - - 0 1");
+    chess.move({ from: "e5", to: "g4" }); // the knight steps away: the bishop on b2 gives mate along the long diagonal
+    expect(chess.isCheckmate()).toBe(true);
+    expect(classifyMatePosition(chess)).toBe("bishop");
   });
 });
 

@@ -35,17 +35,25 @@ export function classifyMate(moves: readonly string[]): MateType | null {
   } catch {
     return null;
   }
-  if (!moves.length || !chess.isCheckmate()) return null;
+  return classifyMatePosition(chess);
+}
 
-  const last = chess.history({ verbose: true }).at(-1)!;
+// The mate is named for the piece that gives check, which after a discovered check is not the piece that moved. In a double check the moved piece wins.
+export function classifyMatePosition(chess: Chess): MateType | null {
+  const history = chess.history({ verbose: true });
+  if (!history.length || !chess.isCheckmate()) return null;
+
+  const last = history.at(-1)!;
   const mated = chess.turn();
-  const piece = (last.promotion ?? last.piece) as keyof typeof BY_PIECE;
   const king = chess.board().flat().find((p) => p && p.type === "k" && p.color === mated)!.square;
+  const checkers = chess.attackers(king, mated === "w" ? "b" : "w");
+  const from = checkers.includes(last.to) ? last.to : checkers[0]!;
+  const piece = chess.get(from)!.type as keyof typeof BY_PIECE;
 
-  if (moves.length === 4) return "fools";
-  if (moves.length <= 8 && piece === "q" && (last.to === "f7" || last.to === "f2")) return "scholars";
+  if (history.length === 4) return "fools";
+  if (history.length <= 8 && piece === "q" && (from === "f7" || from === "f2")) return "scholars";
   if (piece === "n" && neighbours(king).every((s) => chess.get(s)?.color === mated)) return "smothered";
   const backRank = mated === "w" ? "1" : "8";
-  if ((piece === "r" || piece === "q") && king[1] === backRank && last.to[1] === backRank) return "back_rank";
+  if ((piece === "r" || piece === "q") && king[1] === backRank && from[1] === backRank) return "back_rank";
   return BY_PIECE[piece];
 }
