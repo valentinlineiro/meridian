@@ -2,7 +2,7 @@
 
 ## Intención
 
-Una auditoría con motor sobre las 1.643 partidas mostró que 155 de las 273 derrotas por mate vienen de no neutralizar un mate en 1 que estaba sobre el tablero, y que ese fallo no es específico de ninguna casilla (f7/f2 igual que el resto). Meridian debe medir esa comprobación de amenazas en el tiempo y llevar a las partidas donde falló, para poder trabajarla.
+Una medición sobre las 1.643 partidas mostró que 104 de las 273 derrotas por mate vienen de no neutralizar un mate en 1 que estaba sobre el tablero, y que ese fallo no se concentra en f7/f2 (allí se defiende mejor que en el resto de casillas). Meridian debe medir esa comprobación de amenazas en el tiempo y llevar a las partidas donde falló, para poder trabajarla.
 
 ## Qué se mide
 
@@ -14,7 +14,7 @@ Una **posición amenazada** es una posición en la que me toca mover, no estoy e
 
 Solo cuentan las posiciones en las que el rival llegó a mover después (si mi jugada cierra la partida no hay veredicto). El indicador es `neutralizadas / amenazadas`, con su denominador siempre visible.
 
-Referencia medida el 2026-10-30 sobre las 1.643 partidas (1.070 posiciones en 581 partidas): 69 % neutralizadas, 17 % sin castigo, 14 % falladas; por fase 81 % apertura, 67 % medio, 69 % final.
+Referencia medida el 2026-10-30 sobre las 1.643 partidas (499 posiciones amenazadas en 326 partidas, ya excluyendo las posiciones en las que yo estaba en jaque): 57 % neutralizadas, 22 % sin castigo, 21 % falladas; por fase, neutralizadas 72 % apertura, 49 % medio juego, 62 % final. Una primera medición no excluía las posiciones en jaque y dio cifras infladas (1.070 posiciones); el analizador lo excluye explícitamente porque chess.js carga sin error una posición con el bando que no mueve en jaque.
 
 ## Metas
 
