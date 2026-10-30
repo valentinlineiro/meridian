@@ -38,11 +38,24 @@ Referencia medida el 2026-10-30 sobre las 1.643 partidas (1.070 posiciones en 58
 
 **Dónde se ejecuta.** En el repositorio del colector (todo lo que necesita GitHub va allí): un job programado diario tras el sync, mismo interruptor por variable del repositorio que el cron actual, que hace checkout del repositorio público `meridian` en una referencia fijada, instala `chess.js` desde su lockfile y ejecuta `scripts/analyzeThreats.ts` de Meridian. El script pide pendientes, calcula y escribe. El colector no copia lógica de ajedrez.
 
+**Reanudación, idempotencia y atomicidad.**
+- Cada partida es independiente y se escribe con **un solo `UPDATE`** sobre su fila (atómico en D1). No hay estado intermedio: o está pendiente o está calculada/inválida.
+- La cola de pendientes es `mate_threats IS NULL`: no hay cursor que perder. Un fallo a mitad de ejecución deja las ya escritas intactas, y el siguiente run continúa con las que siguen en `NULL`.
+- Reescribir una partida ya calculada con el mismo resultado no cambia nada; con otro (por cambiar `v`) la sustituye entera. El `POST` es un reemplazo, no una suma, así que repetirlo nunca duplica contadores.
+- El script limita por tanda (`limit`, máx. 100) y por tiempo; al agotar el tiempo termina limpiamente sin dejar escrituras a medias.
+- Cada partida inválida se marca como tal para no reintentarla en cada run.
+
 **API (rutas de máquina, `IMPORT_TOKEN`, mismo patrón que `pending-details`).**
 - `GET /api/chess/matches/pending-threats?limit=N` → `{items:[{match_id, user_color, move_history}], totalPending}` para las partidas con `mate_threats` nulo.
 - `POST /api/chess/matches/:id/threats` con `{faced, missed, unpunished, byPhase, missedPlies}`; valida con zod en el borde, 404 si no hay detalle, y es idempotente.
 
-**Datos.** Una columna `mate_threats TEXT` nullable en `match_details` (migración 0018): JSON `{faced, missed, unpunished, byPhase:{opening:[f,m,u],middlegame:[…],endgame:[…]}, missedPlies:[…]}`. `NULL` = sin analizar; `faced: 0` = analizada sin amenazas. Las fases por jugada (≤20, ≤60, resto) son las de la auditoría; no usan `phase_key`.
+**Datos.** Una columna `mate_threats TEXT` nullable en `match_details` (migración 0018). Contrato versionado, con tres estados que no se confunden:
+
+- `NULL` → **pendiente** (sin analizar).
+- `{"v":1,"status":"ok","faced":N,"missed":N,"unpunished":N,"byPhase":{"opening":[f,m,u],"middlegame":[…],"endgame":[…]},"missedPlies":[…]}` → **calculada**. `faced: 0` es "analizada, sin amenazas", no pendiente.
+- `{"v":1,"status":"invalid","reason":"illegal_game"|"corrupt_game"}` → **inválida**: el historial no se puede reproducir. No vuelve a la cola de pendientes, y el dashboard la cuenta aparte.
+
+El lector ignora los contenidos con `v` desconocida (los trata como no calculados para los totales, y los cuenta en un aviso). Subir `v` implica una migración de datos y un nuevo relleno explícitos. Las fases por jugada (≤20, ≤60, resto) son las de la auditoría; no usan `phase_key`.
 
 **Lectura.**
 - `GET /api/stats/threats` → totales, por fase, últimas 100 partidas analizadas frente al resto, y cuántas partidas faltan por analizar. Cada tasa con `n` e intervalo de Wilson (nota: las posiciones de una misma partida no son independientes, así que el intervalo es optimista).
@@ -51,6 +64,15 @@ Referencia medida el 2026-10-30 sobre las 1.643 partidas (1.070 posiciones en 58
 **Dashboard.** Tarjeta "Amenazas de mate": tasa, denominador, desglose fallada/sin castigo, por fase, reciente frente al resto, un aviso cuando faltan partidas por analizar, y un acceso a "partidas donde no viste el mate" que aplica el filtro. En el visor de una partida analizada, los plies fallados se listan para saltar a ellos.
 
 **Relleno.** El primer run del job procesa los pendientes por tandas (las 1.643 partidas, ≈ 7 min en Node); no hay escritura manual en producción, salvo la migración 0018, que se aplica a mano antes de fusionar (el deploy falla con migraciones pendientes).
+
+## Permisos de `IMPORT_TOKEN`
+
+`IMPORT_TOKEN` es una credencial de máquina única: da acceso de escritura a todas las rutas de máquina, y el diseño no la divide en alcances. Las dos rutas nuevas la usan sin ampliar lo que ya puede hacer, y se limitan así:
+
+- `GET pending-threats` es de solo lectura y devuelve únicamente `match_id`, `user_color` y `move_history`.
+- `POST …/threats` solo puede modificar la columna `mate_threats` de una fila existente de `match_details`; no crea filas ni toca otras columnas. El cuerpo se valida con zod en el borde (tipos, rangos, tamaño máximo de `missedPlies`, `v` y `status` conocidos).
+- El job del colector usa el secreto existente (`MERIDIAN_IMPORT_TOKEN`) y no imprime jugadas ni identificadores en los logs.
+- Queda como riesgo aceptado, no resuelto: quien tenga el token puede escribir `mate_threats` de cualquier partida. Separar alcances sería un cambio de plataforma aparte.
 
 ## Restricciones
 
