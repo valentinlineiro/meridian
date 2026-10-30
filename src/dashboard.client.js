@@ -1154,10 +1154,52 @@ function renderRows(){
   q('#empty').style.display='none';
   q('#mb').innerHTML=rows.map(m=>{
    var fullDate = m.played_at ? new Date(m.played_at * 1000).toLocaleString('es-ES') : (m.first_seen_at ? new Date(m.first_seen_at).toLocaleString('es-ES') : '');
-   return '<tr><td data-l="Fecha"' + (fullDate ? ' title="' + fullDate + '"' : '') + '>' + formatMatchDate(m.played_at, m.first_seen_at) + '</td><td data-l="Rival">'+esc(m.opponent_name||'—')+pillSegment(m.opponent_segment)+'</td><td data-l="Tipo">'+pillType(m.opponent_type)+(m.opening_key&&m.opening_key!=='unclassified'?'<span class="pill" style="font-size:10px;margin-left:4px;opacity:.75">'+esc(m.opening_key)+'</span>':'')+(m.phase_key&&m.phase_key!=='unknown'?'<span class="pill" style="font-size:10px;margin-left:4px;opacity:.8">'+({opening:'Aper.',middlegame:'Medio',endgame:'Final'}[m.phase_key]||esc(m.phase_key))+'</span>':'')+'</td><td data-l="ELO">'+fmt(m.opponent_elo)+'</td><td data-l="Color">'+esc(m.user_color||'—')+'</td><td data-l="Resultado">'+pillResult(m.result||m.outcome)+'</td><td data-l="Fin">'+pillEnd(m.end_condition)+'</td><td data-l="Rev.">'+(m.reviewed?'✓':'')+'</td></tr>';
+   return '<tr'+(m.ply_count!=null&&m.match_id?' class="gamerow" tabindex="0" data-m="'+esc(m.match_id)+'" title="Ver partida"':'')+'><td data-l="Fecha"' + (fullDate ? ' title="' + fullDate + '"' : '') + '>' + formatMatchDate(m.played_at, m.first_seen_at) + '</td><td data-l="Rival">'+esc(m.opponent_name||'—')+pillSegment(m.opponent_segment)+'</td><td data-l="Tipo">'+pillType(m.opponent_type)+(m.opening_key&&m.opening_key!=='unclassified'?'<span class="pill" style="font-size:10px;margin-left:4px;opacity:.75">'+esc(m.opening_key)+'</span>':'')+(m.phase_key&&m.phase_key!=='unknown'?'<span class="pill" style="font-size:10px;margin-left:4px;opacity:.8">'+({opening:'Aper.',middlegame:'Medio',endgame:'Final'}[m.phase_key]||esc(m.phase_key))+'</span>':'')+'</td><td data-l="ELO">'+fmt(m.opponent_elo)+'</td><td data-l="Color">'+esc(m.user_color||'—')+'</td><td data-l="Resultado">'+pillResult(m.result||m.outcome)+'</td><td data-l="Fin">'+pillEnd(m.end_condition)+'</td><td data-l="Rev.">'+(m.reviewed?'✓':'')+'</td></tr>';
   }).join('');
  }
 }
+
+// Game viewer: the server validates the moves and returns SAN + FEN per ply, so this only paints boards.
+const GLYPH={K:'♔',Q:'♕',R:'♖',B:'♗',N:'♘',P:'♙',k:'♚',q:'♛',r:'♜',b:'♝',n:'♞',p:'♟'};
+let game=null, gamePly=0, gameId=null, gameOpener=null;
+function boardHtml(fen,flip){
+ const rows=fen.split(' ')[0].split('/').map(r=>{ let out=[]; for(const ch of r){ if(/\d/.test(ch)) for(let i=0;i<+ch;i++) out.push(''); else out.push(GLYPH[ch]||''); } return out; });
+ if(flip){ rows.reverse(); rows.forEach(r=>r.reverse()); }
+ return rows.map((r,y)=>r.map((g,x)=>'<i class="sq '+((x+y)%2?'dk':'lt')+'">'+g+'</i>').join('')).join('');
+}
+function paintGame(){
+ const g=game, fen=gamePly?g.plies[gamePly-1].fen:g.startFen;
+ q('#gBoard').innerHTML=boardHtml(fen,g.userColor==='black');
+ q('#gMoves').innerHTML=g.plies.map((p,i)=>(i%2?'':'<span class="muted">'+(i/2+1)+'.</span> ')+'<a href="#" class="gm'+(i+1===gamePly?' on':'')+'" data-p="'+(i+1)+'">'+esc(p.san)+'</a>').join(' ');
+ q('#gPos').textContent=gamePly+' / '+g.plies.length;
+ q('#gPrev').disabled=gamePly===0; q('#gNext').disabled=gamePly===g.plies.length;
+ const on=q('#gMoves .on'); if(on) on.scrollIntoView({block:'nearest'});
+}
+function gameStep(d){ if(!game) return; gamePly=Math.max(0,Math.min(game.plies.length,gamePly+d)); paintGame(); }
+async function openGame(id){
+ gameId=id; game=null; gameOpener=document.activeElement; q('#gameModal').style.display='flex'; q('#gClose').focus(); q('#gTitle').textContent='Cargando partida…'; q('#gBody').style.display='none'; q('#gErr').textContent='';
+ try{
+  const res=await fetch('/api/me/matches/'+encodeURIComponent(id)+'/game');
+  const b=await res.json().catch(()=>null);
+  if(!res.ok||!b||!b.ok) throw new Error(b&&b.code==='ILLEGAL_GAME'?'Las jugadas guardadas no son una partida válida.':'No hay partida completa guardada para esta partida.');
+  if(gameId!==id) return;
+  game=b; gamePly=0;
+  q('#gTitle').textContent='vs '+(b.opponent||'—')+' · '+(b.userColor==='black'?'negras':'blancas');
+  q('#gPgn').href='/api/me/matches/'+encodeURIComponent(id)+'/game.pgn';
+  q('#gBody').style.display='block'; paintGame();
+ }catch(e){ if(gameId===id){ q('#gTitle').textContent='Partida'; q('#gErr').textContent=e.message; } }
+}
+function closeGame(){ gameId=null; game=null; q('#gameModal').style.display='none'; if(gameOpener&&gameOpener.focus) gameOpener.focus(); gameOpener=null; }
+window.addEventListener('click',e=>{
+ const row=e.target.closest&&e.target.closest('tr.gamerow'); if(row){ openGame(row.getAttribute('data-m')); return; }
+ const mv=e.target.closest&&e.target.closest('#gMoves .gm'); if(mv){ e.preventDefault(); gamePly=+mv.getAttribute('data-p'); paintGame(); return; }
+ if(e.target.id==='gameModal') closeGame();
+});
+window.addEventListener('keydown',e=>{
+ if(q('#gameModal').style.display==='flex'){ if(e.key==='Tab'){ const f=[...document.querySelectorAll('#gameModal button:not([disabled]),#gameModal a[href]:not(.gm)')].filter(x=>x.offsetParent!==null); if(f.length){ const i=f.indexOf(document.activeElement); const n=e.shiftKey?(i<=0?f.length-1:i-1):(i===f.length-1?0:i+1); e.preventDefault(); f[n].focus(); } } else if(e.key==='ArrowLeft'){ e.preventDefault(); gameStep(-1); } else if(e.key==='ArrowRight'){ e.preventDefault(); gameStep(1); } else if(e.key==='Escape') closeGame(); return; }
+ const row=document.activeElement&&document.activeElement.classList&&document.activeElement.classList.contains('gamerow')?document.activeElement:null;
+ if(row&&e.key==='Enter') openGame(row.getAttribute('data-m'));
+});
 
 async function init(){
  statsBundlePromise=null; bundleTimedOut=false; for(const k of Object.keys(statCache)) delete statCache[k];

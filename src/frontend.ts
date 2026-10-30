@@ -364,6 +364,16 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
 
   <p class="muted" style="margin-top:16px"><a href="/raw">Datos técnicos</a></p>
 </main>
+<div id="gameModal" class="modal" style="display:none" role="dialog" aria-modal="true" aria-labelledby="gTitle">
+ <div class="card gamecard">
+  <div class="gamehead"><b id="gTitle"></b><button class="btn btn-g" id="gClose" onclick="closeGame()" aria-label="Cerrar">✕</button></div>
+  <div id="gErr" class="muted"></div>
+  <div id="gBody" style="display:none">
+   <div class="gamegrid"><div id="gBoard" class="board"></div><div id="gMoves" class="moves"></div></div>
+   <div class="gamectl"><button class="btn btn-g" id="gPrev" onclick="gameStep(-1)" aria-label="Jugada anterior">‹</button><span class="muted" id="gPos"></span><button class="btn btn-g" id="gNext" onclick="gameStep(1)" aria-label="Jugada siguiente">›</button><a class="btn btn-g" id="gPgn" download style="text-decoration:none;margin-left:auto">Descargar PGN</a></div>
+  </div>
+ </div>
+</div>
 <script>${CLIENT_JS}</script></body></html>`;
 
 export const RAW_HTML = `<!doctype html><html><head><meta charset="utf-8"><title>Raw · Meridian</title><style>body{font-family:monospace;background:#0e141c;color:#e6edf3;padding:24px}pre{background:#131f33;padding:12px;border-radius:8px;overflow:auto;border:1px solid #1e2e44}a{color:#7aa7e6}</style></head><body>

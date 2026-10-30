@@ -75,3 +75,15 @@ svg text{font-family:system-ui,sans-serif}
  main{padding:12px 10px 32px}
  select,input{max-width:100%}
 }
+
+.gamerow{cursor:pointer}.gamerow:hover,.gamerow:focus{background:#16253b;outline:none}
+.modal{position:fixed;inset:0;background:rgba(5,10,18,.75);align-items:center;justify-content:center;z-index:50;padding:12px}
+.gamecard{width:min(760px,100%);max-height:92vh;overflow:auto}
+.gamehead{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.gamegrid{display:flex;gap:14px;flex-wrap:wrap}
+.board{display:grid;grid-template-columns:repeat(8,1fr);width:min(400px,100%);aspect-ratio:1;border:1px solid #2a3d56}
+.sq{display:flex;align-items:center;justify-content:center;font-style:normal;font-size:clamp(20px,6vw,36px);line-height:1;color:#0b1220}
+.sq.lt{background:#c8d7ea}.sq.dk{background:#5b7a9e}
+.moves{flex:1;min-width:160px;max-height:400px;overflow:auto;line-height:1.9;font-size:13px}
+.gm{color:#c8d7ea;text-decoration:none;padding:1px 4px;border-radius:4px}.gm.on{background:#2a3d56;color:#fff;font-weight:700}
+.gamectl{display:flex;align-items:center;gap:10px;margin-top:12px}
