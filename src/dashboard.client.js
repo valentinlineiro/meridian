@@ -882,6 +882,7 @@ function renderChessView(stats, matches){
  const o=st.opponents||{};
  const ph=st.phases||{};
  const op=st.openings||{};
+ const mt=st.mates||null;
  const recentKnown=(st.recent||lastRecent)!=null;
  const recent=st.recent||lastRecent||{};
 
@@ -1102,9 +1103,10 @@ function pillType(t){
  if(t==='pvp') return '<span class="pill" style="border-color:#58a6ff;color:#a8c8ff">PvP</span>';
  return '<span class="pill">'+esc(t||'—')+'</span>';
 }
-function pillEnd(c){
+function pillEnd(c,mateLabel){
  if(!c||c==='unknown') return '<span class="pill" style="opacity:.4">—</span>';
  const labels={checkmate:'Mate',disconnection:'Desconexión',stalemate:'Ahogado',repetition:'Repetición',resignation:'Rendición',insufficient_material:'Material',timeout:'Tiempo',fifty_moves:'50 jugadas'};
+ if(c==='checkmate'&&mateLabel) return '<span class="pill">Mate · '+esc(String(mateLabel).replace(/^Mate (del |con )?/,''))+'</span>';
  return '<span class="pill">'+esc(labels[c]||c)+'</span>';
 }
 function pillSegment(s){
@@ -1134,7 +1136,7 @@ function renderCompare(groups, totalGames){
  return groups.map(g=>{
   const dec=g.decided||0, w=dec?Math.round(g.wins/dec*100):0, l=dec?Math.round(g.losses/dec*100):0, d=dec?100-w-l:0; // bars are shares of decided games; unknowns are reported apart
   const pctGames=totalGames? (g.games/totalGames*100).toFixed(1):'0';
-  const label=g.label||segLabels[g.key]||g.key;
+  const label=g.label||g.name||segLabels[g.key]||g.key;
   return '<div class="row"><div style="flex:1"><div style="display:flex;justify-content:space-between;align-items:baseline"><b>'+esc(label)+'</b><span class="muted">'+g.games+' · '+pctGames+'%</span></div><div class="bar" style="margin-top:6px;display:flex"><i class="bar-win" style="width:'+w+'%"></i><i class="bar-loss" style="width:'+l+'%"></i><i class="bar-draw" style="width:'+d+'%"></i></div><div class="muted" style="margin-top:4px;display:flex;gap:10px;flex-wrap:wrap"><span>Win '+pctCi(g.winRate,g.winRateCi)+'</span><span>Score '+(g.scoreRate!=null?(g.scoreRate*100).toFixed(1)+'%':'—')+'</span>'+'<span>· barra sobre '+dec+' decididas'+(g.unknown?' · '+g.unknown+' sin resultado':'')+'</span>'+'</div></div></div>';
  }).join('') || '<div class="muted">Sin datos</div>';
 }
@@ -1154,7 +1156,7 @@ function renderRows(){
   q('#empty').style.display='none';
   q('#mb').innerHTML=rows.map(m=>{
    var fullDate = m.played_at ? new Date(m.played_at * 1000).toLocaleString('es-ES') : (m.first_seen_at ? new Date(m.first_seen_at).toLocaleString('es-ES') : '');
-   return '<tr'+(m.ply_count!=null&&m.match_id?' class="gamerow" tabindex="0" data-m="'+esc(m.match_id)+'" title="Ver partida"':'')+'><td data-l="Fecha"' + (fullDate ? ' title="' + fullDate + '"' : '') + '>' + formatMatchDate(m.played_at, m.first_seen_at) + '</td><td data-l="Rival">'+esc(m.opponent_name||'—')+pillSegment(m.opponent_segment)+'</td><td data-l="Tipo">'+pillType(m.opponent_type)+(m.opening_key&&m.opening_key!=='unclassified'?'<span class="pill" style="font-size:10px;margin-left:4px;opacity:.75">'+esc(m.opening_key)+'</span>':'')+(m.phase_key&&m.phase_key!=='unknown'?'<span class="pill" style="font-size:10px;margin-left:4px;opacity:.8">'+({opening:'Aper.',middlegame:'Medio',endgame:'Final'}[m.phase_key]||esc(m.phase_key))+'</span>':'')+'</td><td data-l="ELO">'+fmt(m.opponent_elo)+'</td><td data-l="Color">'+esc(m.user_color||'—')+'</td><td data-l="Resultado">'+pillResult(m.result||m.outcome)+'</td><td data-l="Fin">'+pillEnd(m.end_condition)+'</td><td data-l="Rev.">'+(m.reviewed?'✓':'')+'</td></tr>';
+   return '<tr'+(m.ply_count!=null&&m.match_id?' class="gamerow" tabindex="0" data-m="'+esc(m.match_id)+'" title="Ver partida"':'')+'><td data-l="Fecha"' + (fullDate ? ' title="' + fullDate + '"' : '') + '>' + formatMatchDate(m.played_at, m.first_seen_at) + '</td><td data-l="Rival">'+esc(m.opponent_name||'—')+pillSegment(m.opponent_segment)+'</td><td data-l="Tipo">'+pillType(m.opponent_type)+(m.opening_family_label&&m.opening_family!=='unclassified'?'<span class="pill" style="font-size:10px;margin-left:4px;opacity:.75">'+esc(m.opening_family_label)+'</span>':'')+(m.phase_key&&m.phase_key!=='unknown'?'<span class="pill" style="font-size:10px;margin-left:4px;opacity:.8">'+({opening:'Aper.',middlegame:'Medio',endgame:'Final'}[m.phase_key]||esc(m.phase_key))+'</span>':'')+'</td><td data-l="ELO">'+fmt(m.opponent_elo)+'</td><td data-l="Color">'+esc(m.user_color||'—')+'</td><td data-l="Resultado">'+pillResult(m.result||m.outcome)+'</td><td data-l="Fin">'+pillEnd(m.end_condition,m.mate_type_label)+'</td><td data-l="Rev.">'+(m.reviewed?'✓':'')+'</td></tr>';
   }).join('');
  }
 }
@@ -1219,7 +1221,7 @@ async function loadChessDashboard(){
  try{
   // summary is essential (without it nothing here means anything: the outer catch). Every other card degrades on its own to "No disponible".
   const opt=(k,route)=>stat(k,route).catch(()=>null);
-  const [s,r,c,o,e,t,op,ph]=await Promise.all([stat('summary','/api/stats/summary'),opt('results','/api/stats/results'),opt('color','/api/stats/color'),opt('opponents','/api/stats/opponents'),opt('opponentElo','/api/stats/opponent-elo'),opt('timeline','/api/stats/timeline'),j('/api/stats/openings').catch(()=>null),j('/api/stats/phases').catch(()=>null)]);
+  const [s,r,c,o,e,t,op,ph,mt]=await Promise.all([stat('summary','/api/stats/summary'),opt('results','/api/stats/results'),opt('color','/api/stats/color'),opt('opponents','/api/stats/opponents'),opt('opponentElo','/api/stats/opponent-elo'),opt('timeline','/api/stats/timeline'),j('/api/stats/openings').catch(()=>null),j('/api/stats/phases').catch(()=>null),j('/api/stats/mates').catch(()=>null)]);
   const rec50=await opt('recent','/api/stats/recent?limit=50');
   if(rec50) lastRecent=rec50;
   hist=s; hist.groups=c? c.groups : undefined;
@@ -1313,7 +1315,18 @@ async function loadChessDashboard(){
    q('#openingsWhite').innerHTML=renderCompare(op.white||[],opTotal);
    q('#openingsBlack').innerHTML=renderCompare(op.black||[],opTotal);
    populateOpeningFilter(op);
-   if(op.population&&q('#openingsPop')) q('#openingsPop').textContent='Hidratadas: '+op.population.hydrated+' / '+op.population.totalMatches+' partidas';
+   if(op.population&&q('#openingsPop')) q('#openingsPop').textContent='Hidratadas: '+op.population.hydrated+' / '+op.population.totalMatches+' partidas'+(op.unclassified>0?' · '+op.unclassified+' sin clasificar':'');
+  }
+
+  // mates: how the games the owner won or lost by checkmate ended
+  if(q('#matesCard')){
+   const list=a=>(a||[]).map(m=>'<div class="row"><b>'+esc(m.label)+'</b><span class="muted">'+m.games+'</span></div>').join('')||'<div class="muted">Ninguno</div>';
+   const any=mt&&!mt.error&&((mt.given||[]).length||(mt.received||[]).length||mt.unclassified>0);
+   q('#matesCard').style.display=any?'block':'none';
+   if(any){
+    q('#matesGiven').innerHTML=list(mt.given); q('#matesReceived').innerHTML=list(mt.received);
+    q('#matesNote').textContent=mt.unclassified>0?mt.unclassified+' mates sin clasificar':'';
+   }
   }
 
   // phases
@@ -1334,7 +1347,7 @@ async function loadChessDashboard(){
     eloSummaryMeta.textContent = '· muestra conocida: '+known+' ('+(known/total*100).toFixed(1)+'%)';
   }
   }
-  renderChessView({ summary: s, results: r, color: c, opponents: o, elo: e, timeline: t, openings: op, phases: ph, recent: rec50 }, lastRows);
+  renderChessView({ summary: s, results: r, color: c, opponents: o, elo: e, timeline: t, openings: op, phases: ph, mates: mt, recent: rec50 }, lastRows);
  }catch(err){ console.error(err); q('#kpis').innerHTML='<div class="muted">Error cargando estadísticas</div>'; }
 }
 

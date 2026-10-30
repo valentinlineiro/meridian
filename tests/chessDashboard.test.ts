@@ -20,7 +20,8 @@ const api: Record<string, unknown> = {
   },
   "/api/stats/opponent-elo": { count: 40, buckets: [], min: 700, max: 1500, average: 1000 },
   "/api/stats/timeline": { snapshots: [{ createdAt: "2026-10-01T10:00:00Z", elo: 900 }, { createdAt: "2026-10-08T10:00:00Z", elo: 1000 }] },
-  "/api/stats/openings": { white: [group({ key: "e4_open", label: "Apertura abierta e4" })], black: [group({ key: "sicilian", label: "Siciliana" })], population: { hydrated: 5, totalMatches: 100 } },
+  "/api/stats/openings": { white: [group({ key: "ruy_lopez", name: "Española (Ruy López)" })], black: [group({ key: "sicilian", name: "Siciliana" })], unclassified: 0, population: { hydrated: 5, totalMatches: 100 } },
+  "/api/stats/mates": { given: [{ type: "back_rank", label: "Mate del pasillo", games: 3 }], received: [{ type: "smothered", label: "Mate ahogado", games: 1 }], unclassified: 2 },
   "/api/stats/phases": { phases: [group({ key: "endgame", label: "Final" })], medianPlies: 42, population: { hydrated: 10, totalMatches: 100 } },
   "/api/stats/recent": { limit: 50, games: 50, wins: 25, losses: 20, draws: 5, winRate: 0.5, before: null },
   "/api/matches": { rows: [], total: 0 },
@@ -95,17 +96,38 @@ describe("chess tab: opponents", () => {
 describe("chess tab: openings and phases", () => {
   it("shouldShowOpeningsByColourAndOfferThemInTheOpeningFilter", async () => {
     const rt = await openChess();
-    expect(rt.getEl("#openingsWhite").innerHTML).toContain("Apertura abierta e4");
+    expect(rt.getEl("#openingsWhite").innerHTML).toContain("Española (Ruy López)");
+    expect(rt.getEl("#openingsWhite").innerHTML).not.toContain("ruy_lopez");
     expect(rt.getEl("#openingsBlack").innerHTML).toContain("Siciliana");
     expect(text(rt, "#openingsPop")).toBe("Hidratadas: 5 / 100 partidas");
     const offered = rt.getEl("#fOpening").children.flatMap((g: any) => g.children.map((o: any) => o.value));
-    expect(offered).toEqual(expect.arrayContaining(["e4_open", "sicilian"]));
+    expect(offered).toEqual(expect.arrayContaining(["ruy_lopez", "sicilian"]));
   });
 
   it("shouldShowThePhasesWithTheirMedianLength", async () => {
     const rt = await openChess();
     expect(rt.getEl("#phasesBody").innerHTML).toContain("Final");
     expect(text(rt, "#phasesMeta")).toBe("Mediana: 42 plies · Hidratadas: 10 partidas");
+  });
+});
+
+describe("chess tab: unclassified and mates", () => {
+  it("shouldSayHowManyGamesHaveNoOpeningFamilyYet", async () => {
+    const rt = await openChess({ "/api/stats/openings": { white: [], black: [], unclassified: 7, population: { hydrated: 5, totalMatches: 100 } } });
+    expect(text(rt, "#openingsPop")).toBe("Hidratadas: 5 / 100 partidas · 7 sin clasificar");
+  });
+
+  it("shouldListTheMatesGivenAndReceivedByTypeAndCountTheUntyped", async () => {
+    const rt = await openChess();
+    expect(rt.getEl("#matesCard").style.display).not.toBe("none");
+    expect(rt.getEl("#matesGiven").innerHTML).toContain("Mate del pasillo");
+    expect(rt.getEl("#matesReceived").innerHTML).toContain("Mate ahogado");
+    expect(text(rt, "#matesNote")).toBe("2 mates sin clasificar");
+  });
+
+  it("shouldHideTheMatesCardWhenThereIsNothingToShow", async () => {
+    const rt = await openChess({ "/api/stats/mates": { given: [], received: [], unclassified: 0 } });
+    expect(rt.getEl("#matesCard").style.display).toBe("none");
   });
 });
 

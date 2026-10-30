@@ -147,6 +147,7 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
  </div>
 
  <h2 style="margin:18px 0 10px;font-size:14px;letter-spacing:.05em;text-transform:uppercase;color:#8ea0b8">Repertorio de aperturas &amp; fases</h2>
+ <div class="card" id="matesCard" style="display:none"><h2>Cómo terminan tus mates</h2><div class="grid2"><div><div class="muted">Dados</div><div id="matesGiven"></div></div><div><div class="muted">Recibidos</div><div id="matesReceived"></div></div></div><div class="muted" id="matesNote" style="margin-top:8px"></div></div>
  <div class="grid2">
   <div class="card" id="openingsCard"><h2>Repertorio de aperturas</h2><div id="openingsTabs" style="display:flex;gap:6px;margin-bottom:12px"><button class="btn btn-p" id="tabBtnBlancas" onclick="showOpeningTab('white')">Blancas</button><button class="btn btn-g" id="tabBtnNegras" onclick="showOpeningTab('black')">Negras</button></div><div id="openingsWhite"></div><div id="openingsBlack" style="display:none"></div><div class="muted" id="openingsPop" style="margin-top:8px"></div></div>
   <div class="card" id="phasesCard"><h2>Fases de partida</h2><div id="phasesBody"></div><div class="muted" id="phasesMeta" style="margin-top:8px"></div></div>
