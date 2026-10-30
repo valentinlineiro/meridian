@@ -140,12 +140,15 @@ export function createD1MatchAdapter(db: D1Database): MatchPort {
     },
 
     async getPendingThreats(limit: number) {
-      const countRow = await db.prepare("SELECT COUNT(*) AS count FROM match_details WHERE mate_threats IS NULL").bind().first<{ count: number }>();
+      const countRow = await db.prepare(`
+        SELECT COUNT(*) AS count FROM match_details md JOIN matches m ON m.match_id = md.match_id
+        WHERE md.mate_threats IS NULL AND LOWER(TRIM(m.user_color)) IN ('white', 'black')
+      `).bind().first<{ count: number }>();
       const { results } = await db.prepare(`
         SELECT md.match_id, m.user_color, md.move_history
         FROM match_details md
         JOIN matches m ON m.match_id = md.match_id
-        WHERE md.mate_threats IS NULL
+        WHERE md.mate_threats IS NULL AND LOWER(TRIM(m.user_color)) IN ('white', 'black')
         ORDER BY m.played_at IS NULL, m.played_at DESC, md.match_id ASC
         LIMIT ?
       `).bind(limit).all<{ match_id: string; user_color: string | null; move_history: string }>();

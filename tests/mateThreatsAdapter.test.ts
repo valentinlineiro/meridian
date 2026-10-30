@@ -39,6 +39,15 @@ describe("mate threats persistence", () => {
     expect((await port.getPendingThreats(10)).items.map((i) => i.match_id)).toEqual(["c"]);
   });
 
+  it("shouldKeepGamesWithAnUnknownColourOutOfTheQueue", async () => {
+    match("known", 1); detail("known");
+    match("nocolour", 2, null); detail("nocolour");
+    match("blank", 3, "  "); detail("blank");
+    const r = await port.getPendingThreats(10);
+    expect(r.items.map((i) => i.match_id)).toEqual(["known"]);
+    expect(r.totalPending).toBe(1);
+  });
+
   it("shouldLimitTheBatchButCountEveryPendingGame", async () => {
     for (let i = 0; i < 5; i++) { match(`m${i}`, i); detail(`m${i}`); }
     const r = await port.getPendingThreats(2);
