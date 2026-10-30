@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { Chess } from "chess.js";
 import { analyzeMateThreats, matesIfIPassed, phaseOfPly } from "../src/domain/mateThreats.ts";
-import { IllegalGame } from "../src/domain/gameReplay.ts";
+import { IllegalGame, replayGame } from "../src/domain/gameReplay.ts";
 
 // Black meets Bc4 + Qh5 aimed at f7: the threat is Qxf7#. Each line ends differently.
 const SETUP = ["e2e4", "e7e5", "f1c4", "b8c6", "d1h5"];
@@ -45,6 +45,16 @@ describe("analyzeMateThreats", () => {
 
   it("shouldThrowIllegalGameOnAnUnplayableMove", () => {
     expect(() => analyzeMateThreats(["e2e5"], "white")).toThrow(IllegalGame);
+  });
+});
+
+describe("analyzer and viewer agree on the ply", () => {
+  it("shouldPointAtTheMoveTheViewerShowsAtThatPlyAndAtTheThreatBeforeIt", () => {
+    const moves = [...SETUP, "g8f6", "h5f7"];
+    const ply = analyzeMateThreats(moves, "black").missedPlies[0]!;
+    const game = replayGame(moves, [], { event: "t", date: null, white: "w", black: "b", result: "1-0" });
+    expect(game.plies[ply - 1]!.san).toBe("Nf6"); // the move that failed, as the viewer lists it
+    expect(game.plies[ply - 2]!.san).toBe("Qh5"); // the position the viewer jumps to (ply - 1) is the one right after the threat appeared
   });
 });
 
