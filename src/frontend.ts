@@ -156,7 +156,7 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
  <h2 style="margin:18px 0 10px;font-size:14px;letter-spacing:.05em;text-transform:uppercase;color:#8ea0b8">Evolución & detalle</h2>
  <div class="grid2">
   <div class="card" id="evoCard"><h2>Evolución · ELO</h2><div class="muted" style="font-size:11px">ELO observado en sincronizaciones</div><div id="evo"></div><div class="muted" id="evoNote" style="margin-top:6px"></div></div>
-  <div class="card" id="resCard"><h2>Resultados</h2><div id="res"></div><div class="muted" id="lossContext" style="margin-top:8px"></div><div class="muted" id="drawContext" style="margin-top:4px"></div></div>
+  <div class="card" id="resCard"><h2>Resultados</h2><div id="res"></div><div class="muted" id="lossContext" style="margin-top:8px"></div><div class="muted" id="lossRateNote" style="margin-top:4px"></div><div class="muted" id="drawContext" style="margin-top:4px"></div></div>
  </div>
  <details id="eloDetails" class="card" style="margin-top:12px">
   <summary style="cursor:pointer;font-weight:600;font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:#8ea0b8">ELO del rival <span id="eloSummaryMeta" class="muted" style="font-weight:400;text-transform:none"></span></summary>

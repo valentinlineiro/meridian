@@ -58,6 +58,16 @@ describe("chess tab: results card", () => {
     expect(text(rt, "#lossContext")).toBe("Derrotas: 4 mates · 2 desconexiones (10%) · 3 rendiciones");
     expect(text(rt, "#drawContext")).toBe("Tablas: 1 ahogados · 2 repetición · 1 material · 1 50 jugadas");
   });
+
+  it("shouldStateTheLossRateWithoutDisconnectionsAndItsDenominatorWhenSomeGamesEndedThatWay", async () => {
+    const rt = await openChess();
+    expect(text(rt, "#lossRateNote")).toBe("Sin contar desconexiones: 18 derrotas de 100 partidas (18%)"); // 20 losses - 2 disconnections, same 100 games
+  });
+
+  it("shouldNotAddALossRateNoteWhenNoLossWasADisconnection", async () => {
+    const rt = await openChess({ "/api/stats/results": { endConditions: { checkmate: { loss: 20, draw: 0 } } } });
+    expect(text(rt, "#lossRateNote")).toBe("");
+  });
 });
 
 describe("chess tab: colour gap", () => {

@@ -1281,6 +1281,8 @@ async function loadChessDashboard(){
     }
    }
    if(lp.length && q('#lossContext')) q('#lossContext').textContent = 'Derrotas: ' + lp.join(' · ');
+   const decided = s.wins + s.losses + s.draws, played = s.losses - discon;
+   if(q('#lossRateNote')) q('#lossRateNote').textContent = discon && decided ? 'Sin contar desconexiones: ' + played + ' derrotas de ' + decided + ' partidas (' + (played / decided * 100).toFixed(0) + '%)' : '';
 
    const dp = [];
    if(ec.stalemate?.draw) dp.push(ec.stalemate.draw + ' ahogados');
