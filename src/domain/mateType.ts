@@ -27,7 +27,9 @@ const neighbours = (sq: Square): Square[] => {
 };
 
 // Only a game that ends in checkmate has a type; anything else (including moves that do not replay) is null.
-// "Pasillo" = the mated king stands on its back rank and the checking rook/queen is on that same rank.
+// "Pasillo" = the mated king stands on its back rank, the checking rook/queen is on that same rank, and at least one of the king's own pieces stands on the
+// rank in front of it (the king's file and its two neighbours). Heuristic: it separates a king shut in by its own pieces from the K+R/K+Q edge mates of an
+// endgame, but an own piece in front does not by itself prove that it blocks the escape.
 export function classifyMate(moves: readonly string[]): MateType | null {
   const chess = new Chess();
   try {
@@ -54,6 +56,11 @@ export function classifyMatePosition(chess: Chess): MateType | null {
   if (history.length <= 8 && piece === "q" && (from === "f7" || from === "f2")) return "scholars";
   if (piece === "n" && neighbours(king).every((s) => chess.get(s)?.color === mated)) return "smothered";
   const backRank = mated === "w" ? "1" : "8";
-  if ((piece === "r" || piece === "q") && king[1] === backRank && from[1] === backRank) return "back_rank";
+  const front = mated === "w" ? "2" : "7";
+  const ownInFront = [-1, 0, 1].some((d) => {
+    const file = String.fromCharCode(king.charCodeAt(0) + d);
+    return file >= "a" && file <= "h" && chess.get(`${file}${front}` as Square)?.color === mated;
+  });
+  if ((piece === "r" || piece === "q") && king[1] === backRank && from[1] === backRank && ownInFront) return "back_rank";
   return BY_PIECE[piece];
 }
