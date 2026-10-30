@@ -207,6 +207,39 @@ describe("analyze", () => {
       expect(m.failed).toBeGreaterThanOrEqual(1);
     });
 
+    // undici reports every network failure as TypeError("fetch failed") with the system error in `cause`
+    const netError = (code: string) => Object.assign(new TypeError("fetch failed"), { cause: Object.assign(new Error(code), { code }) });
+    const throwing = (err: unknown) => { let calls = 0; return { fetch: (async () => { calls++; throw err; }) as unknown as typeof globalThis.fetch, calls: () => calls }; };
+
+    it.each(["ECONNRESET", "ECONNREFUSED", "ETIMEDOUT", "EPIPE", "EAI_AGAIN", "UND_ERR_SOCKET", "UND_ERR_CONNECT_TIMEOUT"])("shouldRetryTheTransientTransportFailure_%s", async (code) => {
+      const t = throwing(netError(code));
+      const m = await analyze({ fetch: t.fetch, worker: WORKER, importToken: "t", ...noWait });
+      expect(t.calls()).toBe(4);
+      expect(m.aborted).toBe("pending-threats unreachable after 4 attempts");
+    });
+
+    it.each([
+      ["anAbort", Object.assign(new Error("aborted"), { name: "AbortError" })],
+      ["aTimeoutSignal", Object.assign(new Error("timed out"), { name: "TimeoutError" })],
+      ["anUnexpectedError", new Error("boom")],
+      ["anInvalidUrl", new TypeError("Invalid URL")],
+      ["aCertificateFailure", netError("UNABLE_TO_VERIFY_LEAF_SIGNATURE")],
+      ["aMissingHost", netError("ENOTFOUND")],
+      ["aFetchFailureWithoutAReason", new TypeError("fetch failed")],
+    ])("shouldNotRetryAndShouldSurface_%s", async (_n, err) => {
+      const t = throwing(err);
+      await expect(analyze({ fetch: t.fetch, worker: WORKER, importToken: "t", ...noWait })).rejects.toBe(err);
+      expect(t.calls()).toBe(1);
+    });
+
+    it("shouldNotRetryAnUnexpectedErrorOnAPostEither", async () => {
+      const w = fakeWorker([item("g", "black", SCHOLAR_LOSS)]);
+      const boom = new Error("boom"); let posts = 0;
+      const f = flaky(w, (url) => { if (url.includes("pending-threats")) return null; posts++; throw boom; });
+      await expect(analyze({ fetch: f.fetch, worker: WORKER, importToken: "t", ...noWait })).rejects.toBe(boom);
+      expect(posts).toBe(1);
+    });
+
     it("shouldStillAbortOn401WithoutRetrying", async () => {
       const w = fakeWorker([], { pendingStatus: 401 });
       const f = flaky(w, () => null);

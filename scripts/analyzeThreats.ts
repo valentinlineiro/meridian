@@ -23,15 +23,28 @@ export interface AnalyzeMetrics { batches: number; ok: number; invalid: number; 
 const REJECTED = "worker rejected IMPORT_TOKEN (401)";
 const ATTEMPTS = 4; // one try and three retries, waiting 1 s, 2 s, 4 s: enough for a dropped connection, short enough for a 15-minute job
 
+// undici reports every network failure as TypeError("fetch failed") with the system error in `cause`. Only the codes below are a dropped,
+// reset or timed-out connection that a later attempt can fix; anything else (an AbortError, an invalid URL, a certificate or DNS-name problem)
+// would fail the same way again and is surfaced instead.
+const TRANSIENT = new Set(["ECONNRESET", "ECONNREFUSED", "ETIMEDOUT", "EPIPE", "EAI_AGAIN", "ENETUNREACH", "EHOSTUNREACH", "UND_ERR_SOCKET", "UND_ERR_CONNECT_TIMEOUT", "UND_ERR_HEADERS_TIMEOUT", "UND_ERR_BODY_TIMEOUT"]);
+function isTransient(e: unknown): boolean {
+  if (!(e instanceof TypeError) || e.message !== "fetch failed") return false;
+  const code = (e.cause as { code?: unknown } | undefined)?.code;
+  return typeof code === "string" && TRANSIENT.has(code);
+}
+
 // Connection errors and 5xx answers are transient, and both routes are idempotent (a retried POST replaces, never adds), so they are retried
-// with a growing wait. Anything else (2xx, 4xx) is final and returned at once. null = unreachable on every attempt; otherwise the last response.
+// with a growing wait. Anything else (2xx, 4xx) is final and returned at once; a non-transient exception propagates. null = unreachable on every attempt; otherwise the last response.
 async function send(o: Required<Pick<AnalyzeOptions, "fetch" | "sleep">>, url: string, init: RequestInit): Promise<Response | null> {
   let last: Response | null = null;
   for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
     try {
       last = await o.fetch(url, init);
       if (last.status < 500) return last;
-    } catch { last = null; }
+    } catch (e) {
+      if (!isTransient(e)) throw e; // cancellations, bad URLs, certificate problems and bugs are not worth a retry
+      last = null;
+    }
     if (attempt < ATTEMPTS) await o.sleep(1000 * 2 ** (attempt - 1));
   }
   return last;
