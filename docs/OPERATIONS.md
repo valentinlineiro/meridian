@@ -112,3 +112,14 @@ Comprobaciones de salud de datos (SELECT): huérfanos `matches`↔`snapshots`↔
 - El dashboard y `/raw` llevan CSP (con `script-src 'unsafe-inline'`: 21 handlers inline), `no-store`, `nosniff` y `X-Frame-Options`; las respuestas JSON de la API siguen sin `Cache-Control` ni `nosniff`.
 - La cuenta de Duolingo tiene como curso activo uno de ajedrez (`CHESS_CH` el 2026-10-05): el sweep no lo recorre y la restauración vuelve a él. Es lo esperado al leer el log.
 - `wrangler` instalado es 3.114 (hay 4.x disponible); no se ha actualizado.
+
+## 6. Amenazas de mate (análisis programado)
+
+El indicador de la tarjeta «Amenazas de mate» no se calcula en el Worker (≈ 73 ms de CPU por partida, y el plan Free da 10 ms): lo calcula un job programado del repositorio del colector (`threats.yml`) y lo escribe por la API de máquina. Diseño: `docs/superpowers/specs/2026-10-30-mate-threat-indicator-design.md`.
+
+- **Columna `match_details.mate_threats`** (migración 0018), JSON versionado con tres estados que no se confunden: `NULL` = pendiente; `{"v":1,"status":"ok",…}` = analizada (`faced: 0` significa «analizada, sin amenazas»); `{"v":1,"status":"invalid","reason":…}` = el historial no se puede reproducir (no vuelve a la cola).
+- **Estado de un vistazo:** `GET /api/stats/threats` devuelve `analysed`, `pending`, `invalid` y `unknownVersion` (contenidos que el lector no entiende: versión desconocida, JSON roto o contadores contradictorios).
+- **Rutas de máquina (`IMPORT_TOKEN`):** `GET /api/chess/matches/pending-threats?limit=N` (solo lectura; devuelve `match_id`, `user_color`, `move_history`; recientes primero) y `POST /api/chess/matches/:id/threats` (reemplazo idempotente de esa única columna; el servidor pone `v` y valida las invariantes; 422 sin escribir nada si fallan). `IMPORT_TOKEN` es una credencial única para todas las rutas de máquina; no hay alcances separados (riesgo aceptado).
+- **Recalcular una partida:** poner su `mate_threats` a `NULL` (escritura en producción, la hace el propietario); el siguiente run del job la vuelve a analizar. Cambiar la versión del contrato exige una migración de datos explícita.
+- **El job** (`scripts/analyzeThreats.ts`, ejecutado con `node --experimental-transform-types`) encadena tandas de 100 partidas dentro de 12 minutos y puede interrumpirse: cada partida se escribe con un solo `UPDATE`, así que lo ya escrito se conserva y el siguiente run sigue por las que quedan en `NULL`. No registra ids ni jugadas.
+- **Orden de despliegue:** (1) aplicar la migración 0018 en remoto (`yes | npx wrangler d1 migrations apply meridian --remote --config wrangler.private.jsonc`), (2) fusionar Meridian, (3) fijar en `threats.yml` del colector el SHA desplegado, (4) activar `THREATS_SCHEDULE=enabled` y lanzar el workflow a mano una vez para el relleno inicial (≈ 1.643 partidas, ≈ 7 min).
