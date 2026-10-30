@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { buildBackfill } from "../scripts/backfillClassification.ts";
 import { SCHOLARS } from "./fixtures/mateGames.ts";
 
-const row = (match_id: string, moves: unknown) => ({ match_id, move_history: typeof moves === "string" ? moves : JSON.stringify(moves) });
+const row = (match_id: string, moves: unknown, end_condition: string | null = "checkmate") => ({ match_id, end_condition, move_history: typeof moves === "string" ? moves : JSON.stringify(moves) });
 const ITALIAN = ["e2e4", "e7e5", "g1f3", "b8c6", "f1c4"];
 
 describe("buildBackfill", () => {
@@ -35,6 +35,18 @@ describe("buildBackfill", () => {
   it("shouldSplitStatementsIntoBatchesOfOneHundred", () => {
     const rows = Array.from({ length: 250 }, (_, i) => row(`m${String(i).padStart(3, "0")}`, ITALIAN));
     expect(buildBackfill(rows).sql.match(/^-- batch \d+$/gm)).toHaveLength(3);
+  });
+
+  it("shouldLeaveTheMateTypeNullWhenTheRecordedEndIsNotCheckmate", () => {
+    const { sql, counts } = buildBackfill([row("t", SCHOLARS, "timeout"), row("n", SCHOLARS, null)]);
+    expect(sql).toContain("opening_family='open_game', mate_type=NULL WHERE match_id='t';");
+    expect(sql).toContain("opening_family='open_game', mate_type=NULL WHERE match_id='n';");
+    expect(counts.mates).toEqual({});
+  });
+
+  it("shouldOfferAVerificationQueryToCompareWithTheDryRunCounts", () => {
+    expect(buildBackfill([]).verifySql).toContain("GROUP BY opening_family");
+    expect(buildBackfill([]).verifySql).toContain("GROUP BY mate_type");
   });
 
   it("shouldWriteUnclassifiedWhenTheGameHasFewerThanTwoPlies", () => {

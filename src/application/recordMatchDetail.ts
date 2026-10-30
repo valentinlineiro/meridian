@@ -57,7 +57,7 @@ export async function recordMatchDetail(
     phase_key: phaseKey,
     opening_key: openingKey,
     opening_family: openingFamily,
-    mate_type: mateType,
+    mate_type: record.end_condition === "checkmate" ? mateType : null, // the board and the recorded ending must agree
   };
 
   await port.saveMatchDetail(enriched);

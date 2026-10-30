@@ -17,9 +17,9 @@ describe("recordMatchDetail classification", () => {
     db.exec(`INSERT INTO matches (match_id, user_id, snapshot_id, first_seen_at, last_seen_at, raw_json, user_color)
              VALUES ('m1', 'u1', 's', 'd', 'd', '{}', 'white')`);
   });
-  const record = (moves: unknown): MatchDetailRecord => ({
+  const record = (moves: unknown, endCondition: string | null = "checkmate"): MatchDetailRecord => ({
     match_id: "m1", user_id: "u1", opponent_id: null, is_hard_match: null, is_placement_match: null, is_revenge_match: null,
-    predicted_elo_win: null, predicted_elo_loss: null, predicted_elo_draw: null, elo_after: null, outcome: null, end_condition: null,
+    predicted_elo_win: null, predicted_elo_loss: null, predicted_elo_draw: null, elo_after: null, outcome: null, end_condition: endCondition,
     status: "done", move_history: JSON.stringify(moves), move_timestamps: "[]", final_fen: null, reaction: null, session_duration: null,
   });
   const row = () => db.prepare("SELECT opening_family, mate_type FROM match_details WHERE match_id = 'm1'").get() as any;
@@ -32,6 +32,11 @@ describe("recordMatchDetail classification", () => {
   it("shouldStoreTheMateTypeWhenTheGameEndsInMate", async () => {
     await recordMatchDetail(port, record(SCHOLARS));
     expect(row().mate_type).toBe("scholars");
+  });
+
+  it("shouldLeaveTheMateTypeNullWhenTheRecordedEndIsNotCheckmate", async () => {
+    await recordMatchDetail(port, record(SCHOLARS, "timeout"));
+    expect(row()).toEqual({ opening_family: "open_game", mate_type: null });
   });
 
   it("shouldSaveWithUnclassifiedWhenMovesAreGarbage", async () => {
