@@ -2,6 +2,8 @@ import type { MatchDetailRecord } from "../types.ts";
 
 export interface EnrichedMatchDetailRecord extends MatchDetailRecord {
   opening_key: string | null;
+  opening_family?: string | null;
+  mate_type?: string | null;
   phase_key: string | null;
   ply_count: number | null;
 }
