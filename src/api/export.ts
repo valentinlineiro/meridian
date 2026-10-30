@@ -9,9 +9,9 @@ const COLUMNS = [
   "pvp_match_type", "elo_after", "end_condition", "opening_key", "phase_key", "ply_count", "session_duration", "opening_family", "mate_type",
 ] as const;
 
-// The two classification columns are written by name ("Siciliana", "Mate del pasillo"), never by key.
+// The two classification columns are written by name ("Siciliana", "Mate del pasillo"), never by key; an unclassified opening is left empty, as the dashboard hides it.
 const named = (column: string, value: string | number | null) =>
-  column === "opening_family" ? (OPENING_FAMILY_LABELS[String(value)] ?? value) : column === "mate_type" ? (MATE_TYPE_LABELS[String(value)] ?? value) : value;
+  column === "opening_family" ? (value === "unclassified" ? null : OPENING_FAMILY_LABELS[String(value)] ?? value) : column === "mate_type" ? (MATE_TYPE_LABELS[String(value)] ?? value) : value;
 
 export async function handleExportMatches(db: D1Database, email: string | null, today: string): Promise<Response> {
   if (!email) return json({ ok: false, error: "unauthorized", code: "UNAUTHORIZED" }, 401);

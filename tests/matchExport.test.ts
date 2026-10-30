@@ -79,6 +79,12 @@ describe("GET /api/export/matches.csv", () => {
     expect(lines[1]!.endsWith(",Española (Ruy López),Mate ahogado")).toBe(true);
   });
 
+  it("shouldLeaveTheFamilyEmptyWhenTheOpeningCouldNotBeClassified", async () => {
+    db.exec("UPDATE match_details SET opening_family = 'unclassified', mate_type = NULL WHERE match_id = 'm1'");
+    const lines = (await (await get()).text()).replace(/^﻿/, "").trimEnd().split("\r\n");
+    expect(lines[1]!.endsWith(",41,,,")).toBe(true);
+  });
+
   it("shouldStartWithUtf8BomWhenExcelMustReadAccents", async () => {
     expect([...new Uint8Array(await (await get()).arrayBuffer()).slice(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
   });
