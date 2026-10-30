@@ -25,8 +25,8 @@ async function saveMatchDetail(db: D1Database, d: MatchDetailRecord): Promise<vo
       match_id, user_id, opponent_id, is_hard_match, is_placement_match, is_revenge_match,
       predicted_elo_win, predicted_elo_loss, predicted_elo_draw, elo_after, outcome,
       end_condition, status, move_history, move_timestamps, final_fen, reaction,
-      session_duration, opening_key, phase_key, ply_count, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+      session_duration, opening_key, phase_key, ply_count, opening_family, mate_type, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
     ON CONFLICT(match_id) DO UPDATE SET
       user_id = excluded.user_id,
       opponent_id = excluded.opponent_id,
@@ -48,6 +48,8 @@ async function saveMatchDetail(db: D1Database, d: MatchDetailRecord): Promise<vo
       opening_key = excluded.opening_key,
       phase_key = excluded.phase_key,
       ply_count = excluded.ply_count,
+      opening_family = excluded.opening_family,
+      mate_type = excluded.mate_type,
       updated_at = datetime('now')
   `;
 
@@ -72,7 +74,9 @@ async function saveMatchDetail(db: D1Database, d: MatchDetailRecord): Promise<vo
     d.session_duration ?? null,
     openingKey,
     phaseKey,
-    plyCount
+    plyCount,
+    d.opening_family ?? null,
+    d.mate_type ?? null
   ).run();
 }
 

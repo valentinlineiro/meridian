@@ -4,7 +4,8 @@ import { newcombeDiff } from "../domain/proportion.ts";
 import { summarizeLang } from "../analytics/lang.ts";
 import { buildCourseProgressHistory } from "../analytics/courseHistory.ts";
 import { classifyOpponentSegment, OPPONENT_SEGMENT_LABELS, type OpponentSegment } from "../analytics/opponent.ts";
-import { WHITE_OPENINGS, BLACK_OPENINGS } from "../analytics/openings.ts";
+import { OPENING_FAMILY_LABELS } from "../domain/openingFamily.ts";
+import { MATE_TYPE_LABELS } from "../domain/mateType.ts";
 import { median } from "../analytics/median.ts";
 import { PHASE_META, type PhaseKey } from "../analytics/phases.ts";
 
@@ -200,6 +201,7 @@ export async function handleStats(db: D1Database, kind: string, url: URL): Promi
   const userId = url.searchParams.get("userId");
   if (kind === "lang") return handleLangStats(db, url);
   if (kind === "openings") return handleStatsOpenings(db, url);
+  if (kind === "mates") return handleStatsMates(db, url);
   if (kind === "phases") return handleStatsPhases(db, url);
   if (kind === "bundle") return handleStatsBundle(db, url);
 
@@ -293,72 +295,53 @@ export async function handleStatsOpenings(db: D1Database, url: URL): Promise<Res
   const population = await getMatchPopulation(db, userId);
 
   const q = `
-    SELECT md.opening_key, m.user_color, m.result, m.outcome
+    SELECT md.opening_family, m.user_color, m.result, m.outcome
     FROM matches m
     JOIN match_details md ON m.match_id = md.match_id
-    WHERE md.opening_key IS NOT NULL
-    ${userId ? "AND m.user_id = ?" : ""}
+    ${userId ? "WHERE m.user_id = ?" : ""}
   `;
   const stmt = userId ? db.prepare(q).bind(userId) : db.prepare(q);
-  const raw = ((await stmt.all<any>()).results ?? []) as any[];
-  const rows = summarizeBy(raw, (r) => `${r.opening_key}\u0000${r.user_color ?? ""}`)
-    .map((g) => ({ ...g, opening_key: g.rows[0].opening_key, user_color: g.rows[0].user_color }))
+  const all = ((await stmt.all<any>()).results ?? []) as any[];
+  // Details saved before migration 0017 (or too short to tell) have no family: they are counted apart, never folded into "Otra apertura".
+  const classified = all.filter((r) => r.opening_family && r.opening_family !== "unclassified");
+  const unclassified = all.length - classified.length;
+
+  const rows = summarizeBy(classified, (r) => `${r.opening_family}\u0000${r.user_color ?? ""}`)
+    .map((g) => ({ ...g, opening_family: g.rows[0].opening_family, user_color: g.rows[0].user_color }))
     .sort((a, b) => b.games - a.games);
 
   const white: OpeningStat[] = [];
   const black: OpeningStat[] = [];
-
   for (const r of rows) {
-    const color = String(r.user_color ?? "").toLowerCase();
-    const key = String(r.opening_key);
     const { games, wins, losses, draws, unknown, decided, winRate, winRateCi, scoreRate } = r;
-
-    let name = "Sin datos";
-    let notation = "-";
-
-    if (color === "white") {
-      const match = WHITE_OPENINGS[key];
-      if (match) {
-        name = match.name;
-        notation = match.notation;
-      } else if (key === "other_white" || key.startsWith("other")) {
-        name = "Otras secuencias con Blancas";
-        notation = "-";
-      } else if (key === "unclassified") {
-        name = "Sin datos";
-        notation = "-";
-      } else {
-        name = key;
-        notation = "-";
-      }
-      white.push({ key, name, notation, games, wins, losses, draws, unknown, decided, winRate, winRateCi, scoreRate });
-    } else if (color === "black") {
-      const match = BLACK_OPENINGS[key];
-      if (match) {
-        name = match.name;
-        notation = match.notation;
-      } else if (key === "other_black" || key.startsWith("other")) {
-        name = "Otras secuencias con Negras";
-        notation = "-";
-      } else if (key === "unclassified") {
-        name = "Sin datos";
-        notation = "-";
-      } else {
-        name = key;
-        notation = "-";
-      }
-      black.push({ key, name, notation, games, wins, losses, draws, unknown, decided, winRate, winRateCi, scoreRate });
-    }
+    const key = String(r.opening_family);
+    const stat: OpeningStat = { key, name: OPENING_FAMILY_LABELS[key] ?? OPENING_FAMILY_LABELS.other!, notation: "-", games, wins, losses, draws, unknown, decided, winRate, winRateCi, scoreRate };
+    const color = String(r.user_color ?? "").toLowerCase();
+    if (color === "white") white.push(stat);
+    else if (color === "black") black.push(stat);
   }
 
-  white.sort((a, b) => b.games - a.games);
-  black.sort((a, b) => b.games - a.games);
+  return json({ population, white, black, unclassified });
+}
 
-  return json({
-    population,
-    white,
-    black,
-  });
+// Mates the owner gave (wins by checkmate) and received (losses by checkmate), by type. A checkmate without a type is counted apart.
+export async function handleStatsMates(db: D1Database, url: URL): Promise<Response> {
+  const userId = url.searchParams.get("userId");
+  const q = `
+    SELECT md.mate_type, m.result
+    FROM matches m
+    JOIN match_details md ON m.match_id = md.match_id
+    WHERE md.end_condition = 'checkmate' ${userId ? "AND m.user_id = ?" : ""}
+  `;
+  const stmt = userId ? db.prepare(q).bind(userId) : db.prepare(q);
+  const rows = ((await stmt.all<{ mate_type: string | null; result: string | null }>()).results ?? []);
+
+  const tally = (result: string) => {
+    const counts = new Map<string, number>();
+    for (const r of rows) if (r.mate_type && r.result === result) counts.set(r.mate_type, (counts.get(r.mate_type) ?? 0) + 1);
+    return [...counts].map(([type, games]) => ({ type, label: MATE_TYPE_LABELS[type] ?? type, games })).sort((a, b) => b.games - a.games);
+  };
+  return json({ given: tally("win"), received: tally("loss"), unclassified: rows.filter((r) => !r.mate_type).length });
 }
 
 export async function handleStatsPhases(db: D1Database, url: URL): Promise<Response> {
@@ -435,6 +418,12 @@ export async function handleLangStats(db: D1Database, url: URL): Promise<Respons
   }
 }
 
+const withLabels = (r: any) => ({
+  ...r,
+  opening_family_label: r.opening_family ? OPENING_FAMILY_LABELS[r.opening_family] ?? null : null,
+  mate_type_label: r.mate_type ? MATE_TYPE_LABELS[r.mate_type] ?? null : null,
+});
+
 export async function handleMatches(db: D1Database, url: URL): Promise<Response> {
   const limit = Math.min(Number(url.searchParams.get("limit") ?? 50), 200);
   const offset = Number(url.searchParams.get("offset") ?? 0);
@@ -444,7 +433,7 @@ export async function handleMatches(db: D1Database, url: URL): Promise<Response>
   eq("m.user_color", url.searchParams.get("color"));
   eq("m.opponent_type", url.searchParams.get("opponentType"));
   eq("md.end_condition", url.searchParams.get("endCondition"));
-  eq("md.opening_key", url.searchParams.get("opening"));
+  eq("md.opening_family", url.searchParams.get("opening"));
   eq("md.phase_key", url.searchParams.get("phase"));
   if (url.searchParams.get("reviewed") != null) { conds.push("m.reviewed=?"); args.push(Number(url.searchParams.get("reviewed"))); }
   if (url.searchParams.get("minOpponentElo") != null) { conds.push("m.opponent_elo>=?"); args.push(Number(url.searchParams.get("minOpponentElo"))); }
@@ -459,7 +448,7 @@ export async function handleMatches(db: D1Database, url: URL): Promise<Response>
     const candidateRows = ((await db.prepare(
       `SELECT 
          m.match_id, m.opponent_name, m.opponent_type, m.opponent_elo, m.user_color, m.result, m.outcome, m.reviewed, m.first_seen_at, m.played_at,
-         md.end_condition, md.opponent_id, md.opening_key, md.phase_key, md.ply_count
+         md.end_condition, md.opponent_id, md.opening_key, md.opening_family, md.mate_type, md.phase_key, md.ply_count
        FROM matches m
        LEFT JOIN match_details md ON m.match_id = md.match_id
        ${where}
@@ -471,7 +460,7 @@ export async function handleMatches(db: D1Database, url: URL): Promise<Response>
       const seg = classifyOpponentSegment(r.opponent_id, r.opponent_type);
       if (seg === oppSegment) {
         matchedRows.push({
-          ...r,
+          ...withLabels(r),
           opponent_segment: seg,
         });
       }
@@ -492,7 +481,7 @@ export async function handleMatches(db: D1Database, url: URL): Promise<Response>
   const rawRows = ((await db.prepare(
     `SELECT 
        m.match_id, m.opponent_name, m.opponent_type, m.opponent_elo, m.user_color, m.result, m.outcome, m.reviewed, m.first_seen_at, m.played_at,
-       md.end_condition, md.opponent_id, md.opening_key, md.phase_key, md.ply_count
+       md.end_condition, md.opponent_id, md.opening_key, md.opening_family, md.mate_type, md.phase_key, md.ply_count
      FROM matches m
      LEFT JOIN match_details md ON m.match_id = md.match_id
      ${where}
@@ -501,7 +490,7 @@ export async function handleMatches(db: D1Database, url: URL): Promise<Response>
   ).bind(...args, limit, offset).all()).results ?? []) as any[];
 
   const rows = rawRows.map((r) => ({
-    ...r,
+    ...withLabels(r),
     opponent_segment: classifyOpponentSegment(r.opponent_id, r.opponent_type),
   }));
 

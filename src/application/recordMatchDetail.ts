@@ -2,6 +2,7 @@ import type { MatchPort, EnrichedMatchDetailRecord } from "../ports/matchPort.ts
 import type { MatchDetailRecord } from "../types.ts";
 import { classifyPhase } from "../analytics/phases.ts";
 import { classifyOpening } from "../analytics/openings.ts";
+import { classifyGame } from "../domain/gameClassification.ts";
 import { NotFoundError, OwnershipViolationError } from "./errors.ts";
 
 export async function recordMatchDetail(
@@ -47,12 +48,16 @@ export async function recordMatchDetail(
     normColor === "white" || normColor === "black" ? normColor : null
   ).key;
 
+  const { openingFamily, mateType } = classifyGame(moves);
+
   const enriched: EnrichedMatchDetailRecord = {
     ...record,
     user_id: ownerId,
     ply_count: plyCount,
     phase_key: phaseKey,
     opening_key: openingKey,
+    opening_family: openingFamily,
+    mate_type: record.end_condition === "checkmate" ? mateType : null, // the board and the recorded ending must agree
   };
 
   await port.saveMatchDetail(enriched);

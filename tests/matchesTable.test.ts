@@ -156,7 +156,7 @@ describe("match filters", () => {
 
 describe("match rows", () => {
   const played = 1790000000;
-  const full = { ...row(1), played_at: played, opponent_segment: "noisy_neural", opening_key: "sicilian", phase_key: "middlegame", end_condition: "checkmate" };
+  const full = { ...row(1), played_at: played, opponent_segment: "noisy_neural", opening_family: "sicilian", opening_family_label: "Siciliana", phase_key: "middlegame", end_condition: "checkmate" };
 
   it("shouldShowWhenHowAndAgainstWhomEachGameWasPlayed", async () => {
     const { rt } = await openPage(1, [full]);
@@ -164,16 +164,27 @@ describe("match rows", () => {
     expect(html).toContain(`title="${new Date(played * 1000).toLocaleString("es-ES")}"`); // the full date on hover
     expect(html).toContain("Noisy Neural"); // opponent family
     expect(html).toMatch(/data-l="Fin"><span class="pill">Mate<\/span>/); // how it ended
-    expect(html).toContain("sicilian"); // opening
+    expect(html).toContain("Siciliana"); // opening, by name
+    expect(html).not.toContain("sicilian"); // never the key
     expect(html).toContain("Medio"); // phase
   });
 
   it("shouldOmitTheOpeningAndPhaseBadgesWhenTheyAreUnknown", async () => {
-    const { rt } = await openPage(1, [{ ...full, opening_key: "unclassified", phase_key: "unknown", opponent_segment: "unknown" }]);
+    const { rt } = await openPage(1, [{ ...full, opening_family: "unclassified", opening_family_label: "Sin datos", phase_key: "unknown", opponent_segment: "unknown" }]);
     const html = rt.getEl("#mb").innerHTML;
-    expect(html).not.toContain("unclassified");
+    expect(html).not.toContain("Sin datos");
     expect(html).not.toContain("Medio");
     expect(html).not.toContain("Noisy Neural");
+  });
+
+  it("shouldNameTheKindOfMateInTheEndPillWhenKnown", async () => {
+    const { rt } = await openPage(1, [{ ...full, mate_type: "back_rank", mate_type_label: "Mate del pasillo" }]);
+    expect(rt.getEl("#mb").innerHTML).toMatch(/data-l="Fin"><span class="pill">Mate · pasillo<\/span>/);
+  });
+
+  it("shouldShowPlainMateWhenTheKindIsUnknown", async () => {
+    const { rt } = await openPage(1, [{ ...full, mate_type: null, mate_type_label: null }]);
+    expect(rt.getEl("#mb").innerHTML).toMatch(/data-l="Fin"><span class="pill">Mate<\/span>/);
   });
 
   it("shouldFallBackToTheFirstSeenDateWithoutAPlayedAt", async () => {

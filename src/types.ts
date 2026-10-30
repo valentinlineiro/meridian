@@ -79,6 +79,8 @@ export interface MatchDetailRecord {
   created_at?: string;
   updated_at?: string;
   opening_key?: string | null;
+  opening_family?: string | null;
+  mate_type?: string | null;
   phase_key?: string | null;
   ply_count?: number | null;
   user_color?: string | null;

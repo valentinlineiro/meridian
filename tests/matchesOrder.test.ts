@@ -16,6 +16,7 @@ function createTestDb() {
   db.exec(mdSql);
   const opSql = readFileSync(new URL("../migrations/0007_openings_and_phases.sql", import.meta.url).pathname, "utf8");
   db.exec(opSql);
+  db.exec(readFileSync(new URL("../migrations/0017_opening_family_mate_type.sql", import.meta.url).pathname, "utf8"));
 
   const d1 = {
     prepare(sql: string) {
