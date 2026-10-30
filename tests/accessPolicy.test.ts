@@ -29,8 +29,8 @@ const API_READS = [
   "/api/some/route/nobody/wrote", "/anything-else",
 ];
 const USER_READS = [...HTML_READS, ...API_READS];
-const MACHINE_READS = ["/api/chess/matches/pending-details"];
-const WRITES = ["/api/import", "/api/snapshot", "/api/chess/matches/m1/detail", "/api/unknown-write", "/unknown-write"];
+const MACHINE_READS = ["/api/chess/matches/pending-details", "/api/chess/matches/pending-threats"];
+const WRITES = ["/api/import", "/api/snapshot", "/api/chess/matches/m1/detail", "/api/chess/matches/m1/threats", "/api/unknown-write", "/unknown-write"];
 
 const denied = (res: Response, path: string) =>
   !path.startsWith("/api/") ? res.status === 303 && res.headers.get("location")!.startsWith("/login?next=") : res.status === 401;

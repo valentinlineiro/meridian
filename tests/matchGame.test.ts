@@ -12,7 +12,7 @@ describe("GET /api/me/matches/:id/game", () => {
   let db: ReturnType<typeof createSqliteD1>["db"];
   let env: Env;
   beforeEach(() => {
-    const s = createSqliteD1(["0001_init.sql", "0004_users.sql", "0005_played_at.sql", "0006_match_details.sql", "0007_openings_and_phases.sql"]);
+    const s = createSqliteD1(["0001_init.sql", "0004_users.sql", "0005_played_at.sql", "0006_match_details.sql", "0007_openings_and_phases.sql", "0018_mate_threats.sql"]);
     db = s.db;
     env = { DB: s.d1, IMPORT_TOKEN: "secret", SESSION_SECRET: SECRET, ADMIN_EMAIL: ADMIN, ADMIN_PASSWORD_HASH: "x" } as unknown as Env;
     db.exec(`

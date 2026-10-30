@@ -41,6 +41,9 @@ describe("recordMatchDetail Use Case", () => {
       },
       async getMatchDetail() { return null; },
       async getPendingMatchIds() { return { items: [], totalPending: 0, next: false }; },
+      async getPendingThreats() { return { items: [], totalPending: 0 }; },
+      async getThreatTarget() { return null; },
+      async saveMateThreats() {},
     };
 
     const record = createBaseRecord({
@@ -72,6 +75,9 @@ describe("recordMatchDetail Use Case", () => {
       },
       async getMatchDetail() { return null; },
       async getPendingMatchIds() { return { items: [], totalPending: 0, next: false }; },
+      async getPendingThreats() { return { items: [], totalPending: 0 }; },
+      async getThreatTarget() { return null; },
+      async saveMateThreats() {},
     };
 
     const record = createBaseRecord({
@@ -102,6 +108,9 @@ describe("recordMatchDetail Use Case", () => {
       },
       async getMatchDetail() { return null; },
       async getPendingMatchIds() { return { items: [], totalPending: 0, next: false }; },
+      async getPendingThreats() { return { items: [], totalPending: 0 }; },
+      async getThreatTarget() { return null; },
+      async saveMateThreats() {},
     };
 
     const record = createBaseRecord({
@@ -128,6 +137,9 @@ describe("recordMatchDetail Use Case", () => {
       async saveMatchDetail(detail: EnrichedMatchDetailRecord) { savedDetail = detail; },
       async getMatchDetail() { return null; },
       async getPendingMatchIds() { return { items: [], totalPending: 0, next: false }; },
+      async getPendingThreats() { return { items: [], totalPending: 0 }; },
+      async getThreatTarget() { return null; },
+      async saveMateThreats() {},
     };
 
     const record = createBaseRecord({
@@ -152,6 +164,9 @@ describe("recordMatchDetail Use Case", () => {
       async saveMatchDetail(detail: EnrichedMatchDetailRecord) { savedDetail = detail; },
       async getMatchDetail() { return null; },
       async getPendingMatchIds() { return { items: [], totalPending: 0, next: false }; },
+      async getPendingThreats() { return { items: [], totalPending: 0 }; },
+      async getThreatTarget() { return null; },
+      async saveMateThreats() {},
     };
 
     const record = createBaseRecord({
@@ -175,6 +190,9 @@ describe("recordMatchDetail Use Case", () => {
       async saveMatchDetail(detail: EnrichedMatchDetailRecord) { saved = detail; },
       async getMatchDetail() { return null; },
       async getPendingMatchIds() { return { items: [], totalPending: 0, next: false }; },
+      async getPendingThreats() { return { items: [], totalPending: 0 }; },
+      async getThreatTarget() { return null; },
+      async saveMateThreats() {},
     };
 
     await expect(recordMatchDetail(fakePort, createBaseRecord())).rejects.toThrow(NotFoundError);
@@ -188,6 +206,9 @@ describe("recordMatchDetail Use Case", () => {
       async saveMatchDetail(detail: EnrichedMatchDetailRecord) { saved = detail; },
       async getMatchDetail() { return null; },
       async getPendingMatchIds() { return { items: [], totalPending: 0, next: false }; },
+      async getPendingThreats() { return { items: [], totalPending: 0 }; },
+      async getThreatTarget() { return null; },
+      async saveMateThreats() {},
     };
 
     await expect(recordMatchDetail(fakePort, createBaseRecord({ user_id: "user-1" })))
@@ -202,6 +223,9 @@ describe("recordMatchDetail Use Case", () => {
       async saveMatchDetail(detail: EnrichedMatchDetailRecord) { saved = detail; },
       async getMatchDetail() { return null; },
       async getPendingMatchIds() { return { items: [], totalPending: 0, next: false }; },
+      async getPendingThreats() { return { items: [], totalPending: 0 }; },
+      async getThreatTarget() { return null; },
+      async saveMateThreats() {},
     };
 
     await recordMatchDetail(fakePort, createBaseRecord({ user_id: "" }));

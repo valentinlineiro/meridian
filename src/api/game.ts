@@ -2,10 +2,14 @@ import { json } from "./import.ts";
 import { mapErrorToResponse } from "./errors.ts";
 import { resolveProviderUserId } from "../db/users.ts";
 import { parseStoredGame, replayGame, type GameHeaders } from "../domain/gameReplay.ts";
+import { readMateThreats } from "../domain/mateThreats.ts";
 
-interface Row { user_color: string | null; result: string | null; opponent_name: string | null; end_condition: string | null; played_at: number | null; move_history: string; move_timestamps: string }
+interface Row { user_color: string | null; result: string | null; opponent_name: string | null; end_condition: string | null; played_at: number | null; move_history: string; move_timestamps: string; mate_threats: string | null }
 
 const PGN_RESULT: Record<string, GameHeaders["result"]> = { win: "1-0", loss: "0-1", draw: "1/2-1/2" };
+
+// Plies (1-based) where the owner left a mate-in-1 standing and was mated; empty unless a well-formed analysis says so.
+const missedPliesOf = (raw: string | null): number[] => { const r = readMateThreats(raw); return r.state === "ok" ? r.value.missedPlies : []; };
 
 const notFound = () => json({ ok: false, error: "game not found", code: "GAME_NOT_FOUND" }, 404);
 
@@ -16,7 +20,7 @@ export async function handleMatchGame(db: D1Database, email: string | null, matc
   if (!userId) return json({ ok: false, error: "no provider account", code: "NO_PROVIDER_ACCOUNT" }, 404);
 
   const row = await db.prepare(
-    `SELECT m.user_color, m.result, m.opponent_name, m.played_at, md.end_condition, md.move_history, md.move_timestamps
+    `SELECT m.user_color, m.result, m.opponent_name, m.played_at, md.end_condition, md.move_history, md.move_timestamps, md.mate_threats
      FROM matches m JOIN match_details md ON md.match_id = m.match_id
      WHERE m.match_id = ? AND m.user_id = ?`,
   ).bind(matchId, userId).first<Row>();
@@ -41,7 +45,7 @@ export async function handleMatchGame(db: D1Database, email: string | null, matc
         },
       });
     }
-    return json({ ok: true, matchId, userColor: row.user_color, opponent: row.opponent_name, result: row.result, playedAt: row.played_at, startFen: game.startFen, plies: game.plies, pgn: game.pgn });
+    return json({ ok: true, matchId, userColor: row.user_color, opponent: row.opponent_name, result: row.result, playedAt: row.played_at, startFen: game.startFen, plies: game.plies, pgn: game.pgn, missedPlies: missedPliesOf(row.mate_threats) });
   } catch (e) {
     const mapped = mapErrorToResponse(e);
     if (mapped) return mapped;

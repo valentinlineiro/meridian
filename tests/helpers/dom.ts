@@ -23,6 +23,8 @@ export interface MockElement {
   appendChild(child: MockElement): MockElement;
   setAttribute(name: string, value: string): void;
   getAttribute(name: string): string | null;
+  focus(): void;
+  scrollIntoView(): void;
 }
 
 export function createMockElement(id = "", tagName = "div"): MockElement {
@@ -65,6 +67,8 @@ export function createMockElement(id = "", tagName = "div"): MockElement {
     value: "",
     className: "",
     classList,
+    focus() {},
+    scrollIntoView() {},
     children: [],
     parentElement: null,
     attributes: {},

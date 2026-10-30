@@ -11,7 +11,7 @@ describe("recordMatchDetail classification", () => {
   let db: ReturnType<typeof createSqliteD1>["db"];
   let port: ReturnType<typeof createD1MatchAdapter>;
   beforeEach(() => {
-    const s = createSqliteD1(["0001_init.sql", "0004_users.sql", "0005_played_at.sql", "0006_match_details.sql", "0007_openings_and_phases.sql", "0017_opening_family_mate_type.sql"]);
+    const s = createSqliteD1(["0001_init.sql", "0004_users.sql", "0005_played_at.sql", "0006_match_details.sql", "0007_openings_and_phases.sql", "0017_opening_family_mate_type.sql", "0018_mate_threats.sql"]);
     db = s.db;
     port = createD1MatchAdapter(s.d1);
     db.exec(`INSERT INTO matches (match_id, user_id, snapshot_id, first_seen_at, last_seen_at, raw_json, user_color)

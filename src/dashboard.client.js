@@ -883,6 +883,7 @@ function renderChessView(stats, matches){
  const ph=st.phases||{};
  const op=st.openings||{};
  const mt=st.mates||null;
+ const th=st.threats||null;
  const recentKnown=(st.recent||lastRecent)!=null;
  const recent=st.recent||lastRecent||{};
 
@@ -1041,6 +1042,9 @@ let compact=true, hist=null, recentN=50;
 function pageSize(){ return compact?10:50; }
 function prevPage(){ loadM(off-pageSize()); }
 function nextPage(){ loadM(off+pageSize()); }
+let missedOnly=false, missedGames=0;
+function paintMissedBtn(){ const b=q('#threatsMissedBtn'); if(!b) return; b.style.display=missedGames>0?'inline-block':'none'; b.textContent=missedOnly?'Quitar el filtro de mates no vistos':'Ver partidas donde no viste el mate ('+missedGames+')'; }
+function toggleMissedThreats(){ missedOnly=!missedOnly; paintMissedBtn(); if(compact) showAllMatches(); else loadM(0); }
 function showAllMatches(){ compact=false; q('#matchFilters').style.display='flex'; q('#matchPager').style.display='flex'; q('#btnAllMatches').style.display='none'; const sub=q('#chessMatchesSubtitle'); if(sub) sub.textContent='Todas las partidas (50 por página)'; loadM(0); }
 function showOpeningTab(tab){q('#openingsWhite').style.display=tab==='white'?'block':'none';q('#openingsBlack').style.display=tab==='black'?'block':'none';q('#tabBtnBlancas').className='btn '+(tab==='white'?'btn-p':'btn-g');q('#tabBtnNegras').className='btn '+(tab==='black'?'btn-p':'btn-g');}
 function populateOpeningFilter(op){
@@ -1145,7 +1149,7 @@ let chip={type:'',result:'',color:''};
 function setChip(group,value,silent){ if(group==='type'&&q('#fOpp')) q('#fOpp').value=''; chip[group]=value; document.querySelectorAll('#matchChips [data-chip]').forEach(b=>{ const [g,v]=b.getAttribute('data-chip').split(':'); b.className='btn '+(chip[g]===v?'btn-p':'btn-g'); }); if(!silent) loadM(0); }
 let searchTimer=null;
 function onSearch(){ clearTimeout(searchTimer); searchTimer=setTimeout(()=>loadM(0),300); }
-function clearF(){ q('#q').value='';q('#fOpp').value='';q('#fMin').value='';q('#fMax').value='';q('#fEnd').value='';q('#fPhase').value='';q('#fOpening').value='';setChip('type','',true);setChip('result','',true);setChip('color',''); }
+function clearF(){ missedOnly=false; paintMissedBtn(); q('#q').value='';q('#fOpp').value='';q('#fMin').value='';q('#fMax').value='';q('#fEnd').value='';q('#fPhase').value='';q('#fOpening').value='';setChip('type','',true);setChip('result','',true);setChip('color',''); }
 
 function renderRows(){
  const rows= lastRows;
@@ -1177,9 +1181,10 @@ function paintGame(){
  q('#gPrev').disabled=gamePly===0; q('#gNext').disabled=gamePly===g.plies.length;
  const on=q('#gMoves .on'); if(on) on.scrollIntoView({block:'nearest'});
 }
+function jumpToMissedPly(n){ if(!game) return; gamePly=Math.max(0,Math.min(game.plies.length,n-1)); paintGame(); } // the position in which the threat stood, before the move that was played
 function gameStep(d){ if(!game) return; gamePly=Math.max(0,Math.min(game.plies.length,gamePly+d)); paintGame(); }
 async function openGame(id){
- gameId=id; game=null; gameOpener=document.activeElement; q('#gameModal').style.display='flex'; q('#gClose').focus(); q('#gTitle').textContent='Cargando partida…'; q('#gBody').style.display='none'; q('#gErr').textContent='';
+ gameId=id; game=null; q('#gMissed').innerHTML=''; gameOpener=document.activeElement; q('#gameModal').style.display='flex'; q('#gClose').focus(); q('#gTitle').textContent='Cargando partida…'; q('#gBody').style.display='none'; q('#gErr').textContent='';
  try{
   const res=await fetch('/api/me/matches/'+encodeURIComponent(id)+'/game');
   const b=await res.json().catch(()=>null);
@@ -1188,12 +1193,14 @@ async function openGame(id){
   game=b; gamePly=0;
   q('#gTitle').textContent='vs '+(b.opponent||'rival sin nombre')+' · '+(b.userColor==='black'?'negras':'blancas');
   q('#gPgn').href='/api/me/matches/'+encodeURIComponent(id)+'/game.pgn';
+  q('#gMissed').innerHTML=(b.missedPlies||[]).map(n=>'<div><a href="#" data-p="'+n+'">Jugada '+n+' ('+esc((b.plies[n-1]||{}).san||'')+'): el rival tenía mate en 1 y lo jugó</a></div>').join('');
   q('#gBody').style.display='block'; paintGame();
  }catch(e){ if(gameId===id){ q('#gTitle').textContent='Partida'; q('#gErr').textContent=e.message; } }
 }
 function closeGame(){ gameId=null; game=null; q('#gameModal').style.display='none'; if(gameOpener&&gameOpener.focus) gameOpener.focus(); gameOpener=null; }
 window.addEventListener('click',e=>{
  const row=e.target.closest&&e.target.closest('tr.gamerow'); if(row){ openGame(row.getAttribute('data-m')); return; }
+ const ms=e.target.closest&&e.target.closest('#gMissed [data-p]'); if(ms){ e.preventDefault(); jumpToMissedPly(+ms.getAttribute('data-p')); return; }
  const mv=e.target.closest&&e.target.closest('#gMoves .gm'); if(mv){ e.preventDefault(); gamePly=+mv.getAttribute('data-p'); paintGame(); return; }
  if(e.target.id==='gameModal') closeGame();
 });
@@ -1221,7 +1228,7 @@ async function loadChessDashboard(){
  try{
   // summary is essential (without it nothing here means anything: the outer catch). Every other card degrades on its own to "No disponible".
   const opt=(k,route)=>stat(k,route).catch(()=>null);
-  const [s,r,c,o,e,t,op,ph,mt]=await Promise.all([stat('summary','/api/stats/summary'),opt('results','/api/stats/results'),opt('color','/api/stats/color'),opt('opponents','/api/stats/opponents'),opt('opponentElo','/api/stats/opponent-elo'),opt('timeline','/api/stats/timeline'),j('/api/stats/openings').catch(()=>null),j('/api/stats/phases').catch(()=>null),j('/api/stats/mates').catch(()=>null)]);
+  const [s,r,c,o,e,t,op,ph,mt,th]=await Promise.all([stat('summary','/api/stats/summary'),opt('results','/api/stats/results'),opt('color','/api/stats/color'),opt('opponents','/api/stats/opponents'),opt('opponentElo','/api/stats/opponent-elo'),opt('timeline','/api/stats/timeline'),j('/api/stats/openings').catch(()=>null),j('/api/stats/phases').catch(()=>null),j('/api/stats/mates').catch(()=>null),j('/api/stats/threats').catch(()=>null)]);
   const rec50=await opt('recent','/api/stats/recent?limit=50');
   if(rec50) lastRecent=rec50;
   hist=s; hist.groups=c? c.groups : undefined;
@@ -1331,6 +1338,25 @@ async function loadChessDashboard(){
    }
   }
 
+  // mate threats: what the owner did when the opponent had a mate in 1 on the board (computed offline by the scheduled analysis)
+  if(q('#threatsCard')){
+   const ok=th&&!th.error&&th.totals;
+   q('#threatsCard').style.display=ok?'block':'none';
+   if(ok){
+    const pc=t=>(t.rate*100).toFixed(0)+'%', frac=t=>t.neutralized+' de '+t.faced+' ('+pc(t)+')';
+    q('#threatsMain').textContent=!th.analysed?'Todavía no hay partidas analizadas':!th.totals.faced?'Sin amenazas de mate en 1 en las partidas analizadas':'Neutralizadas '+frac(th.totals)+' · te mataron '+th.totals.missed+' · el rival no las jugó '+th.totals.unpunished;
+    const names={opening:'Apertura',middlegame:'Medio juego',endgame:'Final'};
+    q('#threatsPhases').textContent=th.totals.faced?Object.keys(names).map(k=>names[k]+' '+(th.byPhase[k].faced?frac(th.byPhase[k]):'sin amenazas')).join(' · '):'';
+    q('#threatsTrend').textContent=th.totals.faced&&th.recent.faced?'Últimas '+th.recent.games+' partidas analizadas: '+frac(th.recent)+(th.rest.games&&th.rest.faced?' · el resto ('+th.rest.games+'): '+frac(th.rest):''):'';
+    const notes=['Solo cuenta amenazas de mate en 1. Son tasas descriptivas de posiciones observadas, sin intervalo: las posiciones de una misma partida no son independientes.'];
+    if(th.pending) notes.push(th.pending+' partidas sin analizar');
+    if(th.invalid) notes.push(th.invalid+' no se pudieron reproducir');
+    if(th.unknownVersion) notes.push(th.unknownVersion+' con un formato que este panel no entiende');
+    q('#threatsNote').textContent=notes.join(' · ');
+    missedGames=th.gamesWithMissed||0; paintMissedBtn();
+   }
+  }
+
   // phases
   if(ph&&!ph.error&&q('#phasesCard')){
    var phTotal=s.games||1;
@@ -1349,7 +1375,7 @@ async function loadChessDashboard(){
     eloSummaryMeta.textContent = '· muestra conocida: '+known+' ('+(known/total*100).toFixed(1)+'%)';
   }
   }
-  renderChessView({ summary: s, results: r, color: c, opponents: o, elo: e, timeline: t, openings: op, phases: ph, mates: mt, recent: rec50 }, lastRows);
+  renderChessView({ summary: s, results: r, color: c, opponents: o, elo: e, timeline: t, openings: op, phases: ph, mates: mt, threats: th, recent: rec50 }, lastRows);
  }catch(err){ console.error(err); q('#kpis').innerHTML='<div class="muted">Error cargando estadísticas</div>'; }
 }
 
@@ -1360,6 +1386,7 @@ async function loadM(o){
  const lim=pageSize();
  const p=new URLSearchParams({limit:lim,offset:off});
  const qv=q('#q').value.trim(); if(qv) p.set('q',qv);
+ if(missedOnly) p.set('missedThreat','1');
  const fOpp=q('#fOpp');
  if(fOpp&&fOpp.value){
   if(fOpp.value.startsWith('seg:')) p.set('opponentSegment',fOpp.value.slice(4));
