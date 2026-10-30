@@ -15,7 +15,7 @@ import { handleMeStats } from "./me.ts";
 import { handleExportMatches } from "./export.ts";
 import { handleMatchGame } from "./game.ts";
 import { handleSyncRequest, handleSyncStatus } from "./sync.ts";
-import { handleSaveMatchDetail, handleGetMatchDetail, handleGetPendingMatchDetails } from "./chessDetail.ts";
+import { handleSaveMatchDetail, handleGetMatchDetail, handleGetPendingMatchDetails, handleGetPendingThreats, handlePostMateThreats } from "./chessDetail.ts";
 import { handleGetLanguages, handleGetLanguageCourse, handleGetLanguageXp } from "./languages.ts";
 import { handleGetLanguagesAnalytics } from "./languagesAnalytics.ts";
 import { mapErrorToResponse, mapError } from "./errors.ts";
@@ -49,11 +49,11 @@ app.use("*", async (c, next) => {
 // ── Access policy: ONE place decides who may call what; anything not listed is closed. ──
 //   GET|HEAD /login, POST /login                -> public (the login itself; POST is same-origin + throttled)
 //   write (not GET/HEAD)                        -> IMPORT_TOKEN (machine)        [except identity writes below]
-//   machine read (pending-details)              -> IMPORT_TOKEN
+//   machine read (pending-details, pending-threats) -> IMPORT_TOKEN
 //   POST /api/me/sync, PUT /api/me/settings, PUT /api/me/linkedin-games, PUT /api/me/changes-anchor, POST /logout -> owner session + same-origin (CSRF)
 //   everything else, incl. HTML + unknown       -> owner session cookie (HTML -> redirect to /login, API -> 401)
 // Identity is a signed session cookie issued by /login for ADMIN_EMAIL; nothing else is trusted.
-const MACHINE_READ = new Set(["/api/chess/matches/pending-details"]);
+const MACHINE_READ = new Set(["/api/chess/matches/pending-details", "/api/chess/matches/pending-threats"]);
 const IDENTITY_WRITE = new Set(["/api/me/sync", "/api/me/settings", "/api/me/linkedin-games", "/api/me/changes-anchor", "/logout"]);
 
 const sha256 = async (s: string) => new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)));
@@ -193,6 +193,8 @@ app.get("/api/stats/*", (c) => {
 });
 
 app.get("/api/chess/matches/pending-details", (c) => handleGetPendingMatchDetails(c.env.DB, c.req.raw));
+app.get("/api/chess/matches/pending-threats", (c) => handleGetPendingThreats(c.env.DB, c.req.raw));
+app.post("/api/chess/matches/:id/threats", (c) => handlePostMateThreats(c.env.DB, c.req.raw, c.req.param("id")));
 app.post("/api/chess/matches/:id/detail", (c) =>
   handleSaveMatchDetail(c.env.DB, c.req.raw, c.req.param("id")));
 app.get("/api/chess/matches/:id/detail", (c) => handleGetMatchDetail(c.env.DB, c.req.param("id")));

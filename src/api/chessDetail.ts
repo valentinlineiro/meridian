@@ -1,9 +1,10 @@
 import { json } from "./import.ts";
 import { mapErrorToResponse } from "./errors.ts";
 import { normalizeMatchDetail } from "../normalization/chessDetail.ts";
-import { matchDetailEnvelope } from "./schemas.ts";
+import { matchDetailEnvelope, mateThreatsBody } from "./schemas.ts";
 import { createD1MatchAdapter } from "../infrastructure/d1/d1MatchAdapter.ts";
 import { recordMatchDetail } from "../application/recordMatchDetail.ts";
+import { recordMateThreats } from "../application/recordMateThreats.ts";
 
 export async function handleSaveMatchDetail(db: D1Database, req: Request, matchId: string): Promise<Response> {
   let body: any;
@@ -66,4 +67,27 @@ export async function handleGetPendingMatchDetails(db: D1Database, req: Request)
     totalPending: pending.totalPending,
     next: pending.next,
   });
+}
+
+// Machine read for the scheduled threat analysis: only what it needs to compute (an id, the owner's colour, the moves).
+export async function handleGetPendingThreats(db: D1Database, req: Request): Promise<Response> {
+  const parsed = parseInt(new URL(req.url).searchParams.get("limit") ?? "", 10);
+  const limit = !isNaN(parsed) && parsed > 0 ? Math.min(parsed, 100) : 100;
+  const pending = await createD1MatchAdapter(db).getPendingThreats(limit);
+  return json({ ok: true, items: pending.items, totalPending: pending.totalPending });
+}
+
+export async function handlePostMateThreats(db: D1Database, req: Request, matchId: string): Promise<Response> {
+  let body: unknown;
+  try { body = await req.json(); } catch { return json({ ok: false, error: "invalid json body" }, 400); }
+  const parsed = mateThreatsBody.safeParse(body);
+  if (!parsed.success) return json({ ok: false, code: "INVALID_BODY", error: "invalid mate threats payload" }, 422);
+  try {
+    await recordMateThreats(createD1MatchAdapter(db), matchId, parsed.data);
+    return json({ ok: true });
+  } catch (e) {
+    const mapped = mapErrorToResponse(e);
+    if (mapped) return mapped;
+    throw e;
+  }
 }

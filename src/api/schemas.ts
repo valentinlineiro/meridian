@@ -23,6 +23,18 @@ export const importPayloadSchema = z.object({
   observedCourseId: z.string().optional(),
 });
 
+const count = z.number().int().nonnegative();
+const tally = z.tuple([count, count, count]);
+// Strict on purpose: the version and any unknown key are rejected, so the collector cannot decide what contract a result was validated against.
+export const mateThreatsBody = z.discriminatedUnion("status", [
+  z.object({
+    status: z.literal("ok"), faced: count, neutralized: count, missed: count, unpunished: count,
+    byPhase: z.object({ opening: tally, middlegame: tally, endgame: tally }).strict(),
+    missedPlies: z.array(z.number().int()).max(500),
+  }).strict(),
+  z.object({ status: z.literal("invalid"), reason: z.enum(["illegal_game", "corrupt_game"]) }).strict(),
+]);
+
 export const matchDetailEnvelope = z.record(z.string(), z.unknown());
 
 export const whatChangedQuerySchema = z.object({
