@@ -85,4 +85,31 @@ describe("mate threats persistence", () => {
     await port.saveMateThreats("g", OK);
     expect(db.prepare("SELECT mate_threats FROM match_details WHERE match_id='g'").get().mate_threats).toBe(once);
   });
+
+  // A stored result describes one move list. If the game is saved again with different moves, the old result no longer describes it.
+  describe("when the detail is saved again", () => {
+    const record = (moves: string[]) => ({
+      match_id: "g", user_id: "u1", opponent_id: null, is_hard_match: null, is_placement_match: null, is_revenge_match: null,
+      predicted_elo_win: null, predicted_elo_loss: null, predicted_elo_draw: null, elo_after: null, outcome: null, end_condition: null,
+      status: "completed", move_history: JSON.stringify(moves), move_timestamps: "[]", final_fen: null, reaction: null, session_duration: null,
+      opening_key: null, phase_key: null, ply_count: moves.length,
+    });
+
+    it("shouldKeepTheResultWhenTheMovesAreTheSame", async () => {
+      match("g", 1);
+      await port.saveMatchDetail(record(["e2e4", "e7e5"]));
+      await port.saveMateThreats("g", OK);
+      await port.saveMatchDetail(record(["e2e4", "e7e5"]));
+      expect(JSON.parse(db.prepare("SELECT mate_threats FROM match_details WHERE match_id='g'").get().mate_threats)).toEqual(OK);
+    });
+
+    it("shouldMakeTheGamePendingAgainWhenTheMovesChange", async () => {
+      match("g", 1);
+      await port.saveMatchDetail(record(["e2e4", "e7e5"]));
+      await port.saveMateThreats("g", OK);
+      await port.saveMatchDetail(record(["e2e4", "e7e5", "g1f3"]));
+      expect(db.prepare("SELECT mate_threats FROM match_details WHERE match_id='g'").get().mate_threats).toBeNull();
+      expect((await port.getPendingThreats(10)).items.map((i) => i.match_id)).toEqual(["g"]);
+    });
+  });
 });

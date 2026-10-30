@@ -51,6 +51,7 @@ async function saveMatchDetail(db: D1Database, d: MatchDetailRecord): Promise<vo
       ply_count = excluded.ply_count,
       opening_family = excluded.opening_family,
       mate_type = excluded.mate_type,
+      mate_threats = CASE WHEN excluded.move_history IS match_details.move_history THEN match_details.mate_threats ELSE NULL END, -- a result describes one move list
       updated_at = datetime('now')
   `;
 
