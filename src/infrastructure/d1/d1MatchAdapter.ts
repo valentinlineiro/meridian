@@ -1,5 +1,6 @@
 import type { MatchPort, EnrichedMatchDetailRecord } from "../../ports/matchPort.ts";
 import type { MatchDetailRecord } from "../../types.ts";
+import type { StoredMateThreats } from "../../domain/mateThreats.ts";
 
 async function saveMatchDetail(db: D1Database, d: MatchDetailRecord): Promise<void> {
   let moves: string[] = [];
@@ -136,6 +137,32 @@ export function createD1MatchAdapter(db: D1Database): MatchPort {
         totalPending,
         next,
       };
+    },
+
+    async getPendingThreats(limit: number) {
+      const countRow = await db.prepare("SELECT COUNT(*) AS count FROM match_details WHERE mate_threats IS NULL").bind().first<{ count: number }>();
+      const { results } = await db.prepare(`
+        SELECT md.match_id, m.user_color, md.move_history
+        FROM match_details md
+        JOIN matches m ON m.match_id = md.match_id
+        WHERE md.mate_threats IS NULL
+        ORDER BY m.played_at IS NULL, m.played_at DESC, md.match_id ASC
+        LIMIT ?
+      `).bind(limit).all<{ match_id: string; user_color: string | null; move_history: string }>();
+      return { items: results ?? [], totalPending: Number(countRow?.count ?? 0) };
+    },
+
+    async getThreatTarget(matchId: string) {
+      const row = await db.prepare(`
+        SELECT md.ply_count, m.user_color FROM match_details md JOIN matches m ON m.match_id = md.match_id WHERE md.match_id = ?
+      `).bind(matchId).first<{ ply_count: number | null; user_color: string | null }>();
+      const color = row?.user_color?.trim().toLowerCase();
+      if (!row || (color !== "white" && color !== "black")) return null;
+      return { plyCount: Number(row.ply_count ?? 0), userColor: color };
+    },
+
+    async saveMateThreats(matchId: string, stored: StoredMateThreats): Promise<void> {
+      await db.prepare("UPDATE match_details SET mate_threats = ? WHERE match_id = ?").bind(JSON.stringify(stored), matchId).run();
     },
   };
 }
