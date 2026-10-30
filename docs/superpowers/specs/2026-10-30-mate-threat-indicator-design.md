@@ -42,23 +42,28 @@ Referencia medida el 2026-10-30 sobre las 1.643 partidas (1.070 posiciones en 58
 - Cada partida es independiente y se escribe con **un solo `UPDATE`** sobre su fila (atómico en D1). No hay estado intermedio: o está pendiente o está calculada/inválida.
 - La cola de pendientes es `mate_threats IS NULL`: no hay cursor que perder. Un fallo a mitad de ejecución deja las ya escritas intactas, y el siguiente run continúa con las que siguen en `NULL`.
 - Reescribir una partida ya calculada con el mismo resultado no cambia nada; con otro (por cambiar `v`) la sustituye entera. El `POST` es un reemplazo, no una suma, así que repetirlo nunca duplica contadores.
-- El script limita por tanda (`limit`, máx. 100) y por tiempo; al agotar el tiempo termina limpiamente sin dejar escrituras a medias.
+- **Una tanda son 100 partidas por petición** (`limit` máx. 100). Una ejecución del workflow encadena tandas consecutivas hasta que no queden pendientes o se agote el presupuesto de tiempo (12 min de reloj dentro del límite de 15 del job); al agotarlo termina limpiamente entre dos partidas, sin escrituras a medias. El relleno de las 1.643 partidas son ≈17 tandas en una sola ejecución.
 - Cada partida inválida se marca como tal para no reintentarla en cada run.
 
 **API (rutas de máquina, `IMPORT_TOKEN`, mismo patrón que `pending-details`).**
-- `GET /api/chess/matches/pending-threats?limit=N` → `{items:[{match_id, user_color, move_history}], totalPending}` para las partidas con `mate_threats` nulo.
-- `POST /api/chess/matches/:id/threats` con `{faced, missed, unpunished, byPhase, missedPlies}`; valida con zod en el borde, 404 si no hay detalle, y es idempotente.
+- `GET /api/chess/matches/pending-threats?limit=N` → `{items:[{match_id, user_color, move_history}], totalPending}` para las partidas con `mate_threats` nulo, en un orden determinista: `played_at` descendente (las recientes primero, que son las que mueven la tendencia) y `match_id` ascendente como desempate.
+- `POST /api/chess/matches/:id/threats` con una **unión de dos cuerpos**, validada con zod en el borde:
+  - resultado válido: `{status:"ok", faced, neutralized, missed, unpunished, byPhase:{opening,middlegame,endgame}, missedPlies}`, donde cada fase es `[neutralized, missed, unpunished]`;
+  - resultado inválido: `{status:"invalid", reason:"illegal_game"|"corrupt_game"}`.
+  - **El servidor asigna `v`** (la versión vigente del contrato); un cuerpo que traiga `v` o campos desconocidos se rechaza con 422. El colector no decide la versión.
+  - 404 si la partida no tiene detalle; es un reemplazo idempotente.
+  - **Invariantes (todas validadas en el servidor; si alguna falla, 422 y no se escribe nada):** `faced = neutralized + missed + unpunished`; la suma de las tres fases coincide con cada total; `missedPlies.length = missed`; `missedPlies` son enteros estrictamente crecientes, entre 1 y el número de plies del historial guardado (el servidor lo lee de la propia fila), y de la paridad que corresponde al color del usuario (solo jugadas mías).
 
 **Datos.** Una columna `mate_threats TEXT` nullable en `match_details` (migración 0018). Contrato versionado, con tres estados que no se confunden:
 
 - `NULL` → **pendiente** (sin analizar).
-- `{"v":1,"status":"ok","faced":N,"missed":N,"unpunished":N,"byPhase":{"opening":[f,m,u],"middlegame":[…],"endgame":[…]},"missedPlies":[…]}` → **calculada**. `faced: 0` es "analizada, sin amenazas", no pendiente.
+- `{"v":1,"status":"ok","faced":N,"neutralized":N,"missed":N,"unpunished":N,"byPhase":{"opening":[n,m,u],"middlegame":[…],"endgame":[…]},"missedPlies":[…]}` → **calculada**. Las mismas invariantes del `POST` valen aquí y el JSON no puede representar resultados contradictorios. `faced: 0` es "analizada, sin amenazas", no pendiente.
 - `{"v":1,"status":"invalid","reason":"illegal_game"|"corrupt_game"}` → **inválida**: el historial no se puede reproducir. No vuelve a la cola de pendientes, y el dashboard la cuenta aparte.
 
 El lector ignora los contenidos con `v` desconocida (los trata como no calculados para los totales, y los cuenta en un aviso). Subir `v` implica una migración de datos y un nuevo relleno explícitos. Las fases por jugada (≤20, ≤60, resto) son las de la auditoría; no usan `phase_key`.
 
 **Lectura.**
-- `GET /api/stats/threats` → totales, por fase, últimas 100 partidas analizadas frente al resto, y cuántas partidas faltan por analizar. Cada tasa con `n` e intervalo de Wilson (nota: las posiciones de una misma partida no son independientes, así que el intervalo es optimista).
+- `GET /api/stats/threats` → totales, por fase, últimas 100 partidas analizadas frente al resto, y cuántas partidas faltan por analizar. Cada tasa con su numerador y denominador, **sin intervalo de confianza**: las posiciones de una misma partida no son independientes y un intervalo de Wilson convencional sería engañosamente estrecho. Un bootstrap agrupado por partida queda fuera de esta iteración; si se añade, es una decisión aparte. La tarjeta dice explícitamente que son tasas descriptivas de posiciones observadas.
 - Filtro `?missedThreat=1` en `/api/matches` (partidas con `missed > 0`).
 
 **Dashboard.** Tarjeta "Amenazas de mate": tasa, denominador, desglose fallada/sin castigo, por fase, reciente frente al resto, un aviso cuando faltan partidas por analizar, y un acceso a "partidas donde no viste el mate" que aplica el filtro. En el visor de una partida analizada, los plies fallados se listan para saltar a ellos.
@@ -84,4 +89,6 @@ El lector ignora los contenidos con `v` desconocida (los trata como no calculado
 
 - La referencia fijada del checkout es un SHA o tag de Meridian, subido a mano; no `main`, porque el job corre con `IMPORT_TOKEN`.
 - Una sola columna JSON, no varias, para no multiplicar migraciones al ajustar el desglose.
-- Tandas de 100 partidas por run y límite del job de 15 minutos.
+- Presupuesto de tiempo del job: 12 min de reloj para encadenar tandas (de 100 partidas) dentro del límite de 15 min del job.
+- Orden de recuperación de pendientes: recientes primero (`played_at` descendente), `match_id` ascendente como desempate.
+- El orden de los pesos de la métrica y la forma `[neutralized, missed, unpunished]` por fase son míos; se pueden cambiar mientras `v` siga en 1.
