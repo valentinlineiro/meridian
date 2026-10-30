@@ -11,6 +11,10 @@ describe("toCsv", () => {
     expect(csv).toBe('a,b\r\n"x,y","say ""hi"""\r\n"l1\nl2",ok\r\n');
   });
 
+  it("shouldNeutralizeFormulaWhenTextStartsWithTabOrCarriageReturn", () => {
+    expect(toCsv(["n"], [["\tx"], ["\rx"]])).toBe("n\r\n'\tx\r\n\"'\rx\"\r\n");
+  });
+
   it("shouldWriteEmptyCellWhenValueIsNull", () => {
     expect(toCsv(["a", "b"], [[null, 3]])).toBe("a,b\r\n,3\r\n");
   });
@@ -55,6 +59,13 @@ describe("GET /api/export/matches.csv", () => {
     expect(lines[0]).toBe("match_id,played_at,user_color,result,outcome,opponent_name,opponent_type,opponent_elo,pvp_match_type,elo_after,end_condition,opening_key,phase_key,ply_count,session_duration");
     expect(lines).toHaveLength(3);
     expect(lines[1]).toBe('m1,2023-11-14T22:13:20Z,white,win,,"Ana, ""la"" rival",,1200,,1010,checkmate,italian,,41,');
+  });
+
+  it("shouldOrderByPlayedAtWithUndatedFirstWhenRowsWereInsertedOutOfOrder", async () => {
+    db.exec(`INSERT INTO matches (match_id, user_id, snapshot_id, first_seen_at, last_seen_at, raw_json, played_at)
+      VALUES ('late-insert-oldest', 'u1', 's', 'd', 'd', '{}', 1600000000), ('undated', 'u1', 's', 'd', 'd', '{}', NULL)`);
+    const rows = (await (await get()).text()).trimEnd().split("\r\n").slice(1).map((l) => l.split(",")[0]);
+    expect(rows).toEqual(["undated", "late-insert-oldest", "m1", "m2"]);
   });
 
   it("shouldLeaveDetailColumnsEmptyWhenMatchHasNoDetail", async () => {

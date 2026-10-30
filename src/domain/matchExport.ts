@@ -1,4 +1,5 @@
 // RFC 4180 CSV. Text that starts like a spreadsheet formula gets a leading ' so Excel/Sheets read it as text (opponent names are untrusted).
+// Known cost: a text starting with '-' keeps the visible ' in a plain CSV; numbers are never prefixed.
 const FORMULA_START = /^[=+\-@\t\r]/;
 
 const cell = (v: string | number | null): string => {
