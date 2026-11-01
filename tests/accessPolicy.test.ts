@@ -21,7 +21,7 @@ const env = (over: Partial<Env> = {}): Env =>
 const call = (method: string, path: string, headers: Record<string, string> = {}, e = env()) =>
   worker.fetch(new Request(BASE + path, { method, headers, redirect: "manual", body: ["GET", "HEAD"].includes(method) ? undefined : "{}" }), e);
 
-const HTML_READS = ["/", "/index.html", "/overview", "/chess", "/languages", "/languages/it", "/changes", "/trajectory", "/raw", "/settings", "/linkedin-games"];
+const HTML_READS = ["/", "/index.html", "/overview", "/chess", "/languages", "/languages/it", "/changes", "/trajectory", "/profile", "/raw", "/settings", "/linkedin-games"];
 const API_READS = [
   "/api/stats/summary", "/api/stats/recent", "/api/stats/lang", "/api/languages", "/api/languages/xp", "/api/languages/analytics",
   "/api/languages/courses", "/api/languages/courses/X", "/api/matches", "/api/export/matches.csv", "/api/snapshots", "/api/snapshots/abc?raw=1",
@@ -29,8 +29,8 @@ const API_READS = [
   "/api/some/route/nobody/wrote", "/anything-else",
 ];
 const USER_READS = [...HTML_READS, ...API_READS];
-const MACHINE_READS = ["/api/chess/matches/pending-details", "/api/chess/matches/pending-threats"];
-const WRITES = ["/api/import", "/api/snapshot", "/api/chess/matches/m1/detail", "/api/chess/matches/m1/threats", "/api/unknown-write", "/unknown-write"];
+const MACHINE_READS = ["/api/chess/matches/pending-details", "/api/chess/matches/pending-threats", "/api/chess/matches/pending-engine"];
+const WRITES = ["/api/import", "/api/snapshot", "/api/chess/matches/m1/detail", "/api/chess/matches/m1/threats", "/api/chess/matches/m1/engine", "/api/unknown-write", "/unknown-write"];
 
 const denied = (res: Response, path: string) =>
   !path.startsWith("/api/") ? res.status === 303 && res.headers.get("location")!.startsWith("/login?next=") : res.status === 401;

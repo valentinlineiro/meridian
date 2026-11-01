@@ -23,6 +23,7 @@
   "dependencies": {
     "chess.js": "^1.4.0",
     "hono": "^4.13.12",
+    "stockfish": "19.0.1",
     "zod": "^4.6.5"
   }
 }

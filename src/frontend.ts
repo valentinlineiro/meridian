@@ -18,7 +18,7 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
   </div>
 </header>
 <main>
-<div class="tabs"><button class="btn btn-p" id="tabBtnOverview" onclick="showTab('overview')">Overview</button><button class="btn btn-g" id="tabBtnLang" onclick="showTab('languages')">Languages</button><button class="btn btn-g" id="tabBtnChess" onclick="showTab('chess')">Chess</button><button class="btn btn-g" id="tabBtnChanges" onclick="showTab('changes')">What Changed?</button><button class="btn btn-g" id="tabBtnTrajectory" onclick="showTab('trajectory')">Trayectoria</button></div>
+<div class="tabs"><button class="btn btn-p" id="tabBtnOverview" onclick="showTab('overview')">Overview</button><button class="btn btn-g" id="tabBtnLang" onclick="showTab('languages')">Languages</button><button class="btn btn-g" id="tabBtnChess" onclick="showTab('chess')">Chess</button><button class="btn btn-g" id="tabBtnChanges" onclick="showTab('changes')">What Changed?</button><button class="btn btn-g" id="tabBtnTrajectory" onclick="showTab('trajectory')">Trayectoria</button><button class="btn btn-g" id="tabBtnProfile" onclick="showTab('profile')">Perfil</button></div>
 <section id="overviewTab" class="tab-panel active">
  <div class="hero-card" id="overviewHero">
   <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
@@ -363,6 +363,16 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
     <div id="trajectoryEmpty" class="empty" style="display:none">No hay patrones longitudinales suficientemente estables registrados en tu historial.</div>
     <div id="trajectoryFindings"></div>
    </section>
+   <section id="profileTab" class="tab-panel" hidden>
+    <h2 style="margin:0 0 4px 0">Tu perfil de ajedrez</h2>
+    <p class="muted" style="margin:0 0 12px 0">Calculado con Stockfish sobre tus partidas guardadas. Descriptivo: dice qué pasa, no qué hacer.</p>
+    <div class="card" id="profileCutCard"><h2>Corte del experimento</h2><div class="muted" style="margin-bottom:6px">Id de la última partida antes del experimento. Las cifras de calidad, momentos decisivos y ventaja se muestran antes y después.</div><input id="profileSinceInput" type="text" aria-label="Id de la partida de corte" style="width:100%;max-width:420px"><div style="margin-top:6px"><button class="btn btn-p" id="profileSinceApply" onclick="applyProfileSince()">Aplicar</button> <button class="btn btn-g" id="profileSinceClear" onclick="clearProfileSince()">Quitar</button></div><div class="muted" id="profileSinceNote" style="margin-top:6px"></div></div>
+    <div class="card" id="profileQualityCard"><h2>Calidad de juego</h2><div id="profileQuality"></div><div class="muted" id="profilePhases" style="margin-top:8px"></div><div class="muted" id="profileColors" style="margin-top:4px"></div><div class="muted" id="profileTrend" style="margin-top:8px"></div><div class="muted" id="profileCut" style="margin-top:8px"></div></div>
+    <div class="card" id="profileDecisiveCard"><h2>Momentos decisivos</h2><div id="profileDecisive"></div></div>
+    <div class="card" id="profileConversionCard"><h2>Ventaja y remontada</h2><div id="profileConversion"></div></div>
+    <div class="card" id="profileReviewCard"><h2>Qué partidas revisar</h2><div class="muted">Mínimo 20 jugadas tuyas. Pulsa una para abrirla en el visor.</div><h3 style="font-size:13px;margin:10px 0 4px">Peores por pérdida media</h3><div id="profileWorst"></div><h3 style="font-size:13px;margin:10px 0 4px">Mejores por pérdida media</h3><div id="profileBest"></div></div>
+    <div class="muted" id="profileNote" style="margin-top:8px"></div>
+   </section>
 
   <p class="muted" style="margin-top:16px"><a href="/raw">Datos técnicos</a></p>
 </main>
@@ -373,6 +383,7 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
   <div id="gBody" style="display:none">
    <div class="gamegrid"><div id="gBoard" class="board"></div><div id="gMoves" class="moves"></div></div>
    <div id="gMissed" class="muted" style="margin-top:8px"></div>
+   <div id="gErrors" class="muted" style="margin-top:8px"></div>
    <div class="gamectl"><button class="btn btn-g" id="gPrev" onclick="gameStep(-1)" aria-label="Jugada anterior">‹</button><span class="muted" id="gPos"></span><button class="btn btn-g" id="gNext" onclick="gameStep(1)" aria-label="Jugada siguiente">›</button><a class="btn btn-g" id="gPgn" download style="text-decoration:none;margin-left:auto">Descargar PGN</a></div>
   </div>
  </div>

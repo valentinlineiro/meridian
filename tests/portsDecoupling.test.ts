@@ -14,6 +14,8 @@ describe("Ports and Decoupling", () => {
       getPendingThreats: async () => ({ items: [], totalPending: 0 }),
       getThreatTarget: async () => null,
       saveMateThreats: async () => {},
+      getPendingEngine: async () => ({ items: [], totalPending: 0 }),
+      saveEngineEval: async () => {},
     };
     expect(dummyMatchPort).toBeDefined();
 

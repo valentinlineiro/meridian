@@ -44,6 +44,8 @@ describe("recordMatchDetail Use Case", () => {
       async getPendingThreats() { return { items: [], totalPending: 0 }; },
       async getThreatTarget() { return null; },
       async saveMateThreats() {},
+      async getPendingEngine() { return { items: [], totalPending: 0 }; },
+      async saveEngineEval() {},
     };
 
     const record = createBaseRecord({
@@ -78,6 +80,8 @@ describe("recordMatchDetail Use Case", () => {
       async getPendingThreats() { return { items: [], totalPending: 0 }; },
       async getThreatTarget() { return null; },
       async saveMateThreats() {},
+      async getPendingEngine() { return { items: [], totalPending: 0 }; },
+      async saveEngineEval() {},
     };
 
     const record = createBaseRecord({
@@ -111,6 +115,8 @@ describe("recordMatchDetail Use Case", () => {
       async getPendingThreats() { return { items: [], totalPending: 0 }; },
       async getThreatTarget() { return null; },
       async saveMateThreats() {},
+      async getPendingEngine() { return { items: [], totalPending: 0 }; },
+      async saveEngineEval() {},
     };
 
     const record = createBaseRecord({
@@ -140,6 +146,8 @@ describe("recordMatchDetail Use Case", () => {
       async getPendingThreats() { return { items: [], totalPending: 0 }; },
       async getThreatTarget() { return null; },
       async saveMateThreats() {},
+      async getPendingEngine() { return { items: [], totalPending: 0 }; },
+      async saveEngineEval() {},
     };
 
     const record = createBaseRecord({
@@ -167,6 +175,8 @@ describe("recordMatchDetail Use Case", () => {
       async getPendingThreats() { return { items: [], totalPending: 0 }; },
       async getThreatTarget() { return null; },
       async saveMateThreats() {},
+      async getPendingEngine() { return { items: [], totalPending: 0 }; },
+      async saveEngineEval() {},
     };
 
     const record = createBaseRecord({
@@ -193,6 +203,8 @@ describe("recordMatchDetail Use Case", () => {
       async getPendingThreats() { return { items: [], totalPending: 0 }; },
       async getThreatTarget() { return null; },
       async saveMateThreats() {},
+      async getPendingEngine() { return { items: [], totalPending: 0 }; },
+      async saveEngineEval() {},
     };
 
     await expect(recordMatchDetail(fakePort, createBaseRecord())).rejects.toThrow(NotFoundError);
@@ -209,6 +221,8 @@ describe("recordMatchDetail Use Case", () => {
       async getPendingThreats() { return { items: [], totalPending: 0 }; },
       async getThreatTarget() { return null; },
       async saveMateThreats() {},
+      async getPendingEngine() { return { items: [], totalPending: 0 }; },
+      async saveEngineEval() {},
     };
 
     await expect(recordMatchDetail(fakePort, createBaseRecord({ user_id: "user-1" })))
@@ -226,6 +240,8 @@ describe("recordMatchDetail Use Case", () => {
       async getPendingThreats() { return { items: [], totalPending: 0 }; },
       async getThreatTarget() { return null; },
       async saveMateThreats() {},
+      async getPendingEngine() { return { items: [], totalPending: 0 }; },
+      async saveEngineEval() {},
     };
 
     await recordMatchDetail(fakePort, createBaseRecord({ user_id: "" }));

@@ -1,15 +1,27 @@
 import { json } from "./import.ts";
 import { mapErrorToResponse } from "./errors.ts";
 import { resolveProviderUserId } from "../db/users.ts";
-import { parseStoredGame, replayGame, type GameHeaders } from "../domain/gameReplay.ts";
+import { parseStoredGame, replayGame, uciToSan, type GameHeaders } from "../domain/gameReplay.ts";
 import { readMateThreats } from "../domain/mateThreats.ts";
+import { readEngineEval } from "../domain/engineEval.ts";
 
-interface Row { user_color: string | null; result: string | null; opponent_name: string | null; end_condition: string | null; played_at: number | null; move_history: string; move_timestamps: string; mate_threats: string | null }
+interface Row { user_color: string | null; result: string | null; opponent_name: string | null; end_condition: string | null; played_at: number | null; move_history: string; move_timestamps: string; mate_threats: string | null; engine_eval: string | null }
 
 const PGN_RESULT: Record<string, GameHeaders["result"]> = { win: "1-0", loss: "0-1", draw: "1/2-1/2" };
 
 // Plies (1-based) where the owner left a mate-in-1 standing and was mated; empty unless a well-formed analysis says so.
 const missedPliesOf = (raw: string | null): number[] => { const r = readMateThreats(raw); return r.state === "ok" ? r.value.missedPlies : []; };
+
+// The engine's serious errors of the game (with the move it preferred, in SAN) and its totals; empty unless a well-formed analysis says so.
+function engineOf(raw: string | null, startFen: string, plies: { fen: string }[]) {
+  const r = readEngineEval(raw);
+  if (r.state !== "ok") return { engineWorst: [], engineSummary: null };
+  const v = r.value;
+  return {
+    engineWorst: v.worst.map((w) => ({ ply: w.ply, loss: w.loss, best: w.best, bestSan: uciToSan(w.ply === 1 ? startFen : plies[w.ply - 2]?.fen ?? "", w.best) })),
+    engineSummary: { moves: v.moves, serious: v.byPhase.opening[1] + v.byPhase.middlegame[1] + v.byPhase.endgame[1], acpl: v.moves ? v.loss / v.moves : null },
+  };
+}
 
 const notFound = () => json({ ok: false, error: "game not found", code: "GAME_NOT_FOUND" }, 404);
 
@@ -20,7 +32,7 @@ export async function handleMatchGame(db: D1Database, email: string | null, matc
   if (!userId) return json({ ok: false, error: "no provider account", code: "NO_PROVIDER_ACCOUNT" }, 404);
 
   const row = await db.prepare(
-    `SELECT m.user_color, m.result, m.opponent_name, m.played_at, md.end_condition, md.move_history, md.move_timestamps, md.mate_threats
+    `SELECT m.user_color, m.result, m.opponent_name, m.played_at, md.end_condition, md.move_history, md.move_timestamps, md.mate_threats, md.engine_eval
      FROM matches m JOIN match_details md ON md.match_id = m.match_id
      WHERE m.match_id = ? AND m.user_id = ?`,
   ).bind(matchId, userId).first<Row>();
@@ -45,7 +57,7 @@ export async function handleMatchGame(db: D1Database, email: string | null, matc
         },
       });
     }
-    return json({ ok: true, matchId, userColor: row.user_color, opponent: row.opponent_name, result: row.result, playedAt: row.played_at, startFen: game.startFen, plies: game.plies, pgn: game.pgn, missedPlies: missedPliesOf(row.mate_threats) });
+    return json({ ok: true, matchId, userColor: row.user_color, opponent: row.opponent_name, result: row.result, playedAt: row.played_at, startFen: game.startFen, plies: game.plies, pgn: game.pgn, missedPlies: missedPliesOf(row.mate_threats), ...engineOf(row.engine_eval, game.startFen, game.plies) });
   } catch (e) {
     const mapped = mapErrorToResponse(e);
     if (mapped) return mapped;

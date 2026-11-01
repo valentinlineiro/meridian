@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { handleGetPendingThreats, handlePostMateThreats } from "../src/api/chessDetail.ts";
 import { createSqliteD1 } from "./helpers/sqliteD1.ts";
 
-const MIGRATIONS = ["0001_init.sql", "0005_played_at.sql", "0006_match_details.sql", "0007_openings_and_phases.sql", "0017_opening_family_mate_type.sql", "0018_mate_threats.sql"];
+const MIGRATIONS = ["0001_init.sql", "0005_played_at.sql", "0006_match_details.sql", "0007_openings_and_phases.sql", "0017_opening_family_mate_type.sql", "0018_mate_threats.sql", "0019_engine_eval.sql"];
 const GOOD = { status: "ok", faced: 2, neutralized: 1, missed: 1, unpunished: 0, byPhase: { opening: [1, 1, 0], middlegame: [0, 0, 0], endgame: [0, 0, 0] }, missedPlies: [4] };
 
 describe("mate threat machine routes", () => {

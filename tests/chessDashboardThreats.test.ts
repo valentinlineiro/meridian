@@ -138,7 +138,7 @@ describe("game viewer: missed threats", () => {
     expect(html).toContain('data-p="6"');
     expect(html).toContain("Jugada 6");
     expect(html).toContain("Nf6"); // ply 6 of GAME is Nf6: the listed number and the move agree
-    await call("jumpToMissedPly(6)");
+    await call("jumpToPly(6)");
     expect(text(rt, "#gPos")).toBe("5 / 7"); // the position in which the threat stood, before the move
   });
 

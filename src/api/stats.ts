@@ -8,6 +8,7 @@ import { OPENING_FAMILY_LABELS } from "../domain/openingFamily.ts";
 import { MATE_TYPE_LABELS } from "../domain/mateType.ts";
 import { readMateThreats, type MateThreatsOk, type ThreatPhase } from "../domain/mateThreats.ts";
 import { median } from "../analytics/median.ts";
+import { handleStatsProfile } from "./profileStats.ts";
 import { PHASE_META, type PhaseKey } from "../analytics/phases.ts";
 
 export interface OpeningStat {
@@ -204,6 +205,7 @@ export async function handleStats(db: D1Database, kind: string, url: URL): Promi
   if (kind === "openings") return handleStatsOpenings(db, url);
   if (kind === "mates") return handleStatsMates(db, url);
   if (kind === "threats") return handleStatsThreats(db, url);
+  if (kind === "profile") return handleStatsProfile(db, url);
   if (kind === "phases") return handleStatsPhases(db, url);
   if (kind === "bundle") return handleStatsBundle(db, url);
 
