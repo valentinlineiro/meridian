@@ -41,7 +41,8 @@ export function summarizeEngineGame(evals: readonly number[], bests: readonly (s
     const tally = out.byPhase[phaseOfPly(ply)];
     out.moves++; out.loss += loss; tally[0]++;
     if (loss >= SERIOUS) { tally[1]++; serious.push({ ply, loss, best: bests[i] ?? "" }); }
-    if (out.decisivePly === null && before > DECISIVE_BEFORE && after <= DECISIVE_AFTER) out.decisivePly = ply;
+    // the study's definition: the move is itself a serious error, and an opponent reply is on record (a move that ends the record gets no verdict)
+    if (out.decisivePly === null && loss >= SERIOUS && i + 2 < evals.length && before > DECISIVE_BEFORE && after <= DECISIVE_AFTER) out.decisivePly = ply;
   }
   out.worst = serious.sort((a, b) => b.loss - a.loss || a.ply - b.ply).slice(0, MAX_WORST);
   let up = 0, down = 0;

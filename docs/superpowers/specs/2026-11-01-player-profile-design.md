@@ -10,7 +10,7 @@ Cada partida con historial legible se evalúa con Stockfish a profundidad 12, po
 
 - **Pérdida de una jugada** = evaluación antes − evaluación después (≥ 0). **Error grave** = pérdida ≥ 300 cp.
 - **Fases** por ply de mi jugada: apertura ≤ 20, medio juego ≤ 60, final > 60 (las mismas que las amenazas de mate).
-- **Momento decisivo** = primera jugada propia con evaluación antes > −150 y después ≤ −300.
+- **Momento decisivo** = primera jugada propia con evaluación antes > −150 y después ≤ −300 que además es un error grave (pérdida ≥ 300) y tiene una respuesta del rival en el registro. (La prueba de aceptación contra el estudio mostró que la línea base ya incluía esas dos condiciones.)
 - **Ventaja sostenida** = 3 posiciones consecutivas con evaluación propia ≥ +300; **desventaja sostenida** = 3 consecutivas ≤ −300.
 - **ACPL** = pérdida media por jugada propia, en centipeones.
 

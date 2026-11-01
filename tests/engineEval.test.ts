@@ -30,6 +30,13 @@ describe("summarizeEngineGame", () => {
     expect(summarizeEngineGame([0, 0, 0, 0, 0], bests(5), "white").decisivePly).toBeNull();
   });
 
+  it("shouldRequireTheDecisiveMoveToBeASeriousErrorAndToHaveAnOpponentReplyOnRecord", () => {
+    expect(summarizeEngineGame([0, 0, -100, -310, -310], bests(5), "white").decisivePly).toBeNull(); // loss 210: past -300 but not serious
+    expect(summarizeEngineGame([0, 0, 0, 0, -500], bests(5), "black").decisivePly).toBeNull(); // black's last recorded move ends the record
+    expect(summarizeEngineGame([0, 0, 0, -500, -500], bests(5), "white").decisivePly).toBe(3); // black's reply is on record
+    expect(summarizeEngineGame([0, 0, 0, -500], bests(4), "white").decisivePly).toBeNull(); // white's ply 3 is the last recorded move
+  });
+
   it("shouldFlagSustainedAdvantageOnlyWithThreeConsecutivePositionsAtPlus300", () => {
     expect(summarizeEngineGame([0, 300, 300, 0, 300, 300], bests(6), "white").sustainedAdv).toBe(false);
     expect(summarizeEngineGame([0, 300, 300, 300, 0], bests(5), "white").sustainedAdv).toBe(true);
