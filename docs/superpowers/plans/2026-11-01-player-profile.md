@@ -102,7 +102,7 @@
 
 **Files:**
 - Create: `scripts/analysisQueue.ts`, `scripts/stockfishEngine.ts`, `scripts/analyzeEngine.ts`
-- Modify: `scripts/analyzeThreats.ts` (usa `analysisQueue.ts`), `package.json` (devDependency `stockfish` fijada a `19.0.1`), `package-lock.json`
+- Modify: `scripts/analyzeThreats.ts` (usa `analysisQueue.ts`), `package.json` (dependencia `stockfish` fijada a `19.0.1`), `package-lock.json`
 - Test: `tests/analyzeEngineScript.test.ts`; `tests/analyzeThreatsScript.test.ts` debe seguir en verde sin cambios
 
 **Interfaces:**
@@ -184,7 +184,7 @@
 - Modify: `OPERATIONS.md`
 - Test: `tests/engineWorkflow.test.ts` (modelo `tests/threatsWorkflow.test.ts`)
 
-- [ ] **Step 1: Failing tests**: grupo de concurrencia propio `meridian-engine`, `permissions: contents: read`, `persist-credentials: false`, referencia de Meridian fijada a SHA completo, único secreto `MERIDIAN_IMPORT_TOKEN`, `WORKER` explícito, disparadores `workflow_dispatch` y `workflow_run` del workflow `collector`, puerta `vars.ENGINE_SCHEDULE == 'enabled'`, instalación `npm ci --omit=dev --ignore-scripts` más `npm i --no-save --ignore-scripts stockfish@19.0.1`, ejecución `node --experimental-transform-types scripts/analyzeEngine.ts`, `timeout-minutes` y presupuesto coherentes.
+- [ ] **Step 1: Failing tests**: grupo de concurrencia propio `meridian-engine`, `permissions: contents: read`, `persist-credentials: false`, referencia de Meridian fijada a SHA completo, único secreto `MERIDIAN_IMPORT_TOKEN`, `WORKER` explícito, disparadores `workflow_dispatch` y `workflow_run` del workflow `collector`, puerta `vars.ENGINE_SCHEDULE == 'enabled'`, instalación `npm ci --omit=dev --ignore-scripts` (Stockfish es dependencia de producción de Meridian, fijada por el lockfile), ejecución `node --experimental-transform-types scripts/analyzeEngine.ts`, `timeout-minutes` y presupuesto coherentes.
 - [ ] **Step 2: Run** → FAIL. **Step 3: Implement** copiando `threats.yml`. **Step 4: Run** suite del colector → PASS.
 - [ ] **Step 5:** El SHA de Meridian se fija al hacer commit de la fusión en `main`; no publicar ni activar el workflow hasta que Meridian esté desplegado (nota en OPERATIONS).
 - [ ] **Step 6: Commit** en el colector, sin push hasta confirmación.
