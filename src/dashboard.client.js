@@ -35,6 +35,7 @@ function parseCanonicalRoute(pathOrHash, hashOrSearch, searchQuery){
  if(!ch || seg === 'overview') return { tab: 'overview', courseId: null, canonicalPath: '/overview', canonicalHash: '#/overview', hasLegacyQuery };
  if(seg === 'chess') return { tab: 'chess', courseId: null, canonicalPath: '/chess', canonicalHash: '#/chess', hasLegacyQuery };
  if(seg === 'changes') return { tab: 'changes', courseId: null, canonicalPath: '/changes', canonicalHash: '#/changes', hasLegacyQuery };
+ if(seg === 'profile') return { tab: 'profile', courseId: null, canonicalPath: '/profile', canonicalHash: '#/profile', hasLegacyQuery };
  if(seg === 'trajectory') return { tab: 'trajectory', courseId: null, canonicalPath: '/trajectory', canonicalHash: '#/trajectory', hasLegacyQuery };
  if(seg === 'languages'){
   const cid = sub || leg || null;
@@ -65,7 +66,7 @@ let trajectoryEmptyCopy=null; // declared before initTab(): the first tab render
 let selectedCourseId=null, lastLangsData=null, lastAnalyticsData=null, lastLangXpData=null, lastActiveDetail=null, activeChangesInterval=null, changesAnchor=null, changesShownUntil=null;
 function showTab(name){
  const tab=(name==='languages'||name==='chess')?name:'overview';
- const activeTab=(name==='changes'||name==='trajectory')?name:tab;
+ const activeTab=(name==='changes'||name==='trajectory'||name==='profile')?name:tab;
  const route=parseCanonicalRoute(location.pathname, location.hash, location.search);
  const courseId=route.tab==='languages'?route.courseId:null;
  const targetPath = (activeTab==='languages' && (courseId || selectedCourseId))
@@ -77,20 +78,24 @@ function showTab(name){
  q('#chessTab').classList.toggle('active', activeTab==='chess');
  if(q('#changesTab')) q('#changesTab').classList.toggle('active', activeTab==='changes');
  if(q('#trajectoryTab')) q('#trajectoryTab').classList.toggle('active', activeTab==='trajectory');
+ if(q('#profileTab')) q('#profileTab').classList.toggle('active', activeTab==='profile');
  // native hidden attribute in addition to the CSS class: the inactive panel must be
  // unambiguously excluded from the accessibility tree, not just visually display:none.
- q('#overviewTab').hidden = tab!=='overview' || activeTab==='changes' || activeTab==='trajectory';
+ q('#overviewTab').hidden = tab!=='overview' || activeTab==='changes' || activeTab==='trajectory' || activeTab==='profile';
  q('#langTab').hidden = tab!=='languages';
  q('#chessTab').hidden = tab!=='chess';
  if(q('#changesTab')) q('#changesTab').hidden = activeTab!=='changes';
  if(q('#trajectoryTab')) q('#trajectoryTab').hidden = activeTab!=='trajectory';
+ if(q('#profileTab')) q('#profileTab').hidden = activeTab!=='profile';
  q('#tabBtnOverview').className='btn '+(activeTab==='overview'?'btn-p':'btn-g');
  q('#tabBtnLang').className='btn '+(activeTab==='languages'?'btn-p':'btn-g');
  q('#tabBtnChess').className='btn '+(activeTab==='chess'?'btn-p':'btn-g');
  if(q('#tabBtnChanges')) q('#tabBtnChanges').className='btn '+(activeTab==='changes'?'btn-p':'btn-g');
  if(q('#tabBtnTrajectory')) q('#tabBtnTrajectory').className='btn '+(activeTab==='trajectory'?'btn-p':'btn-g');
+ if(q('#tabBtnProfile')) q('#tabBtnProfile').className='btn '+(activeTab==='profile'?'btn-p':'btn-g');
  if(activeTab==='changes') fetchWhatChanged();
  if(activeTab==='trajectory') fetchTrajectory();
+ if(activeTab==='profile') fetchProfile();
 }
 function initTab(){
  const route = parseCanonicalRoute(location.pathname, location.hash, location.search);
@@ -1205,6 +1210,7 @@ async function openGame(id){
 function closeGame(){ gameId=null; game=null; q('#gameModal').style.display='none'; if(gameOpener&&gameOpener.focus) gameOpener.focus(); gameOpener=null; }
 window.addEventListener('click',e=>{
  const row=e.target.closest&&e.target.closest('tr.gamerow'); if(row){ openGame(row.getAttribute('data-m')); return; }
+ const pg=e.target.closest&&e.target.closest('#profileReviewCard [data-g]'); if(pg){ e.preventDefault(); openGame(pg.getAttribute('data-g')); return; }
  const ms=e.target.closest&&e.target.closest('#gMissed [data-p]'); if(ms){ e.preventDefault(); jumpToPly(+ms.getAttribute('data-p')); return; }
  const er=e.target.closest&&e.target.closest('#gErrors [data-p]'); if(er){ e.preventDefault(); jumpToPly(+er.getAttribute('data-p')); return; }
  const mv=e.target.closest&&e.target.closest('#gMoves .gm'); if(mv){ e.preventDefault(); gamePly=+mv.getAttribute('data-p'); paintGame(); return; }
@@ -1447,6 +1453,53 @@ function trajectoryCopy(f){
     ' · XP neto observado entre capturas; no se ha verificado que la serie sea continua' };
  }
  return null;
+}
+// ── Profile tab: the engine summaries, with the experiment cut kept in this browser only (no server setting). ──
+const PROFILE_CUT_KEY='profile_since';
+let profileSeq=0;
+function profileCut(){ try{ return localStorage.getItem(PROFILE_CUT_KEY)||''; }catch(e){ return ''; } }
+function applyProfileSince(){ const v=q('#profileSinceInput').value.trim(); try{ if(v) localStorage.setItem(PROFILE_CUT_KEY,v); else localStorage.removeItem(PROFILE_CUT_KEY); }catch(e){} fetchProfile(); }
+function clearProfileSince(){ q('#profileSinceInput').value=''; try{ localStorage.removeItem(PROFILE_CUT_KEY); }catch(e){} fetchProfile(); }
+const profPer100=(r)=>r==null?'—':r.toFixed(1);
+const profPct=(a,b)=>b?Math.round(100*a/b)+'%':'—';
+const profRateText=(t)=>profPer100(t.ratePer100)+' por 100 jugadas ('+t.serious+' de '+t.moves+')';
+function paintProfileSection(s){ return s.games+' partidas · '+profRateText(s)+(s.acpl==null?'':' · pérdida media '+Math.round(s.acpl)+' cp'); }
+function paintProfile(b){
+ const a=b.all;
+ if(!b.analysed){
+  q('#profileQuality').textContent='Todavía no hay partidas analizadas';
+  for(const id of ['#profilePhases','#profileColors','#profileTrend','#profileCut','#profileDecisive','#profileConversion','#profileWorst','#profileBest']) q(id).textContent='';
+ } else {
+  q('#profileQuality').textContent='Errores graves: '+profRateText(a)+(a.acpl==null?'':' · pérdida media '+Math.round(a.acpl)+' cp')+' · '+a.games+' partidas analizadas';
+  q('#profilePhases').textContent='Apertura '+profPer100(a.byPhase.opening.ratePer100)+' ('+a.byPhase.opening.serious+' de '+a.byPhase.opening.moves+') · Medio juego '+profPer100(a.byPhase.middlegame.ratePer100)+' ('+a.byPhase.middlegame.serious+' de '+a.byPhase.middlegame.moves+') · Final '+profPer100(a.byPhase.endgame.ratePer100)+' ('+a.byPhase.endgame.serious+' de '+a.byPhase.endgame.moves+')';
+  q('#profileColors').textContent='Blancas '+profPer100(a.byColor.white.ratePer100)+' ('+a.byColor.white.serious+' de '+a.byColor.white.moves+') · Negras '+profPer100(a.byColor.black.ratePer100)+' ('+a.byColor.black.serious+' de '+a.byColor.black.moves+')';
+  const bl=b.blocks||[];
+  q('#profileTrend').textContent=bl.length?'Por bloques de 50 partidas: '+bl.map(x=>profPer100(x.ratePer100)+(x.partial?' (último bloque incompleto, '+x.games+' partidas)':'')).join(' → '):'';
+  const d=a.decisive, dn=d.byPhase.opening+d.byPhase.middlegame+d.byPhase.endgame;
+  q('#profileDecisive').textContent='Derrotas con momento decisivo: '+d.withDecisive+' de '+d.lossGames+(d.medianMove==null?'':' · jugada mediana '+d.medianMove)+' · Apertura '+d.byPhase.opening+' ('+profPct(d.byPhase.opening,dn)+') · Medio juego '+d.byPhase.middlegame+' ('+profPct(d.byPhase.middlegame,dn)+') · Final '+d.byPhase.endgame+' ('+profPct(d.byPhase.endgame,dn)+')';
+  const c=a.conversion, o=(x)=>x.games+' partidas · ganadas '+profPct(x.win,x.games)+' ('+x.win+') · tablas '+profPct(x.draw,x.games)+' · perdidas '+profPct(x.loss,x.games)+' ('+x.loss+')';
+  q('#profileConversion').innerHTML='<div>Con ventaja sostenida (+300): '+esc(o(c.advantage))+'</div><div>Con desventaja sostenida (−300): '+esc(o(c.disadvantage))+'</div>';
+  const row=(r)=>'<div><a href="#" data-g="'+esc(r.matchId)+'">'+esc(String(r.matchId).slice(-8))+'</a> · '+esc(r.result||'—')+' · pérdida media '+Math.round(r.acpl)+' cp · '+r.serious+' graves en '+r.moves+(r.decisivePly?' · decisivo en la jugada '+r.decisivePly:'')+'</div>';
+  q('#profileWorst').innerHTML=(b.review.worst||[]).map(row).join('');
+  q('#profileBest').innerHTML=(b.review.best||[]).map(row).join('');
+  q('#profileCut').textContent=b.before&&b.after?'Antes del corte: '+paintProfileSection(b.before)+' · Después: '+paintProfileSection(b.after):'';
+ }
+ const cut=profileCut();
+ q('#profileSinceInput').value=cut;
+ q('#profileSinceNote').textContent=cut&&!b.since?'No encontré esa partida con fecha: se muestra todo sin dividir.':'';
+ const notes=[];
+ if(b.pending) notes.push(b.pending+' partidas sin analizar');
+ if(b.invalid) notes.push(b.invalid+' no se pudieron evaluar');
+ if(b.unknownVersion) notes.push(b.unknownVersion+' con un formato que este panel no entiende');
+ q('#profileNote').textContent='Error grave: pérdida de 300 cp o más según Stockfish a profundidad 12. Son tasas descriptivas, sin intervalo: los errores de una partida no son independientes.'+(notes.length?' Fuera de las cifras: '+notes.join(' · ')+'.':'')+(b.bots&&b.bots.share!=null?' El '+Math.round(100*b.bots.share)+'% de las partidas son contra bots: este perfil no describe cómo juegas contra personas.':'');
+}
+async function fetchProfile(){
+ const seq=++profileSeq, cut=profileCut();
+ try{
+  const b=await j('/api/stats/profile'+(cut?'?since='+encodeURIComponent(cut):''));
+  if(seq!==profileSeq) return;
+  paintProfile(b);
+ }catch(e){ if(seq===profileSeq) q('#profileQuality').textContent='No se pudo cargar el perfil'; }
 }
 async function fetchTrajectory(){
  const seq=++trajectorySeq;

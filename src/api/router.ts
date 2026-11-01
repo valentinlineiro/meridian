@@ -279,6 +279,7 @@ app.get("/languages/", dashboard);
 app.get("/languages/*", dashboard);
 app.get("/changes", dashboard);
 app.get("/trajectory", dashboard);
+app.get("/profile", dashboard);
 app.get("/raw", () => new Response(RAW_HTML, { headers: HTML_HEADERS }));
 app.get("/settings", () => new Response(SETTINGS_HTML, { headers: HTML_HEADERS }));
 app.get("/linkedin-games", () => new Response(LINKEDIN_GAMES_HTML, { headers: HTML_HEADERS }));

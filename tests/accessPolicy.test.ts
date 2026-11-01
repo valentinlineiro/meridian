@@ -21,7 +21,7 @@ const env = (over: Partial<Env> = {}): Env =>
 const call = (method: string, path: string, headers: Record<string, string> = {}, e = env()) =>
   worker.fetch(new Request(BASE + path, { method, headers, redirect: "manual", body: ["GET", "HEAD"].includes(method) ? undefined : "{}" }), e);
 
-const HTML_READS = ["/", "/index.html", "/overview", "/chess", "/languages", "/languages/it", "/changes", "/trajectory", "/raw", "/settings", "/linkedin-games"];
+const HTML_READS = ["/", "/index.html", "/overview", "/chess", "/languages", "/languages/it", "/changes", "/trajectory", "/profile", "/raw", "/settings", "/linkedin-games"];
 const API_READS = [
   "/api/stats/summary", "/api/stats/recent", "/api/stats/lang", "/api/languages", "/api/languages/xp", "/api/languages/analytics",
   "/api/languages/courses", "/api/languages/courses/X", "/api/matches", "/api/export/matches.csv", "/api/snapshots", "/api/snapshots/abc?raw=1",
