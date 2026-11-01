@@ -35,6 +35,19 @@ export const mateThreatsBody = z.discriminatedUnion("status", [
   z.object({ status: z.literal("invalid"), reason: z.enum(["illegal_game", "corrupt_game"]) }).strict(),
 ]);
 
+const bestMove = z.string().regex(/^[a-h][1-8][a-h][1-8][qrbn]?$/);
+// Strict on purpose, like the mate-threat body: no version, no unknown keys. The Worker cannot re-run the engine; it checks shape and coherence.
+export const engineEvalBody = z.discriminatedUnion("status", [
+  z.object({
+    status: z.literal("ok"), moves: count, loss: count,
+    byPhase: z.object({ opening: z.tuple([count, count]), middlegame: z.tuple([count, count]), endgame: z.tuple([count, count]) }).strict(),
+    decisivePly: z.number().int().positive().nullable(), sustainedAdv: z.boolean(), sustainedDis: z.boolean(),
+    minEval: z.number().int(), maxEval: z.number().int(),
+    worst: z.array(z.object({ ply: z.number().int(), loss: count, best: bestMove }).strict()).max(5),
+  }).strict(),
+  z.object({ status: z.literal("invalid"), reason: z.enum(["illegal_game", "corrupt_game", "engine_error"]) }).strict(),
+]);
+
 export const matchDetailEnvelope = z.record(z.string(), z.unknown());
 
 export const whatChangedQuerySchema = z.object({
