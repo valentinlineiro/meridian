@@ -53,3 +53,9 @@ export function replayGame(moves: readonly string[], timestamps: readonly number
   });
   return { startFen: new Chess().fen(), plies, pgn: chess.pgn() };
 }
+
+// The SAN of a UCI move in a position, or null when the move is not legal there (a stored engine suggestion must never break the viewer).
+export function uciToSan(fen: string, uci: string): string | null {
+  try { return new Chess(fen).move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci.slice(4, 5) || undefined }).san; }
+  catch { return null; }
+}

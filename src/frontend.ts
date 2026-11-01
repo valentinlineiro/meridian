@@ -373,6 +373,7 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
   <div id="gBody" style="display:none">
    <div class="gamegrid"><div id="gBoard" class="board"></div><div id="gMoves" class="moves"></div></div>
    <div id="gMissed" class="muted" style="margin-top:8px"></div>
+   <div id="gErrors" class="muted" style="margin-top:8px"></div>
    <div class="gamectl"><button class="btn btn-g" id="gPrev" onclick="gameStep(-1)" aria-label="Jugada anterior">‹</button><span class="muted" id="gPos"></span><button class="btn btn-g" id="gNext" onclick="gameStep(1)" aria-label="Jugada siguiente">›</button><a class="btn btn-g" id="gPgn" download style="text-decoration:none;margin-left:auto">Descargar PGN</a></div>
   </div>
  </div>

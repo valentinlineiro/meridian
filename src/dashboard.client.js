@@ -1181,10 +1181,14 @@ function paintGame(){
  q('#gPrev').disabled=gamePly===0; q('#gNext').disabled=gamePly===g.plies.length;
  const on=q('#gMoves .on'); if(on) on.scrollIntoView({block:'nearest'});
 }
-function jumpToMissedPly(n){ if(!game) return; gamePly=Math.max(0,Math.min(game.plies.length,n-1)); paintGame(); } // the position in which the threat stood, before the move that was played
+function jumpToPly(n){ if(!game) return; gamePly=Math.max(0,Math.min(game.plies.length,n-1)); paintGame(); } // the position in which the threat stood, before the move that was played
+function paintEngineErrors(b){
+ const w=b.engineWorst||[], sm=b.engineSummary;
+ q('#gErrors').innerHTML=(sm?'<div>Según el motor: '+sm.serious+' errores graves en '+sm.moves+' jugadas tuyas'+(sm.acpl==null?'':' · pérdida media '+Math.round(sm.acpl)+' cp')+'</div>':'')+w.map(x=>'<div><a href="#" data-p="'+x.ply+'">Jugada '+x.ply+' ('+esc((b.plies[x.ply-1]||{}).san||'')+'): pierdes '+x.loss+' cp; el motor prefería '+esc(x.bestSan||x.best)+'</a></div>').join('');
+}
 function gameStep(d){ if(!game) return; gamePly=Math.max(0,Math.min(game.plies.length,gamePly+d)); paintGame(); }
 async function openGame(id){
- gameId=id; game=null; q('#gMissed').innerHTML=''; gameOpener=document.activeElement; q('#gameModal').style.display='flex'; q('#gClose').focus(); q('#gTitle').textContent='Cargando partida…'; q('#gBody').style.display='none'; q('#gErr').textContent='';
+ gameId=id; game=null; q('#gMissed').innerHTML=''; q('#gErrors').innerHTML=''; gameOpener=document.activeElement; q('#gameModal').style.display='flex'; q('#gClose').focus(); q('#gTitle').textContent='Cargando partida…'; q('#gBody').style.display='none'; q('#gErr').textContent='';
  try{
   const res=await fetch('/api/me/matches/'+encodeURIComponent(id)+'/game');
   const b=await res.json().catch(()=>null);
@@ -1194,13 +1198,15 @@ async function openGame(id){
   q('#gTitle').textContent='vs '+(b.opponent||'rival sin nombre')+' · '+(b.userColor==='black'?'negras':'blancas');
   q('#gPgn').href='/api/me/matches/'+encodeURIComponent(id)+'/game.pgn';
   q('#gMissed').innerHTML=(b.missedPlies||[]).map(n=>'<div><a href="#" data-p="'+n+'">Jugada '+n+' ('+esc((b.plies[n-1]||{}).san||'')+'): el rival tenía mate en 1 y lo jugó</a></div>').join('');
+  paintEngineErrors(b);
   q('#gBody').style.display='block'; paintGame();
  }catch(e){ if(gameId===id){ q('#gTitle').textContent='Partida'; q('#gErr').textContent=e.message; } }
 }
 function closeGame(){ gameId=null; game=null; q('#gameModal').style.display='none'; if(gameOpener&&gameOpener.focus) gameOpener.focus(); gameOpener=null; }
 window.addEventListener('click',e=>{
  const row=e.target.closest&&e.target.closest('tr.gamerow'); if(row){ openGame(row.getAttribute('data-m')); return; }
- const ms=e.target.closest&&e.target.closest('#gMissed [data-p]'); if(ms){ e.preventDefault(); jumpToMissedPly(+ms.getAttribute('data-p')); return; }
+ const ms=e.target.closest&&e.target.closest('#gMissed [data-p]'); if(ms){ e.preventDefault(); jumpToPly(+ms.getAttribute('data-p')); return; }
+ const er=e.target.closest&&e.target.closest('#gErrors [data-p]'); if(er){ e.preventDefault(); jumpToPly(+er.getAttribute('data-p')); return; }
  const mv=e.target.closest&&e.target.closest('#gMoves .gm'); if(mv){ e.preventDefault(); gamePly=+mv.getAttribute('data-p'); paintGame(); return; }
  if(e.target.id==='gameModal') closeGame();
 });
