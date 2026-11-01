@@ -8,6 +8,7 @@ export interface Evaluator {
 }
 
 export const ENGINE_DEPTH = 12; // part of contract v1
+const EVAL_TIMEOUT_MS = 60_000; // one position at depth 12 takes tens of milliseconds; a minute means the engine is stuck
 
 const CLI = new URL("../node_modules/stockfish/scripts/cli.js", import.meta.url).pathname;
 const MATE = 10000;
@@ -27,6 +28,7 @@ export async function createStockfish(depth = ENGINE_DEPTH): Promise<Evaluator> 
     }
   });
   p.on("error", (e) => pending?.rej(e));
+  p.stdin.on("error", (e) => pending?.rej(e)); // a dead engine must fail the evaluation, not crash the process with an unhandled EPIPE
   p.on("exit", () => pending?.rej(new Error("engine exited")));
   const ready = new Promise<void>((res) => (onReady = res));
   p.stdin.write("uci\nsetoption name Hash value 16\nsetoption name Threads value 1\nisready\n");
@@ -35,11 +37,13 @@ export async function createStockfish(depth = ENGINE_DEPTH): Promise<Evaluator> 
     eval(fen: string) {
       last = null;
       return new Promise((res, rej) => {
+        const timer = setTimeout(() => { pending = null; rej(new Error("engine timeout")); }, EVAL_TIMEOUT_MS);
         pending = { res: ({ best, score }) => {
+          clearTimeout(timer);
           if (!score) return res({ cp: 0, best }); // no score (no legal move): neutral, as in the study
           const v = score.kind === "cp" ? score.v : (score.v > 0 ? MATE - score.v : -MATE - score.v);
           res({ cp: fen.split(" ")[1] === "w" ? v : -v, best });
-        }, rej };
+        }, rej: (e) => { clearTimeout(timer); rej(e); } };
         p.stdin.write(`position fen ${fen}\ngo depth ${depth}\n`);
       });
     },

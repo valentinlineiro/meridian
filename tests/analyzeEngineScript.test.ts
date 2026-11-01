@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { analyzeEngine, evaluateGame } from "../scripts/analyzeEngine.ts";
+import { runQueue } from "../scripts/analysisQueue.ts";
 import type { Evaluator } from "../scripts/stockfishEngine.ts";
 import { handleGetPendingEngine, handlePostEngineEval } from "../src/api/chessDetail.ts";
 import { createSqliteD1 } from "./helpers/sqliteD1.ts";
@@ -39,6 +40,14 @@ describe("evaluateGame", () => {
     expect(ev.calls).toHaveLength(19); // 20 positions, the last is stalemate
     expect(r.evals[19]).toBe(0);
     expect(r.bests[19]).toBeNull();
+  });
+
+  it("shouldEvaluateAPositionThatRepeatsOrCannotBeWonLikeAnyOther", async () => {
+    const REPEAT = ["g1f3", "g8f6", "f3g1", "f6g8", "g1f3", "g8f6", "f3g1", "f6g8", "g1f3"]; // threefold repetition, the game goes on
+    const ev = scripted(Array(10).fill(15));
+    const r = await evaluateGame(REPEAT, ev);
+    expect(ev.calls).toHaveLength(10); // every position, repeated ones included
+    expect(r.bests.every((b) => b === "e2e4")).toBe(true);
   });
 
   it("shouldThrowIllegalGameForAnIllegalMove", async () => {
@@ -110,3 +119,40 @@ describe("analyzeEngine", () => {
 });
 
 async function run(h: ReturnType<typeof harness>, cps: number[]) { return h.run(scripted(cps)); }
+
+describe("runQueue: games that always fail", () => {
+  it("shouldNotRetryAFailingGameWithinTheRunAndStillPostTheOthers", async () => {
+    const queue = [{ match_id: "poison", user_color: "white", move_history: "[]" }, { match_id: "a", user_color: "white", move_history: "[]" }, { match_id: "b", user_color: "white", move_history: "[]" }];
+    const computed: string[] = [];
+    const fetchFn = (async (url: string, init?: RequestInit) => {
+      const u = new URL(url);
+      if (u.pathname.endsWith("pending-engine")) return new Response(JSON.stringify({ items: queue, totalPending: queue.length }));
+      const id = decodeURIComponent(u.pathname.split("/")[4]!);
+      queue.splice(queue.findIndex((q) => q.match_id === id), 1);
+      return new Response("{}");
+    }) as unknown as typeof fetch;
+    const m = await runQueue({ fetch: fetchFn, worker: WORKER, importToken: "t", sleep: async () => {} }, {
+      name: "engine", compute: (color, _moves) => { computed.push(color!); return null; },
+    });
+    expect(m.failed).toBe(3); // nothing computable: each game tried once, then the whole batch counts as no progress
+    expect(computed).toHaveLength(3);
+  });
+
+  it("shouldSkipTheGameThatFailedEarlierWhenItComesBackAtTheHeadOfTheNextBatch", async () => {
+    const queue = [{ match_id: "poison", user_color: "white", move_history: "poison" }, { match_id: "a", user_color: "white", move_history: "a" }];
+    const computed: string[] = [];
+    const fetchFn = (async (url: string) => {
+      const u = new URL(url);
+      if (u.pathname.endsWith("pending-engine")) return new Response(JSON.stringify({ items: queue, totalPending: queue.length }));
+      const id = decodeURIComponent(u.pathname.split("/")[4]!);
+      queue.splice(queue.findIndex((q) => q.match_id === id), 1);
+      return new Response("{}");
+    }) as unknown as typeof fetch;
+    const m = await runQueue({ fetch: fetchFn, worker: WORKER, importToken: "t", sleep: async () => {} }, {
+      name: "engine", compute: (_c, moves) => { computed.push(moves); return moves === "poison" ? null : { status: "invalid", reason: "engine_error" }; },
+    });
+    expect(computed).toEqual(["poison", "a"]); // the second batch is [poison] alone: not computed again
+    expect(m).toMatchObject({ invalid: 1, failed: 1 });
+    expect(m.aborted).toMatch(/no progress/);
+  });
+});

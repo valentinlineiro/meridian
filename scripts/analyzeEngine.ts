@@ -10,13 +10,14 @@ import { CorruptGame, IllegalGame, parseStoredGame } from "../src/domain/gameRep
 
 const MATED = 10000;
 
-// One evaluation per position (moves + 1). A position with no legal move is not sent to the engine: mate counts as the study did (±10000 for the side that gave it), any other end as 0.
+// One evaluation per position (moves + 1). Only a position with no legal move skips the engine: mate counts as the study did (±10000 for the side that gave it), stalemate as 0.
+// Repetition, the 50-move rule and insufficient material are not ends of the record: the game went on, so those positions are evaluated like any other.
 export async function evaluateGame(moves: readonly string[], evaluator: Evaluator): Promise<{ evals: number[]; bests: (string | null)[] }> {
   const chess = new Chess();
   const evals: number[] = [], bests: (string | null)[] = [];
   const score = async () => {
     if (chess.isCheckmate()) { evals.push(chess.turn() === "w" ? -MATED : MATED); bests.push(null); }
-    else if (chess.isGameOver()) { evals.push(0); bests.push(null); }
+    else if (chess.isStalemate()) { evals.push(0); bests.push(null); }
     else { const r = await evaluator.eval(chess.fen()); evals.push(r.cp); bests.push(r.best); }
   };
   await score();

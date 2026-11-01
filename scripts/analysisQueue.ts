@@ -52,6 +52,7 @@ export async function runQueue(opts: AnalyzeOptions, job: QueueJob): Promise<Ana
   const headers = { Authorization: `Bearer ${importToken}`, "User-Agent": "meridian-analyzer" };
   const m: AnalyzeMetrics = { batches: 0, ok: 0, invalid: 0, failed: 0, remaining: 0, aborted: null };
   const started = now();
+  const failedIds = new Set<string>();
 
   for (;;) {
     const res = await send({ fetch, sleep }, `${worker}/api/chess/matches/pending-${job.name}?limit=${limit}`, { headers });
@@ -65,14 +66,15 @@ export async function runQueue(opts: AnalyzeOptions, job: QueueJob): Promise<Ana
 
     let progressed = 0;
     for (const game of items) {
+      if (failedIds.has(game.match_id)) continue; // a game that could not be computed or posted stays pending, but is not retried again within this run
       if (now() - started >= budgetMs) return m; // between games, never in the middle of one
       const body = await job.compute(game.user_color, game.move_history);
-      if (!body) { m.failed++; log("skipped a game that could not be computed"); continue; }
+      if (!body) { m.failed++; failedIds.add(game.match_id); log("skipped a game that could not be computed"); continue; }
       const post = await send({ fetch, sleep }, `${worker}/api/chess/matches/${encodeURIComponent(game.match_id)}/${job.name}`, {
         method: "POST", headers: { ...headers, "Content-Type": "application/json" }, body: JSON.stringify(body),
       });
       if (post?.status === 401) { m.aborted = REJECTED; return m; }
-      if (!post || !post.ok) { m.failed++; log(`post failed: ${post ? post.status : "unreachable"}`); continue; }
+      if (!post || !post.ok) { m.failed++; failedIds.add(game.match_id); log(`post failed: ${post ? post.status : "unreachable"}`); continue; }
       if (body.status === "ok") m.ok++; else m.invalid++;
       m.remaining--;
       progressed++;

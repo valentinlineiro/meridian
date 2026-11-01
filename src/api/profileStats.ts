@@ -1,5 +1,5 @@
 import { json } from "./import.ts";
-import { readEngineEval, type EngineEvalOk } from "../domain/engineEval.ts";
+import type { EngineEvalOk } from "../domain/engineEval.ts";
 import type { ThreatPhase } from "../domain/mateThreats.ts";
 import { median } from "../analytics/median.ts";
 
@@ -10,10 +10,12 @@ const BLOCK = 50;       // games per trend block
 const REVIEW_MIN = 20;  // own moves a game needs to enter the review lists
 const REVIEW_SIZE = 20;
 
-interface Game { matchId: string; result: string | null; color: "white" | "black" | null; playedAt: number; v: EngineEvalOk }
+// The only parts of a stored summary the profile needs. They are extracted in SQL: shipping and parsing every game's whole JSON would cost the Worker more CPU than its plan allows.
+type Summary = Pick<EngineEvalOk, "moves" | "loss" | "byPhase" | "decisivePly" | "sustainedAdv" | "sustainedDis">;
+interface Game { matchId: string; result: string | null; color: "white" | "black" | null; playedAt: number; v: Summary }
 const PHASES: ThreatPhase[] = ["opening", "middlegame", "endgame"];
 const rate = (serious: number, moves: number) => (moves ? (100 * serious) / moves : null);
-const seriousOf = (v: EngineEvalOk) => PHASES.reduce((a, p) => a + v.byPhase[p][1], 0);
+const seriousOf = (v: Summary) => PHASES.reduce((a, p) => a + v.byPhase[p][1], 0);
 const medianOf = (xs: number[]) => (xs.length ? median(xs) : null);
 
 function totals(games: Game[]) {
@@ -60,22 +62,54 @@ function review(games: Game[]) {
   };
 }
 
+const REASONS = new Set(["illegal_game", "corrupt_game", "engine_error"]);
+const isCount = (n: unknown): n is number => typeof n === "number" && Number.isInteger(n) && n >= 0;
+// json_extract raises on malformed JSON, so one corrupt row would fail the whole read: extract only from valid JSON.
+const EXTRACT = (path: string) => `CASE WHEN json_valid(md.engine_eval) THEN json_extract(md.engine_eval, '${path}') END`;
+interface ProfileRow {
+  match_id: string; result: string | null; user_color: string | null; opponent_type: string | null; played_at: number | null;
+  engine_eval: string | null; valid: number; v: unknown; status: unknown; reason: unknown;
+  moves: unknown; loss: unknown; o_m: unknown; o_s: unknown; m_m: unknown; m_s: unknown; e_m: unknown; e_s: unknown; dec: unknown; adv: unknown; dis: unknown;
+}
+
+// Same verdicts as readEngineEval, from the extracted scalars: NULL is pending; broken JSON, an unknown version or contradictory figures are "unknown".
+function summaryOf(r: ProfileRow): { state: "pending" | "invalid" | "unknown" } | { state: "ok"; value: Summary } {
+  if (r.engine_eval === null) return { state: "pending" };
+  if (!r.valid || r.v !== 1) return { state: "unknown" };
+  if (r.status === "invalid") return typeof r.reason === "string" && REASONS.has(r.reason) ? { state: "invalid" } : { state: "unknown" };
+  if (r.status !== "ok") return { state: "unknown" };
+  const ph = [[r.o_m, r.o_s], [r.m_m, r.m_s], [r.e_m, r.e_s]];
+  if (!isCount(r.moves) || !isCount(r.loss) || !ph.every(([m, x]) => isCount(m) && isCount(x) && x <= m)) return { state: "unknown" };
+  if (ph.reduce((a, [m]) => a + (m as number), 0) !== r.moves) return { state: "unknown" };
+  if (r.dec !== null && !(Number.isInteger(r.dec) && (r.dec as number) >= 1)) return { state: "unknown" };
+  if (![0, 1].includes(r.adv as number) || ![0, 1].includes(r.dis as number)) return { state: "unknown" };
+  const t = (i: number) => [ph[i]![0] as number, ph[i]![1] as number] as [number, number];
+  return { state: "ok", value: { moves: r.moves, loss: r.loss, byPhase: { opening: t(0), middlegame: t(1), endgame: t(2) }, decisivePly: (r.dec as number | null), sustainedAdv: r.adv === 1, sustainedDis: r.dis === 1 } };
+}
+
 export async function handleStatsProfile(db: D1Database, url: URL): Promise<Response> {
   const userId = url.searchParams.get("userId");
   const sinceId = url.searchParams.get("since");
   const q = `
-    SELECT m.match_id, m.result, m.user_color, m.opponent_type, m.played_at, md.engine_eval
+    SELECT m.match_id, m.result, m.user_color, m.opponent_type, m.played_at,
+      CASE WHEN md.engine_eval IS NULL THEN NULL ELSE '' END AS engine_eval, COALESCE(json_valid(md.engine_eval), 0) AS valid,
+      ${EXTRACT("$.v")} AS v, ${EXTRACT("$.status")} AS status, ${EXTRACT("$.reason")} AS reason,
+      ${EXTRACT("$.moves")} AS moves, ${EXTRACT("$.loss")} AS loss,
+      ${EXTRACT("$.byPhase.opening[0]")} AS o_m, ${EXTRACT("$.byPhase.opening[1]")} AS o_s,
+      ${EXTRACT("$.byPhase.middlegame[0]")} AS m_m, ${EXTRACT("$.byPhase.middlegame[1]")} AS m_s,
+      ${EXTRACT("$.byPhase.endgame[0]")} AS e_m, ${EXTRACT("$.byPhase.endgame[1]")} AS e_s,
+      ${EXTRACT("$.decisivePly")} AS dec, ${EXTRACT("$.sustainedAdv")} AS adv, ${EXTRACT("$.sustainedDis")} AS dis
     FROM matches m JOIN match_details md ON md.match_id = m.match_id
     ${userId ? "WHERE m.user_id = ?" : ""}
     ORDER BY COALESCE(m.played_at, 0) ASC, m.rowid ASC
   `;
-  const rows = (await (userId ? db.prepare(q).bind(userId) : db.prepare(q)).all<{ match_id: string; result: string | null; user_color: string | null; opponent_type: string | null; played_at: number | null; engine_eval: string | null }>()).results ?? [];
+  const rows = (await (userId ? db.prepare(q).bind(userId) : db.prepare(q)).all<ProfileRow>()).results ?? [];
 
   const games: Game[] = []; // oldest first
   let pending = 0, invalid = 0, unknownVersion = 0, bots = 0;
   for (const r of rows) {
     if ((r.opponent_type ?? "").toLowerCase() === "bot") bots++;
-    const read = readEngineEval(r.engine_eval);
+    const read = summaryOf(r);
     if (read.state === "ok") {
       const c = r.user_color?.trim().toLowerCase();
       games.push({ matchId: r.match_id, result: r.result, color: c === "white" || c === "black" ? c : null, playedAt: r.played_at ?? 0, v: read.value });

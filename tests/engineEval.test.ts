@@ -112,6 +112,39 @@ describe("assertEngineEvalInvariants", () => {
   });
 });
 
+describe("assertEngineEvalInvariants: figures the definitions rule out", () => {
+  it("shouldRejectALossAbove2000CentipawnsPerMove", () => {
+    expect(() => assertEngineEvalInvariants(okOf({ loss: 6001 }), ctx)).toThrow(InvalidEngineEval); // 3 moves
+    expect(() => assertEngineEvalInvariants(okOf({ loss: 6000 }), ctx)).not.toThrow();
+  });
+  it("shouldRejectALossBelow300PerSeriousError", () => {
+    expect(() => assertEngineEvalInvariants(okOf({ loss: 299, worst: [] }), ctx)).toThrow(InvalidEngineEval);
+  });
+  it("shouldRejectAPhaseSplitThatTheGameLengthDoesNotAllow", () => {
+    // white, 5 plies: all three moves are opening moves
+    expect(() => assertEngineEvalInvariants(okOf({ byPhase: { opening: [0, 0], middlegame: [3, 1], endgame: [0, 0] } }), ctx)).toThrow(InvalidEngineEval);
+    // 45 plies as white: plies 1..39 opening (20 moves... ply <= 20 -> 10 moves), 21..45 middle
+    const split = { opening: [10, 0], middlegame: [13, 0], endgame: [0, 0] } as any;
+    expect(() => assertEngineEvalInvariants(okOf({ moves: 23, loss: 0, byPhase: split, worst: [], minEval: 0 }), { plyCount: 45, userColor: "white" })).not.toThrow();
+    expect(() => assertEngineEvalInvariants(okOf({ moves: 23, loss: 0, byPhase: { opening: [11, 0], middlegame: [12, 0], endgame: [0, 0] }, worst: [], minEval: 0 }), { plyCount: 45, userColor: "white" })).toThrow(InvalidEngineEval);
+  });
+  it("shouldRejectMoreWorstEntriesInAPhaseThanSeriousErrorsThere", () => {
+    const ctx45 = { plyCount: 45, userColor: "white" as const };
+    const base = { moves: 23, loss: 700, byPhase: { opening: [10, 0], middlegame: [13, 2], endgame: [0, 0] } as any, minEval: -500, worst: [{ ply: 3, loss: 350, best: "e2e4" }, { ply: 25, loss: 350, best: "e2e4" }] };
+    expect(() => assertEngineEvalInvariants(okOf(base), ctx45)).toThrow(InvalidEngineEval); // ply 3 is opening, which has no serious error
+  });
+  it("shouldRejectADecisiveMomentWithoutASeriousErrorOrWithoutReachingMinus300", () => {
+    expect(() => assertEngineEvalInvariants(okOf({ decisivePly: 3, loss: 0, worst: [], byPhase: { opening: [3, 0], middlegame: [0, 0], endgame: [0, 0] } }), ctx)).toThrow(InvalidEngineEval);
+    expect(() => assertEngineEvalInvariants(okOf({ decisivePly: 3, minEval: -299 }), ctx)).toThrow(InvalidEngineEval);
+  });
+  it("shouldRejectADecisivePlyWithNoOpponentReplyOnRecord", () => {
+    expect(() => assertEngineEvalInvariants(okOf({ decisivePly: 5 }), ctx)).toThrow(InvalidEngineEval); // ply 5 is the last of 5
+  });
+  it("shouldRejectSustainedFlagsInAGameTooShortForARun", () => {
+    expect(() => assertEngineEvalInvariants(okOf({ moves: 0, loss: 0, worst: [], byPhase: { opening: [0, 0], middlegame: [0, 0], endgame: [0, 0] }, sustainedAdv: true, maxEval: 300, minEval: 0, decisivePly: null }), { plyCount: 0, userColor: "white" })).toThrow(InvalidEngineEval);
+  });
+});
+
 describe("readEngineEval", () => {
   const stored = (o: object) => JSON.stringify({ v: 1, status: "ok", ...okOf(), ...o });
   it("shouldReadNullAsPending", () => expect(readEngineEval(null)).toEqual({ state: "pending" }));

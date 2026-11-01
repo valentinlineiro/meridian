@@ -40,7 +40,7 @@ export function summarizeEngineGame(evals: readonly number[], bests: readonly (s
     const before = mine[i]!, after = mine[i + 1]!, loss = Math.max(0, before - after), ply = i + 1;
     const tally = out.byPhase[phaseOfPly(ply)];
     out.moves++; out.loss += loss; tally[0]++;
-    if (loss >= SERIOUS) { tally[1]++; serious.push({ ply, loss, best: bests[i] ?? "" }); }
+    if (loss >= SERIOUS) { tally[1]++; if (bests[i]) serious.push({ ply, loss, best: bests[i]! }); } // no best move (never for a position with a move to make): counted, not listed
     // the study's definition: the move is itself a serious error, and an opponent reply is on record (a move that ends the record gets no verdict)
     if (out.decisivePly === null && loss >= SERIOUS && i + 2 < evals.length && before > DECISIVE_BEFORE && after <= DECISIVE_AFTER) out.decisivePly = ply;
   }
@@ -93,6 +93,9 @@ function selfInconsistency(p: EngineEvalOk): string | null {
     sum += w.loss; prev = w;
   }
   if (sum > p.loss) return "worst losses cannot exceed the total loss";
+  if (p.loss > 2 * CLIP * p.moves) return "loss cannot exceed 2000 centipawns per move (the evaluation is clipped before the loss is taken)";
+  if (p.loss < SERIOUS * serious) return "loss cannot be below 300 centipawns per serious error";
+  if (p.decisivePly !== null && (serious === 0 || p.minEval > -SUSTAINED)) return "a decisive moment is a serious error that reaches -300 or worse";
   return null;
 }
 
@@ -103,6 +106,12 @@ export function assertEngineEvalInvariants(p: EngineEvalOk, ctx: { plyCount: num
   const parity = ctx.userColor === "white" ? 1 : 0;
   const ownMoves = ctx.userColor === "white" ? Math.ceil(ctx.plyCount / 2) : Math.floor(ctx.plyCount / 2);
   if (p.moves !== ownMoves) throw new InvalidEngineEval(`moves must be the owner's ${ownMoves} moves of the game`);
+  if ((p.sustainedAdv || p.sustainedDis) && ctx.plyCount < 2) throw new InvalidEngineEval("a sustained run needs at least three positions");
+  if (p.decisivePly !== null && p.decisivePly >= ctx.plyCount) throw new InvalidEngineEval("a decisive moment needs an opponent reply on record");
+  // the phase of each of the owner's moves is fixed by the game's length and the owner's colour
+  const expected: Record<ThreatPhase, number> = { opening: 0, middlegame: 0, endgame: 0 };
+  for (let ply = parity === 1 ? 1 : 2; ply <= ctx.plyCount; ply += 2) expected[phaseOfPly(ply)]++;
+  for (const ph of PHASES) if (p.byPhase[ph][0] !== expected[ph]) throw new InvalidEngineEval(`phase ${ph} must hold ${expected[ph]} of the owner's moves`);
   const own = (ply: number) => ply >= 1 && ply <= ctx.plyCount && ply % 2 === parity;
   if (p.decisivePly !== null && !own(p.decisivePly)) throw new InvalidEngineEval("decisivePly is not one of the owner's moves");
   const seen = new Set<number>();
@@ -111,6 +120,7 @@ export function assertEngineEvalInvariants(p: EngineEvalOk, ctx: { plyCount: num
     if (seen.has(w.ply)) throw new InvalidEngineEval("worst repeats a ply");
     seen.add(w.ply);
   }
+  for (const ph of PHASES) if (p.worst.filter((w) => phaseOfPly(w.ply) === ph).length > p.byPhase[ph][1]) throw new InvalidEngineEval(`worst lists more errors in ${ph} than the phase has`);
 }
 
 export type ReadEngineEval =

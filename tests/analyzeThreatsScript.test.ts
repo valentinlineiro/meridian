@@ -68,7 +68,7 @@ describe("analyze", () => {
   it("shouldContinueAfterAFailedPostAndCountIt", async () => {
     const w = fakeWorker([item("bad", "black", SCHOLAR_LOSS), item("good", "black", SCHOLAR_LOSS)], { postStatus: (id) => (id === "bad" ? 500 : 200) });
     const m = await run(w, { limit: 100 });
-    expect(m).toMatchObject({ ok: 1, failed: 2 }); // the failed game is attempted again in the next batch, which then makes no progress
+    expect(m).toMatchObject({ ok: 1, failed: 1 }); // the failed game is not attempted again in this run: the next batch holds only it, so it makes no progress
     expect(m.aborted).toBe("no progress: every game of a batch failed");
   });
 
