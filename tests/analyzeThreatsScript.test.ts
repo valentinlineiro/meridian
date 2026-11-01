@@ -121,7 +121,7 @@ describe("analyze", () => {
   });
 
   it("shouldFillAllPendingGamesAgainstTheRealRoutes", async () => {
-    const { db, d1 } = createSqliteD1(["0001_init.sql", "0005_played_at.sql", "0006_match_details.sql", "0007_openings_and_phases.sql", "0017_opening_family_mate_type.sql", "0018_mate_threats.sql"]);
+    const { db, d1 } = createSqliteD1(["0001_init.sql", "0005_played_at.sql", "0006_match_details.sql", "0007_openings_and_phases.sql", "0017_opening_family_mate_type.sql", "0018_mate_threats.sql", "0019_engine_eval.sql"]);
     const add = (id: string, color: string, moves: string[], at: number) => {
       db.prepare("INSERT INTO matches (match_id, user_id, snapshot_id, first_seen_at, last_seen_at, raw_json, played_at, result, user_color) VALUES (?, 'u1', 's', 'd', 'd', '{}', ?, 'loss', ?)").run(id, at, color);
       db.prepare("INSERT INTO match_details (match_id, user_id, status, move_history, move_timestamps, ply_count) VALUES (?, 'u1', 'c', ?, '[]', ?)").run(id, JSON.stringify(moves), moves.length);

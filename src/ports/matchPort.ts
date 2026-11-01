@@ -1,5 +1,6 @@
 import type { MatchDetailRecord } from "../types.ts";
 import type { StoredMateThreats } from "../domain/mateThreats.ts";
+import type { StoredEngineEval } from "../domain/engineEval.ts";
 
 export interface EnrichedMatchDetailRecord extends MatchDetailRecord {
   opening_key: string | null;
@@ -23,7 +24,13 @@ export interface MatchPort {
     items: { match_id: string; user_color: string | null; move_history: string }[];
     totalPending: number;
   }>;
-  // What a result must be consistent with; null when the game has no detail or the owner's colour is unknown.
+  // Games with a stored detail and no engine evaluation yet, newest first (ties by match_id).
+  getPendingEngine(limit: number): Promise<{
+    items: { match_id: string; user_color: string | null; move_history: string }[];
+    totalPending: number;
+  }>;
+  // What a result must be consistent with (mate threats and engine evaluation alike); null when the game has no detail or the owner's colour is unknown.
   getThreatTarget(matchId: string): Promise<{ plyCount: number; userColor: "white" | "black" } | null>;
   saveMateThreats(matchId: string, stored: StoredMateThreats): Promise<void>;
+  saveEngineEval(matchId: string, stored: StoredEngineEval): Promise<void>;
 }

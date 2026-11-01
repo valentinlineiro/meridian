@@ -3,7 +3,7 @@ import { createD1MatchAdapter } from "../src/infrastructure/d1/d1MatchAdapter.ts
 import { createSqliteD1 } from "./helpers/sqliteD1.ts";
 import type { MatchPort } from "../src/ports/matchPort.ts";
 
-const MIGRATIONS = ["0001_init.sql", "0005_played_at.sql", "0006_match_details.sql", "0007_openings_and_phases.sql", "0017_opening_family_mate_type.sql", "0018_mate_threats.sql"];
+const MIGRATIONS = ["0001_init.sql", "0005_played_at.sql", "0006_match_details.sql", "0007_openings_and_phases.sql", "0017_opening_family_mate_type.sql", "0018_mate_threats.sql", "0019_engine_eval.sql"];
 const OK = { v: 1 as const, status: "ok" as const, faced: 0, neutralized: 0, missed: 0, unpunished: 0, byPhase: { opening: [0, 0, 0], middlegame: [0, 0, 0], endgame: [0, 0, 0] } as any, missedPlies: [] };
 
 describe("mate threats persistence", () => {

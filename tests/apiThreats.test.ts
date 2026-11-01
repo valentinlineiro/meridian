@@ -3,7 +3,7 @@ import { handleStats, handleMatches } from "../src/api/stats.ts";
 import { handleMatchGame } from "../src/api/game.ts";
 import { createSqliteD1 } from "./helpers/sqliteD1.ts";
 
-const MIGRATIONS = ["0001_init.sql", "0004_users.sql", "0005_played_at.sql", "0006_match_details.sql", "0007_openings_and_phases.sql", "0017_opening_family_mate_type.sql", "0018_mate_threats.sql"];
+const MIGRATIONS = ["0001_init.sql", "0004_users.sql", "0005_played_at.sql", "0006_match_details.sql", "0007_openings_and_phases.sql", "0017_opening_family_mate_type.sql", "0018_mate_threats.sql", "0019_engine_eval.sql"];
 const ok = (n: number, m: number, u: number, phase: "opening" | "middlegame" | "endgame" = "opening", missedPlies: number[] = []) => JSON.stringify({
   v: 1, status: "ok", faced: n + m + u, neutralized: n, missed: m, unpunished: u,
   byPhase: { opening: phase === "opening" ? [n, m, u] : [0, 0, 0], middlegame: phase === "middlegame" ? [n, m, u] : [0, 0, 0], endgame: phase === "endgame" ? [n, m, u] : [0, 0, 0] }, missedPlies,

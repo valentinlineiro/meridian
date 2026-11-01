@@ -1,6 +1,7 @@
 import type { MatchPort, EnrichedMatchDetailRecord } from "../../ports/matchPort.ts";
 import type { MatchDetailRecord } from "../../types.ts";
 import type { StoredMateThreats } from "../../domain/mateThreats.ts";
+import type { StoredEngineEval } from "../../domain/engineEval.ts";
 
 async function saveMatchDetail(db: D1Database, d: MatchDetailRecord): Promise<void> {
   let moves: string[] = [];
@@ -52,6 +53,7 @@ async function saveMatchDetail(db: D1Database, d: MatchDetailRecord): Promise<vo
       opening_family = excluded.opening_family,
       mate_type = excluded.mate_type,
       mate_threats = CASE WHEN excluded.move_history IS match_details.move_history THEN match_details.mate_threats ELSE NULL END, -- a result describes one move list
+      engine_eval = CASE WHEN excluded.move_history IS match_details.move_history THEN match_details.engine_eval ELSE NULL END,
       updated_at = datetime('now')
   `;
 
@@ -156,6 +158,22 @@ export function createD1MatchAdapter(db: D1Database): MatchPort {
       return { items: results ?? [], totalPending: Number(countRow?.count ?? 0) };
     },
 
+    async getPendingEngine(limit: number) {
+      const countRow = await db.prepare(`
+        SELECT COUNT(*) AS count FROM match_details md JOIN matches m ON m.match_id = md.match_id
+        WHERE md.engine_eval IS NULL AND LOWER(TRIM(m.user_color)) IN ('white', 'black')
+      `).bind().first<{ count: number }>();
+      const { results } = await db.prepare(`
+        SELECT md.match_id, m.user_color, md.move_history
+        FROM match_details md
+        JOIN matches m ON m.match_id = md.match_id
+        WHERE md.engine_eval IS NULL AND LOWER(TRIM(m.user_color)) IN ('white', 'black')
+        ORDER BY m.played_at IS NULL, m.played_at DESC, md.match_id ASC
+        LIMIT ?
+      `).bind(limit).all<{ match_id: string; user_color: string | null; move_history: string }>();
+      return { items: results ?? [], totalPending: Number(countRow?.count ?? 0) };
+    },
+
     async getThreatTarget(matchId: string) {
       const row = await db.prepare(`
         SELECT md.ply_count, m.user_color FROM match_details md JOIN matches m ON m.match_id = md.match_id WHERE md.match_id = ?
@@ -167,6 +185,10 @@ export function createD1MatchAdapter(db: D1Database): MatchPort {
 
     async saveMateThreats(matchId: string, stored: StoredMateThreats): Promise<void> {
       await db.prepare("UPDATE match_details SET mate_threats = ? WHERE match_id = ?").bind(JSON.stringify(stored), matchId).run();
+    },
+
+    async saveEngineEval(matchId: string, stored: StoredEngineEval): Promise<void> {
+      await db.prepare("UPDATE match_details SET engine_eval = ? WHERE match_id = ?").bind(JSON.stringify(stored), matchId).run();
     },
   };
 }
