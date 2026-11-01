@@ -1,135 +1,126 @@
 import { json } from "./import.ts";
-import type { EngineEvalOk } from "../domain/engineEval.ts";
-import type { ThreatPhase } from "../domain/mateThreats.ts";
 import { median } from "../analytics/median.ts";
 
-// The player profile, from the per-game engine summaries the scheduled analysis stored. Only well-formed `ok` results count; pending, invalid
-// and unreadable ones are reported apart so no denominator is silently shrunk. Everything is descriptive: rates carry their move counts and
-// no interval, because the errors of one game are not independent observations.
+// The player profile, from the per-game engine summaries the scheduled analysis stored. All of it is aggregated in SQL: parsing and summing
+// every game's summary in the Worker would cost more CPU than its plan allows, so the Worker only receives a handful of small rows.
+// Only well-formed `ok` results count; pending, invalid and unreadable ones are reported apart so no denominator is silently shrunk.
+// Everything is descriptive: rates carry their move counts and no interval, because the errors of one game are not independent observations.
 const BLOCK = 50;       // games per trend block
 const REVIEW_MIN = 20;  // own moves a game needs to enter the review lists
 const REVIEW_SIZE = 20;
 
-// The only parts of a stored summary the profile needs. They are extracted in SQL: shipping and parsing every game's whole JSON would cost the Worker more CPU than its plan allows.
-type Summary = Pick<EngineEvalOk, "moves" | "loss" | "byPhase" | "decisivePly" | "sustainedAdv" | "sustainedDis">;
-interface Game { matchId: string; result: string | null; color: "white" | "black" | null; playedAt: number; v: Summary }
-const PHASES: ThreatPhase[] = ["opening", "middlegame", "endgame"];
-const rate = (serious: number, moves: number) => (moves ? (100 * serious) / moves : null);
-const seriousOf = (v: Summary) => PHASES.reduce((a, p) => a + v.byPhase[p][1], 0);
-const medianOf = (xs: number[]) => (xs.length ? median(xs) : null);
-
-function totals(games: Game[]) {
-  const moves = games.reduce((a, g) => a + g.v.moves, 0), serious = games.reduce((a, g) => a + seriousOf(g.v), 0), loss = games.reduce((a, g) => a + g.v.loss, 0);
-  return { games: games.length, moves, serious, ratePer100: rate(serious, moves), acpl: moves ? loss / moves : null };
-}
-const outcomes = (games: Game[]) => ({
-  games: games.length, win: games.filter((g) => g.result === "win").length, draw: games.filter((g) => g.result === "draw").length, loss: games.filter((g) => g.result === "loss").length,
-});
-
-function section(games: Game[]) {
-  const phase = (p: ThreatPhase) => { const moves = games.reduce((a, g) => a + g.v.byPhase[p][0], 0), serious = games.reduce((a, g) => a + g.v.byPhase[p][1], 0); return { moves, serious, ratePer100: rate(serious, moves) }; };
-  const colour = (c: "white" | "black") => { const t = totals(games.filter((g) => g.color === c)); return { games: t.games, moves: t.moves, serious: t.serious, ratePer100: t.ratePer100 }; };
-  const lost = games.filter((g) => g.result === "loss");
-  const decisive = lost.filter((g) => g.v.decisivePly !== null).map((g) => g.v.decisivePly!);
-  const advantage = outcomes(games.filter((g) => g.v.sustainedAdv));
-  return {
-    ...totals(games),
-    byPhase: { opening: phase("opening"), middlegame: phase("middlegame"), endgame: phase("endgame") },
-    byColor: { white: colour("white"), black: colour("black") },
-    decisive: {
-      lossGames: lost.length, withDecisive: decisive.length, medianMove: medianOf(decisive.map((ply) => Math.ceil(ply / 2))),
-      byPhase: { opening: decisive.filter((p) => p <= 20).length, middlegame: decisive.filter((p) => p > 20 && p <= 60).length, endgame: decisive.filter((p) => p > 60).length },
-    },
-    conversion: { advantage, disadvantage: outcomes(games.filter((g) => g.v.sustainedDis)), thrown: advantage.loss },
-  };
-}
-
-function blocks(games: Game[]) {
-  const out = [];
-  for (let i = 0; i < games.length; i += BLOCK) {
-    const chunk = games.slice(i, i + BLOCK), t = totals(chunk);
-    out.push({ games: t.games, moves: t.moves, serious: t.serious, ratePer100: t.ratePer100, acpl: t.acpl, partial: chunk.length < BLOCK });
-  }
-  return out;
-}
-
-function review(games: Game[]) {
-  const row = (g: Game) => ({ matchId: g.matchId, result: g.result, moves: g.v.moves, serious: seriousOf(g.v), acpl: g.v.loss / g.v.moves, decisivePly: g.v.decisivePly });
-  const eligible = games.filter((g) => g.v.moves >= REVIEW_MIN).map(row);
-  return {
-    worst: [...eligible].sort((a, b) => b.acpl - a.acpl || a.matchId.localeCompare(b.matchId)).slice(0, REVIEW_SIZE),
-    best: [...eligible].sort((a, b) => a.acpl - b.acpl || a.matchId.localeCompare(b.matchId)).slice(0, REVIEW_SIZE),
-  };
-}
-
-const REASONS = new Set(["illegal_game", "corrupt_game", "engine_error"]);
-const isCount = (n: unknown): n is number => typeof n === "number" && Number.isInteger(n) && n >= 0;
 // json_extract raises on malformed JSON, so one corrupt row would fail the whole read: extract only from valid JSON.
-const EXTRACT = (path: string) => `CASE WHEN json_valid(md.engine_eval) THEN json_extract(md.engine_eval, '${path}') END`;
-interface ProfileRow {
-  match_id: string; result: string | null; user_color: string | null; opponent_type: string | null; played_at: number | null;
-  engine_eval: string | null; valid: number; v: unknown; status: unknown; reason: unknown;
-  moves: unknown; loss: unknown; o_m: unknown; o_s: unknown; m_m: unknown; m_s: unknown; e_m: unknown; e_s: unknown; dec: unknown; adv: unknown; dis: unknown;
+const X = (path: string) => `CASE WHEN json_valid(md.engine_eval) THEN json_extract(md.engine_eval, '${path}') END`;
+
+// `c` has one row per game with its verdict in `state` (the same verdicts as readEngineEval: NULL is pending; broken JSON, an unknown
+// version or contradictory figures are "unknown"). `serious` is the game's serious errors over the three phases.
+const CTE = (where: string) => `
+  WITH x AS (
+    SELECT m.match_id, m.result, LOWER(TRIM(m.user_color)) AS color, LOWER(m.opponent_type) AS otype, m.played_at, COALESCE(m.played_at, 0) AS t, m.rowid AS rid,
+      md.engine_eval IS NULL AS is_null, COALESCE(json_valid(md.engine_eval), 0) AS valid,
+      ${X("$.v")} AS v, ${X("$.status")} AS status, ${X("$.reason")} AS reason, ${X("$.moves")} AS moves, ${X("$.loss")} AS loss,
+      ${X("$.byPhase.opening[0]")} AS o_m, ${X("$.byPhase.opening[1]")} AS o_s,
+      ${X("$.byPhase.middlegame[0]")} AS m_m, ${X("$.byPhase.middlegame[1]")} AS m_s,
+      ${X("$.byPhase.endgame[0]")} AS e_m, ${X("$.byPhase.endgame[1]")} AS e_s,
+      ${X("$.decisivePly")} AS dec, ${X("$.sustainedAdv")} AS adv, ${X("$.sustainedDis")} AS dis
+    FROM matches m JOIN match_details md ON md.match_id = m.match_id ${where}
+  ), c AS (
+    SELECT x.*, o_s + m_s + e_s AS serious, CASE
+      WHEN is_null THEN 'pending'
+      WHEN NOT valid OR v IS NOT 1 THEN 'unknown'
+      WHEN status = 'invalid' THEN CASE WHEN reason IN ('illegal_game', 'corrupt_game', 'engine_error') THEN 'invalid' ELSE 'unknown' END
+      WHEN status = 'ok'
+        AND typeof(moves) = 'integer' AND moves >= 0 AND typeof(loss) = 'integer' AND loss >= 0
+        AND typeof(o_m) = 'integer' AND typeof(o_s) = 'integer' AND o_s BETWEEN 0 AND o_m
+        AND typeof(m_m) = 'integer' AND typeof(m_s) = 'integer' AND m_s BETWEEN 0 AND m_m
+        AND typeof(e_m) = 'integer' AND typeof(e_s) = 'integer' AND e_s BETWEEN 0 AND e_m
+        AND o_m + m_m + e_m = moves
+        AND (dec IS NULL OR (typeof(dec) = 'integer' AND dec >= 1))
+        AND adv IN (0, 1) AND dis IN (0, 1)
+      THEN 'ok' ELSE 'unknown' END AS state
+    FROM x
+  )`;
+
+const rate = (serious: number, moves: number) => (moves ? (100 * serious) / moves : null);
+const n = (v: unknown) => Number(v ?? 0);
+
+// One section of the profile (all games, or before / after the cut), from a single aggregate row and the decisive moves of the lost games.
+function section(r: Record<string, unknown>, decisiveMoves: number[]) {
+  const phase = (m: unknown, s: unknown) => ({ moves: n(m), serious: n(s), ratePer100: rate(n(s), n(m)) });
+  const colour = (g: unknown, m: unknown, s: unknown) => ({ games: n(g), moves: n(m), serious: n(s), ratePer100: rate(n(s), n(m)) });
+  const out = (g: unknown, w: unknown, d: unknown, l: unknown) => ({ games: n(g), win: n(w), draw: n(d), loss: n(l) });
+  const serious = n(r.o_s) + n(r.m_s) + n(r.e_s), moves = n(r.moves);
+  return {
+    games: n(r.games), moves, serious, ratePer100: rate(serious, moves), acpl: moves ? n(r.loss) / moves : null,
+    byPhase: { opening: phase(r.o_m, r.o_s), middlegame: phase(r.m_m, r.m_s), endgame: phase(r.e_m, r.e_s) },
+    byColor: { white: colour(r.w_g, r.w_m, r.w_s), black: colour(r.b_g, r.b_m, r.b_s) },
+    decisive: {
+      lossGames: n(r.lost), withDecisive: n(r.with_dec), medianMove: decisiveMoves.length ? median(decisiveMoves) : null,
+      byPhase: { opening: n(r.d_open), middlegame: n(r.d_mid), endgame: n(r.d_end) },
+    },
+    conversion: { advantage: out(r.adv_g, r.adv_w, r.adv_d, r.adv_l), disadvantage: out(r.dis_g, r.dis_w, r.dis_d, r.dis_l), thrown: n(r.adv_l) },
+  };
 }
 
-// Same verdicts as readEngineEval, from the extracted scalars: NULL is pending; broken JSON, an unknown version or contradictory figures are "unknown".
-function summaryOf(r: ProfileRow): { state: "pending" | "invalid" | "unknown" } | { state: "ok"; value: Summary } {
-  if (r.engine_eval === null) return { state: "pending" };
-  if (!r.valid || r.v !== 1) return { state: "unknown" };
-  if (r.status === "invalid") return typeof r.reason === "string" && REASONS.has(r.reason) ? { state: "invalid" } : { state: "unknown" };
-  if (r.status !== "ok") return { state: "unknown" };
-  const ph = [[r.o_m, r.o_s], [r.m_m, r.m_s], [r.e_m, r.e_s]];
-  if (!isCount(r.moves) || !isCount(r.loss) || !ph.every(([m, x]) => isCount(m) && isCount(x) && x <= m)) return { state: "unknown" };
-  if (ph.reduce((a, [m]) => a + (m as number), 0) !== r.moves) return { state: "unknown" };
-  if (r.dec !== null && !(Number.isInteger(r.dec) && (r.dec as number) >= 1)) return { state: "unknown" };
-  if (![0, 1].includes(r.adv as number) || ![0, 1].includes(r.dis as number)) return { state: "unknown" };
-  const t = (i: number) => [ph[i]![0] as number, ph[i]![1] as number] as [number, number];
-  return { state: "ok", value: { moves: r.moves, loss: r.loss, byPhase: { opening: t(0), middlegame: t(1), endgame: t(2) }, decisivePly: (r.dec as number | null), sustainedAdv: r.adv === 1, sustainedDis: r.dis === 1 } };
-}
+const SECTION_SELECT = `
+  SELECT COUNT(*) AS games, SUM(moves) AS moves, SUM(loss) AS loss,
+    SUM(o_m) AS o_m, SUM(o_s) AS o_s, SUM(m_m) AS m_m, SUM(m_s) AS m_s, SUM(e_m) AS e_m, SUM(e_s) AS e_s,
+    SUM(color = 'white') AS w_g, SUM(CASE WHEN color = 'white' THEN moves END) AS w_m, SUM(CASE WHEN color = 'white' THEN serious END) AS w_s,
+    SUM(color = 'black') AS b_g, SUM(CASE WHEN color = 'black' THEN moves END) AS b_m, SUM(CASE WHEN color = 'black' THEN serious END) AS b_s,
+    SUM(result = 'loss') AS lost, SUM(result = 'loss' AND dec IS NOT NULL) AS with_dec,
+    SUM(result = 'loss' AND dec <= 20) AS d_open, SUM(result = 'loss' AND dec > 20 AND dec <= 60) AS d_mid, SUM(result = 'loss' AND dec > 60) AS d_end,
+    SUM(adv = 1) AS adv_g, SUM(adv = 1 AND result = 'win') AS adv_w, SUM(adv = 1 AND result = 'draw') AS adv_d, SUM(adv = 1 AND result = 'loss') AS adv_l,
+    SUM(dis = 1) AS dis_g, SUM(dis = 1 AND result = 'win') AS dis_w, SUM(dis = 1 AND result = 'draw') AS dis_d, SUM(dis = 1 AND result = 'loss') AS dis_l
+  FROM c WHERE state = 'ok'`;
 
 export async function handleStatsProfile(db: D1Database, url: URL): Promise<Response> {
   const userId = url.searchParams.get("userId");
   const sinceId = url.searchParams.get("since");
-  const q = `
-    SELECT m.match_id, m.result, m.user_color, m.opponent_type, m.played_at,
-      CASE WHEN md.engine_eval IS NULL THEN NULL ELSE '' END AS engine_eval, COALESCE(json_valid(md.engine_eval), 0) AS valid,
-      ${EXTRACT("$.v")} AS v, ${EXTRACT("$.status")} AS status, ${EXTRACT("$.reason")} AS reason,
-      ${EXTRACT("$.moves")} AS moves, ${EXTRACT("$.loss")} AS loss,
-      ${EXTRACT("$.byPhase.opening[0]")} AS o_m, ${EXTRACT("$.byPhase.opening[1]")} AS o_s,
-      ${EXTRACT("$.byPhase.middlegame[0]")} AS m_m, ${EXTRACT("$.byPhase.middlegame[1]")} AS m_s,
-      ${EXTRACT("$.byPhase.endgame[0]")} AS e_m, ${EXTRACT("$.byPhase.endgame[1]")} AS e_s,
-      ${EXTRACT("$.decisivePly")} AS dec, ${EXTRACT("$.sustainedAdv")} AS adv, ${EXTRACT("$.sustainedDis")} AS dis
-    FROM matches m JOIN match_details md ON md.match_id = m.match_id
-    ${userId ? "WHERE m.user_id = ?" : ""}
-    ORDER BY COALESCE(m.played_at, 0) ASC, m.rowid ASC
-  `;
-  const rows = (await (userId ? db.prepare(q).bind(userId) : db.prepare(q)).all<ProfileRow>()).results ?? [];
-
-  const games: Game[] = []; // oldest first
-  let pending = 0, invalid = 0, unknownVersion = 0, bots = 0;
-  for (const r of rows) {
-    if ((r.opponent_type ?? "").toLowerCase() === "bot") bots++;
-    const read = summaryOf(r);
-    if (read.state === "ok") {
-      const c = r.user_color?.trim().toLowerCase();
-      games.push({ matchId: r.match_id, result: r.result, color: c === "white" || c === "black" ? c : null, playedAt: r.played_at ?? 0, v: read.value });
-    } else if (read.state === "pending") pending++;
-    else if (read.state === "invalid") invalid++;
-    else unknownVersion++;
-  }
+  const where = userId ? "WHERE m.user_id = ?" : "";
+  const base = userId ? [userId] : [];
+  const run = async <T>(sql: string, ...extra: unknown[]) => (await db.prepare(CTE(where) + sql).bind(...base, ...extra).all<T>()).results ?? [];
+  const sectionAt = async (cond: string, ...extra: unknown[]) => {
+    const [rows, dec] = await Promise.all([
+      run<Record<string, unknown>>(SECTION_SELECT + cond, ...extra),
+      run<{ mv: number }>(`SELECT (dec + 1) / 2 AS mv FROM c WHERE state = 'ok' AND result = 'loss' AND dec IS NOT NULL${cond}`, ...extra),
+    ]);
+    return section(rows[0] ?? {}, dec.map((d) => d.mv));
+  };
 
   // The cut belongs to "before": games played after that game are "after". An unknown or undated cut is reported as null, never as an error.
-  const cut = sinceId ? rows.find((r) => r.match_id === sinceId && r.played_at != null) : undefined;
-  const since = cut ? { matchId: cut.match_id, playedAt: cut.played_at! } : null;
+  let since: { matchId: string; playedAt: number } | null = null;
+  if (sinceId) {
+    const cut = await db.prepare(`SELECT match_id, played_at FROM matches WHERE match_id = ? AND played_at IS NOT NULL${userId ? " AND user_id = ?" : ""}`)
+      .bind(sinceId, ...base).first<{ match_id: string; played_at: number }>();
+    if (cut) since = { matchId: cut.match_id, playedAt: cut.played_at };
+  }
+
+  const reviewSql = (dir: "DESC" | "ASC") => `
+    SELECT match_id AS matchId, result, moves, serious, loss * 1.0 / moves AS acpl, dec AS decisivePly
+    FROM c WHERE state = 'ok' AND moves >= ${REVIEW_MIN} ORDER BY acpl ${dir}, match_id ASC LIMIT ${REVIEW_SIZE}`;
+  // Independent reads, issued together: D1 does the scanning, so waiting on them costs the Worker no CPU.
+  const [counts, all, before, after, blockRows, worst, best] = await Promise.all([
+    run<Record<string, unknown>>(`SELECT COUNT(*) AS total, SUM(state = 'ok') AS ok, SUM(state = 'pending') AS pending, SUM(state = 'invalid') AS invalid,
+      SUM(state = 'unknown') AS unknown_v, SUM(otype = 'bot') AS bots FROM c`).then((r) => r[0]),
+    sectionAt(""),
+    since ? sectionAt(" AND t <= ?", since.playedAt) : null,
+    since ? sectionAt(" AND t > ?", since.playedAt) : null,
+    run<Record<string, unknown>>(`
+      SELECT (rn - 1) / ${BLOCK} AS b, COUNT(*) AS games, SUM(moves) AS moves, SUM(serious) AS serious, SUM(loss) AS loss
+      FROM (SELECT moves, serious, loss, ROW_NUMBER() OVER (ORDER BY t, rid) AS rn FROM c WHERE state = 'ok') GROUP BY b ORDER BY b`),
+    run(reviewSql("DESC")),
+    run(reviewSql("ASC")),
+  ]);
+  const total = n(counts?.total), bots = n(counts?.bots);
 
   return json({
-    analysed: games.length, pending, invalid, unknownVersion,
-    bots: { games: bots, total: rows.length, share: rows.length ? bots / rows.length : null },
+    analysed: n(counts?.ok), pending: n(counts?.pending), invalid: n(counts?.invalid), unknownVersion: n(counts?.unknown_v),
+    bots: { games: bots, total, share: total ? bots / total : null },
     since,
-    all: section(games),
-    before: since ? section(games.filter((g) => g.playedAt <= since.playedAt)) : null,
-    after: since ? section(games.filter((g) => g.playedAt > since.playedAt)) : null,
-    blocks: blocks(games),
-    review: review(games),
+    all, before, after,
+    blocks: blockRows.map((b) => ({
+      games: n(b.games), moves: n(b.moves), serious: n(b.serious), ratePer100: rate(n(b.serious), n(b.moves)), acpl: n(b.moves) ? n(b.loss) / n(b.moves) : null, partial: n(b.games) < BLOCK,
+    })),
+    review: { worst, best },
   });
 }
