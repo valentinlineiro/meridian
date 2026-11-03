@@ -24,8 +24,43 @@ describe("opening the dashboard", () => {
 
   it("shouldMarkTheActiveTabButtonAsPrimary", () => {
     const rt = createDashboardRuntime("/chess");
-    expect(rt.getEl("#tabBtnChess").className).toBe("btn btn-p");
-    expect(rt.getEl("#tabBtnOverview").className).toBe("btn btn-g");
+    expect(rt.getEl("#tabBtnChess").className).toBe("side-item active");
+    expect(rt.getEl("#tabBtnOverview").className).toBe("side-item");
+  });
+});
+
+describe("side menu", () => {
+  it("shouldGroupTheViewsUnderResumenAjedrezAndIdiomasWithSpanishLabels", async () => {
+    const { DASHBOARD_HTML } = await import("../src/frontend.ts");
+    const groups = [...DASHBOARD_HTML.matchAll(/class="side-group">([^<]+)</g)].map((m) => m[1]);
+    expect(groups).toEqual(["Resumen", "Ajedrez", "Idiomas"]);
+    const items = [...DASHBOARD_HTML.matchAll(/class="side-item[^"]*" id="(tabBtn\w+)"[^>]*>([^<]+)</g)].map((m) => `${m[1]}:${m[2]}`);
+    expect(items).toEqual(["tabBtnOverview:Hoy", "tabBtnChanges:Qué cambió", "tabBtnTrajectory:Trayectoria", "tabBtnChess:Partidas", "tabBtnProfile:Perfil", "tabBtnLang:Cursos"]);
+  });
+
+  it("shouldMarkTheCurrentViewForAssistiveTechnology", () => {
+    const rt = createDashboardRuntime("/profile");
+    expect(rt.getEl("#tabBtnProfile").className).toBe("side-item active");
+    expect(rt.getEl("#tabBtnProfile").getAttribute("aria-current")).toBe("page");
+    expect(rt.getEl("#tabBtnOverview").getAttribute("aria-current")).toBe("false");
+  });
+
+  it("shouldOpenAndCloseTheMobileMenuAndCloseItWhenChoosingAView", () => {
+    const rt = createDashboardRuntime("/overview");
+    vm.runInContext(`toggleSideNav()`, rt.sandbox);
+    expect(rt.getEl("#sideMenu").classList.contains("open")).toBe(true);
+    expect(rt.getEl("#sideToggle").getAttribute("aria-expanded")).toBe("true");
+    vm.runInContext(`showTab("chess")`, rt.sandbox);
+    expect(rt.getEl("#sideMenu").classList.contains("open")).toBe(false);
+    expect(rt.getEl("#sideToggle").getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("shouldKeepTheLegacyPathsOpeningTheSameViews", () => {
+    for (const [path, tab] of [["/chess", "chess"], ["/profile", "profile"], ["/languages", "languages"]] as const) {
+      const rt = createDashboardRuntime(path);
+      const id = { chess: "#tabBtnChess", profile: "#tabBtnProfile", languages: "#tabBtnLang" }[tab];
+      expect(rt.getEl(id).className).toBe("side-item active");
+    }
   });
 });
 

@@ -17,8 +17,22 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
     <form method="post" action="/logout" style="margin:0"><button class="btn btn-g" type="submit">Salir</button></form>
   </div>
 </header>
-<main>
-<div class="tabs"><button class="btn btn-p" id="tabBtnOverview" onclick="showTab('overview')">Overview</button><button class="btn btn-g" id="tabBtnLang" onclick="showTab('languages')">Languages</button><button class="btn btn-g" id="tabBtnChess" onclick="showTab('chess')">Chess</button><button class="btn btn-g" id="tabBtnChanges" onclick="showTab('changes')">What Changed?</button><button class="btn btn-g" id="tabBtnTrajectory" onclick="showTab('trajectory')">Trayectoria</button><button class="btn btn-g" id="tabBtnProfile" onclick="showTab('profile')">Perfil</button></div>
+<main class="shell">
+<nav class="side" aria-label="Secciones">
+<button class="side-toggle" id="sideToggle" type="button" onclick="toggleSideNav()" aria-expanded="false" aria-controls="sideMenu"><span id="sideCurrent">Hoy</span><span aria-hidden="true">▾</span></button>
+<div class="side-menu" id="sideMenu">
+<div class="side-group">Resumen</div>
+<button class="side-item active" id="tabBtnOverview" onclick="showTab('overview')">Hoy</button>
+<button class="side-item" id="tabBtnChanges" onclick="showTab('changes')">Qué cambió</button>
+<button class="side-item" id="tabBtnTrajectory" onclick="showTab('trajectory')">Trayectoria</button>
+<div class="side-group">Ajedrez</div>
+<button class="side-item" id="tabBtnChess" onclick="showTab('chess')">Partidas</button>
+<button class="side-item" id="tabBtnProfile" onclick="showTab('profile')">Perfil</button>
+<div class="side-group">Idiomas</div>
+<button class="side-item" id="tabBtnLang" onclick="showTab('languages')">Cursos</button>
+</div>
+</nav>
+<div class="content">
 <section id="overviewTab" class="tab-panel active">
  <div class="hero-card" id="overviewHero">
   <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
@@ -382,6 +396,7 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
    </section>
 
   <p class="muted" style="margin-top:16px"><a href="/raw">Datos técnicos</a></p>
+</div>
 </main>
 <div id="gameModal" class="modal" style="display:none" role="dialog" aria-modal="true" aria-labelledby="gTitle">
  <div class="card gamecard">
