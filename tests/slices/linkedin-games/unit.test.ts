@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { RecordGameResult } from "../../../src/slices/linkedin-games/application/RecordGameResult.ts";
+import { GetSummary } from "../../../src/slices/linkedin-games/application/GetSummary.ts";
 import { GetDay } from "../../../src/slices/linkedin-games/application/GetDay.ts";
 import { InvalidGameResult, InvalidPlayDate } from "../../../src/slices/linkedin-games/domain/LinkedinGames.ts";
 import { NotFoundError } from "../../../src/application/errors.ts";
@@ -118,5 +119,29 @@ describe("RecordGameResult play date vs today", () => {
     const r = at(NEAR_MIDNIGHT_UTC);
     await expect(r.execute({ ...zip, date: "2026-10-14", tz })).resolves.toBeDefined();
     await expect(r.execute({ ...zip, date: "2026-10-15", tz })).rejects.toBeInstanceOf(InvalidPlayDate);
+  });
+});
+
+describe("GetSummary", () => {
+  it("shouldUseTheLatestVersionOfEachDateWhenAGameWasEdited", async () => {
+    await record.execute(zip);
+    await record.execute({ ...zip, score: "0:05" });
+    const summary = await new GetSummary(owners({ [OWNER]: "u1" }), store).execute({ ownerEmail: OWNER, today: DAY });
+    expect(summary.days).toBe(1);
+    expect(summary.games.zip!.best).toEqual({ seconds: 5, date: DAY });
+  });
+
+  it("shouldNotCountAnotherOwnersDays", async () => {
+    await record.execute(zip);
+    const other = await new GetSummary(owners({ "b@example.com": "u2" }), store).execute({ ownerEmail: "b@example.com", today: DAY });
+    expect(other.days).toBe(0);
+  });
+
+  it("shouldRejectWhenTodayIsNotARealDate", async () => {
+    await expect(new GetSummary(owners({ [OWNER]: "u1" }), store).execute({ ownerEmail: OWNER, today: "nope" })).rejects.toBeInstanceOf(InvalidPlayDate);
+  });
+
+  it("shouldFailWhenThereIsNoOwnerAccount", async () => {
+    await expect(new GetSummary(owners({}), store).execute({ ownerEmail: OWNER, today: DAY })).rejects.toBeInstanceOf(NotFoundError);
   });
 });

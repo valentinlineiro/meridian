@@ -16,6 +16,16 @@ export class D1DayRecordStore implements DayRecordStore {
     return row ? (JSON.parse(row.raw_json) as DayRecord) : null;
   }
 
+  async all(ownerId: string): Promise<DayRecord[]> {
+    // Latest version wins (L2): rows come oldest first, so a later row for the same date overwrites. A few hundred small rows;
+    // a SQL "latest per date" would be quadratic without an index on the date.
+    const { results } = await this.db.prepare("SELECT raw_json FROM snapshots WHERE source = ? AND user_id = ? ORDER BY created_at, id")
+      .bind(SOURCE, ownerId).all<{ raw_json: string }>();
+    const byDate = new Map<string, DayRecord>();
+    for (const r of results) { const d = JSON.parse(r.raw_json) as DayRecord; byDate.set(d.date, d); }
+    return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
+  }
+
   async append(ownerId: string, record: DayRecord): Promise<void> {
     await this.ingest({ source: SOURCE, userId: ownerId, data: record });
   }
