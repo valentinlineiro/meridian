@@ -30,10 +30,10 @@ describe("opening the dashboard", () => {
 });
 
 describe("side menu", () => {
-  it("shouldGroupTheViewsUnderResumenAjedrezAndIdiomasWithSpanishLabels", async () => {
+  it("shouldGroupTheViewsUnderResumenAjedrezIdiomasAndLinkedinWithSpanishLabels", async () => {
     const { DASHBOARD_HTML } = await import("../src/frontend.ts");
     const groups = [...DASHBOARD_HTML.matchAll(/class="side-group">([^<]+)</g)].map((m) => m[1]);
-    expect(groups).toEqual(["Resumen", "Ajedrez", "Idiomas", "Cuenta"]);
+    expect(groups).toEqual(["Resumen", "Ajedrez", "Idiomas", "LinkedIn", "Cuenta"]);
     const items = [...DASHBOARD_HTML.matchAll(/class="side-item[^"]*" id="(tabBtn\w+)"[^>]*>([^<]+)</g)].map((m) => `${m[1]}:${m[2]}`);
     expect(items).toEqual(["tabBtnOverview:Hoy", "tabBtnChanges:Qué cambió", "tabBtnTrajectory:Trayectoria", "tabBtnChess:Partidas", "tabBtnProfile:Perfil", "tabBtnLang:Cursos"]);
   });
@@ -130,5 +130,10 @@ describe("following the address bar", () => {
     vm.runInContext(`selectCourse("XC_ES", false)`, rt.sandbox);
     expect(rt.sandbox.location.pathname).toBe("/languages/XC_ES");
     expect(rt.sandbox.location.search).toBe("");
+  });
+
+  it("shouldLinkToTheLinkedinGamesPageFromTheSideMenu", async () => {
+    const { DASHBOARD_HTML } = await import("../src/frontend.ts");
+    expect(DASHBOARD_HTML).toContain('<a class="side-item" href="/linkedin-games">Juegos</a>');
   });
 });
