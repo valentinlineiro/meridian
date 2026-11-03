@@ -141,3 +141,4 @@ a.side-item{text-decoration:none}a.side-item:hover{text-decoration:none}
 .evcard>summary{cursor:pointer;list-style:none;display:block}.evcard>summary::-webkit-details-marker{display:none}
 .evhead{display:flex;justify-content:space-between;align-items:center;gap:8px}.evmsg{display:block;margin-top:4px}
 .evcard>summary::after{content:"Ver criterio ▾";display:block;margin-top:6px;font-size:12px;color:#7aa7e6}.evcard[open]>summary::after{content:"Ocultar ▴"}
+.evcard>summary:focus-visible,.cgroup>summary:focus-visible{outline:2px solid #7aa7e6;outline-offset:2px;border-radius:6px}
