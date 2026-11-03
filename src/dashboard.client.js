@@ -798,7 +798,7 @@ function renderOverview(data){
  const elWrMeta = q('#overviewChessWrMeta');
  const elDist = q('#overviewChessDist');
  if(elWrLabel){
-  elWrLabel.textContent = wrVal !== '—' ? wrVal + '% victorias (últimas ' + (recent.limit || 50) + ' partidas, todos los rivales)' : 'Win rate (últimas 50 partidas, todos los rivales)';
+  elWrLabel.textContent = wrVal !== '—' ? wrVal + '% victorias (últimas ' + (recent.limit || 50) + ' partidas, todos los rivales)' : '% de victorias (últimas 50 partidas, todos los rivales)';
  }
  if(elWrMeta){
   elWrMeta.textContent = recentKnown ? wins + ' W · ' + losses + ' L · ' + draws + ' D' : '—';
@@ -924,7 +924,7 @@ function renderChessView(stats, matches){
  
  const elHeroWrLabel=q('#chessHeroWrLabel');
  if(elHeroWrLabel){
-  elHeroWrLabel.textContent=rWr!=='—'? rWr+'% victorias (últimas '+(recent.limit||50)+' partidas, todos los rivales)' : 'Win rate (últimas 50 partidas, todos los rivales)';
+  elHeroWrLabel.textContent=rWr!=='—'? rWr+'% victorias (últimas '+(recent.limit||50)+' partidas, todos los rivales)' : '% de victorias (últimas 50 partidas, todos los rivales)';
  }
  const elHeroDistMeta=q('#chessHeroDistMeta');
  if(elHeroDistMeta){
@@ -1256,7 +1256,7 @@ async function loadChessDashboard(){
 
   // kpis
   q('#kpis').innerHTML= kpi('Partidas', s.games.toLocaleString('es-ES'), '') 
-    + kpi('Win rate', s.winRate!=null?(s.winRate*100).toFixed(1)+'%':'—', '') 
+    + kpi('% de victorias', s.winRate!=null?(s.winRate*100).toFixed(1)+'%':'—', '') 
     + kpi('Score', s.scoreRate!=null?(s.scoreRate*100).toFixed(1)+'%':'—', 'victoria 1 · tablas 0,5') 
     + kpi('ELO actual', fmt(elo), deltaLabel);
   // racha
@@ -1858,7 +1858,7 @@ function renderWhatChanged(data){
    + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px">'
    + block('Ajedrez', [
       row('Partidas jugadas', c.gamesCount),
-      row('Win rate en intervalo', c.intervalWinRate !== null ? c.intervalWinRate.toFixed(1) + '%' : '—'),
+      row('% de victorias en intervalo', c.intervalWinRate !== null ? c.intervalWinRate.toFixed(1) + '%' : '—'),
       row('Delta WR histórico', fmtDelta(c.historicalDelta))])
    + block('Idiomas', [
       row('XP ganado', xpText),

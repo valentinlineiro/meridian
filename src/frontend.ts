@@ -47,7 +47,7 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
  <div class="grid2">
   <div class="card" id="overviewLangCard">
    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-    <h3 style="margin:0;font-size:15px;color:#e6edf3">Languages</h3>
+    <h3 style="margin:0;font-size:15px;color:#e6edf3">Idiomas</h3>
     <button class="btn btn-g" onclick="showTab('languages')" style="font-size:12px;padding:4px 10px">Ver Idiomas →</button>
    </div>
    <div>
@@ -70,7 +70,7 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
 
   <div class="card" id="overviewChessCard">
    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-    <h3 style="margin:0;font-size:15px;color:#e6edf3">Chess</h3>
+    <h3 style="margin:0;font-size:15px;color:#e6edf3">Ajedrez</h3>
     <button class="btn btn-g" onclick="showTab('chess')" style="font-size:12px;padding:4px 10px">Ver Ajedrez →</button>
    </div>
    <div>
@@ -80,7 +80,7 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
    </div>
    <div style="margin-top:10px">
     <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:12px;margin-bottom:4px">
-     <span class="muted" id="overviewChessWrLabel">Win rate (últimas 50 partidas, todos los rivales)</span>
+     <span class="muted" id="overviewChessWrLabel">% de victorias (últimas 50 partidas, todos los rivales)</span>
      <span id="overviewChessWrMeta" class="muted" style="font-size:11px">—</span>
     </div>
     <div class="distribution-bar" id="overviewChessDist">
@@ -135,7 +135,7 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
   </div>
   <div style="margin-top:14px">
    <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:12px;margin-bottom:6px">
-    <span id="chessHeroWrLabel" style="font-weight:600">Win rate (últimas 50 partidas, todos los rivales)</span>
+    <span id="chessHeroWrLabel" style="font-weight:600">% de victorias (últimas 50 partidas, todos los rivales)</span>
     <span id="chessHeroDistMeta" class="muted" style="font-size:11px">—</span>
    </div>
    <div class="distribution-bar" id="chessHeroDist">

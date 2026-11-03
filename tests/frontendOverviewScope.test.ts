@@ -25,7 +25,7 @@ describe("Overview states which entity each number measures (P1 #5)", () => {
   it("shouldStateTheWindowAndTheEntityOfTheChessNumbers", () => {
     expect(DASHBOARD_HTML).toContain("Ajedrez · últimos 7 días");
     expect(DASHBOARD_HTML).toContain("ELO observado");
-    expect(DASHBOARD_HTML).toContain("Win rate (últimas 50 partidas, todos los rivales)");
+    expect(DASHBOARD_HTML).toContain("% de victorias (últimas 50 partidas, todos los rivales)");
   });
 
   it("shouldSayWhatDuolingoReportsWhenItDiffersFromTheSelectedCourse", () => {
