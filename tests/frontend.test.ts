@@ -717,3 +717,11 @@ describe("dashboard #16.9.2 runtime value and scope isolation", () => {
 });
 
 
+
+describe("chess index", () => {
+  it("shouldPointEveryIndexButtonAtAnExistingBlock", () => {
+    const targets = [...DASHBOARD_HTML.matchAll(/jumpChess\('([^']+)'\)/g)].map((m) => m[1]!);
+    expect(targets.length).toBe(4);
+    for (const id of targets) expect(DASHBOARD_HTML).toContain(`id="${id}"`);
+  });
+});

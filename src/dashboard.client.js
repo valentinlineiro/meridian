@@ -1238,6 +1238,10 @@ async function init(){
  loadM(0);
 }
 
+// Chess page index: open the target block (if collapsed) and scroll to it. Buttons, not #anchors: the hash belongs to the router.
+function jumpChess(id){ const el=q('#'+id); if(!el) return; if(el.tagName==='DETAILS') el.open=true; el.scrollIntoView({behavior:'smooth',block:'start'}); }
+// On phones only the first block starts open: the page is a list of blocks to expand, not six screens to scroll.
+if(window.matchMedia&&window.matchMedia('(max-width:760px)').matches) for(const id of ['cg-open','cg-evo']){ const el=q('#'+id); if(el) el.open=false; }
 let chessStatsFailed=false;
 // The failed requests are cached promises: a retry must drop them or it would just re-read the failure.
 function retryChess(){ resetStats(); return loadChessDashboard(); }

@@ -145,6 +145,7 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
    </div>
   </div>
  </div>
+  <nav class="cindex" aria-label="Secciones de ajedrez"><button class="btn btn-g" onclick="jumpChess('cg-comp')">Comparativa</button><button class="btn btn-g" onclick="jumpChess('cg-open')">Aperturas</button><button class="btn btn-g" onclick="jumpChess('cg-evo')">Evolución</button><button class="btn btn-g" onclick="jumpChess('allMatchesCard')">Partidas</button></nav>
   <section class="kpis" id="kpis"></section>
  <div class="card" id="formCard" style="margin-top:12px"><h2>Forma actual</h2>
   <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:10px"><span class="muted">Últimas</span>
@@ -153,21 +154,23 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
   <div id="form"></div>
   <div class="muted" id="streak" style="margin-top:10px"></div></div>
 
- <h2 style="margin:18px 0 10px;font-size:14px;letter-spacing:.05em;text-transform:uppercase;color:#8ea0b8">Comparativa por color y oponente</h2>
+ <details class="cgroup" id="cg-comp" open><summary>Comparativa por color y oponente</summary>
  <div class="grid2">
   <div class="card" id="colCard"><h2>Rendimiento por color</h2><div id="colDiff" class="muted" style="margin-bottom:8px"></div><div id="col"></div></div>
   <div class="card" id="oppCard"><h2>Oponentes por familia</h2><div class="muted" style="font-size:11px;margin-bottom:6px">Las diferencias por familia de oponente no aíslan la dificultad del rival.</div><div id="oppMacro" class="muted" style="margin-bottom:8px"></div><div id="opp"></div></div>
  </div>
+ </details>
 
- <h2 style="margin:18px 0 10px;font-size:14px;letter-spacing:.05em;text-transform:uppercase;color:#8ea0b8">Repertorio de aperturas &amp; fases</h2>
+ <details class="cgroup" id="cg-open" open><summary>Repertorio de aperturas &amp; fases</summary>
  <div class="card" id="matesCard" style="display:none"><h2>Cómo terminan tus mates</h2><div class="grid2"><div><div class="muted">Dados</div><div id="matesGiven"></div></div><div><div class="muted">Recibidos</div><div id="matesReceived"></div></div></div><div class="muted" id="matesNote" style="margin-top:8px"></div></div>
  <div class="card" id="threatsCard" style="display:none"><h2>Amenazas de mate</h2><div id="threatsMain"></div><div class="muted" id="threatsPhases" style="margin-top:8px"></div><div class="muted" id="threatsTrend" style="margin-top:4px"></div><div class="muted" id="threatsNote" style="margin-top:8px"></div><button class="btn btn-g" id="threatsMissedBtn" onclick="toggleMissedThreats()" style="margin-top:8px;display:none"></button></div>
  <div class="grid2">
   <div class="card" id="openingsCard"><h2>Repertorio de aperturas</h2><div id="openingsTabs" style="display:flex;gap:6px;margin-bottom:12px"><button class="btn btn-p" id="tabBtnBlancas" onclick="showOpeningTab('white')">Blancas</button><button class="btn btn-g" id="tabBtnNegras" onclick="showOpeningTab('black')">Negras</button></div><div id="openingsWhite"></div><div id="openingsBlack" style="display:none"></div><div class="muted" id="openingsPop" style="margin-top:8px"></div></div>
   <div class="card" id="phasesCard"><h2>Fases de partida</h2><div id="phasesBody"></div><div class="muted" id="phasesMeta" style="margin-top:8px"></div></div>
  </div>
+ </details>
 
- <h2 style="margin:18px 0 10px;font-size:14px;letter-spacing:.05em;text-transform:uppercase;color:#8ea0b8">Evolución & detalle</h2>
+ <details class="cgroup" id="cg-evo" open><summary>Evolución & detalle</summary>
  <div class="grid2">
   <div class="card" id="evoCard"><h2>Evolución · ELO</h2><div class="muted" style="font-size:11px">ELO observado en sincronizaciones</div><div id="evo"></div><div class="muted" id="evoNote" style="margin-top:6px"></div></div>
   <div class="card" id="resCard"><h2>Resultados</h2><div id="res"></div><div class="muted" id="lossContext" style="margin-top:8px"></div><div class="muted" id="lossRateNote" style="margin-top:4px"></div><div class="muted" id="drawContext" style="margin-top:4px"></div></div>
@@ -175,6 +178,7 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
  <details id="eloDetails" class="card" style="margin-top:12px">
   <summary style="cursor:pointer;font-weight:600;font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:#8ea0b8">ELO del rival <span id="eloSummaryMeta" class="muted" style="font-weight:400;text-transform:none"></span></summary>
   <div style="margin-top:12px" id="eloCard"><div id="elo"></div><div class="muted" id="eloNote" style="margin-top:6px"></div></div>
+ </details>
  </details>
 
  <div class="card" style="margin-top:14px" id="allMatchesCard">
