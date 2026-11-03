@@ -7,6 +7,11 @@ export class InMemoryDayRecordStore implements DayRecordStore {
   async latest(ownerId: string, date: string) {
     return [...this.versions].reverse().find((v) => v.ownerId === ownerId && v.record.date === date)?.record ?? null;
   }
+  async all(ownerId: string) {
+    const byDate = new Map<string, DayRecord>();
+    for (const v of this.versions) if (v.ownerId === ownerId) byDate.set(v.record.date, v.record);
+    return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
+  }
   async append(ownerId: string, record: DayRecord) { this.versions.push({ ownerId, record }); }
 }
 

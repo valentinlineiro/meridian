@@ -184,7 +184,7 @@ app.get("/api/languages/courses/:courseId", (c) =>
 app.get("/api/me/stats/lang", (c) => handleMeStats(c.env.DB, new URL(c.req.url), emailOf(c)));
 app.use("/api/me/settings", async (c, next) => { c.set("container", buildContainer(c.env)); await next(); });
 app.route("/api/me/settings", dailyGoalRoutes);
-app.use("/api/me/linkedin-games", async (c, next) => { c.set("container", buildContainer(c.env)); await next(); });
+app.use("/api/me/linkedin-games/*", async (c, next) => { c.set("container", buildContainer(c.env)); await next(); });
 app.route("/api/me/linkedin-games", linkedinGamesRoutes);
 app.use("/api/me/changes-anchor", async (c, next) => { c.set("container", buildContainer(c.env)); await next(); });
 app.route("/api/me/changes-anchor", visitAnchorRoutes);

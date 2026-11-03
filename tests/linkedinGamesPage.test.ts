@@ -50,3 +50,44 @@ describe("linkedin games page: a failed load is not an empty day", () => {
     expect(status.textContent).toBe("No se pudo cargar el día.");
   });
 });
+
+const game = (o: Record<string, unknown> = {}) => ({
+  n: 57, nWithAvg: 57, beatAvgRate: 0.65,
+  efficiency: { last28: 1.13, prev28: 1.3, change: -0.13, nLast28: 20, nPrev28: 20 },
+  best: { seconds: 32, date: "2026-09-30" }, beatStreak: { current: 1, max: 8 }, regression: false,
+  series: [{ date: "2026-10-01", eff: 1.2, roll: 1.2 }, { date: "2026-10-02", eff: 1.1, roll: 1.15 }], ...o,
+});
+const summaryReply = (games: Record<string, unknown>) =>
+  (url: string) => url.includes("/summary") ? reply({ ok: true, summary: { days: 170, from: "2026-05-17", to: "2026-11-03", playStreak: { current: 48, max: 122 }, games } }) : reply({ ok: true, day: { games: {} } });
+
+describe("linkedin games page: summary block", () => {
+  it("shouldRenderACardPerGameWithRegressionsFirstWhenTheSummaryLoads", async () => {
+    const { rt, calls } = setup(summaryReply({ zip: game({ beatAvgRate: 0.84, regression: false }), tango: game({ regression: true }) }));
+    await rt.sandbox.loadSummary();
+    expect(calls.some((c) => /\/api\/me\/linkedin-games\/summary\?today=\d{4}-\d{2}-\d{2}$/.test(c.url))).toBe(true);
+    const cards = rt.getEl("#sumGames").children;
+    expect(cards.map((c) => c.children[0]!.textContent)).toEqual(["Tango", "Zip"]);
+    expect(cards[0]!.className).toContain("reg");
+    expect(cards[1]!.className).not.toContain("reg");
+    const lines = cards[0]!.children.slice(1, 5).map((c) => c.textContent);
+    expect(lines[0]).toBe("Eficiencia 28 d: ×1,13 (-13 % vs 28 d previos)");
+    expect(lines[1]).toBe("Gana a la media: 65 % (57 con media)");
+    expect(lines[2]).toBe("Mejor marca: 0:32 (2026-09-30)");
+    expect(lines[3]).toBe("Racha ganando a la media: 1 día (máx 8)");
+    expect(rt.getEl("#sumGlobal").textContent).toBe("170 días registrados · racha de días jugados: 48 días (máx 122)");
+  });
+
+  it("shouldSayThereIsNoDataYetWhenTheSummaryIsEmpty", async () => {
+    const { rt } = setup(summaryReply({}));
+    await rt.sandbox.loadSummary();
+    expect(rt.getEl("#sumGlobal").textContent).toBe("Aún no hay datos.");
+  });
+
+  it("shouldSayTheSummaryCouldNotBeLoadedWithoutBreakingTheDayWhenTheRequestFails", async () => {
+    const { rt, status } = setup((url) => url.includes("/summary") ? reply({ ok: false }, false, 500) : reply({ ok: true, day: { games: {} } }));
+    await rt.sandbox.loadSummary();
+    expect(rt.getEl("#sumStatus").textContent).toBe("No se pudo cargar el resumen.");
+    await rt.sandbox.loadDay();
+    expect(status.textContent).toBe("");
+  });
+});

@@ -94,4 +94,35 @@ describe("linkedin games manual entry over HTTP and D1", () => {
     expect((await put(zip, { "sec-fetch-site": "cross-site" })).status).toBe(403);
     expect(rows()).toHaveLength(0);
   });
+
+  const summary = async (headers: Record<string, string> = {}) =>
+    worker.fetch(new Request(`${BASE}/api/me/linkedin-games/summary?today=2026-10-14`, { headers }), env);
+
+  it("shouldReturnTheSummaryOfTheOwnerWhenSnapshotsExist", async () => {
+    await put(zip);
+    await new Promise((r) => setTimeout(r, 5));
+    await put({ ...zip, score: "0:05" }); // edited: a second version of the same date
+    const res = await summary({ cookie: await cookie() });
+    expect(res.status).toBe(200);
+    const body: any = await res.json();
+    expect(body.summary).toMatchObject({ days: 1, from: "2026-10-13", playStreak: { current: 1, max: 1 } });
+    expect(body.summary.games.zip).toMatchObject({ n: 1, best: { seconds: 5, date: "2026-10-13" } });
+  });
+
+  it("shouldNotIncludeAnotherUsersSnapshots", async () => {
+    state.db.exec(`INSERT INTO users VALUES ('u2','t');`);
+    state.db.prepare("INSERT INTO snapshots (id, created_at, source, user_id, raw_json, games_count, pages_count, checksum, size_bytes) VALUES ('s1','2026-10-13T10:00:00Z','linkedin-games','u2',?,0,0,'c1',1)")
+      .run(JSON.stringify({ schema: 1, date: "2026-10-13", games: { zip: { scoreSeconds: 8, avgSeconds: 17 } } }));
+    const body: any = await (await summary({ cookie: await cookie() })).json();
+    expect(body.summary.days).toBe(0);
+  });
+
+  it("shouldAnswer401WhenThereIsNoSession", async () => {
+    expect((await summary()).status).toBe(401);
+  });
+
+  it("shouldAnswer400WhenTodayIsNotARealDate", async () => {
+    const res = await worker.fetch(new Request(`${BASE}/api/me/linkedin-games/summary?today=2026-13-45`, { headers: { cookie: await cookie() } }), env);
+    expect(res.status).toBe(400);
+  });
 });
