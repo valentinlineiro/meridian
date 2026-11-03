@@ -26,6 +26,14 @@ describe("router contracts", () => {
     expect(res.headers.get("access-control-allow-origin")).toBeNull();
   });
 
+  it("shouldMarkApiResponsesNoStoreAndNoSniffEvenWhenUnauthorized", async () => {
+    for (const path of ["/api/does-not-exist", "/api/import"]) {
+      const res = await worker.fetch(new Request(`http://localhost${path}`, { method: path === "/api/import" ? "POST" : "GET" }), env);
+      expect(res.headers.get("cache-control")).toBe("no-store");
+      expect(res.headers.get("x-content-type-options")).toBe("nosniff");
+    }
+  });
+
   it("shouldReturn500InternalErrorWhenEnvIsInvalid", async () => {
     const res = await worker.fetch(new Request("http://localhost/"), {
       DB: {},

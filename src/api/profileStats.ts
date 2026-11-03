@@ -17,15 +17,16 @@ const X = (path: string) => `CASE WHEN json_valid(md.engine_eval) THEN json_extr
 const CTE = (where: string) => `
   WITH x AS (
     SELECT m.match_id, m.result, LOWER(TRIM(m.user_color)) AS color, LOWER(m.opponent_type) AS otype, m.opponent_name AS oname, m.played_at, COALESCE(m.played_at, 0) AS t, m.rowid AS rid,
-      md.engine_eval IS NULL AS is_null, COALESCE(json_valid(md.engine_eval), 0) AS valid,
+      md.match_id IS NULL AS no_detail, md.engine_eval IS NULL AS is_null, COALESCE(json_valid(md.engine_eval), 0) AS valid,
       ${X("$.v")} AS v, ${X("$.status")} AS status, ${X("$.reason")} AS reason, ${X("$.moves")} AS moves, ${X("$.loss")} AS loss,
       ${X("$.byPhase.opening[0]")} AS o_m, ${X("$.byPhase.opening[1]")} AS o_s,
       ${X("$.byPhase.middlegame[0]")} AS m_m, ${X("$.byPhase.middlegame[1]")} AS m_s,
       ${X("$.byPhase.endgame[0]")} AS e_m, ${X("$.byPhase.endgame[1]")} AS e_s,
       ${X("$.decisivePly")} AS dec, ${X("$.sustainedAdv")} AS adv, ${X("$.sustainedDis")} AS dis
-    FROM matches m JOIN match_details md ON md.match_id = m.match_id ${where}
+    FROM matches m LEFT JOIN match_details md ON md.match_id = m.match_id ${where}
   ), c AS (
     SELECT x.*, o_s + m_s + e_s AS serious, CASE
+      WHEN no_detail THEN 'no_detail'
       WHEN is_null THEN 'pending'
       WHEN NOT valid OR v IS NOT 1 THEN 'unknown'
       WHEN status = 'invalid' THEN CASE WHEN reason IN ('illegal_game', 'corrupt_game', 'engine_error') THEN 'invalid' ELSE 'unknown' END
@@ -101,7 +102,7 @@ export async function handleStatsProfile(db: D1Database, url: URL): Promise<Resp
     FROM c WHERE state = 'ok' AND moves >= ${REVIEW_MIN} ORDER BY acpl ${dir}, match_id ASC LIMIT ${REVIEW_SIZE}`;
   // Independent reads, issued together: D1 does the scanning, so waiting on them costs the Worker no CPU.
   const [counts, all, before, after, blockRows, worst, best] = await Promise.all([
-    run<Record<string, unknown>>(`SELECT COUNT(*) AS total, SUM(state = 'ok') AS ok, SUM(state = 'pending') AS pending, SUM(state = 'invalid') AS invalid,
+    run<Record<string, unknown>>(`SELECT COUNT(*) AS total, SUM(state = 'ok') AS ok, SUM(state = 'pending') AS pending, SUM(state = 'no_detail') AS no_detail, SUM(state = 'invalid') AS invalid,
       SUM(state = 'unknown') AS unknown_v, SUM(otype = 'bot') AS bots FROM c`).then((r) => r[0]),
     sectionAt(""),
     since ? sectionAt(" AND played_at IS NOT NULL AND (t < ? OR (t = ? AND rid <= ?))", since.playedAt, since.playedAt, cutRid) : null,
@@ -115,7 +116,7 @@ export async function handleStatsProfile(db: D1Database, url: URL): Promise<Resp
   const total = n(counts?.total), bots = n(counts?.bots);
 
   return json({
-    analysed: n(counts?.ok), pending: n(counts?.pending), invalid: n(counts?.invalid), unknownVersion: n(counts?.unknown_v),
+    analysed: n(counts?.ok), pending: n(counts?.pending), noDetail: n(counts?.no_detail), invalid: n(counts?.invalid), unknownVersion: n(counts?.unknown_v),
     bots: { games: bots, total, share: total ? bots / total : null },
     since,
     all, before, after,

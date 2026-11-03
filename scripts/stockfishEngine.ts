@@ -13,7 +13,7 @@ const EVAL_TIMEOUT_MS = 60_000; // one position at depth 12 takes tens of millis
 const CLI = new URL("../node_modules/stockfish/scripts/cli.js", import.meta.url).pathname;
 const MATE = 10000;
 
-export async function createStockfish(depth = ENGINE_DEPTH): Promise<Evaluator> {
+async function start(depth: number): Promise<Evaluator> {
   const p: ChildProcessWithoutNullStreams = spawn("node", [CLI]);
   let buf = "", last: { kind: string; v: number } | null = null;
   let onReady: (() => void) | null = null;
@@ -32,7 +32,8 @@ export async function createStockfish(depth = ENGINE_DEPTH): Promise<Evaluator> 
   p.on("exit", () => pending?.rej(new Error("engine exited")));
   const ready = new Promise<void>((res) => (onReady = res));
   p.stdin.write("uci\nsetoption name Hash value 16\nsetoption name Threads value 1\nisready\n");
-  await ready;
+  const initTimer = new Promise<never>((_, rej) => setTimeout(() => rej(new Error("engine init timeout")), EVAL_TIMEOUT_MS).unref());
+  try { await Promise.race([ready, initTimer]); } catch (e) { p.kill(); throw e; }
   return {
     eval(fen: string) {
       last = null;
@@ -48,5 +49,19 @@ export async function createStockfish(depth = ENGINE_DEPTH): Promise<Evaluator> 
       });
     },
     close() { p.stdin.write("quit\n"); p.kill(); },
+  };
+}
+
+// A timed-out engine may still emit its late bestmove, which would resolve the NEXT evaluation with the wrong position's result.
+// So a timeout discards the process; the next eval starts a fresh one.
+export async function createStockfish(depth = ENGINE_DEPTH): Promise<Evaluator> {
+  let cur: Evaluator | null = await start(depth);
+  return {
+    async eval(fen) {
+      cur ??= await start(depth);
+      try { return await cur.eval(fen); }
+      catch (e) { cur.close(); cur = null; throw e; }
+    },
+    close() { cur?.close(); cur = null; },
   };
 }

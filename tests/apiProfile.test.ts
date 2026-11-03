@@ -41,6 +41,13 @@ describe("player profile reads", () => {
     expect(p.all).toMatchObject({ games: 2, moves: 20, serious: 4, ratePer100: 20, acpl: 4 * 400 / 20 });
   });
 
+  it("shouldCountGamesWithoutDetailsApartInsteadOfDroppingThem", async () => {
+    game("a", ev({ opening: [10, 1] }));
+    db.prepare("INSERT INTO matches (match_id, user_id, snapshot_id, first_seen_at, last_seen_at, raw_json, played_at, result, user_color, opponent_type) VALUES ('nd', 'u1', 's', 'd', 'd', '{}', 99, 'win', 'white', 'bot')").run();
+    const p = await profile();
+    expect(p).toMatchObject({ analysed: 1, pending: 0, noDetail: 1, bots: { total: 2 } });
+  });
+
   it("shouldComputeRatesPer100MovesByPhaseAndColour", async () => {
     game("w", ev({ opening: [10, 1], middle: [30, 3], end: [10, 0] }), { color: "white" });
     game("b", ev({ opening: [10, 2], middle: [10, 0] }), { color: "black" });
