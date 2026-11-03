@@ -89,16 +89,15 @@ function showTab(name){
  if(q('#changesTab')) q('#changesTab').hidden = activeTab!=='changes';
  if(q('#trajectoryTab')) q('#trajectoryTab').hidden = activeTab!=='trajectory';
  if(q('#profileTab')) q('#profileTab').hidden = activeTab!=='profile';
- q('#tabBtnOverview').className='btn '+(activeTab==='overview'?'btn-p':'btn-g');
- q('#tabBtnLang').className='btn '+(activeTab==='languages'?'btn-p':'btn-g');
- q('#tabBtnChess').className='btn '+(activeTab==='chess'?'btn-p':'btn-g');
- if(q('#tabBtnChanges')) q('#tabBtnChanges').className='btn '+(activeTab==='changes'?'btn-p':'btn-g');
- if(q('#tabBtnTrajectory')) q('#tabBtnTrajectory').className='btn '+(activeTab==='trajectory'?'btn-p':'btn-g');
- if(q('#tabBtnProfile')) q('#tabBtnProfile').className='btn '+(activeTab==='profile'?'btn-p':'btn-g');
+ const NAV={overview:'tabBtnOverview',changes:'tabBtnChanges',trajectory:'tabBtnTrajectory',chess:'tabBtnChess',profile:'tabBtnProfile',languages:'tabBtnLang'};
+ for(const k in NAV){ const b=q('#'+NAV[k]); if(!b) continue; const on=k===activeTab; b.className='side-item'+(on?' active':''); if(b.setAttribute) b.setAttribute('aria-current',on?'page':'false'); if(on&&q('#sideCurrent')) q('#sideCurrent').textContent=b.textContent; }
+ if(q('#sideMenu')) q('#sideMenu').classList.remove('open');
+ if(q('#sideToggle')&&q('#sideToggle').setAttribute) q('#sideToggle').setAttribute('aria-expanded','false');
  if(activeTab==='changes') fetchWhatChanged();
  if(activeTab==='trajectory') fetchTrajectory();
  if(activeTab==='profile') fetchProfile();
 }
+function toggleSideNav(){ const m=q('#sideMenu'); if(!m) return; const open=!m.classList.contains('open'); m.classList.toggle('open',open); const t=q('#sideToggle'); if(t&&t.setAttribute) t.setAttribute('aria-expanded',open?'true':'false'); }
 function initTab(){
  const route = parseCanonicalRoute(location.pathname, location.hash, location.search);
  if(route.hasLegacyQuery || location.hash || (location.pathname !== '/' && location.pathname !== route.canonicalPath)){

@@ -49,7 +49,13 @@ main{max-width:1120px;margin:0 auto;padding:20px 16px 40px}
 .tbl td{padding:9px 6px;border-bottom:1px solid #162236}
 .pager{display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:13px}
 .empty{padding:28px;text-align:center;color:#8ea0b8;border:1px dashed #2a3d56;border-radius:10px;margin-top:8px}
-.tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.shell{max-width:1360px;display:grid;grid-template-columns:190px minmax(0,1fr);gap:24px;align-items:start}
+.side{position:sticky;top:76px}.content{min-width:0}
+.side-toggle{display:none}
+.side-group{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#8ea0b8;margin:16px 0 4px;padding:0 10px}.side-group:first-child{margin-top:0}
+.side-item{display:block;width:100%;text-align:left;background:none;border:0;border-left:3px solid transparent;border-radius:0 8px 8px 0;color:#c8d7ea;padding:8px 10px;font-size:14px;cursor:pointer}
+.side-item:hover{background:#16263c}.side-item.active{background:#1c2d42;border-left-color:#1f6feb;color:#fff;font-weight:600}
+@media(max-width:760px){.shell{display:block}.side{position:static;margin-bottom:12px}.side-toggle{display:flex;justify-content:space-between;width:100%;background:#1e2e44;color:#e6edf3;border:1px solid #2a3d56;border-radius:8px;padding:10px 12px;font-size:14px;font-weight:600;cursor:pointer}.side-menu{display:none;margin-top:6px;background:#131f33;border:1px solid #1e2e44;border-radius:8px;padding:8px 0}.side-menu.open{display:block}}
 .tab-panel{display:none}
 .tab-panel.active{display:block}
 .hero-card{background:#142236;border:1px solid #1e2e44;border-radius:12px;padding:20px;margin-bottom:16px}

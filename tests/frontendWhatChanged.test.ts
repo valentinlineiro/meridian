@@ -17,7 +17,7 @@ describe("Frontend What Changed Navigation & Visual Engine", () => {
   });
 
   it("shouldIncludeWhatChangedButtonInDashboardTabsWhenRendered", () => {
-    expect(DASHBOARD_HTML).toMatch(/<button[^>]+id="tabBtnChanges"[^>]*onclick="showTab\('changes'\)"[^>]*>What Changed\?<\/button>/);
+    expect(DASHBOARD_HTML).toMatch(/<button[^>]+id="tabBtnChanges"[^>]*onclick="showTab\('changes'\)"[^>]*>Qué cambió<\/button>/);
   });
 
   it("shouldIncludeChangesTabSectionWithRequiredContainersWhenRendered", () => {
@@ -37,8 +37,8 @@ describe("Frontend What Changed Navigation & Visual Engine", () => {
     expect((rt.getEl("#chessTab") as any).hidden).toBe(true);
     expect((rt.getEl("#changesTab") as any).hidden).toBe(false);
     expect(rt.getEl("#changesTab").classList.contains("active")).toBe(true);
-    expect(rt.getEl("#tabBtnChanges").className).toContain("btn-p");
-    expect(rt.getEl("#tabBtnOverview").className).toContain("btn-g");
+    expect(rt.getEl("#tabBtnChanges").className).toContain("active");
+    expect(rt.getEl("#tabBtnOverview").className).not.toContain("active");
   });
 
   it("shouldRenderEmptyStateWhenNoActivityRecordedInInterval", () => {
