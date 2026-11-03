@@ -9,13 +9,6 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
 <title>Meridian</title><style>${CLIENT_CSS}</style></head><body>
 <header>
   <div class="h-left"><h1>Meridian</h1><small id="syncMeta">—</small></div>
-  <div class="h-right">
-    <button id="syncBtn" class="btn btn-p" onclick="doSync()">Sincronizar</button>
-    <small id="syncNote" class="muted" style="max-width:260px"></small>
-    <a class="btn btn-g" href="/api/export/matches.csv" download style="text-decoration:none">Exportar partidas</a>
-    <a class="btn btn-g" href="/settings" style="text-decoration:none">Configuración</a>
-    <form method="post" action="/logout" style="margin:0"><button class="btn btn-g" type="submit">Salir</button></form>
-  </div>
 </header>
 <main class="shell">
 <nav class="side" aria-label="Secciones">
@@ -30,6 +23,12 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
 <button class="side-item" id="tabBtnProfile" onclick="showTab('profile')">Perfil</button>
 <div class="side-group">Idiomas</div>
 <button class="side-item" id="tabBtnLang" onclick="showTab('languages')">Cursos</button>
+<div class="side-group">Cuenta</div>
+<button id="syncBtn" class="btn btn-p side-sync" onclick="doSync()">Sincronizar</button>
+<small id="syncNote" class="muted side-note"></small>
+<a class="side-item" href="/api/export/matches.csv" download>Exportar partidas</a>
+<a class="side-item" href="/settings">Configuración</a>
+<form method="post" action="/logout" style="margin:0"><button class="side-item" type="submit">Salir</button></form>
 </div>
 </nav>
 <div class="content">
