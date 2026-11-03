@@ -63,7 +63,7 @@ const req=async(u,o)=>{
 };
 const j=async u=>{ const r=await req(u); if(!r.ok) throw new Error('http '+r.status); return r.data; };
 const PROFILE_CUT_KEY='profile_since';
-let gamesSeq=0, gamesOpener=null; // declared before initTab(): opening the page on /games already fetches
+let gamesSeq=0, gamesOpener=null, gamesData=null, gamesRange='28', gamesSort={key:'eff',dir:-1}, gamesTrajGame=null; // declared before initTab(): opening the page on /games already fetches
 let profileSeq=0; // both declared before initTab(): opening the page on /profile calls fetchProfile during the first render
 let trajectorySeq=0; // same reason: the first tab render may already call fetchTrajectory
 let trajectoryEmptyCopy=null; // declared before initTab(): the first tab render may already call fetchTrajectory
@@ -1572,14 +1572,123 @@ function gameSpark(series){
  const pts=v.map((y,i)=>(i/(v.length-1)*100).toFixed(1)+','+(22-(y-lo)/r*20).toFixed(1)).join(' ');
  return '<svg class="spark" viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true"><polyline points="'+pts+'" fill="none" stroke="#7aa7e6" stroke-width="1.5" vector-effect="non-scaling-stroke"/></svg>';
 }
-function gameLine(card,text){ const p=document.createElement('p'); p.textContent=text; card.appendChild(p); }
+function gameLine(card,text){ const p=document.createElement('p'); p.textContent=text; card.appendChild(p); return p; }
+const gpct=r=>r==null?'—':Math.round(r*100)+' %';
+const gsigned=(v,suffix)=>{ if(v==null) return '—'; const r=Math.round(v); return (r>0?'+':'')+r+suffix; };
+const gtime=s=>s==null?'—':gmmss(Math.round(s));
+const RANGE_NAMES={'7':'7 días','28':'28 días','90':'90 días','all':'todo el histórico'};
+// Table columns: one source for the header, the cell text and the sort value. nulls always sort last.
+const GCOLS=[
+ {k:'name',l:'Juego',v:(g,w,k)=>GAME_NAMES[k]||k,t:(g,w,k)=>GAME_NAMES[k]||k},
+ {k:'eff',l:'Eficiencia',v:(g,w)=>w.eff.median,t:(g,w)=>w.eff.median==null?'—':'×'+gnum(w.eff.median,2)+' · n='+w.eff.nEff},
+ {k:'beat',l:'Gana a la media',v:(g,w)=>w.beat.rate,t:(g,w)=>w.beat.rate==null?'—':gpct(w.beat.rate)+' · n='+w.beat.nBeat},
+ {k:'delta',l:'Δ eficiencia',v:(g,w)=>w.delta?w.delta.effRel.value:null,t:(g,w)=>w.delta&&w.delta.effRel.value!=null?gsigned(w.delta.effRel.value*100,' %')+' · n='+w.delta.effRel.nCur+'/'+w.delta.effRel.nPrev:'—'},
+ {k:'time',l:'Tiempo mediano (P25–P75)',v:(g,w)=>w.time.median,t:(g,w)=>w.time.median==null?'—':gtime(w.time.median)+' ('+gtime(w.time.p25)+'–'+gtime(w.time.p75)+') · n='+w.time.nTime},
+ {k:'streak',l:'Racha',v:g=>g.beatStreak.current,t:g=>gdays(g.beatStreak.current)},
+ {k:'n',l:'n',v:(g,w)=>w.time.nTime,t:(g,w)=>String(w.time.nTime)},
+];
+function deltaWhy(w){
+ if(gamesRange==='all') return 'Sin periodo anterior: es todo el histórico.';
+ if(!w.prev) return 'Periodo anterior incompleto: el juego no tiene datos de todo ese periodo.';
+ return 'Falta alguna observación en uno de los dos periodos.';
+}
+function sortGames(key){
+ gamesSort=gamesSort.key===key?{key,dir:-gamesSort.dir}:{key,dir:key==='name'?1:-1};
+ renderGamesTable();
+}
+function renderGamesTable(){
+ if(!gamesData) return;
+ const head=q('#gamesHead'), body=q('#gamesRows'); head.textContent=''; body.textContent='';
+ const tr=document.createElement('tr');
+ GCOLS.forEach(c=>{
+  const th=document.createElement('th'); th.setAttribute('scope','col'); th.id='gth-'+c.k;
+  th.setAttribute('aria-sort',gamesSort.key===c.k?(gamesSort.dir>0?'ascending':'descending'):'none');
+  const b=document.createElement('button'); b.type='button'; b.className='thbtn'; b.textContent=c.l; b.onclick=()=>sortGames(c.k);
+  th.appendChild(b); tr.appendChild(th);
+ });
+ head.appendChild(tr);
+ const col=GCOLS.find(c=>c.k===gamesSort.key)||GCOLS[1];
+ const rows=Object.keys(gamesData.games).map(k=>{ const g=gamesData.games[k]; return {k,g,w:g.windows[gamesRange]}; });
+ rows.sort((a,b)=>{ const x=col.v(a.g,a.w,a.k), y=col.v(b.g,b.w,b.k); if(x==null&&y==null) return 0; if(x==null) return 1; if(y==null) return -1; return (typeof x==='string'?x.localeCompare(y):x-y)*gamesSort.dir; });
+ rows.forEach(r=>{
+  const row=document.createElement('tr');
+  GCOLS.forEach(c=>{ const td=document.createElement('td'); td.textContent=c.t(r.g,r.w,r.k); if(c.k==='delta'&&c.v(r.g,r.w)==null) td.setAttribute('title',deltaWhy(r.w)); if(c.k!=='name') td.className='num'; row.appendChild(td); });
+  body.appendChild(row);
+ });
+}
+// Two synchronized series (same X axis) + the sample size per bucket. Raw bucket values, no smoothing; a bucket with no
+// observations has no point and no bar, so the gap stays visible. The server builds the dense axis; nothing is rebuilt here.
+function gamesChartSvg(b){
+ const W=320, L=34, R=8, x=i=>b.length<2?L+(W-L-R)/2:L+i*(W-L-R)/(b.length-1);
+ const effs=b.filter(p=>p.eff!=null).map(p=>p.eff); if(!effs.length) return '';
+ let lo=Math.min(1,...effs), hi=Math.max(1,...effs); if(hi-lo<.2){ hi+=.1; lo-=.1; }
+ const ya=v=>10+(hi-v)/(hi-lo)*60, yb=v=>95+(1-v)*45, maxN=Math.max(...b.map(p=>p.n),1), f=v=>v.toFixed(1);
+ const series=(key,yf,color,fmt)=>{
+  let out='', seg=[];
+  const flush=()=>{ if(seg.length>1) out+='<polyline points="'+seg.map(p=>f(p[0])+','+f(p[1])).join(' ')+'" fill="none" stroke="'+color+'" stroke-width="1.5"/>'; seg=[]; };
+  b.forEach((p,i)=>{ if(p[key]==null){ flush(); return; } seg.push([x(i),yf(p[key])]); out+='<circle cx="'+f(x(i))+'" cy="'+f(yf(p[key]))+'" r="2.4" fill="'+color+'"><title>'+esc(p.start)+' · n='+p.n+' · '+fmt(p[key])+'</title></circle>'; });
+  flush(); return out;
+ };
+ const bars=b.map((p,i)=>p.n?'<rect x="'+f(x(i)-1.5)+'" y="'+f(178-p.n/maxN*22)+'" width="3" height="'+f(p.n/maxN*22)+'" fill="#6e7a8e"><title>'+esc(p.start)+' · n='+p.n+'</title></rect>':'').join('');
+ const g='stroke="#1e2e44" stroke-width="1"', t='fill="#8ea0b8" font-size="8"';
+ return '<svg class="gchart" viewBox="0 0 '+W+' 196" role="img" aria-label="Evolución de la eficiencia y del porcentaje que gana a la media, con el n de cada punto. Los mismos datos están en la tabla siguiente.">'
+  +'<line x1="'+L+'" x2="'+(W-R)+'" y1="'+f(ya(1))+'" y2="'+f(ya(1))+'" '+g+' stroke-dasharray="3 3"/><text x="2" y="'+f(ya(hi)+3)+'" '+t+'>×'+hi.toFixed(1)+'</text><text x="2" y="'+f(ya(lo)+3)+'" '+t+'>×'+lo.toFixed(1)+'</text><text x="2" y="'+f(ya(1)+3)+'" '+t+'>×1</text>'
+  +series('eff',ya,'#7aa7e6',v=>'×'+gnum(v,2))
+  +'<line x1="'+L+'" x2="'+(W-R)+'" y1="'+f(yb(.5))+'" y2="'+f(yb(.5))+'" '+g+' stroke-dasharray="3 3"/><text x="2" y="98" '+t+'>100 %</text><text x="2" y="143" '+t+'>0 %</text>'
+  +series('beat',yb,'#2ea043',v=>Math.round(v*100)+' %')
+  +'<line x1="'+L+'" x2="'+(W-R)+'" y1="178" y2="178" '+g+'/><text x="2" y="176" '+t+'>n</text>'+bars
+  +'<text x="'+L+'" y="192" '+t+'>'+esc(b[0].start)+'</text><text x="'+(W-R)+'" y="192" '+t+' text-anchor="end">'+esc(b[b.length-1].start)+'</text></svg>';
+}
+function setGamesTrajGame(k){ gamesTrajGame=k; renderGamesChart(); }
+function renderGamesChart(){
+ if(!gamesData) return;
+ const keys=Object.keys(gamesData.games), sel=q('#gamesTrajGame');
+ if(!keys.includes(gamesTrajGame)) gamesTrajGame=keys.slice().sort((a,b)=>gamesData.games[b].n-gamesData.games[a].n)[0];
+ sel.textContent=''; keys.forEach(k=>{ const o=document.createElement('option'); o.value=k; o.textContent=GAME_NAMES[k]||k; sel.appendChild(o); }); sel.value=gamesTrajGame;
+ const b=gamesData.games[gamesTrajGame].trajectory[gamesRange], weekly=gamesRange==='90'||gamesRange==='all';
+ q('#gamesChart').innerHTML=gamesChartSvg(b)||'<div class="muted">Sin observaciones con media en este periodo.</div>';
+ // The same buckets as a table: the chart's values for keyboard and screen-reader users (one row per bucket, gaps included).
+ const rows=q('#gamesDataRows'); rows.textContent='';
+ q('#gamesDataCaption').textContent='Datos de la trayectoria de '+(GAME_NAMES[gamesTrajGame]||gamesTrajGame)+', '+RANGE_NAMES[gamesRange]+': un valor por '+(weekly?'semana':'día')+'.';
+ b.forEach(p=>{
+  const tr=document.createElement('tr'), th=document.createElement('th'); th.setAttribute('scope','row'); th.textContent=(weekly?'Semana del ':'')+p.start; tr.appendChild(th);
+  [p.eff==null?'—':'×'+gnum(p.eff,2), p.beat==null?'—':gpct(p.beat), String(p.n)].forEach(t=>{ const td=document.createElement('td'); td.className='num'; td.textContent=t; tr.appendChild(td); });
+  rows.appendChild(tr);
+ });
+ q('#gamesChartNote').textContent='Periodo: '+RANGE_NAMES[gamesRange]+'. Un punto por '+(weekly?'semana (lunes)':'día')+', valor sin suavizar. Azul: mediana de eficiencia (la línea de puntos es ×1, la media global). Verde: % que gana a la media. Barras: n por '+(weekly?'semana':'día')+'; un hueco es un periodo sin observaciones.';
+}
+function renderGamesCards(){
+ if(!gamesData) return;
+ const s=gamesData, g=q('#gamesList'); g.textContent='';
+ Object.keys(s.games).sort((a,b)=>Number(s.games[b].regression)-Number(s.games[a].regression)).forEach(k=>{
+  const x=s.games[k], w=x.windows[gamesRange], card=document.createElement('section');
+  card.className='card gcard'+(x.regression?' reg':'');
+  const h=document.createElement('h3'); h.textContent=GAME_NAMES[k]||k; card.appendChild(h);
+  if(x.regression){ const b=document.createElement('span'); b.className='pill pill-warn'; b.style.marginLeft='8px'; b.textContent='regresión'; h.appendChild(b); }
+  const dl=w.delta&&w.delta.effRel.value!=null?gsigned(w.delta.effRel.value*100,' %')+' vs periodo previo (n='+w.delta.effRel.nCur+'/'+w.delta.effRel.nPrev+')':'sin periodo previo comparable';
+  gameLine(card,'Eficiencia ('+RANGE_NAMES[gamesRange]+'): '+(w.eff.median==null?'—':'×'+gnum(w.eff.median,2)+' · n='+w.eff.nEff+' ('+dl+')'));
+  gameLine(card,'Gana a la media: '+(w.beat.rate==null?'—':gpct(w.beat.rate)+' · n='+w.beat.nBeat));
+  gameLine(card,'Tiempo típico: '+(w.time.median==null?'—':gtime(w.time.median)+' (P25–P75 '+gtime(w.time.p25)+'–'+gtime(w.time.p75)+') · n='+w.time.nTime));
+  gameLine(card,'Mejor marca: '+gmmss(x.best.seconds)+' ('+x.best.date+')');
+  gameLine(card,'Racha ganando a la media: '+gdays(x.beatStreak.current)+' (máx '+x.beatStreak.max+')');
+  const sp=document.createElement('div'); sp.innerHTML=gameSpark(x.series); card.appendChild(sp);
+  gameLine(card,'Línea: mediana móvil de 28 días (suavizada).').className='muted';
+  g.appendChild(card);
+ });
+}
+function setGamesRange(r){
+ gamesRange=r;
+ ['7','28','90','all'].forEach(k=>{ const b=q('#gr-'+k); if(b) b.setAttribute('aria-pressed',k===r?'true':'false'); });
+ renderGamesAnalysis();
+}
+function renderGamesAnalysis(){ renderGamesTable(); renderGamesChart(); renderGamesCards(); }
 function paintGames(s,day){
- const keys=Object.keys(s.games), g=q('#gamesList'); g.textContent='';
+ gamesData=s; const keys=Object.keys(s.games);
  q('#gamesNote').textContent='';
  const done=new Set(Object.keys((day&&day.games)||{}));
  const chips=q('#gamesToday'); chips.textContent='';
  Object.keys(GAME_NAMES).forEach(k=>{ const b=document.createElement('button'); b.type='button'; b.className='pill '+(done.has(k)?'pill-win':'pill-scope'); b.textContent=(done.has(k)?'✓ ':'')+GAME_NAMES[k]; b.setAttribute('data-game',k); b.onclick=()=>openGamesEntry(k); chips.appendChild(b); });
- if(!keys.length){ q('#gamesHeroStreak').textContent='—'; q('#gamesHeroMeta').textContent='Aún no hay datos.'; q('#gamesHeroDays').textContent='—'; q('#gamesHeroWrLabel').textContent=''; q('#gamesHeroDistMeta').textContent='—'; return; }
+ if(!keys.length){ q('#gamesHeroStreak').textContent='—'; q('#gamesHeroMeta').textContent='Aún no hay datos.'; q('#gamesHeroDays').textContent='—'; q('#gamesHeroWrLabel').textContent=''; q('#gamesHeroDistMeta').textContent='—'; q('#gamesHead').textContent=''; q('#gamesRows').textContent=''; q('#gamesChart').textContent=''; q('#gamesChartNote').textContent=''; q('#gamesDataRows').textContent=''; q('#gamesList').textContent=''; return; }
  q('#gamesHeroStreak').textContent=gdays(s.playStreak.current)+' seguidos';
  q('#gamesHeroMeta').textContent='Racha máxima '+gdays(s.playStreak.max);
  q('#gamesHeroDays').textContent=gdays(s.days)+' registrados · '+s.from+' → '+s.to;
@@ -1588,19 +1697,7 @@ function paintGames(s,day){
  q('#gamesDistWin').style.width=pct+'%'; q('#gamesDistLoss').style.width=(total?100-pct:0)+'%';
  q('#gamesHeroWrLabel').textContent='Ganas a la media global (todos los juegos)';
  q('#gamesHeroDistMeta').textContent=total?Math.round(pct)+' % de '+total+' resultados':'—';
- keys.sort((a,b)=>Number(s.games[b].regression)-Number(s.games[a].regression)).forEach(k=>{
-  const x=s.games[k], e=x.efficiency, card=document.createElement('section');
-  card.className='card gcard'+(x.regression?' reg':'');
-  const h=document.createElement('h3'); h.textContent=GAME_NAMES[k]||k; card.appendChild(h);
-  if(x.regression){ const b=document.createElement('span'); b.className='pill pill-warn'; b.style.marginLeft='8px'; b.textContent='regresión'; h.appendChild(b); }
-  const ch=e.change==null?'sin ventana previa':(Math.round(e.change*100)>0?'+':'')+Math.round(e.change*100)+' % vs 28 d previos';
-  gameLine(card,'Eficiencia 28 d: '+(e.last28==null?'—':'×'+gnum(e.last28,2)+' ('+ch+')'));
-  gameLine(card,'Gana a la media: '+(x.beatAvgRate==null?'—':Math.round(x.beatAvgRate*100)+' % ('+x.nWithAvg+' con media)'));
-  gameLine(card,'Mejor marca: '+gmmss(x.best.seconds)+' ('+x.best.date+')');
-  gameLine(card,'Racha ganando a la media: '+gdays(x.beatStreak.current)+' (máx '+x.beatStreak.max+')');
-  const sp=document.createElement('div'); sp.innerHTML=gameSpark(x.series); card.appendChild(sp);
-  g.appendChild(card);
- });
+ renderGamesAnalysis();
 }
 async function fetchGames(){
  const seq=++gamesSeq, t=localToday();
