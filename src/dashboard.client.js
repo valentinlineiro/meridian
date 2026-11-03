@@ -969,6 +969,7 @@ function renderChessView(stats, matches){
 // Boot-only: init() resets both, so a failed boot is never reused by a later load.
 // A bundle that timed out means the backend is slow: the per-route fallback would send seven more reads at it, so it is not attempted.
 let statsBundlePromise=null, bundleTimedOut=false; const statCache={};
+function resetStats(){ statsBundlePromise=null; bundleTimedOut=false; for(const k of Object.keys(statCache)) delete statCache[k]; }
 function statsBundle(){
  return statsBundlePromise||(statsBundlePromise=j('/api/stats/bundle').then(b=>{ if(!b||!b.summary) throw new Error('bundle'); return b; }).catch(e=>{ bundleTimedOut=!!(e&&e.timedOut); return null; }));
 }
@@ -1224,7 +1225,7 @@ window.addEventListener('keydown',e=>{
 });
 
 async function init(){
- statsBundlePromise=null; bundleTimedOut=false; for(const k of Object.keys(statCache)) delete statCache[k];
+ resetStats();
  const overviewPromise=loadOverviewDashboard();
  const langPromise=loadLanguagesDashboard();
  await loadChessDashboard();
@@ -1238,6 +1239,8 @@ async function init(){
 }
 
 let chessStatsFailed=false;
+// The failed requests are cached promises: a retry must drop them or it would just re-read the failure.
+function retryChess(){ resetStats(); return loadChessDashboard(); }
 async function loadChessDashboard(){
  chessStatsFailed=false;
  try{
@@ -1392,7 +1395,7 @@ async function loadChessDashboard(){
   }
   renderChessView({ summary: s, results: r, color: c, opponents: o, elo: e, timeline: t, openings: op, phases: ph, mates: mt, threats: th, recent: rec50 }, lastRows);
  }catch(err){ console.error(err); chessStatsFailed=true; renderChessView(null, lastRows);
-  q('#kpis').innerHTML='<div class="err-box" role="alert">No se pudieron cargar las estadísticas de ajedrez. <button class="btn btn-p" onclick="loadChessDashboard()">Reintentar</button></div>'; }
+  q('#kpis').innerHTML='<div class="err-box" role="alert">No se pudieron cargar las estadísticas de ajedrez. <button class="btn btn-p" onclick="retryChess()">Reintentar</button></div>'; }
 }
 
 let matchesSeq=0;

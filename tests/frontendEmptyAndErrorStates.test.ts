@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { createDashboardRuntime, fetchOnly } from "./helpers/dom.ts";
+import { createDashboardRuntime, fetchOnly, emptyAccountPayload } from "./helpers/dom.ts";
 
 // PR 2 of the frontend audit: an empty window, a failed request and an unavailable total are three different things.
 const settle = async () => { for (let i = 0; i < 300; i++) await Promise.resolve(); };
@@ -117,5 +117,25 @@ describe("chess: a failed stats load is an error with a retry, never 'no games'"
     expect(text(rt, "#chessHeroMeta")).not.toMatch(/Sin partidas registradas/);
     expect(text(rt, "#chessHeroMeta")).toMatch(/No se pudieron cargar/);
     expect(rt.errors.length).toBeGreaterThan(0); rt.errors.splice(0); // the page logs the failure it is reporting; that log is expected here
+  });
+});
+
+describe("chess: Reintentar really asks again", () => {
+  it("shouldRefetchAndRecoverWhenRetryingAfterAFailedLoad", async () => {
+    let up = false, calls = 0;
+    const rt = createDashboardRuntime("/chess", undefined, fetchOnly("/api/stats/", async (url) => {
+      calls++;
+      if (!up) return http500();
+      const body: any = emptyAccountPayload(url);
+      return ok(url.startsWith("/api/stats/bundle") || url.startsWith("/api/stats/summary") ? JSON.parse(JSON.stringify(body).replace('"games":0', '"games":7')) : body)();
+    }));
+    await settle();
+    expect(rt.getEl("#kpis").innerHTML).toContain("Reintentar");
+    rt.errors.splice(0);
+    const before = calls; up = true;
+    await rt.sandbox.retryChess(); await settle();
+    expect(calls).toBeGreaterThan(before);
+    expect(rt.getEl("#kpis").innerHTML).not.toContain("Reintentar");
+    expect(text(rt, "#chessHeroMeta")).toMatch(/7 partidas disputadas/);
   });
 });
