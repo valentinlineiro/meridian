@@ -909,8 +909,8 @@ function renderChessView(stats, matches){
  const elHeroStreak=q('#chessHeroStreak');
  if(elHeroStreak){
   elHeroStreak.className = 'pill' + (s.currentStreak ? (s.currentStreakKind === 'loss' ? ' pill-loss' : ' pill-win') : '');
-  const sk=s.currentStreakKind==='win'?'victorias':s.currentStreakKind==='loss'?'derrotas':s.currentStreakKind||'—';
-  elHeroStreak.textContent=s.currentStreak ? '🔥 '+s.currentStreak+' '+sk+' consecutivas' : '🔥 Sin racha activa';
+  const sk=streakWord(s.currentStreak,s.currentStreakKind);
+  elHeroStreak.textContent=s.currentStreak ? '🔥 '+s.currentStreak+' '+sk+(s.currentStreak===1?' consecutiva':' consecutivas') : '🔥 Sin racha activa';
  }
  const elHeroGames=q('#chessHeroGames');
  if(elHeroGames&&s.games){
@@ -1242,6 +1242,8 @@ async function init(){
 function jumpChess(id){ const el=q('#'+id); if(!el) return; if(el.tagName==='DETAILS') el.open=true; el.scrollIntoView({behavior:'smooth',block:'start'}); }
 // On phones only the first block starts open: the page is a list of blocks to expand, not six screens to scroll.
 if(window.matchMedia&&window.matchMedia('(max-width:760px)').matches) for(const id of ['cg-open','cg-evo']){ const el=q('#'+id); if(el) el.open=false; }
+// '1 derrota', '3 derrotas'
+function streakWord(n,kind){ const w=kind==='win'?['victoria','victorias']:kind==='loss'?['derrota','derrotas']:null; return w? w[n===1?0:1] : (kind||'—'); }
 let chessStatsFailed=false;
 // The failed requests are cached promises: a retry must drop them or it would just re-read the failure.
 function retryChess(){ resetStats(); return loadChessDashboard(); }
@@ -1269,7 +1271,7 @@ async function loadChessDashboard(){
     + kpi('Score', s.scoreRate!=null?(s.scoreRate*100).toFixed(1)+'%':'—', 'victoria 1 · tablas 0,5') 
     + kpi('ELO actual', fmt(elo), deltaLabel);
   // racha
-  const sk=s.currentStreakKind==='win'?'victorias':s.currentStreakKind==='loss'?'derrotas':s.currentStreakKind||'—';
+  const sk=streakWord(s.currentStreak,s.currentStreakKind);
   q('#streak').innerHTML= (s.currentStreak? '<b>Racha actual: '+s.currentStreak+' '+sk+'</b> · ':'') + 'Mejor racha: '+ (s.longestWin!=null? s.longestWin+'W' : '—') + (s.longestLoss? ' · Peor: '+s.longestLoss+'L':'');
   // forma actual default 50
   for(const k of [20,50,100]){ const el=q('#b'+k); if(el) el.className='btn '+(k===50?'btn-p':'btn-g'); }
@@ -1399,7 +1401,7 @@ async function loadChessDashboard(){
   }
   renderChessView({ summary: s, results: r, color: c, opponents: o, elo: e, timeline: t, openings: op, phases: ph, mates: mt, threats: th, recent: rec50 }, lastRows);
  }catch(err){ console.error(err); chessStatsFailed=true; renderChessView(null, lastRows);
-  q('#kpis').innerHTML='<div class="err-box" role="alert">No se pudieron cargar las estadísticas de ajedrez. <button class="btn btn-p" onclick="retryChess()">Reintentar</button></div>'; }
+  q('#kpis').innerHTML='<div class="err-box" role="alert"><span>No se pudieron cargar las estadísticas de ajedrez.'+(lastChessStats?' Lo que ves puede estar desactualizado.':'')+'</span> <button class="btn btn-p" onclick="retryChess()">Reintentar</button></div>'; }
 }
 
 let matchesSeq=0;

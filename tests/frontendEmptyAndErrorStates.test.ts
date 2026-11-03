@@ -139,3 +139,13 @@ describe("chess: Reintentar really asks again", () => {
     expect(text(rt, "#chessHeroMeta")).toMatch(/7 partidas disputadas/);
   });
 });
+
+describe("chess copy", () => {
+  it("shouldUseSingularForAStreakOfOne", () => {
+    const rt = createDashboardRuntime("/chess");
+    expect(rt.sandbox.streakWord(1, "loss")).toBe("derrota");
+    expect(rt.sandbox.streakWord(3, "loss")).toBe("derrotas");
+    expect(rt.sandbox.streakWord(1, "win")).toBe("victoria");
+    expect(rt.sandbox.streakWord(2, "win")).toBe("victorias");
+  });
+});
