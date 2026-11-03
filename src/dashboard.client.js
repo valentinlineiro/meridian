@@ -903,7 +903,7 @@ function renderChessView(stats, matches){
  
  const elHeroMeta=q('#chessHeroMeta');
  if(elHeroMeta){
-  elHeroMeta.textContent=s.games ? s.games.toLocaleString('es-ES')+' partidas disputadas · ELO observado en sincronizaciones' : 'Sin partidas registradas';
+  elHeroMeta.textContent=s.games ? s.games.toLocaleString('es-ES')+' partidas disputadas · ELO observado en sincronizaciones' : (chessStatsFailed ? 'No se pudieron cargar las estadísticas' : 'Sin partidas registradas');
  }
  
  const elHeroStreak=q('#chessHeroStreak');
@@ -1166,7 +1166,7 @@ function renderRows(){
   q('#empty').style.display='none';
   q('#mb').innerHTML=rows.map(m=>{
    var fullDate = m.played_at ? new Date(m.played_at * 1000).toLocaleString('es-ES') : (m.first_seen_at ? new Date(m.first_seen_at).toLocaleString('es-ES') : '');
-   return '<tr'+(m.ply_count!=null&&m.match_id?' class="gamerow" tabindex="0" data-m="'+esc(m.match_id)+'" title="Ver partida"':'')+'><td data-l="Fecha"' + (fullDate ? ' title="' + fullDate + '"' : '') + '>' + formatMatchDate(m.played_at, m.first_seen_at) + '</td><td data-l="Rival">'+esc(m.opponent_name||'—')+pillSegment(m.opponent_segment)+'</td><td data-l="Tipo">'+pillType(m.opponent_type)+(m.opening_family_label&&m.opening_family!=='unclassified'?'<span class="pill" style="font-size:10px;margin-left:4px;opacity:.75">'+esc(m.opening_family_label)+'</span>':'')+(m.phase_key&&m.phase_key!=='unknown'?'<span class="pill" style="font-size:10px;margin-left:4px;opacity:.8">'+({opening:'Aper.',middlegame:'Medio',endgame:'Final'}[m.phase_key]||esc(m.phase_key))+'</span>':'')+'</td><td data-l="ELO">'+fmt(m.opponent_elo)+'</td><td data-l="Color">'+esc(m.user_color||'—')+'</td><td data-l="Resultado">'+pillResult(m.result||m.outcome)+'</td><td data-l="Fin">'+pillEnd(m.end_condition,m.mate_type_label)+'</td><td data-l="Rev.">'+(m.reviewed?'✓':'')+'</td></tr>';
+   return '<tr'+(m.ply_count!=null&&m.match_id?' class="gamerow" tabindex="0" data-m="'+esc(m.match_id)+'" title="Ver partida"':'')+'><td data-l="Fecha"' + (fullDate ? ' title="' + fullDate + '"' : '') + '>' + formatMatchDate(m.played_at, m.first_seen_at) + '</td><td data-l="Rival">'+esc(m.opponent_name||'—')+pillSegment(m.opponent_segment)+'</td><td data-l="Tipo">'+pillType(m.opponent_type)+(m.opening_family_label&&m.opening_family!=='unclassified'?'<span class="pill" style="font-size:10px;margin-left:4px;opacity:.75">'+esc(m.opening_family_label)+'</span>':'')+(m.phase_key&&m.phase_key!=='unknown'?'<span class="pill" style="font-size:10px;margin-left:4px;opacity:.8">'+({opening:'Aper.',middlegame:'Medio',endgame:'Final'}[m.phase_key]||esc(m.phase_key))+'</span>':'')+'</td><td data-l="ELO">'+fmt(m.opponent_elo)+'</td><td data-l="Color">'+({white:'Blancas',black:'Negras'}[m.user_color]||esc(m.user_color||'—'))+'</td><td data-l="Resultado">'+pillResult(m.result||m.outcome)+'</td><td data-l="Fin">'+pillEnd(m.end_condition,m.mate_type_label)+'</td><td data-l="Rev.">'+(m.reviewed?'✓':'')+'</td></tr>';
   }).join('');
  }
 }
@@ -1237,7 +1237,9 @@ async function init(){
  loadM(0);
 }
 
+let chessStatsFailed=false;
 async function loadChessDashboard(){
+ chessStatsFailed=false;
  try{
   // summary is essential (without it nothing here means anything: the outer catch). Every other card degrades on its own to "No disponible".
   const opt=(k,route)=>stat(k,route).catch(()=>null);
@@ -1389,7 +1391,8 @@ async function loadChessDashboard(){
   }
   }
   renderChessView({ summary: s, results: r, color: c, opponents: o, elo: e, timeline: t, openings: op, phases: ph, mates: mt, threats: th, recent: rec50 }, lastRows);
- }catch(err){ console.error(err); q('#kpis').innerHTML='<div class="muted">Error cargando estadísticas</div>'; }
+ }catch(err){ console.error(err); chessStatsFailed=true; renderChessView(null, lastRows);
+  q('#kpis').innerHTML='<div class="err-box" role="alert">No se pudieron cargar las estadísticas de ajedrez. <button class="btn btn-p" onclick="loadChessDashboard()">Reintentar</button></div>'; }
 }
 
 let matchesSeq=0;

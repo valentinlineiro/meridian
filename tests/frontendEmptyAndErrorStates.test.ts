@@ -108,3 +108,14 @@ describe("what changed: an old response never overwrites a window chosen later",
     expect(rt.getEl("#changesEmpty").style.display).toBe("none");
   });
 });
+
+describe("chess: a failed stats load is an error with a retry, never 'no games'", () => {
+  it("shouldShowRetryAndNotClaimNoGamesWhenSummaryFails", async () => {
+    const rt = createDashboardRuntime("/chess", undefined, fetchOnly(["/api/stats/summary", "/api/stats/bundle"], http500));
+    await settle();
+    expect(rt.getEl("#kpis").innerHTML).toContain("Reintentar");
+    expect(text(rt, "#chessHeroMeta")).not.toMatch(/Sin partidas registradas/);
+    expect(text(rt, "#chessHeroMeta")).toMatch(/No se pudieron cargar/);
+    expect(rt.errors.length).toBeGreaterThan(0); rt.errors.splice(0); // the page logs the failure it is reporting; that log is expected here
+  });
+});

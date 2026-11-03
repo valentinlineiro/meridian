@@ -112,3 +112,23 @@ svg text{font-family:system-ui,sans-serif}
 a.side-item{text-decoration:none}a.side-item:hover{text-decoration:none}
 .side-sync{display:block;width:calc(100% - 20px);margin:4px 10px 0}
 .side-note{display:block;margin:6px 10px 6px;max-width:none}.side-note:empty{display:none}
+
+.fgroup{display:flex;gap:6px;flex-wrap:wrap;align-items:center;width:100%}.flabel{color:#8ea0b8;font-size:12px;min-width:68px}
+.err-box{grid-column:1/-1;background:#2a1616;border:1px solid #7a2e2e;border-radius:10px;padding:12px;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+@media(max-width:700px){
+ /* game list: two lines per game (opponent + result / date, ELO, colour); type, end and review live in the game viewer */
+ .tbl tr{display:grid;grid-template-columns:1fr auto auto;gap:2px 12px;padding:10px 12px}
+ .tbl td{padding:0;display:block}.tbl td::before{display:none}
+ .tbl td[data-l=Rival]{grid-area:1/1/2/3;font-size:15px;font-weight:600}.tbl td[data-l=Resultado]{grid-area:1/3;justify-self:end}
+ .tbl td[data-l=Fecha]{grid-area:2/1}.tbl td[data-l=ELO]{grid-area:2/2}.tbl td[data-l=ELO]::before{display:inline;content:"ELO ";margin:0}.tbl td[data-l=Color]{grid-area:2/3;justify-self:end}
+ .tbl td[data-l=Tipo],.tbl td[data-l=Fin],.tbl td[data-l=Rev\.]{display:none}
+ .tbl td[data-l=Fecha],.tbl td[data-l=ELO],.tbl td[data-l=Color]{font-size:13px;color:#8ea0b8}
+}
+/* touch targets and legible small text on phones (ponytail: attribute selectors catch the inline 10-11px styles without editing each one) */
+@media(max-width:760px){
+ .btn,.side-toggle,select,.filters input,summary{min-height:44px}.btn{min-width:44px}
+ .side-menu a,.side-menu button{min-height:44px;display:flex;align-items:center}
+ a[href="/raw"],a[href="/settings"]{display:inline-block;padding:14px 8px}
+ .muted,.pill,.kpi label,.kpi small,.flabel,[style*="font-size:10px"],[style*="font-size:11px"]{font-size:12px!important}
+ .muted{font-size:13px!important}
+}
