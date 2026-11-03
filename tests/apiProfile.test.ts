@@ -105,6 +105,15 @@ describe("player profile reads", () => {
     expect(p.after).toMatchObject({ games: 2, serious: 1, ratePer100: 5 });
   });
 
+  it("shouldSplitGamesSharingTheCutTimestampByInsertionOrderAndLeaveUndatedGamesOut", async () => {
+    game("a", ev({ opening: [10, 2] }), { playedAt: 5 }); game("cut", ev({ opening: [10, 2] }), { playedAt: 5 });
+    game("tie", ev({ opening: [10, 0] }), { playedAt: 5 }); game("later", ev({ opening: [10, 1] }), { playedAt: 9 });
+    game("undated", ev({ opening: [10, 9] }), { playedAt: null });
+    const p = await profile("?since=cut");
+    expect(p.before).toMatchObject({ games: 2, serious: 4 });
+    expect(p.after).toMatchObject({ games: 2, serious: 1 });
+  });
+
   it("shouldIgnoreAnUnknownOrUndatedSinceWithoutFailing", async () => {
     game("a", ev()); game("undated", ev(), { playedAt: null });
     for (const since of ["nope", "undated"]) {
@@ -125,7 +134,7 @@ describe("player profile reads", () => {
     const { review } = await profile();
     expect(review.worst.map((r: any) => r.matchId)).toEqual(["bad", "mid", "good"]);
     expect(review.best.map((r: any) => r.matchId)).toEqual(["good", "mid", "bad"]);
-    expect(review.worst[0]).toEqual({ matchId: "bad", result: "win", moves: 20, serious: 10, acpl: 300, decisivePly: null });
+    expect(review.worst[0]).toEqual({ matchId: "bad", opponent: null, playedAt: 2, color: "white", result: "win", moves: 20, serious: 10, acpl: 300, decisivePly: null });
   });
 
   it("shouldFilterByUser", async () => {

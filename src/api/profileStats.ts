@@ -16,7 +16,7 @@ const X = (path: string) => `CASE WHEN json_valid(md.engine_eval) THEN json_extr
 // version or contradictory figures are "unknown"). `serious` is the game's serious errors over the three phases.
 const CTE = (where: string) => `
   WITH x AS (
-    SELECT m.match_id, m.result, LOWER(TRIM(m.user_color)) AS color, LOWER(m.opponent_type) AS otype, m.played_at, COALESCE(m.played_at, 0) AS t, m.rowid AS rid,
+    SELECT m.match_id, m.result, LOWER(TRIM(m.user_color)) AS color, LOWER(m.opponent_type) AS otype, m.opponent_name AS oname, m.played_at, COALESCE(m.played_at, 0) AS t, m.rowid AS rid,
       md.engine_eval IS NULL AS is_null, COALESCE(json_valid(md.engine_eval), 0) AS valid,
       ${X("$.v")} AS v, ${X("$.status")} AS status, ${X("$.reason")} AS reason, ${X("$.moves")} AS moves, ${X("$.loss")} AS loss,
       ${X("$.byPhase.opening[0]")} AS o_m, ${X("$.byPhase.opening[1]")} AS o_s,
@@ -87,24 +87,25 @@ export async function handleStatsProfile(db: D1Database, url: URL): Promise<Resp
     return section(rows[0] ?? {}, dec.map((d) => d.mv));
   };
 
-  // The cut belongs to "before": games played after that game are "after". An unknown or undated cut is reported as null, never as an error.
+  // The cut belongs to "before". Games are totally ordered by (played_at, rowid) — the same order as the trend blocks — so games sharing the cut's timestamp fall on the side their position says; undated games are in neither side. An unknown or undated cut is reported as null, never as an error.
   let since: { matchId: string; playedAt: number } | null = null;
+  let cutRid = 0;
   if (sinceId) {
-    const cut = await db.prepare(`SELECT match_id, played_at FROM matches WHERE match_id = ? AND played_at IS NOT NULL${userId ? " AND user_id = ?" : ""}`)
-      .bind(sinceId, ...base).first<{ match_id: string; played_at: number }>();
-    if (cut) since = { matchId: cut.match_id, playedAt: cut.played_at };
+    const cut = await db.prepare(`SELECT match_id, played_at, rowid AS rid FROM matches WHERE match_id = ? AND played_at IS NOT NULL${userId ? " AND user_id = ?" : ""}`)
+      .bind(sinceId, ...base).first<{ match_id: string; played_at: number; rid: number }>();
+    if (cut) { since = { matchId: cut.match_id, playedAt: cut.played_at }; cutRid = cut.rid; }
   }
 
   const reviewSql = (dir: "DESC" | "ASC") => `
-    SELECT match_id AS matchId, result, moves, serious, loss * 1.0 / moves AS acpl, dec AS decisivePly
+    SELECT match_id AS matchId, result, oname AS opponent, played_at AS playedAt, color, moves, serious, loss * 1.0 / moves AS acpl, dec AS decisivePly
     FROM c WHERE state = 'ok' AND moves >= ${REVIEW_MIN} ORDER BY acpl ${dir}, match_id ASC LIMIT ${REVIEW_SIZE}`;
   // Independent reads, issued together: D1 does the scanning, so waiting on them costs the Worker no CPU.
   const [counts, all, before, after, blockRows, worst, best] = await Promise.all([
     run<Record<string, unknown>>(`SELECT COUNT(*) AS total, SUM(state = 'ok') AS ok, SUM(state = 'pending') AS pending, SUM(state = 'invalid') AS invalid,
       SUM(state = 'unknown') AS unknown_v, SUM(otype = 'bot') AS bots FROM c`).then((r) => r[0]),
     sectionAt(""),
-    since ? sectionAt(" AND t <= ?", since.playedAt) : null,
-    since ? sectionAt(" AND t > ?", since.playedAt) : null,
+    since ? sectionAt(" AND played_at IS NOT NULL AND (t < ? OR (t = ? AND rid <= ?))", since.playedAt, since.playedAt, cutRid) : null,
+    since ? sectionAt(" AND played_at IS NOT NULL AND (t > ? OR (t = ? AND rid > ?))", since.playedAt, since.playedAt, cutRid) : null,
     run<Record<string, unknown>>(`
       SELECT (rn - 1) / ${BLOCK} AS b, COUNT(*) AS games, SUM(moves) AS moves, SUM(serious) AS serious, SUM(loss) AS loss
       FROM (SELECT moves, serious, loss, ROW_NUMBER() OVER (ORDER BY t, rid) AS rn FROM c WHERE state = 'ok') GROUP BY b ORDER BY b`),

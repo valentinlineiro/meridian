@@ -1462,27 +1462,67 @@ function applyProfileSince(){ const v=q('#profileSinceInput').value.trim(); try{
 function clearProfileSince(){ q('#profileSinceInput').value=''; try{ localStorage.removeItem(PROFILE_CUT_KEY); }catch(e){} fetchProfile(); }
 const profPer100=(r)=>r==null?'—':r.toFixed(1);
 const profPct=(a,b)=>b?Math.round(100*a/b)+'%':'—';
-const profRateText=(t)=>profPer100(t.ratePer100)+' por 100 jugadas ('+t.serious+' de '+t.moves+')';
-function paintProfileSection(s){ return s.games+' partidas · '+profRateText(s)+(s.acpl==null?'':' · pérdida media '+Math.round(s.acpl)+' cp'); }
+const profPawns=(cp)=>cp==null?'—':(cp/100).toFixed(1).replace('.',',');
+const PROFILE_MIN_AFTER=50;
+const PROF_PHASES=[['opening','Apertura'],['middlegame','Medio juego'],['endgame','Final']];
+function profBar(label,rate,max,detail,cls){ const w=max>0&&rate!=null?Math.max(2,Math.round(100*rate/max)):0; return '<div class="prof-bar"><span>'+esc(label)+'</span><div class="bar"><i class="'+(cls||'bar-err')+'" style="width:'+w+'%"></i></div><b>'+profPer100(rate)+'</b><span class="muted">'+esc(detail||'')+'</span></div>'; }
+function profKpi(label,value,sub){ return '<div class="kpi"><label>'+esc(label)+'</label><b>'+esc(value)+'</b><small>'+esc(sub)+'</small></div>'; }
+function profVerdict(a){ // Descriptive only: the observed highest rate, never a training recommendation. Phases under 50 own moves are not compared.
+ const ph=PROF_PHASES.filter(([k])=>a.byPhase[k].moves>=50&&a.byPhase[k].ratePer100!=null).sort((x,y)=>a.byPhase[y[0]].ratePer100-a.byPhase[x[0]].ratePer100);
+ const parts=[];
+ if(ph.length>=2) parts.push('Mayor tasa observada de errores graves: '+ph[0][1].toLowerCase()+' ('+profPer100(a.byPhase[ph[0][0]].ratePer100)+' por 100 jugadas; '+ph[ph.length-1][1].toLowerCase()+': '+profPer100(a.byPhase[ph[ph.length-1][0]].ratePer100)+').');
+ const d=a.decisive;
+ if(d.lossGames&&d.medianMove!=null) parts.push('Hay un momento decisivo en '+profPct(d.withDecisive,d.lossGames)+' de tus derrotas ('+d.withDecisive+' de '+d.lossGames+'), con mediana en tu jugada '+d.medianMove+'.');
+ return parts.join(' ');
+}
+function profGameRow(r){
+ const date=r.playedAt?new Date(r.playedAt*1000).toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'}):'';
+ const res=r.result==='win'?['pill-win','Victoria']:r.result==='loss'?['pill-loss','Derrota']:r.result==='draw'?['pill-draw','Tablas']:['pill','—'];
+ const what=r.decisivePly?'Se torció en tu jugada '+Math.ceil(r.decisivePly/2)+'. ':'';
+ return '<a href="#" class="prof-game" data-g="'+esc(r.matchId)+'"><b>'+esc(r.opponent||'Rival sin nombre')+'</b> <span class="pill '+res[0]+'">'+res[1]+'</span> <span class="muted">'+esc(date)+(r.color==='white'?' · blancas':r.color==='black'?' · negras':'')+'</span><br><span class="muted">'+what+r.serious+' errores graves en '+r.moves+' jugadas · pérdida media de evaluación: '+profPawns(r.acpl)+' peones por jugada</span></a>';
+}
+function profCompare(b,a){
+ const cell=(x,f)=>x.games?f(x):'—';
+ const diff=(x,y,u,dec)=>{ if(x==null||y==null) return '—'; const d=y-x; const t=(d>0?'+':d<0?'−':'')+Math.abs(d).toFixed(dec)+u; return '<span class="pill '+(d<0?'pill-win':d>0?'pill-loss':'pill-draw')+'">'+t+'</span>'; };
+ const rows=[
+  ['Partidas',b.games,a.games,null],
+  ['Errores graves por 100 jugadas',b.ratePer100,a.ratePer100,[' ',1]],
+  ['Pérdida media por jugada (peones)',b.acpl==null?null:b.acpl/100,a.acpl==null?null:a.acpl/100,[' ',2]],
+ ];
+ let h='<div class="prof-cmp"><span class="h"></span><span class="h">Antes</span><span class="h">Después</span><span class="h">Cambio</span>';
+ for(const [l,x,y,d] of rows){ h+='<span>'+esc(l)+'</span><b>'+(d?(x==null?'—':x.toFixed(d[1])):x)+'</b><b>'+(d?(y==null?'—':y.toFixed(d[1])):y)+'</b><span>'+(d?diff(x,y,'',d[1]):'')+'</span>'; }
+ h+='</div>';
+ if(a.games<PROFILE_MIN_AFTER) h+='<p class="pill pill-warn" style="margin-top:10px;white-space:normal">Solo '+a.games+' partidas después del corte: aún son pocas para sacar conclusiones (conviene llegar a '+PROFILE_MIN_AFTER+').</p>';
+ return h;
+}
 function paintProfile(b){
  const a=b.all;
- if(!b.analysed){
-  q('#profileQuality').textContent='Todavía no hay partidas analizadas';
-  for(const id of ['#profilePhases','#profileColors','#profileTrend','#profileCut','#profileDecisive','#profileConversion','#profileWorst','#profileBest']) q(id).textContent='';
+ const empty=!b.analysed;
+ q('#profileContext').textContent=empty?'Calculado con Stockfish sobre tus partidas guardadas.':'Calculado con Stockfish sobre '+b.analysed+' partidas'+(b.bots&&b.bots.share!=null?' ('+Math.round(100*b.bots.share)+'% contra bots; no describe cómo juegas contra personas)':'')+'. Son cifras descriptivas, no una nota de nivel.';
+ if(empty){
+  q('#profileKpis').innerHTML='<div class="empty" style="grid-column:1/-1">Todavía no hay partidas analizadas</div>';
+  q('#profileVerdict').textContent='';
+  for(const id of ['#profilePhases','#profileColors','#profileTrend','#profileCut','#profileDecisive','#profileConversion','#profileWorst','#profileBest']) q(id).innerHTML='';
  } else {
-  q('#profileQuality').textContent='Errores graves: '+profRateText(a)+(a.acpl==null?'':' · pérdida media '+Math.round(a.acpl)+' cp')+' · '+a.games+' partidas analizadas';
-  q('#profilePhases').textContent='Apertura '+profPer100(a.byPhase.opening.ratePer100)+' ('+a.byPhase.opening.serious+' de '+a.byPhase.opening.moves+') · Medio juego '+profPer100(a.byPhase.middlegame.ratePer100)+' ('+a.byPhase.middlegame.serious+' de '+a.byPhase.middlegame.moves+') · Final '+profPer100(a.byPhase.endgame.ratePer100)+' ('+a.byPhase.endgame.serious+' de '+a.byPhase.endgame.moves+')';
-  q('#profileColors').textContent='Blancas '+profPer100(a.byColor.white.ratePer100)+' ('+a.byColor.white.serious+' de '+a.byColor.white.moves+') · Negras '+profPer100(a.byColor.black.ratePer100)+' ('+a.byColor.black.serious+' de '+a.byColor.black.moves+')';
-  const bl=b.blocks||[];
-  q('#profileTrend').textContent=bl.length?'Por bloques de 50 partidas: '+bl.map(x=>profPer100(x.ratePer100)+(x.partial?' (último bloque incompleto, '+x.games+' partidas)':'')).join(' → '):'';
-  const d=a.decisive, dn=d.byPhase.opening+d.byPhase.middlegame+d.byPhase.endgame;
-  q('#profileDecisive').textContent='Derrotas con momento decisivo: '+d.withDecisive+' de '+d.lossGames+(d.medianMove==null?'':' · jugada mediana '+d.medianMove)+' · Apertura '+d.byPhase.opening+' ('+profPct(d.byPhase.opening,dn)+') · Medio juego '+d.byPhase.middlegame+' ('+profPct(d.byPhase.middlegame,dn)+') · Final '+d.byPhase.endgame+' ('+profPct(d.byPhase.endgame,dn)+')';
-  const c=a.conversion, o=(x)=>x.games+' partidas · ganadas '+profPct(x.win,x.games)+' ('+x.win+') · tablas '+profPct(x.draw,x.games)+' · perdidas '+profPct(x.loss,x.games)+' ('+x.loss+')';
-  q('#profileConversion').innerHTML='<div>Con ventaja sostenida (+300): '+esc(o(c.advantage))+'</div><div>Con desventaja sostenida (−300): '+esc(o(c.disadvantage))+'</div>';
-  const row=(r)=>'<div><a href="#" data-g="'+esc(r.matchId)+'">'+esc(String(r.matchId).slice(-8))+'</a> · '+esc(r.result||'—')+' · pérdida media '+Math.round(r.acpl)+' cp · '+r.serious+' graves en '+r.moves+(r.decisivePly?' · decisivo en la jugada '+r.decisivePly:'')+'</div>';
-  q('#profileWorst').innerHTML=(b.review.worst||[]).map(row).join('');
-  q('#profileBest').innerHTML=(b.review.best||[]).map(row).join('');
-  q('#profileCut').textContent=b.before&&b.after?'Antes del corte: '+paintProfileSection(b.before)+' · Después: '+paintProfileSection(b.after):'';
+  const d=a.decisive, c=a.conversion;
+  q('#profileKpis').innerHTML=
+   profKpi('Errores graves',profPer100(a.ratePer100),'por 100 jugadas · '+a.serious+' de '+a.moves)+
+   profKpi('Pérdida media',profPawns(a.acpl),'peones por jugada · '+Math.round(a.acpl)+' cp')+
+   profKpi('Derrotas con momento decisivo',profPct(d.withDecisive,d.lossGames),d.withDecisive+' de '+d.lossGames+' derrotas')+
+   profKpi('Ventajas sostenidas ganadas',profPct(c.advantage.win,c.advantage.games),c.advantage.win+' de '+c.advantage.games+' · '+c.thrown+' perdidas');
+  q('#profileVerdict').textContent=profVerdict(a);
+  const maxP=Math.max(...PROF_PHASES.map(([k])=>a.byPhase[k].ratePer100||0),...['white','black'].map(k=>a.byColor[k].ratePer100||0));
+  q('#profilePhases').innerHTML=PROF_PHASES.map(([k,l])=>profBar(l,a.byPhase[k].ratePer100,maxP,a.byPhase[k].serious+' de '+a.byPhase[k].moves)).join('');
+  q('#profileColors').innerHTML=[['white','Blancas'],['black','Negras']].map(([k,l])=>profBar(l,a.byColor[k].ratePer100,maxP,a.byColor[k].serious+' de '+a.byColor[k].moves)).join('');
+  const bl=b.blocks||[], maxB=Math.max(0,...bl.map(x=>x.ratePer100||0));
+  q('#profileTrend').innerHTML=bl.length>1?'<div class="prof-cols" role="img" aria-label="Errores graves por 100 jugadas en cada bloque de 50 partidas">'+bl.map((x,i)=>'<i class="'+(x.partial?'partial':'')+'" style="height:'+(maxB>0&&x.ratePer100!=null?Math.max(3,Math.round(100*x.ratePer100/maxB)):0)+'%" title="Partidas '+(i*50+1)+'–'+(i*50+x.games)+': '+profPer100(x.ratePer100)+' por 100 jugadas ('+x.serious+' de '+x.moves+' jugadas)'+(x.partial?' · bloque incompleto':'')+'"></i>').join('')+'</div><div class="prof-cols-ax muted"><span>Primeras partidas · '+profPer100(bl[0].ratePer100)+'</span><span>Últimas · '+profPer100(bl[bl.length-1].ratePer100)+(bl[bl.length-1].partial?' (incompleto)':'')+'</span></div>':'<div class="muted">Hacen falta al menos dos bloques de 50 partidas para ver una evolución.</div>';
+  const dn=d.byPhase.opening+d.byPhase.middlegame+d.byPhase.endgame;
+  q('#profileDecisive').innerHTML=d.lossGames?'<div style="margin-bottom:6px"><b>'+d.withDecisive+' de '+d.lossGames+'</b> derrotas tienen un momento decisivo'+(d.medianMove==null?'':', a la mitad de los casos antes de tu jugada '+d.medianMove)+'.</div>'+PROF_PHASES.map(([k,l])=>{ const v=d.byPhase[k]; return '<div class="prof-bar"><span>'+l+'</span><div class="bar"><i class="bar-hot" style="width:'+(dn?Math.round(100*v/dn):0)+'%"></i></div><b>'+profPct(v,dn)+'</b><span class="muted">'+v+' partidas</span></div>'; }).join(''):'<div class="muted">Sin derrotas analizadas.</div>';
+  const conv=(label,x)=>{ const w=profPct(x.win,x.games), pc=(n)=>x.games?Math.round(100*n/x.games):0; return '<div style="margin:8px 0"><div style="display:flex;justify-content:space-between"><b>'+esc(label)+'</b><span class="muted">'+x.games+' partidas</span></div><div class="bar" style="display:flex;margin:6px 0 4px"><i class="bar-win" style="width:'+pc(x.win)+'%"></i><i class="bar-draw" style="width:'+pc(x.draw)+'%"></i><i class="bar-loss" style="width:'+pc(x.loss)+'%"></i></div><div class="legend"><span><i class="dot bar-win"></i>Ganadas '+w+' ('+x.win+')</span><span><i class="dot bar-draw"></i>Tablas '+x.draw+'</span><span><i class="dot bar-loss"></i>Perdidas '+x.loss+'</span></div></div>'; };
+  q('#profileConversion').innerHTML=conv('Con ventaja de más de 3 peones',c.advantage)+conv('Con desventaja de más de 3 peones',c.disadvantage);
+  q('#profileWorst').innerHTML=(b.review.worst||[]).map(profGameRow).join('');
+  q('#profileBest').innerHTML=(b.review.best||[]).map(profGameRow).join('');
+  q('#profileCut').innerHTML=b.before&&b.after?profCompare(b.before,b.after):'';
  }
  const cut=profileCut();
  q('#profileSinceInput').value=cut;
@@ -1491,7 +1531,7 @@ function paintProfile(b){
  if(b.pending) notes.push(b.pending+' partidas sin analizar');
  if(b.invalid) notes.push(b.invalid+' no se pudieron evaluar');
  if(b.unknownVersion) notes.push(b.unknownVersion+' con un formato que este panel no entiende');
- q('#profileNote').textContent='Error grave: pérdida de 300 cp o más según Stockfish a profundidad 12. Son tasas descriptivas, sin intervalo: los errores de una partida no son independientes.'+(notes.length?' Fuera de las cifras: '+notes.join(' · ')+'.':'')+(b.bots&&b.bots.share!=null?' El '+Math.round(100*b.bots.share)+'% de las partidas son contra bots: este perfil no describe cómo juegas contra personas.':'');
+ q('#profileNote').textContent='Error grave: jugada que cuesta 3 peones o más (300 cp) según Stockfish a profundidad 12. Son tasas descriptivas, sin intervalo: los errores de una partida no son independientes.'+(notes.length?' Fuera de las cifras: '+notes.join(' · ')+'.':'');
 }
 async function fetchProfile(){
  const seq=++profileSeq, cut=profileCut();
@@ -1499,7 +1539,7 @@ async function fetchProfile(){
   const b=await j('/api/stats/profile'+(cut?'?since='+encodeURIComponent(cut):''));
   if(seq!==profileSeq) return;
   paintProfile(b);
- }catch(e){ if(seq===profileSeq) q('#profileQuality').textContent='No se pudo cargar el perfil'; }
+ }catch(e){ if(seq===profileSeq) q('#profileKpis').innerHTML='<div class="empty" style="grid-column:1/-1">No se pudo cargar el perfil</div>'; }
 }
 async function fetchTrajectory(){
  const seq=++trajectorySeq;
