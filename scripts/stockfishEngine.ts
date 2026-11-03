@@ -32,8 +32,9 @@ async function start(depth: number): Promise<Evaluator> {
   p.on("exit", () => pending?.rej(new Error("engine exited")));
   const ready = new Promise<void>((res) => (onReady = res));
   p.stdin.write("uci\nsetoption name Hash value 16\nsetoption name Threads value 1\nisready\n");
-  const initTimer = new Promise<never>((_, rej) => setTimeout(() => rej(new Error("engine init timeout")), EVAL_TIMEOUT_MS).unref());
-  try { await Promise.race([ready, initTimer]); } catch (e) { p.kill(); throw e; }
+  let t: ReturnType<typeof setTimeout>;
+  const initTimeout = new Promise<never>((_, rej) => { t = setTimeout(() => rej(new Error("engine init timeout")), EVAL_TIMEOUT_MS); });
+  try { await Promise.race([ready, initTimeout]); } catch (e) { p.kill(); throw e; } finally { clearTimeout(t!); }
   return {
     eval(fen: string) {
       last = null;
