@@ -363,14 +363,21 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
     <div id="trajectoryEmpty" class="empty" style="display:none">No hay patrones longitudinales suficientemente estables registrados en tu historial.</div>
     <div id="trajectoryFindings"></div>
    </section>
-   <section id="profileTab" class="tab-panel" hidden>
+   <section id="profileTab" class="tab-panel prof" hidden>
     <h2 style="margin:0 0 4px 0">Tu perfil de ajedrez</h2>
-    <p class="muted" style="margin:0 0 12px 0">Calculado con Stockfish sobre tus partidas guardadas. Descriptivo: dice qué pasa, no qué hacer.</p>
-    <div class="card" id="profileCutCard"><h2>Corte del experimento</h2><div class="muted" style="margin-bottom:6px">Id de la última partida antes del experimento. Las cifras de calidad, momentos decisivos y ventaja se muestran antes y después.</div><input id="profileSinceInput" type="text" aria-label="Id de la partida de corte" style="width:100%;max-width:420px"><div style="margin-top:6px"><button class="btn btn-p" id="profileSinceApply" onclick="applyProfileSince()">Aplicar</button> <button class="btn btn-g" id="profileSinceClear" onclick="clearProfileSince()">Quitar</button></div><div class="muted" id="profileSinceNote" style="margin-top:6px"></div></div>
-    <div class="card" id="profileQualityCard"><h2>Calidad de juego</h2><div id="profileQuality"></div><div class="muted" id="profilePhases" style="margin-top:8px"></div><div class="muted" id="profileColors" style="margin-top:4px"></div><div class="muted" id="profileTrend" style="margin-top:8px"></div><div class="muted" id="profileCut" style="margin-top:8px"></div></div>
-    <div class="card" id="profileDecisiveCard"><h2>Momentos decisivos</h2><div id="profileDecisive"></div></div>
-    <div class="card" id="profileConversionCard"><h2>Ventaja y remontada</h2><div id="profileConversion"></div></div>
-    <div class="card" id="profileReviewCard"><h2>Qué partidas revisar</h2><div class="muted">Mínimo 20 jugadas tuyas. Pulsa una para abrirla en el visor.</div><h3 style="font-size:13px;margin:10px 0 4px">Peores por pérdida media</h3><div id="profileWorst"></div><h3 style="font-size:13px;margin:10px 0 4px">Mejores por pérdida media</h3><div id="profileBest"></div></div>
+    <p class="muted" id="profileContext" style="margin:0 0 4px 0">Calculado con Stockfish sobre tus partidas guardadas.</p>
+    <div class="kpis" id="profileKpis"></div>
+    <p id="profileVerdict" class="prof-verdict"></p>
+    <div class="card" id="profileCutCard"><h2>Antes y después de un corte</h2><div class="muted" style="margin-bottom:8px">Para un experimento: compara las partidas anteriores a una partida con las posteriores. Pega el id de la última partida de antes (lo ves en la URL del visor).</div><div class="filters"><input id="profileSinceInput" type="text" aria-label="Id de la partida de corte" placeholder="id de la partida de corte" style="width:100%;max-width:340px"><button class="btn btn-p" id="profileSinceApply" onclick="applyProfileSince()">Aplicar</button><button class="btn btn-g" id="profileSinceClear" onclick="clearProfileSince()">Quitar</button></div><div class="muted" id="profileSinceNote"></div><div id="profileCut"></div></div>
+    <div class="grid2">
+     <div class="card" id="profileQualityCard"><h2>Dónde cometes errores graves</h2><div class="muted" style="margin-bottom:8px">Por cada 100 jugadas tuyas. Menos es mejor.</div><div id="profilePhases"></div><h3 style="margin:12px 0 6px">Por color</h3><div id="profileColors"></div></div>
+     <div class="card" id="profileTrendCard"><h2>Cómo evoluciona</h2><div class="muted" style="margin-bottom:8px">Errores graves por 100 jugadas, en bloques de 50 partidas seguidas (de las más antiguas a las más recientes).</div><div id="profileTrend"></div></div>
+    </div>
+    <div class="grid2">
+     <div class="card" id="profileDecisiveCard"><h2>Cuándo se te escapan las derrotas</h2><div class="muted" style="margin-bottom:8px">Momento decisivo: la primera jugada tuya que convierte una posición jugable en una perdida.</div><div id="profileDecisive"></div></div>
+     <div class="card" id="profileConversionCard"><h2>Ventajas y remontadas</h2><div class="muted" style="margin-bottom:8px">Ventaja sostenida: el motor te daba más de 3 peones durante 3 jugadas seguidas.</div><div id="profileConversion"></div></div>
+    </div>
+    <div class="card" id="profileReviewCard"><h2>Qué partidas revisar</h2><div class="muted">Partidas con al menos 20 jugadas tuyas. Pulsa una para abrirla en el visor.</div><h3 style="margin:12px 0 4px">Las que más te costaron</h3><div id="profileWorst"></div><h3 style="margin:12px 0 4px">Las mejor jugadas</h3><div id="profileBest"></div></div>
     <div class="muted" id="profileNote" style="margin-top:8px"></div>
    </section>
 

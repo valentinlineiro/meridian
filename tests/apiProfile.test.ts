@@ -125,7 +125,7 @@ describe("player profile reads", () => {
     const { review } = await profile();
     expect(review.worst.map((r: any) => r.matchId)).toEqual(["bad", "mid", "good"]);
     expect(review.best.map((r: any) => r.matchId)).toEqual(["good", "mid", "bad"]);
-    expect(review.worst[0]).toEqual({ matchId: "bad", result: "win", moves: 20, serious: 10, acpl: 300, decisivePly: null });
+    expect(review.worst[0]).toEqual({ matchId: "bad", opponent: null, playedAt: 2, color: "white", result: "win", moves: 20, serious: 10, acpl: 300, decisivePly: null });
   });
 
   it("shouldFilterByUser", async () => {

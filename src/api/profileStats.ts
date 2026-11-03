@@ -16,7 +16,7 @@ const X = (path: string) => `CASE WHEN json_valid(md.engine_eval) THEN json_extr
 // version or contradictory figures are "unknown"). `serious` is the game's serious errors over the three phases.
 const CTE = (where: string) => `
   WITH x AS (
-    SELECT m.match_id, m.result, LOWER(TRIM(m.user_color)) AS color, LOWER(m.opponent_type) AS otype, m.played_at, COALESCE(m.played_at, 0) AS t, m.rowid AS rid,
+    SELECT m.match_id, m.result, LOWER(TRIM(m.user_color)) AS color, LOWER(m.opponent_type) AS otype, m.opponent_name AS oname, m.played_at, COALESCE(m.played_at, 0) AS t, m.rowid AS rid,
       md.engine_eval IS NULL AS is_null, COALESCE(json_valid(md.engine_eval), 0) AS valid,
       ${X("$.v")} AS v, ${X("$.status")} AS status, ${X("$.reason")} AS reason, ${X("$.moves")} AS moves, ${X("$.loss")} AS loss,
       ${X("$.byPhase.opening[0]")} AS o_m, ${X("$.byPhase.opening[1]")} AS o_s,
@@ -96,7 +96,7 @@ export async function handleStatsProfile(db: D1Database, url: URL): Promise<Resp
   }
 
   const reviewSql = (dir: "DESC" | "ASC") => `
-    SELECT match_id AS matchId, result, moves, serious, loss * 1.0 / moves AS acpl, dec AS decisivePly
+    SELECT match_id AS matchId, result, oname AS opponent, played_at AS playedAt, color, moves, serious, loss * 1.0 / moves AS acpl, dec AS decisivePly
     FROM c WHERE state = 'ok' AND moves >= ${REVIEW_MIN} ORDER BY acpl ${dir}, match_id ASC LIMIT ${REVIEW_SIZE}`;
   // Independent reads, issued together: D1 does the scanning, so waiting on them costs the Worker no CPU.
   const [counts, all, before, after, blockRows, worst, best] = await Promise.all([

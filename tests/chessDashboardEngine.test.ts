@@ -63,7 +63,7 @@ const sec = (o: any = {}) => ({
   conversion: { advantage: { games: 80, win: 62, draw: 6, loss: 12 }, disadvantage: { games: 20, win: 10, draw: 2, loss: 8 }, thrown: 12 },
   ...o,
 });
-const row = (id: string, acpl: number) => ({ matchId: id, result: "loss", moves: 30, serious: 6, acpl, decisivePly: 12 });
+const row = (id: string, acpl: number) => ({ matchId: id, result: "loss", opponent: "Stockfish Bot", playedAt: 1790000000, color: "white", moves: 30, serious: 6, acpl, decisivePly: 12 });
 const PROFILE = {
   analysed: 100, pending: 3, invalid: 1, unknownVersion: 2, bots: { games: 98, total: 100, share: 0.98 }, since: null,
   all: sec(), before: null, after: null,
@@ -77,37 +77,78 @@ const openProfile = async (profile: any = PROFILE, pre?: string) => {
   return o;
 };
 
+const html = (rt: any, sel: string): string => rt.getEl(sel).innerHTML;
+
 describe("profile tab", () => {
-  it("shouldRenderQualityWithDenominatorsAndPhaseRates", async () => {
+  it("shouldHeadlineFourPlainLanguageFiguresWithTheirDenominators", async () => {
     const { rt } = await openProfile();
-    expect(text(rt, "#profileQuality")).toBe("Errores graves: 9.7 por 100 jugadas (388 de 4000) · pérdida media 103 cp · 100 partidas analizadas");
-    expect(text(rt, "#profilePhases")).toBe("Apertura 8.5 (85 de 1000) · Medio juego 11.3 (271 de 2400) · Final 4.3 (26 de 600)");
-    expect(text(rt, "#profileColors")).toContain("Blancas 9.2 (184 de 2000) · Negras 10.2 (204 de 2000)");
+    const k = html(rt, "#profileKpis");
+    expect(k).toContain("<b>9.7</b><small>por 100 jugadas · 388 de 4000</small>");
+    expect(k).toContain("<b>1,0</b><small>peones por jugada · 103 cp</small>");
+    expect(k).toContain("<b>75%</b><small>30 de 40 derrotas</small>");
+    expect(k).toContain("<b>78%</b><small>62 de 80 · 12 perdidas</small>");
   });
 
-  it("shouldRenderTheTrendByBlocksAndMarkThePartialOne", async () => {
+  it("shouldNameTheWorstPhaseInAFixedRuleSentence", async () => {
     const { rt } = await openProfile();
-    expect(text(rt, "#profileTrend")).toBe("Por bloques de 50 partidas: 10.0 → 9.4 (último bloque incompleto, 50 partidas)");
+    expect(text(rt, "#profileVerdict")).toBe("Donde más errores graves cometes es el medio juego (11.3 por 100 jugadas, 2.6 veces más que en final). En 75% de tus derrotas hay un momento decisivo, normalmente hacia tu jugada 10.".replace("2.6", "2,6"));
   });
 
-  it("shouldRenderDecisiveMomentsShares", async () => {
+  it("shouldDrawPhaseAndColourBarsWithRateAndCount", async () => {
     const { rt } = await openProfile();
-    expect(text(rt, "#profileDecisive")).toBe("Derrotas con momento decisivo: 30 de 40 · jugada mediana 10 · Apertura 15 (50%) · Medio juego 14 (47%) · Final 1 (3%)");
+    expect(html(rt, "#profilePhases")).toContain("Medio juego</span>");
+    expect(html(rt, "#profilePhases")).toContain("271 de 2400");
+    expect(html(rt, "#profileColors")).toContain("184 de 2000");
+    expect(html(rt, "#profileColors")).toContain("204 de 2000");
   });
 
-  it("shouldRenderConversionWithDrawsApart", async () => {
+  it("shouldDrawTheTrendByBlocksAndMarkThePartialOne", async () => {
     const { rt } = await openProfile();
-    const html = rt.getEl("#profileConversion").innerHTML;
-    expect(html).toContain("Con ventaja sostenida (+300): 80 partidas · ganadas 78% (62) · tablas 8% · perdidas 15% (12)");
-    expect(html).toContain("Con desventaja sostenida (−300): 20 partidas · ganadas 50% (10)");
+    const t = html(rt, "#profileTrend");
+    expect(t).toContain('title="Partidas 1–50: 10.0"');
+    expect(t).toContain('title="Partidas 51–100: 9.4 (bloque incompleto)"');
+    expect(t).toContain("Primeras partidas · 10.0");
+    expect(t).toContain("Últimas · 9.4 (incompleto)");
   });
 
-  it("shouldRenderBeforeAndAfterWhenSinceIsSet", async () => {
-    const withCut = { ...PROFILE, since: { matchId: "cut", playedAt: 5 }, before: sec({ games: 60, moves: 2400, serious: 240, ratePer100: 10 }), after: sec({ games: 40, moves: 1600, serious: 100, ratePer100: 6.25 }) };
+  it("shouldExplainWhenThereAreNotEnoughBlocksForATrend", async () => {
+    const { rt } = await openProfile({ ...PROFILE, blocks: [PROFILE.blocks[0]] });
+    expect(html(rt, "#profileTrend")).toContain("al menos dos bloques");
+  });
+
+  it("shouldRenderDecisiveMomentsSharesByPhase", async () => {
+    const { rt } = await openProfile();
+    const d = html(rt, "#profileDecisive");
+    expect(d).toContain("<b>30 de 40</b> derrotas tienen un momento decisivo");
+    expect(d).toContain("antes de tu jugada 10");
+    expect(d).toContain("50%");
+    expect(d).toContain("47%");
+  });
+
+  it("shouldRenderConversionWithDrawsApartAndNoUnexplainedThreshold", async () => {
+    const { rt } = await openProfile();
+    const c = html(rt, "#profileConversion");
+    expect(c).toContain("Con ventaja de más de 3 peones");
+    expect(c).toContain("Ganadas 78% (62)");
+    expect(c).toContain("Tablas 6");
+    expect(c).toContain("Con desventaja de más de 3 peones");
+  });
+
+  it("shouldCompareBeforeAndAfterTheCutAndWarnWhenTheSampleIsSmall", async () => {
+    const withCut = { ...PROFILE, since: { matchId: "cut", playedAt: 5 }, before: sec({ games: 60, moves: 2400, serious: 240, ratePer100: 10 }), after: sec({ games: 23, moves: 1600, serious: 100, ratePer100: 6.25 }) };
     const { rt, requests } = await openProfile(withCut, "cut");
     expect(requests.some((u) => u === "/api/stats/profile?since=cut")).toBe(true);
-    expect(text(rt, "#profileCut")).toContain("Antes del corte: 60 partidas · 10.0 por 100 jugadas (240 de 2400)");
-    expect(text(rt, "#profileCut")).toContain("Después: 40 partidas · 6.3 por 100 jugadas (100 de 1600)");
+    const c = html(rt, "#profileCut");
+    expect(c).toContain("<b>10.0</b><b>6.3</b>");
+    expect(c).toContain("pill-win\">−3.8");
+    expect(c).toContain("Solo 23 partidas después del corte");
+  });
+
+  it("shouldNotWarnOnceThereAreFiftyGamesAfterTheCut", async () => {
+    const withCut = { ...PROFILE, since: { matchId: "cut", playedAt: 5 }, before: sec({ games: 60 }), after: sec({ games: 50, ratePer100: 12 }) };
+    const { rt } = await openProfile(withCut, "cut");
+    expect(html(rt, "#profileCut")).not.toContain("Solo ");
+    expect(html(rt, "#profileCut")).toContain("pill-loss\">+2.3");
   });
 
   it("shouldRememberTheCutAndSurviveLocalStorageBeingUnavailable", async () => {
@@ -119,7 +160,7 @@ describe("profile tab", () => {
     expect(requests.at(-1)).toBe("/api/stats/profile");
     await call("Object.defineProperty(window.localStorage, 'getItem', { value(){ throw new Error('blocked'); } })").catch(() => {});
     await call("fetchProfile()");
-    expect(text(rt, "#profileQuality")).toContain("Errores graves");
+    expect(html(rt, "#profileKpis")).toContain("Errores graves");
   });
 
   it("shouldExplainAnUnknownCutInsteadOfSilentlyShowingEverything", async () => {
@@ -127,38 +168,38 @@ describe("profile tab", () => {
     expect(text(rt, "#profileSinceNote")).toBe("No encontré esa partida con fecha: se muestra todo sin dividir.");
   });
 
-  it("shouldSayWhatIsLeftOutOfTheFiguresAndThatMostGamesAreAgainstBots", async () => {
+  it("shouldSayUpFrontThatMostGamesAreAgainstBotsAndWhatIsLeftOut", async () => {
     const { rt } = await openProfile();
+    expect(text(rt, "#profileContext")).toContain("98% contra bots");
     const note = text(rt, "#profileNote");
     expect(note).toContain("3 partidas sin analizar");
     expect(note).toContain("1 no se pudieron evaluar");
     expect(note).toContain("2 con un formato que este panel no entiende");
-    expect(note).toContain("El 98% de las partidas son contra bots");
     expect(note).toContain("sin intervalo");
   });
 
   it("shouldShowNothingMisleadingWhenNothingIsAnalysedYet", async () => {
     const { rt } = await openProfile({ ...PROFILE, analysed: 0, pending: 1648, all: sec({ games: 0, moves: 0, serious: 0, ratePer100: null, acpl: null }), blocks: [], review: { worst: [], best: [] } });
-    expect(text(rt, "#profileQuality")).toBe("Todavía no hay partidas analizadas");
+    expect(html(rt, "#profileKpis")).toContain("Todavía no hay partidas analizadas");
     expect(text(rt, "#profileNote")).toContain("1648 partidas sin analizar");
   });
 
-  it("shouldOpenTheViewerFromAReviewRow", async () => {
+  it("shouldIdentifyReviewGamesByOpponentDateAndWhatWentWrongNotByHash", async () => {
     const { rt, requests, call } = await openProfile();
-    expect(rt.getEl("#profileWorst").innerHTML).toContain("aaaaaaaa");
-    expect(rt.getEl("#profileWorst").innerHTML).toContain("pérdida media 395 cp · 6 graves en 30 · decisivo en la jugada 12");
+    const w = html(rt, "#profileWorst");
+    expect(w).toContain("<b>Stockfish Bot</b>");
+    expect(w).toContain("pill-loss");
+    expect(w).toContain("Se torció en tu jugada 6. 6 errores graves en 30 jugadas · pierdes de media 4,0 peones por jugada");
+    expect(w).toContain('data-g="bot|111|aaaaaaaa"');
     await call("openGame('bot|111|aaaaaaaa')");
     expect(requests.some((u) => u.includes("/api/me/matches/") && u.includes("aaaaaaaa"))).toBe(true);
   });
 
   it("shouldShowAnErrorLineWhenTheProfileCannotBeLoaded", async () => {
-    const requests: string[] = [];
-    const rt = createDashboardRuntime("/chess", undefined, async (url: string) => {
-      requests.push(url);
-      return url.startsWith("/api/stats/profile") ? { ok: false, status: 500, json: async () => ({}) } : { ok: true, status: 200, json: async () => emptyAccountPayload(url) };
-    });
+    const rt = createDashboardRuntime("/chess", undefined, async (url: string) =>
+      url.startsWith("/api/stats/profile") ? { ok: false, status: 500, json: async () => ({}) } : { ok: true, status: 200, json: async () => emptyAccountPayload(url) });
     await settle();
     vm.runInContext("showTab('profile')", rt.sandbox); await settle();
-    expect(text(rt, "#profileQuality")).toBe("No se pudo cargar el perfil");
+    expect(html(rt, "#profileKpis")).toContain("No se pudo cargar el perfil");
   });
 });
