@@ -46,6 +46,13 @@ app.use("*", async (c, next) => {
   await next();
 });
 
+// Every API response is private or machine-facing: never cached, never sniffed. (Set after the handler so every route and error path gets it.)
+app.use("/api/*", async (c, next) => {
+  await next();
+  c.header("Cache-Control", "no-store");
+  c.header("X-Content-Type-Options", "nosniff");
+});
+
 // ── Access policy: ONE place decides who may call what; anything not listed is closed. ──
 //   GET|HEAD /login, POST /login                -> public (the login itself; POST is same-origin + throttled)
 //   write (not GET/HEAD)                        -> IMPORT_TOKEN (machine)        [except identity writes below]
