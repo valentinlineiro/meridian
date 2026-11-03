@@ -115,4 +115,34 @@ describe("games entry modal", () => {
     expect(select.match(/<option value="/g)).toHaveLength(6);
     expect(select).not.toMatch(/pinpoint|crossclimb/i);
   });
+
+  describe("focus trap", () => {
+    const trap = (active: number | null, shiftKey: boolean) => {
+      const { rt } = setup(ok({}));
+      const focused: number[] = [];
+      const els = [0, 1, 2].map((n) => ({ offsetParent: {}, focus: () => focused.push(n) }));
+      rt.sandbox.document.querySelectorAll = () => els;
+      rt.sandbox.document.activeElement = active === null ? {} : els[active];
+      let prevented = false;
+      rt.sandbox.trapGamesFocus({ shiftKey, preventDefault: () => { prevented = true; } });
+      return { focused, prevented };
+    };
+
+    it("shouldWrapToTheFirstControlWhenTabbingFromTheLast", () => {
+      expect(trap(2, false)).toEqual({ focused: [0], prevented: true });
+    });
+
+    it("shouldWrapToTheLastControlWhenShiftTabbingFromTheFirst", () => {
+      expect(trap(0, true)).toEqual({ focused: [2], prevented: true });
+    });
+
+    it("shouldMoveToTheNextControlWhenTabbingInTheMiddle", () => {
+      expect(trap(0, false).focused).toEqual([1]);
+    });
+
+    it("shouldEnterTheDialogWhenFocusIsOutsideIt", () => {
+      expect(trap(null, false).focused).toEqual([0]);
+      expect(trap(null, true).focused).toEqual([2]);
+    });
+  });
 });

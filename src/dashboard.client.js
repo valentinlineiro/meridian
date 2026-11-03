@@ -1225,7 +1225,7 @@ window.addEventListener('click',e=>{
  if(e.target.id==='lgModal') closeGamesEntry();
 });
 window.addEventListener('keydown',e=>{
- if(q('#lgModal').style.display==='flex'){ if(e.key==='Escape') closeGamesEntry(); return; }
+ if(q('#lgModal').style.display==='flex'){ if(e.key==='Escape') closeGamesEntry(); else if(e.key==='Tab') trapGamesFocus(e); return; }
  if(q('#gameModal').style.display==='flex'){ if(e.key==='Tab'){ const f=[...document.querySelectorAll('#gameModal button:not([disabled]),#gameModal a[href]:not(.gm)')].filter(x=>x.offsetParent!==null); if(f.length){ const i=f.indexOf(document.activeElement); const n=e.shiftKey?(i<=0?f.length-1:i-1):(i===f.length-1?0:i+1); e.preventDefault(); f[n].focus(); } } else if(e.key==='ArrowLeft'){ e.preventDefault(); gameStep(-1); } else if(e.key==='ArrowRight'){ e.preventDefault(); gameStep(1); } else if(e.key==='Escape') closeGame(); return; }
  const row=document.activeElement&&document.activeElement.classList&&document.activeElement.classList.contains('gamerow')?document.activeElement:null;
  if(row&&e.key==='Enter') openGame(row.getAttribute('data-m'));
@@ -1616,6 +1616,13 @@ function openGamesEntry(game){
  if(!q('#lgDate').value) q('#lgDate').value=localToday();
  q('#lgModal').style.display='flex'; q('#lgStatus').textContent='';
  loadGamesDay(); if(q('#lgScore').focus) q('#lgScore').focus();
+}
+// Tab and Shift+Tab cycle inside the open dialog (same behaviour as the game viewer).
+function trapGamesFocus(e){
+ const f=[...document.querySelectorAll('#lgModal button:not([disabled]),#lgModal select,#lgModal input')].filter(x=>x.offsetParent!==null);
+ if(!f.length) return;
+ const i=f.indexOf(document.activeElement), n=e.shiftKey?(i<=0?f.length-1:i-1):(i===f.length-1?0:i+1);
+ e.preventDefault(); f[n].focus();
 }
 function closeGamesEntry(){ q('#lgModal').style.display='none'; if(gamesOpener&&gamesOpener.focus) gamesOpener.focus(); gamesOpener=null; }
 function paintGamesDay(day){
