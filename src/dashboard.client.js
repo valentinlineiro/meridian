@@ -61,6 +61,8 @@ const req=async(u,o)=>{
  finally{ clearTimeout(t); }
 };
 const j=async u=>{ const r=await req(u); if(!r.ok) throw new Error('http '+r.status); return r.data; };
+const PROFILE_CUT_KEY='profile_since';
+let profileSeq=0; // both declared before initTab(): opening the page on /profile calls fetchProfile during the first render
 let trajectorySeq=0; // same reason: the first tab render may already call fetchTrajectory
 let trajectoryEmptyCopy=null; // declared before initTab(): the first tab render may already call fetchTrajectory
 let selectedCourseId=null, lastLangsData=null, lastAnalyticsData=null, lastLangXpData=null, lastActiveDetail=null, activeChangesInterval=null, changesAnchor=null, changesShownUntil=null;
@@ -1455,8 +1457,6 @@ function trajectoryCopy(f){
  return null;
 }
 // ── Profile tab: the engine summaries, with the experiment cut kept in this browser only (no server setting). ──
-const PROFILE_CUT_KEY='profile_since';
-let profileSeq=0;
 function profileCut(){ try{ return localStorage.getItem(PROFILE_CUT_KEY)||''; }catch(e){ return ''; } }
 function applyProfileSince(){ const v=q('#profileSinceInput').value.trim(); try{ if(v) localStorage.setItem(PROFILE_CUT_KEY,v); else localStorage.removeItem(PROFILE_CUT_KEY); }catch(e){} fetchProfile(); }
 function clearProfileSince(){ q('#profileSinceInput').value=''; try{ localStorage.removeItem(PROFILE_CUT_KEY); }catch(e){} fetchProfile(); }

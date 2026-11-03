@@ -205,6 +205,12 @@ describe("profile tab", () => {
     expect(html(rt, "#profileKpis")).toContain("Todavía no hay partidas analizadas");
   });
 
+  it("shouldLoadTheProfileWhenThePageIsOpenedDirectlyOnIt", async () => {
+    const rt = createDashboardRuntime("/profile", undefined, async (url: string) => ({ ok: true, status: 200, json: async () => (url.startsWith("/api/stats/profile") ? PROFILE : emptyAccountPayload(url)) }));
+    await settle();
+    expect(html(rt, "#profileKpis")).toContain("9.7");
+  });
+
   it("shouldShowAnErrorLineWhenTheProfileCannotBeLoaded", async () => {
     const rt = createDashboardRuntime("/chess", undefined, async (url: string) =>
       url.startsWith("/api/stats/profile") ? { ok: false, status: 500, json: async () => ({}) } : { ok: true, status: 200, json: async () => emptyAccountPayload(url) });
