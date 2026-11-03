@@ -148,7 +148,7 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
   <section class="kpis" id="kpis"></section>
  <div class="card" id="formCard" style="margin-top:12px"><h2>Forma actual</h2>
   <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:10px"><span class="muted">Últimas</span>
-   <button class="btn" id="b20" onclick="setRecent(20)">20</button><button class="btn" id="b50" onclick="setRecent(50)">50</button><button class="btn" id="b100" onclick="setRecent(100)">100</button>
+   <button class="btn btn-g" id="b20" onclick="setRecent(20)">20</button><button class="btn btn-g" id="b50" onclick="setRecent(50)">50</button><button class="btn btn-g" id="b100" onclick="setRecent(100)">100</button>
    <span class="muted" id="formMeta" style="margin-left:6px"></span></div>
   <div id="form"></div>
   <div class="muted" id="streak" style="margin-top:10px"></div></div>
@@ -180,9 +180,9 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
  <div class="card" style="margin-top:14px" id="allMatchesCard">
   <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px"><h2>Partidas</h2><span class="muted" style="font-size:12px" id="chessMatchesSubtitle">Partidas recientes</span></div>
   <div class="filters" id="matchChips">
-   <button class="btn btn-p" data-chip="type:" onclick="setChip('type','')">Todos</button><button class="btn btn-g" data-chip="type:bot" onclick="setChip('type','bot')">Bots</button><button class="btn btn-g" data-chip="type:pvp" onclick="setChip('type','pvp')">PvP</button>
-   <button class="btn btn-p" data-chip="result:" onclick="setChip('result','')">Todos</button><button class="btn btn-g" data-chip="result:win" onclick="setChip('result','win')">Victorias</button><button class="btn btn-g" data-chip="result:loss" onclick="setChip('result','loss')">Derrotas</button><button class="btn btn-g" data-chip="result:draw" onclick="setChip('result','draw')">Tablas</button>
-   <button class="btn btn-p" data-chip="color:" onclick="setChip('color','')">Todos</button><button class="btn btn-g" data-chip="color:white" onclick="setChip('color','white')">Blancas</button><button class="btn btn-g" data-chip="color:black" onclick="setChip('color','black')">Negras</button>
+   <div class="fgroup" role="group" aria-label="Rival"><span class="flabel">Rival</span><button class="btn btn-p" data-chip="type:" onclick="setChip('type','')">Todos</button><button class="btn btn-g" data-chip="type:bot" onclick="setChip('type','bot')">Bots</button><button class="btn btn-g" data-chip="type:pvp" onclick="setChip('type','pvp')">PvP</button></div>
+   <div class="fgroup" role="group" aria-label="Resultado"><span class="flabel">Resultado</span><button class="btn btn-p" data-chip="result:" onclick="setChip('result','')">Todos</button><button class="btn btn-g" data-chip="result:win" onclick="setChip('result','win')">Victorias</button><button class="btn btn-g" data-chip="result:loss" onclick="setChip('result','loss')">Derrotas</button><button class="btn btn-g" data-chip="result:draw" onclick="setChip('result','draw')">Tablas</button></div>
+   <div class="fgroup" role="group" aria-label="Color"><span class="flabel">Color</span><button class="btn btn-p" data-chip="color:" onclick="setChip('color','')">Todos</button><button class="btn btn-g" data-chip="color:white" onclick="setChip('color','white')">Blancas</button><button class="btn btn-g" data-chip="color:black" onclick="setChip('color','black')">Negras</button></div>
   </div>
   <div class="filters" id="matchFilters" style="display:none">
    <input id="q" placeholder="Buscar rival" oninput="onSearch()">
