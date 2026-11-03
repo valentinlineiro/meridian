@@ -293,3 +293,68 @@ describe("games page markup", () => {
     expect(DASHBOARD_HTML).not.toMatch(/Todos \(agregado\)/);
   });
 });
+
+describe("games trajectory data table", () => {
+  const dataRows = (rt: any) => rt.getEl("#gamesDataRows").children.map((tr: any) => tr.children.map((c: any) => c.textContent));
+
+  it("shouldListOneRowPerBucketWithPeriodEfficiencyBeatRateAndN", async () => {
+    const { rt } = setup(ok({ zip: game() }));
+    await rt.sandbox.fetchGames();
+    expect(dataRows(rt)).toEqual([
+      ["2026-10-30", "×1,2", "100 %", "1"],
+      ["2026-10-31", "—", "—", "0"], // the gap stays a row, with n = 0
+      ["2026-11-01", "×1,1", "50 %", "2"],
+    ]);
+  });
+
+  it("shouldCarryTheSameValuesAsTheDrawnSeries", async () => {
+    const t = [{ start: "2026-10-20", n: 3, eff: 1.234, beat: 2 / 3 }, { start: "2026-10-21", n: 0, eff: null, beat: null }, { start: "2026-10-22", n: 5, eff: 2.5, beat: 0.8 }];
+    const { rt } = setup(ok({ zip: game({ trajectory: { "7": t, "28": t, "90": t, all: t } }) }));
+    await rt.sandbox.fetchGames();
+    const svg = rt.getEl("#gamesChart").innerHTML, rows = dataRows(rt);
+    t.forEach((b, i) => {
+      const [, eff, beat, n] = rows[i]!;
+      expect(n).toBe(String(b.n));
+      if (b.n === 0) {
+        expect([eff, beat]).toEqual(["—", "—"]);
+        expect(svg).not.toContain(b.start + " ·"); // no point and no bar for a bucket the table lists as empty
+      } else {
+        expect(svg).toContain(`${b.start} · n=${b.n} · ${eff}`); // tooltip of the efficiency point
+        expect(svg).toContain(`${b.start} · n=${b.n} · ${beat}`); // tooltip of the beat-rate point
+      }
+    });
+    expect(rows.map((r: string[]) => r[0])).toEqual(t.map((b) => b.start));
+  });
+
+  it("shouldLabelWeeklyBucketsAsWeeksAndFollowThePeriodAndTheGame", async () => {
+    const wk = [{ start: "2026-10-26", n: 4, eff: 2, beat: 0.75 }];
+    const { rt } = setup(ok({ zip: game({ n: 170 }), tango: game({ trajectory: { "7": traj, "28": traj, "90": wk, all: wk } }) }));
+    await rt.sandbox.fetchGames();
+    rt.sandbox.setGamesTrajGame("tango");
+    rt.sandbox.setGamesRange("90");
+    expect(dataRows(rt)).toEqual([["Semana del 2026-10-26", "×2", "75 %", "4"]]);
+    expect(rt.getEl("#gamesDataCaption").textContent).toBe("Datos de la trayectoria de Tango, 90 días: un valor por semana.");
+    rt.sandbox.setGamesRange("7");
+    expect(rt.getEl("#gamesDataCaption").textContent).toMatch(/un valor por día\.$/);
+    expect(dataRows(rt)).toHaveLength(3);
+  });
+
+  it("shouldClearTheTableWhenThereIsNoData", async () => {
+    const { rt } = setup(ok({ zip: game() }));
+    await rt.sandbox.fetchGames();
+    expect(dataRows(rt)).toHaveLength(3);
+    rt.sandbox.paintGames({ days: 0, from: null, to: null, playStreak: { current: 0, max: 0 }, games: {} }, null);
+    expect(dataRows(rt)).toHaveLength(0);
+  });
+
+  it("shouldOfferTheTableInsideADetailsWithAccessibleStructureAndPointTheChartToIt", async () => {
+    const { DASHBOARD_HTML } = await import("../src/frontend.ts");
+    const block = DASHBOARD_HTML.match(/<details class="gdata"[\s\S]*?<\/details>/)![0];
+    expect(block).toContain("<summary>Ver los datos del gráfico (tabla)</summary>");
+    expect(block).toContain('<caption id="gamesDataCaption" class="sr-only">');
+    expect(block).toContain('aria-describedby="gamesDataCaption"');
+    expect((block.match(/<th scope="col">/g) ?? []).length).toBe(4);
+    expect(DASHBOARD_HTML).toContain("Los mismos datos están en la tabla siguiente.");
+  });
+});
+

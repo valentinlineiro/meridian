@@ -1631,7 +1631,7 @@ function gamesChartSvg(b){
  };
  const bars=b.map((p,i)=>p.n?'<rect x="'+f(x(i)-1.5)+'" y="'+f(178-p.n/maxN*22)+'" width="3" height="'+f(p.n/maxN*22)+'" fill="#6e7a8e"><title>'+esc(p.start)+' · n='+p.n+'</title></rect>':'').join('');
  const g='stroke="#1e2e44" stroke-width="1"', t='fill="#8ea0b8" font-size="8"';
- return '<svg class="gchart" viewBox="0 0 '+W+' 196" role="img" aria-label="Evolución de la eficiencia y del porcentaje que gana a la media, con el n de cada punto">'
+ return '<svg class="gchart" viewBox="0 0 '+W+' 196" role="img" aria-label="Evolución de la eficiencia y del porcentaje que gana a la media, con el n de cada punto. Los mismos datos están en la tabla siguiente.">'
   +'<line x1="'+L+'" x2="'+(W-R)+'" y1="'+f(ya(1))+'" y2="'+f(ya(1))+'" '+g+' stroke-dasharray="3 3"/><text x="2" y="'+f(ya(hi)+3)+'" '+t+'>×'+hi.toFixed(1)+'</text><text x="2" y="'+f(ya(lo)+3)+'" '+t+'>×'+lo.toFixed(1)+'</text><text x="2" y="'+f(ya(1)+3)+'" '+t+'>×1</text>'
   +series('eff',ya,'#7aa7e6',v=>'×'+gnum(v,2))
   +'<line x1="'+L+'" x2="'+(W-R)+'" y1="'+f(yb(.5))+'" y2="'+f(yb(.5))+'" '+g+' stroke-dasharray="3 3"/><text x="2" y="98" '+t+'>100 %</text><text x="2" y="143" '+t+'>0 %</text>'
@@ -1647,6 +1647,14 @@ function renderGamesChart(){
  sel.textContent=''; keys.forEach(k=>{ const o=document.createElement('option'); o.value=k; o.textContent=GAME_NAMES[k]||k; sel.appendChild(o); }); sel.value=gamesTrajGame;
  const b=gamesData.games[gamesTrajGame].trajectory[gamesRange], weekly=gamesRange==='90'||gamesRange==='all';
  q('#gamesChart').innerHTML=gamesChartSvg(b)||'<div class="muted">Sin observaciones con media en este periodo.</div>';
+ // The same buckets as a table: the chart's values for keyboard and screen-reader users (one row per bucket, gaps included).
+ const rows=q('#gamesDataRows'); rows.textContent='';
+ q('#gamesDataCaption').textContent='Datos de la trayectoria de '+(GAME_NAMES[gamesTrajGame]||gamesTrajGame)+', '+RANGE_NAMES[gamesRange]+': un valor por '+(weekly?'semana':'día')+'.';
+ b.forEach(p=>{
+  const tr=document.createElement('tr'), th=document.createElement('th'); th.setAttribute('scope','row'); th.textContent=(weekly?'Semana del ':'')+p.start; tr.appendChild(th);
+  [p.eff==null?'—':'×'+gnum(p.eff,2), p.beat==null?'—':gpct(p.beat), String(p.n)].forEach(t=>{ const td=document.createElement('td'); td.className='num'; td.textContent=t; tr.appendChild(td); });
+  rows.appendChild(tr);
+ });
  q('#gamesChartNote').textContent='Periodo: '+RANGE_NAMES[gamesRange]+'. Un punto por '+(weekly?'semana (lunes)':'día')+', valor sin suavizar. Azul: mediana de eficiencia (la línea de puntos es ×1, la media global). Verde: % que gana a la media. Barras: n por '+(weekly?'semana':'día')+'; un hueco es un periodo sin observaciones.';
 }
 function renderGamesCards(){
@@ -1680,7 +1688,7 @@ function paintGames(s,day){
  const done=new Set(Object.keys((day&&day.games)||{}));
  const chips=q('#gamesToday'); chips.textContent='';
  Object.keys(GAME_NAMES).forEach(k=>{ const b=document.createElement('button'); b.type='button'; b.className='pill '+(done.has(k)?'pill-win':'pill-scope'); b.textContent=(done.has(k)?'✓ ':'')+GAME_NAMES[k]; b.setAttribute('data-game',k); b.onclick=()=>openGamesEntry(k); chips.appendChild(b); });
- if(!keys.length){ q('#gamesHeroStreak').textContent='—'; q('#gamesHeroMeta').textContent='Aún no hay datos.'; q('#gamesHeroDays').textContent='—'; q('#gamesHeroWrLabel').textContent=''; q('#gamesHeroDistMeta').textContent='—'; q('#gamesHead').textContent=''; q('#gamesRows').textContent=''; q('#gamesChart').textContent=''; q('#gamesChartNote').textContent=''; q('#gamesList').textContent=''; return; }
+ if(!keys.length){ q('#gamesHeroStreak').textContent='—'; q('#gamesHeroMeta').textContent='Aún no hay datos.'; q('#gamesHeroDays').textContent='—'; q('#gamesHeroWrLabel').textContent=''; q('#gamesHeroDistMeta').textContent='—'; q('#gamesHead').textContent=''; q('#gamesRows').textContent=''; q('#gamesChart').textContent=''; q('#gamesChartNote').textContent=''; q('#gamesDataRows').textContent=''; q('#gamesList').textContent=''; return; }
  q('#gamesHeroStreak').textContent=gdays(s.playStreak.current)+' seguidos';
  q('#gamesHeroMeta').textContent='Racha máxima '+gdays(s.playStreak.max);
  q('#gamesHeroDays').textContent=gdays(s.days)+' registrados · '+s.from+' → '+s.to;

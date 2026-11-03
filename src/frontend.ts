@@ -432,6 +432,9 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
      <label class="muted" for="gamesTrajGame">Juego</label> <select id="gamesTrajGame" onchange="setGamesTrajGame(this.value)"></select>
      <div id="gamesChart" class="card"></div>
      <p class="muted" id="gamesChartNote"></p>
+     <details class="gdata" id="gamesDataDetails"><summary>Ver los datos del gráfico (tabla)</summary>
+      <div class="tblwrap"><table class="gtable" id="gamesDataTable" aria-describedby="gamesDataCaption"><caption id="gamesDataCaption" class="sr-only"></caption><thead><tr><th scope="col">Periodo</th><th scope="col">Eficiencia (mediana)</th><th scope="col">Gana a la media</th><th scope="col">n</th></tr></thead><tbody id="gamesDataRows"></tbody></table></div>
+     </details>
     </details>
     <details class="cgroup" id="cg-games" open><summary>Por juego</summary><div id="gamesList" class="grid2"></div></details>
    </section>
