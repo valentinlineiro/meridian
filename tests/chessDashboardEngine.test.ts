@@ -91,7 +91,7 @@ describe("profile tab", () => {
 
   it("shouldNameTheWorstPhaseInAFixedRuleSentence", async () => {
     const { rt } = await openProfile();
-    expect(text(rt, "#profileVerdict")).toBe("Donde más errores graves cometes es el medio juego (11.3 por 100 jugadas, 2.6 veces más que en final). En 75% de tus derrotas hay un momento decisivo, normalmente hacia tu jugada 10.".replace("2.6", "2,6"));
+    expect(text(rt, "#profileVerdict")).toBe("Mayor tasa observada de errores graves: medio juego (11.3 por 100 jugadas; final: 4.3). Hay un momento decisivo en 75% de tus derrotas (30 de 40), con mediana en tu jugada 10.");
   });
 
   it("shouldDrawPhaseAndColourBarsWithRateAndCount", async () => {
@@ -105,8 +105,8 @@ describe("profile tab", () => {
   it("shouldDrawTheTrendByBlocksAndMarkThePartialOne", async () => {
     const { rt } = await openProfile();
     const t = html(rt, "#profileTrend");
-    expect(t).toContain('title="Partidas 1–50: 10.0"');
-    expect(t).toContain('title="Partidas 51–100: 9.4 (bloque incompleto)"');
+    expect(t).toContain('title="Partidas 1–50: 10.0 por 100 jugadas (200 de 2000 jugadas)"');
+    expect(t).toContain('title="Partidas 51–100: 9.4 por 100 jugadas (188 de 2000 jugadas) · bloque incompleto"');
     expect(t).toContain("Primeras partidas · 10.0");
     expect(t).toContain("Últimas · 9.4 (incompleto)");
   });
@@ -189,10 +189,20 @@ describe("profile tab", () => {
     const w = html(rt, "#profileWorst");
     expect(w).toContain("<b>Stockfish Bot</b>");
     expect(w).toContain("pill-loss");
-    expect(w).toContain("Se torció en tu jugada 6. 6 errores graves en 30 jugadas · pierdes de media 4,0 peones por jugada");
+    expect(w).toContain("Se torció en tu jugada 6. 6 errores graves en 30 jugadas · pérdida media de evaluación: 4,0 peones por jugada");
     expect(w).toContain('data-g="bot|111|aaaaaaaa"');
     await call("openGame('bot|111|aaaaaaaa')");
     expect(requests.some((u) => u.includes("/api/me/matches/") && u.includes("aaaaaaaa"))).toBe(true);
+  });
+
+  it("shouldLeaveNothingOfThePreviousProfileWhenTheNextOneIsEmpty", async () => {
+    const withCut = { ...PROFILE, since: { matchId: "cut", playedAt: 5 }, before: sec(), after: sec() };
+    const { rt, call } = await openProfile(withCut, "cut");
+    expect(html(rt, "#profileWorst")).not.toBe("");
+    const empty = { ...PROFILE, analysed: 0, pending: 5, all: sec({ games: 0, moves: 0, serious: 0, ratePer100: null, acpl: null }), blocks: [], review: { worst: [], best: [] }, before: null, after: null };
+    await call(`window.__p = ${JSON.stringify(empty)}; paintProfile(window.__p)`);
+    for (const id of ["#profileVerdict", "#profilePhases", "#profileColors", "#profileTrend", "#profileCut", "#profileDecisive", "#profileConversion", "#profileWorst", "#profileBest"]) expect(html(rt, id)).toBe("");
+    expect(html(rt, "#profileKpis")).toContain("Todavía no hay partidas analizadas");
   });
 
   it("shouldShowAnErrorLineWhenTheProfileCannotBeLoaded", async () => {

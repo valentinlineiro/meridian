@@ -87,12 +87,13 @@ export async function handleStatsProfile(db: D1Database, url: URL): Promise<Resp
     return section(rows[0] ?? {}, dec.map((d) => d.mv));
   };
 
-  // The cut belongs to "before": games played after that game are "after". An unknown or undated cut is reported as null, never as an error.
+  // The cut belongs to "before". Games are totally ordered by (played_at, rowid) — the same order as the trend blocks — so games sharing the cut's timestamp fall on the side their position says; undated games are in neither side. An unknown or undated cut is reported as null, never as an error.
   let since: { matchId: string; playedAt: number } | null = null;
+  let cutRid = 0;
   if (sinceId) {
-    const cut = await db.prepare(`SELECT match_id, played_at FROM matches WHERE match_id = ? AND played_at IS NOT NULL${userId ? " AND user_id = ?" : ""}`)
-      .bind(sinceId, ...base).first<{ match_id: string; played_at: number }>();
-    if (cut) since = { matchId: cut.match_id, playedAt: cut.played_at };
+    const cut = await db.prepare(`SELECT match_id, played_at, rowid AS rid FROM matches WHERE match_id = ? AND played_at IS NOT NULL${userId ? " AND user_id = ?" : ""}`)
+      .bind(sinceId, ...base).first<{ match_id: string; played_at: number; rid: number }>();
+    if (cut) { since = { matchId: cut.match_id, playedAt: cut.played_at }; cutRid = cut.rid; }
   }
 
   const reviewSql = (dir: "DESC" | "ASC") => `
@@ -103,8 +104,8 @@ export async function handleStatsProfile(db: D1Database, url: URL): Promise<Resp
     run<Record<string, unknown>>(`SELECT COUNT(*) AS total, SUM(state = 'ok') AS ok, SUM(state = 'pending') AS pending, SUM(state = 'invalid') AS invalid,
       SUM(state = 'unknown') AS unknown_v, SUM(otype = 'bot') AS bots FROM c`).then((r) => r[0]),
     sectionAt(""),
-    since ? sectionAt(" AND t <= ?", since.playedAt) : null,
-    since ? sectionAt(" AND t > ?", since.playedAt) : null,
+    since ? sectionAt(" AND played_at IS NOT NULL AND (t < ? OR (t = ? AND rid <= ?))", since.playedAt, since.playedAt, cutRid) : null,
+    since ? sectionAt(" AND played_at IS NOT NULL AND (t > ? OR (t = ? AND rid > ?))", since.playedAt, since.playedAt, cutRid) : null,
     run<Record<string, unknown>>(`
       SELECT (rn - 1) / ${BLOCK} AS b, COUNT(*) AS games, SUM(moves) AS moves, SUM(serious) AS serious, SUM(loss) AS loss
       FROM (SELECT moves, serious, loss, ROW_NUMBER() OVER (ORDER BY t, rid) AS rn FROM c WHERE state = 'ok') GROUP BY b ORDER BY b`),

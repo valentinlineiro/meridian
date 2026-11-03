@@ -105,6 +105,15 @@ describe("player profile reads", () => {
     expect(p.after).toMatchObject({ games: 2, serious: 1, ratePer100: 5 });
   });
 
+  it("shouldSplitGamesSharingTheCutTimestampByInsertionOrderAndLeaveUndatedGamesOut", async () => {
+    game("a", ev({ opening: [10, 2] }), { playedAt: 5 }); game("cut", ev({ opening: [10, 2] }), { playedAt: 5 });
+    game("tie", ev({ opening: [10, 0] }), { playedAt: 5 }); game("later", ev({ opening: [10, 1] }), { playedAt: 9 });
+    game("undated", ev({ opening: [10, 9] }), { playedAt: null });
+    const p = await profile("?since=cut");
+    expect(p.before).toMatchObject({ games: 2, serious: 4 });
+    expect(p.after).toMatchObject({ games: 2, serious: 1 });
+  });
+
   it("shouldIgnoreAnUnknownOrUndatedSinceWithoutFailing", async () => {
     game("a", ev()); game("undated", ev(), { playedAt: null });
     for (const since of ["nope", "undated"]) {
