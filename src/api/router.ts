@@ -6,7 +6,6 @@ import type { Env } from "../types.ts";
 import type { Container } from "../kernel/container.ts";
 import { buildContainer } from "../composition/index.ts";
 import { linkedinGamesRoutes } from "../slices/linkedin-games/delivery/routes.ts";
-import { LINKEDIN_GAMES_HTML } from "../linkedinGamesPage.ts";
 import { dailyGoalRoutes } from "../slices/daily-goal/delivery/routes.ts";
 import { visitAnchorRoutes } from "../slices/visit-anchor/delivery/routes.ts";
 import { handleImport, json } from "./import.ts";
@@ -287,9 +286,11 @@ app.get("/languages/*", dashboard);
 app.get("/changes", dashboard);
 app.get("/trajectory", dashboard);
 app.get("/profile", dashboard);
+app.get("/games", dashboard);
+app.get("/games/", dashboard);
 app.get("/raw", () => new Response(RAW_HTML, { headers: HTML_HEADERS }));
 app.get("/settings", () => new Response(SETTINGS_HTML, { headers: HTML_HEADERS }));
-app.get("/linkedin-games", () => new Response(LINKEDIN_GAMES_HTML, { headers: HTML_HEADERS }));
+app.get("/linkedin-games", () => new Response(null, { status: 302, headers: { location: "/games" } })); // the page now lives in the dashboard
 
 // exported so composition wrappers (src/dev.ts, tests) keep identical error/404 behaviour
 export const onFailure = (e: Error) => {
