@@ -23,6 +23,8 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
 <button class="side-item" id="tabBtnProfile" onclick="showTab('profile')">Perfil</button>
 <div class="side-group">Idiomas</div>
 <button class="side-item" id="tabBtnLang" onclick="showTab('languages')">Cursos</button>
+<div class="side-group">LinkedIn</div>
+<a class="side-item" href="/linkedin-games">Juegos</a>
 <div class="side-group">Cuenta</div>
 <button id="syncBtn" class="btn btn-p side-sync" onclick="doSync()">Sincronizar</button>
 <small id="syncNote" class="muted side-note"></small>
