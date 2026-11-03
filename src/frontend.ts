@@ -423,6 +423,16 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
      <div style="margin-top:14px"><div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Hoy · toca un juego para registrarlo</div><div id="gamesToday" class="chips"></div></div>
     </div>
     <div id="gamesNote" class="muted" role="status"></div>
+    <div class="cindex" id="gamesRange" role="group" aria-label="Periodo de análisis"><span class="muted" style="align-self:center">Periodo</span><button type="button" class="btn btn-g" id="gr-7" aria-pressed="false" onclick="setGamesRange('7')">7 d</button><button type="button" class="btn btn-g" id="gr-28" aria-pressed="true" onclick="setGamesRange('28')">28 d</button><button type="button" class="btn btn-g" id="gr-90" aria-pressed="false" onclick="setGamesRange('90')">90 d</button><button type="button" class="btn btn-g" id="gr-all" aria-pressed="false" onclick="setGamesRange('all')">Todo</button></div>
+    <details class="cgroup" id="cg-games-cmp" open><summary>Comparativa</summary>
+     <div class="tblwrap"><table class="gtable" id="gamesTable"><caption class="sr-only">Comparativa de juegos en el periodo seleccionado. Los encabezados ordenan la tabla. Cada porcentaje y cada mediana muestran su n.</caption><thead id="gamesHead"></thead><tbody id="gamesRows"></tbody></table></div>
+     <p class="muted">n = observaciones con media global usadas (eficiencia y % que gana a la media) o con tiempo (mediana y n final). Δ eficiencia = cambio relativo frente al periodo anterior equivalente, con n actual/anterior; «—» si no es comparable.</p>
+    </details>
+    <details class="cgroup" id="cg-games-traj" open><summary>Trayectoria</summary>
+     <label class="muted" for="gamesTrajGame">Juego</label> <select id="gamesTrajGame" onchange="setGamesTrajGame(this.value)"></select>
+     <div id="gamesChart" class="card"></div>
+     <p class="muted" id="gamesChartNote"></p>
+    </details>
     <details class="cgroup" id="cg-games" open><summary>Por juego</summary><div id="gamesList" class="grid2"></div></details>
    </section>
   <p class="muted" style="margin-top:16px"><a href="/raw">Datos técnicos</a></p>

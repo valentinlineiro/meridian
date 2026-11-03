@@ -55,6 +55,7 @@ export function createMockElement(id = "", tagName = "div"): MockElement {
     set textContent(v: string) {
       rawText = v;
       rawHtml = "";
+      this.children.length = 0; // like the DOM: assigning text drops the child nodes
     },
     get innerHTML() {
       return rawHtml;
@@ -62,6 +63,7 @@ export function createMockElement(id = "", tagName = "div"): MockElement {
     set innerHTML(v: string) {
       rawHtml = v;
       rawText = "";
+      this.children.length = 0;
     },
     style: {},
     value: "",

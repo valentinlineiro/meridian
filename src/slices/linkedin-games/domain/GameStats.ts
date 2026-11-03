@@ -1,3 +1,4 @@
+import { beats, dayNo, efficiencyOf as eff, median, trajectory, windows, type Bucket, type Obs, type RangeKey, type WindowResult } from "./GameAnalysis.ts";
 import type { DayRecord } from "./LinkedinGames.ts";
 
 // Read-side metrics over the recorded days (design: docs/audits/linkedin-games-read-view-design-2026-11-03.md).
@@ -18,6 +19,9 @@ export interface GameSummary {
   beatStreak: Streak;
   regression: boolean;
   series: SeriesPoint[];
+  firstDate: string; // start of the game's coverage; a day without play inside it is simply not an observation
+  windows: Record<RangeKey, WindowResult>;
+  trajectory: Record<RangeKey, Bucket[]>;
 }
 export interface Summary {
   days: number;
@@ -27,17 +31,7 @@ export interface Summary {
   games: Record<string, GameSummary>;
 }
 
-interface Obs { date: string; score: number; avg: number | null }
-
-const DAY_MS = 86_400_000;
-const dayNo = (d: string) => Math.floor(Date.parse(`${d}T00:00:00Z`) / DAY_MS);
 const positive = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v) && v > 0;
-const median = (xs: number[]): number => {
-  const s = [...xs].sort((a, b) => a - b), m = s.length >> 1;
-  return s.length % 2 ? s[m]! : (s[m - 1]! + s[m]!) / 2;
-};
-const eff = (o: Obs) => o.avg! / o.score;
-const beats = (o: Obs) => o.avg !== null && o.score < o.avg;
 
 // Runs of strictly consecutive calendar days that satisfy `ok`. The current run counts only while its last day is
 // today or yesterday; a missing date breaks it (nothing is inferred).
@@ -69,6 +63,9 @@ function gameSummary(obs: Obs[], today: string): GameSummary {
     best: { seconds: best.score, date: best.date },
     beatStreak: streak(obs.map((o) => ({ date: o.date, ok: beats(o) })), today),
     regression: change !== null && last.length >= MIN_PER_WINDOW && prev.length >= MIN_PER_WINDOW && change <= -REGRESSION_DROP + 1e-9,
+    firstDate: obs[0]!.date,
+    windows: windows(obs, today),
+    trajectory: trajectory(obs, today),
     series: withAvg.map((o) => ({
       date: o.date,
       eff: eff(o),

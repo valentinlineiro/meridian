@@ -109,6 +109,18 @@ describe("linkedin games manual entry over HTTP and D1", () => {
     expect(body.summary.games.zip).toMatchObject({ n: 1, best: { seconds: 5, date: "2026-10-13" } });
   });
 
+  it("shouldServeWindowsAndTrajectoryPerGameWithoutARootLevelAllField", async () => {
+    expect((await put(zip)).status).toBe(200); // 2026-10-13, today is 2026-10-14 in the summary request
+    const body: any = await (await summary({ cookie: await cookie() })).json();
+    expect(Object.keys(body.summary).sort()).toEqual(["days", "from", "games", "playStreak", "to"]);
+    const z = body.summary.games.zip;
+    expect(z.firstDate).toBe("2026-10-13");
+    expect(z.windows["28"].eff).toEqual({ median: 17 / 8, nEff: 1 });
+    expect(z.windows["28"].time).toEqual({ median: 8, p25: 8, p75: 8, nTime: 1 });
+    expect(z.windows["28"].prev).toBeNull();
+    expect(z.trajectory["7"]).toEqual([{ start: "2026-10-13", n: 1, eff: 17 / 8, beat: 1 }, { start: "2026-10-14", n: 0, eff: null, beat: null }]);
+  });
+
   it("shouldNotIncludeAnotherUsersSnapshots", async () => {
     state.db.exec(`INSERT INTO users VALUES ('u2','t');`);
     state.db.prepare("INSERT INTO snapshots (id, created_at, source, user_id, raw_json, games_count, pages_count, checksum, size_bytes) VALUES ('s1','2026-10-13T10:00:00Z','linkedin-games','u2',?,0,0,'c1',1)")
