@@ -3,10 +3,16 @@ import worker from "./helpers/adminWorker.ts";
 import type { Env } from "../src/types.ts";
 
 describe("Dashboard deep-link routes", () => {
-  it.each(["/trajectory", "/changes", "/profile"])("shouldServeDashboardWhenRequestingTabPath %s", async (path) => {
+  it.each(["/trajectory", "/changes", "/profile", "/games"])("shouldServeDashboardWhenRequestingTabPath %s", async (path) => {
     const res = await worker.fetch(new Request("http://localhost" + path), { DB: { prepare: () => null } } as unknown as Env);
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toContain("text/html");
+  });
+
+  it("shouldRedirectTheOldLinkedinGamesPageToTheGamesTab", async () => {
+    const res = await worker.fetch(new Request("http://localhost/linkedin-games"), { DB: { prepare: () => null } } as unknown as Env);
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toBe("/games");
   });
 
   it("shouldOfferALogoutFormPostingToLogout", async () => {

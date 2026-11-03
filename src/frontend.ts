@@ -24,7 +24,7 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
 <div class="side-group">Idiomas</div>
 <button class="side-item" id="tabBtnLang" onclick="showTab('languages')">Cursos</button>
 <div class="side-group">LinkedIn</div>
-<a class="side-item" href="/linkedin-games">Juegos</a>
+<button class="side-item" id="tabBtnGames" onclick="showTab('games')">Juegos</button>
 <div class="side-group">Cuenta</div>
 <button id="syncBtn" class="btn btn-p side-sync" onclick="doSync()">Sincronizar</button>
 <small id="syncNote" class="muted side-note"></small>
@@ -400,6 +400,31 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
     <div class="muted" id="profileNote" style="margin-top:8px"></div>
    </section>
 
+   <section id="gamesTab" class="tab-panel" hidden>
+    <div class="hero-card" id="gamesHero">
+     <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px">
+      <div>
+       <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.05em">LinkedIn Games · Racha actual</div>
+       <div style="display:flex;align-items:baseline;gap:8px;margin-top:2px"><span id="gamesHeroStreak" style="font-size:28px;font-weight:800;line-height:1">—</span></div>
+       <div id="gamesHeroMeta" class="muted" style="font-size:12px;margin-top:4px">—</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+       <button class="btn btn-p" type="button" onclick="openGamesEntry()">Registrar resultado</button>
+       <span id="gamesHeroDays" class="muted" style="font-size:12px">—</span>
+      </div>
+     </div>
+     <div style="margin-top:14px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:12px;margin-bottom:6px">
+       <span id="gamesHeroWrLabel" style="font-weight:600"></span>
+       <span id="gamesHeroDistMeta" class="muted" style="font-size:11px">—</span>
+      </div>
+      <div class="distribution-bar" id="gamesHeroDist"><i id="gamesDistWin" class="bar-win" style="width:0%"></i><i id="gamesDistLoss" class="bar-loss" style="width:0%"></i></div>
+     </div>
+     <div style="margin-top:14px"><div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Hoy · toca un juego para registrarlo</div><div id="gamesToday" class="chips"></div></div>
+    </div>
+    <div id="gamesNote" class="muted" role="status"></div>
+    <details class="cgroup" id="cg-games" open><summary>Por juego</summary><div id="gamesList" class="grid2"></div></details>
+   </section>
   <p class="muted" style="margin-top:16px"><a href="/raw">Datos técnicos</a></p>
 </div>
 </main>
@@ -413,6 +438,26 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
    <div id="gErrors" class="muted" style="margin-top:8px"></div>
    <div class="gamectl"><button class="btn btn-g" id="gPrev" onclick="gameStep(-1)" aria-label="Jugada anterior">‹</button><span class="muted" id="gPos"></span><button class="btn btn-g" id="gNext" onclick="gameStep(1)" aria-label="Jugada siguiente">›</button><a class="btn btn-g" id="gPgn" download style="text-decoration:none;margin-left:auto">Descargar PGN</a></div>
   </div>
+ </div>
+</div>
+<div id="lgModal" class="modal" style="display:none" role="dialog" aria-modal="true" aria-labelledby="lgTitle">
+ <div class="card gamecard lgcard">
+  <div class="gamehead"><b id="lgTitle">Registrar resultado</b><button class="btn btn-g" type="button" onclick="closeGamesEntry()" aria-label="Cerrar">✕</button></div>
+  <div class="muted">Lo introduces tú; no se lee nada de LinkedIn. Tiempos como M:SS.</div>
+  <label for="lgGame">Juego</label>
+  <select id="lgGame"><option value="zip">Zip</option><option value="tango">Tango</option><option value="queens">Queens</option><option value="mini_sudoku">Mini Sudoku</option><option value="patches">Patches</option><option value="wend">Wend</option></select>
+  <label for="lgDate">Fecha de la partida</label>
+  <input id="lgDate" type="date" onchange="loadGamesDay()">
+  <label for="lgScore">Tu tiempo (M:SS)</label>
+  <input id="lgScore" type="text" inputmode="numeric" placeholder="0:08" autocomplete="off">
+  <label for="lgAvg">Promedio de hoy (opcional)</label>
+  <input id="lgAvg" type="text" inputmode="numeric" placeholder="0:17" autocomplete="off">
+  <label for="lgNumber">Nº de puzzle (opcional)</label>
+  <input id="lgNumber" type="number" min="1" step="1" inputmode="numeric">
+  <button id="lgSave" type="button" class="btn btn-p lgsave" onclick="saveGamesResult()">Guardar</button>
+  <div id="lgStatus" class="muted" role="status" style="margin-top:8px"></div>
+  <h3 style="margin:14px 0 4px">Registrado ese día</h3>
+  <ul id="lgDay" class="lgday"></ul>
  </div>
 </div>
 <script>${CLIENT_JS}</script></body></html>`;

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import vm from "node:vm";
-import { createDashboardRuntime } from "./helpers/dom.ts";
+import { createDashboardRuntime, fetchOnly } from "./helpers/dom.ts";
 
 // Tabs and URLs, driven through the real script: what the owner sees after opening, navigating and going back.
 const PANELS = { overview: "#overviewTab", languages: "#langTab", chess: "#chessTab", changes: "#changesTab", trajectory: "#trajectoryTab" } as const;
@@ -35,7 +35,7 @@ describe("side menu", () => {
     const groups = [...DASHBOARD_HTML.matchAll(/class="side-group">([^<]+)</g)].map((m) => m[1]);
     expect(groups).toEqual(["Resumen", "Ajedrez", "Idiomas", "LinkedIn", "Cuenta"]);
     const items = [...DASHBOARD_HTML.matchAll(/class="side-item[^"]*" id="(tabBtn\w+)"[^>]*>([^<]+)</g)].map((m) => `${m[1]}:${m[2]}`);
-    expect(items).toEqual(["tabBtnOverview:Hoy", "tabBtnChanges:Qué cambió", "tabBtnTrajectory:Trayectoria", "tabBtnChess:Partidas", "tabBtnProfile:Perfil", "tabBtnLang:Cursos"]);
+    expect(items).toEqual(["tabBtnOverview:Hoy", "tabBtnChanges:Qué cambió", "tabBtnTrajectory:Trayectoria", "tabBtnChess:Partidas", "tabBtnProfile:Perfil", "tabBtnLang:Cursos", "tabBtnGames:Juegos"]);
   });
 
   it("shouldKeepAccountActionsInTheSideMenuAndNotInTheHeader", async () => {
@@ -132,8 +132,12 @@ describe("following the address bar", () => {
     expect(rt.sandbox.location.search).toBe("");
   });
 
-  it("shouldLinkToTheLinkedinGamesPageFromTheSideMenu", async () => {
-    const { DASHBOARD_HTML } = await import("../src/frontend.ts");
-    expect(DASHBOARD_HTML).toContain('<a class="side-item" href="/linkedin-games">Juegos</a>');
+  it("shouldOpenTheGamesTabFromTheSideMenuAndKeepTheUrlCanonical", () => {
+    const rt = createDashboardRuntime("/overview", undefined, fetchOnly("/api/me/linkedin-games", async () => ({ ok: true, status: 200, json: async () => ({ ok: true, summary: { days: 0, from: null, to: null, playStreak: { current: 0, max: 0 }, games: {} }, day: { games: {} } }) })));
+    rt.sandbox.showTab("games");
+    expect(rt.sandbox.location.pathname).toBe("/games");
+    expect(rt.getEl("#gamesTab").hidden).toBe(false);
+    expect(rt.getEl("#overviewTab").hidden).toBe(true);
+    expect(rt.getEl("#tabBtnGames").className).toBe("side-item active");
   });
 });

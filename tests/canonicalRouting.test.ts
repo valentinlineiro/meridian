@@ -121,6 +121,11 @@ describe("Canonical Routing (#16.9.1)", () => {
       });
     });
 
+    it("shouldResolveGamesTab", () => {
+      expect(parseCanonicalRoute("/games")).toEqual({ tab: "games", courseId: null, canonicalPath: "/games", canonicalHash: "#/games", hasLegacyQuery: false });
+      expect(parseCanonicalRoute("#/games", "").tab).toBe("games");
+    });
+
     it("shouldDetectAndConvertLegacyCourseQueryParam", () => {
       // ?course=DUOLINGO_XC_ES#languages -> canonical #/languages/DUOLINGO_XC_ES
       const res = parseCanonicalRoute("#languages", "?course=DUOLINGO_XC_ES");

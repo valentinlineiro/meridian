@@ -33,6 +33,7 @@ function parseCanonicalRoute(pathOrHash, hashOrSearch, searchQuery){
  const sub = parts.slice(1).join('/').trim() || null;
 
  if(!ch || seg === 'overview') return { tab: 'overview', courseId: null, canonicalPath: '/overview', canonicalHash: '#/overview', hasLegacyQuery };
+ if(seg === 'games') return { tab: 'games', courseId: null, canonicalPath: '/games', canonicalHash: '#/games', hasLegacyQuery };
  if(seg === 'chess') return { tab: 'chess', courseId: null, canonicalPath: '/chess', canonicalHash: '#/chess', hasLegacyQuery };
  if(seg === 'changes') return { tab: 'changes', courseId: null, canonicalPath: '/changes', canonicalHash: '#/changes', hasLegacyQuery };
  if(seg === 'profile') return { tab: 'profile', courseId: null, canonicalPath: '/profile', canonicalHash: '#/profile', hasLegacyQuery };
@@ -62,13 +63,14 @@ const req=async(u,o)=>{
 };
 const j=async u=>{ const r=await req(u); if(!r.ok) throw new Error('http '+r.status); return r.data; };
 const PROFILE_CUT_KEY='profile_since';
+let gamesSeq=0, gamesOpener=null; // declared before initTab(): opening the page on /games already fetches
 let profileSeq=0; // both declared before initTab(): opening the page on /profile calls fetchProfile during the first render
 let trajectorySeq=0; // same reason: the first tab render may already call fetchTrajectory
 let trajectoryEmptyCopy=null; // declared before initTab(): the first tab render may already call fetchTrajectory
 let selectedCourseId=null, lastLangsData=null, lastAnalyticsData=null, lastLangXpData=null, lastActiveDetail=null, activeChangesInterval=null, changesAnchor=null, changesShownUntil=null;
 function showTab(name){
  const tab=(name==='languages'||name==='chess')?name:'overview';
- const activeTab=(name==='changes'||name==='trajectory'||name==='profile')?name:tab;
+ const activeTab=(name==='changes'||name==='trajectory'||name==='profile'||name==='games')?name:tab;
  const route=parseCanonicalRoute(location.pathname, location.hash, location.search);
  const courseId=route.tab==='languages'?route.courseId:null;
  const targetPath = (activeTab==='languages' && (courseId || selectedCourseId))
@@ -81,21 +83,24 @@ function showTab(name){
  if(q('#changesTab')) q('#changesTab').classList.toggle('active', activeTab==='changes');
  if(q('#trajectoryTab')) q('#trajectoryTab').classList.toggle('active', activeTab==='trajectory');
  if(q('#profileTab')) q('#profileTab').classList.toggle('active', activeTab==='profile');
+ if(q('#gamesTab')) q('#gamesTab').classList.toggle('active', activeTab==='games');
  // native hidden attribute in addition to the CSS class: the inactive panel must be
  // unambiguously excluded from the accessibility tree, not just visually display:none.
- q('#overviewTab').hidden = tab!=='overview' || activeTab==='changes' || activeTab==='trajectory' || activeTab==='profile';
+ q('#overviewTab').hidden = tab!=='overview' || activeTab==='changes' || activeTab==='trajectory' || activeTab==='profile' || activeTab==='games';
  q('#langTab').hidden = tab!=='languages';
  q('#chessTab').hidden = tab!=='chess';
  if(q('#changesTab')) q('#changesTab').hidden = activeTab!=='changes';
  if(q('#trajectoryTab')) q('#trajectoryTab').hidden = activeTab!=='trajectory';
  if(q('#profileTab')) q('#profileTab').hidden = activeTab!=='profile';
- const NAV={overview:'tabBtnOverview',changes:'tabBtnChanges',trajectory:'tabBtnTrajectory',chess:'tabBtnChess',profile:'tabBtnProfile',languages:'tabBtnLang'};
+ if(q('#gamesTab')) q('#gamesTab').hidden = activeTab!=='games';
+ const NAV={overview:'tabBtnOverview',changes:'tabBtnChanges',trajectory:'tabBtnTrajectory',chess:'tabBtnChess',profile:'tabBtnProfile',games:'tabBtnGames',languages:'tabBtnLang'};
  for(const k in NAV){ const b=q('#'+NAV[k]); if(!b) continue; const on=k===activeTab; b.className='side-item'+(on?' active':''); if(b.setAttribute) b.setAttribute('aria-current',on?'page':'false'); if(on&&q('#sideCurrent')) q('#sideCurrent').textContent=b.textContent; }
  if(q('#sideMenu')) q('#sideMenu').classList.remove('open');
  if(q('#sideToggle')&&q('#sideToggle').setAttribute) q('#sideToggle').setAttribute('aria-expanded','false');
  if(activeTab==='changes') fetchWhatChanged();
  if(activeTab==='trajectory') fetchTrajectory();
  if(activeTab==='profile') fetchProfile();
+ if(activeTab==='games') fetchGames();
 }
 function toggleSideNav(){ const m=q('#sideMenu'); if(!m) return; const open=!m.classList.contains('open'); m.classList.toggle('open',open); const t=q('#sideToggle'); if(t&&t.setAttribute) t.setAttribute('aria-expanded',open?'true':'false'); }
 function initTab(){
@@ -1217,8 +1222,10 @@ window.addEventListener('click',e=>{
  const er=e.target.closest&&e.target.closest('#gErrors [data-p]'); if(er){ e.preventDefault(); jumpToPly(+er.getAttribute('data-p')); return; }
  const mv=e.target.closest&&e.target.closest('#gMoves .gm'); if(mv){ e.preventDefault(); gamePly=+mv.getAttribute('data-p'); paintGame(); return; }
  if(e.target.id==='gameModal') closeGame();
+ if(e.target.id==='lgModal') closeGamesEntry();
 });
 window.addEventListener('keydown',e=>{
+ if(q('#lgModal').style.display==='flex'){ if(e.key==='Escape') closeGamesEntry(); else if(e.key==='Tab') trapGamesFocus(e); return; }
  if(q('#gameModal').style.display==='flex'){ if(e.key==='Tab'){ const f=[...document.querySelectorAll('#gameModal button:not([disabled]),#gameModal a[href]:not(.gm)')].filter(x=>x.offsetParent!==null); if(f.length){ const i=f.indexOf(document.activeElement); const n=e.shiftKey?(i<=0?f.length-1:i-1):(i===f.length-1?0:i+1); e.preventDefault(); f[n].focus(); } } else if(e.key==='ArrowLeft'){ e.preventDefault(); gameStep(-1); } else if(e.key==='ArrowRight'){ e.preventDefault(); gameStep(1); } else if(e.key==='Escape') closeGame(); return; }
  const row=document.activeElement&&document.activeElement.classList&&document.activeElement.classList.contains('gamerow')?document.activeElement:null;
  if(row&&e.key==='Enter') openGame(row.getAttribute('data-m'));
@@ -1551,6 +1558,93 @@ async function fetchProfile(){
   if(seq!==profileSeq) return;
   paintProfile(b);
  }catch(e){ if(seq===profileSeq) q('#profileKpis').innerHTML='<div class="empty" style="grid-column:1/-1">No se pudo cargar el perfil</div>'; }
+}
+
+// ── LinkedIn Games: summary (read) and the entry modal (write). Manual entry; nothing is read from LinkedIn. ──
+const GAME_NAMES={zip:'Zip',tango:'Tango',queens:'Queens',mini_sudoku:'Mini Sudoku',patches:'Patches',wend:'Wend'};
+const gnum=(v,d)=>v==null?'—':v.toLocaleString('es-ES',{maximumFractionDigits:d});
+const gmmss=s=>Math.floor(s/60)+':'+String(s%60).padStart(2,'0');
+const gdays=n=>n+(n===1?' día':' días');
+function localToday(){ return new Date().toLocaleDateString('sv-SE'); } // a declaration, not a const: fetchGames runs from initTab() before this line is reached
+function gameSpark(series){
+ const v=series.map(p=>p.roll); if(v.length<2) return '';
+ const lo=Math.min(...v), hi=Math.max(...v), r=(hi-lo)||1;
+ const pts=v.map((y,i)=>(i/(v.length-1)*100).toFixed(1)+','+(22-(y-lo)/r*20).toFixed(1)).join(' ');
+ return '<svg class="spark" viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true"><polyline points="'+pts+'" fill="none" stroke="#7aa7e6" stroke-width="1.5" vector-effect="non-scaling-stroke"/></svg>';
+}
+function gameLine(card,text){ const p=document.createElement('p'); p.textContent=text; card.appendChild(p); }
+function paintGames(s,day){
+ const keys=Object.keys(s.games), g=q('#gamesList'); g.textContent='';
+ q('#gamesNote').textContent='';
+ const done=new Set(Object.keys((day&&day.games)||{}));
+ const chips=q('#gamesToday'); chips.textContent='';
+ Object.keys(GAME_NAMES).forEach(k=>{ const b=document.createElement('button'); b.type='button'; b.className='pill '+(done.has(k)?'pill-win':'pill-scope'); b.textContent=(done.has(k)?'✓ ':'')+GAME_NAMES[k]; b.setAttribute('data-game',k); b.onclick=()=>openGamesEntry(k); chips.appendChild(b); });
+ if(!keys.length){ q('#gamesHeroStreak').textContent='—'; q('#gamesHeroMeta').textContent='Aún no hay datos.'; q('#gamesHeroDays').textContent='—'; q('#gamesHeroWrLabel').textContent=''; q('#gamesHeroDistMeta').textContent='—'; return; }
+ q('#gamesHeroStreak').textContent=gdays(s.playStreak.current)+' seguidos';
+ q('#gamesHeroMeta').textContent='Racha máxima '+gdays(s.playStreak.max);
+ q('#gamesHeroDays').textContent=gdays(s.days)+' registrados · '+s.from+' → '+s.to;
+ let beat=0, total=0; keys.forEach(k=>{ const x=s.games[k]; if(x.beatAvgRate!=null){ beat+=Math.round(x.beatAvgRate*x.nWithAvg); total+=x.nWithAvg; } });
+ const pct=total?beat/total*100:0;
+ q('#gamesDistWin').style.width=pct+'%'; q('#gamesDistLoss').style.width=(total?100-pct:0)+'%';
+ q('#gamesHeroWrLabel').textContent='Ganas a la media global (todos los juegos)';
+ q('#gamesHeroDistMeta').textContent=total?Math.round(pct)+' % de '+total+' resultados':'—';
+ keys.sort((a,b)=>Number(s.games[b].regression)-Number(s.games[a].regression)).forEach(k=>{
+  const x=s.games[k], e=x.efficiency, card=document.createElement('section');
+  card.className='card gcard'+(x.regression?' reg':'');
+  const h=document.createElement('h3'); h.textContent=GAME_NAMES[k]||k; card.appendChild(h);
+  if(x.regression){ const b=document.createElement('span'); b.className='pill pill-warn'; b.style.marginLeft='8px'; b.textContent='regresión'; h.appendChild(b); }
+  const ch=e.change==null?'sin ventana previa':(Math.round(e.change*100)>0?'+':'')+Math.round(e.change*100)+' % vs 28 d previos';
+  gameLine(card,'Eficiencia 28 d: '+(e.last28==null?'—':'×'+gnum(e.last28,2)+' ('+ch+')'));
+  gameLine(card,'Gana a la media: '+(x.beatAvgRate==null?'—':Math.round(x.beatAvgRate*100)+' % ('+x.nWithAvg+' con media)'));
+  gameLine(card,'Mejor marca: '+gmmss(x.best.seconds)+' ('+x.best.date+')');
+  gameLine(card,'Racha ganando a la media: '+gdays(x.beatStreak.current)+' (máx '+x.beatStreak.max+')');
+  const sp=document.createElement('div'); sp.innerHTML=gameSpark(x.series); card.appendChild(sp);
+  g.appendChild(card);
+ });
+}
+async function fetchGames(){
+ const seq=++gamesSeq, t=localToday();
+ try{
+  const [s,d]=await Promise.all([j('/api/me/linkedin-games/summary?today='+encodeURIComponent(t)), j('/api/me/linkedin-games?date='+encodeURIComponent(t)).catch(()=>null)]);
+  if(seq!==gamesSeq) return;
+  paintGames(s.summary, d&&d.day);
+ }catch(e){ if(seq===gamesSeq){ q('#gamesList').textContent=''; q('#gamesNote').textContent='No se pudo cargar el resumen.'; } }
+}
+function openGamesEntry(game){
+ gamesOpener=document.activeElement||null;
+ if(game&&typeof game==='string') q('#lgGame').value=game;
+ if(!q('#lgDate').value) q('#lgDate').value=localToday();
+ q('#lgModal').style.display='flex'; q('#lgStatus').textContent='';
+ loadGamesDay(); if(q('#lgScore').focus) q('#lgScore').focus();
+}
+// Tab and Shift+Tab cycle inside the open dialog (same behaviour as the game viewer).
+function trapGamesFocus(e){
+ const f=[...document.querySelectorAll('#lgModal button:not([disabled]),#lgModal select,#lgModal input')].filter(x=>x.offsetParent!==null);
+ if(!f.length) return;
+ const i=f.indexOf(document.activeElement), n=e.shiftKey?(i<=0?f.length-1:i-1):(i===f.length-1?0:i+1);
+ e.preventDefault(); f[n].focus();
+}
+function closeGamesEntry(){ q('#lgModal').style.display='none'; if(gamesOpener&&gamesOpener.focus) gamesOpener.focus(); gamesOpener=null; }
+function paintGamesDay(day){
+ const ul=q('#lgDay'); ul.textContent='';
+ const g=(day&&day.games)||{}, keys=Object.keys(g);
+ if(!keys.length){ const li=document.createElement('li'); li.className='muted'; li.textContent='Nada todavía.'; ul.appendChild(li); return; }
+ keys.forEach(k=>{ const e=g[k]||{}, li=document.createElement('li');
+  li.textContent=(GAME_NAMES[k]||k)+': '+(e.score??'?')+(e.avg?'  (media '+e.avg+')':'')+(e.number?'  #'+e.number:''); ul.appendChild(li); });
+}
+async function loadGamesDay(){
+ try{ paintGamesDay((await j('/api/me/linkedin-games?date='+encodeURIComponent(q('#lgDate').value))).day); }
+ catch(e){ q('#lgDay').textContent=''; q('#lgStatus').textContent='No se pudo cargar el día.'; }
+}
+async function saveGamesResult(){
+ const status=q('#lgStatus'), num=q('#lgNumber').value.trim();
+ const payload={date:q('#lgDate').value,game:q('#lgGame').value,score:q('#lgScore').value.trim(),avg:q('#lgAvg').value.trim()||null,number:num===''?null:Number(num),tz:Intl.DateTimeFormat().resolvedOptions().timeZone};
+ status.textContent='Guardando…';
+ try{
+  const r=await req('/api/me/linkedin-games',{method:'PUT',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
+  if(!r.ok||!r.data||!r.data.ok){ status.textContent='No se pudo guardar: '+((r.data&&r.data.error)||r.status); return; }
+  status.textContent='Guardado.'; q('#lgScore').value=''; q('#lgAvg').value=''; q('#lgNumber').value=''; paintGamesDay(r.data.day); fetchGames();
+ }catch(e){ status.textContent='No se pudo guardar.'; }
 }
 async function fetchTrajectory(){
  const seq=++trajectorySeq;
