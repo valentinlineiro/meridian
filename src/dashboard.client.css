@@ -113,7 +113,7 @@ a.side-item{text-decoration:none}a.side-item:hover{text-decoration:none}
 .side-sync{display:block;width:calc(100% - 20px);margin:4px 10px 0}
 .side-note{display:block;margin:6px 10px 6px;max-width:none}.side-note:empty{display:none}
 
-.fgroup{display:flex;gap:6px;flex-wrap:wrap;align-items:center;width:100%}.flabel{color:#8ea0b8;font-size:12px;min-width:68px}
+.fgroup{display:flex;gap:6px;flex-wrap:wrap;align-items:center;width:100%}.flabel{color:#8ea0b8;font-size:12px;min-width:64px}
 .err-box{grid-column:1/-1;background:#2a1616;border:1px solid #7a2e2e;border-radius:10px;padding:12px;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
 @media(max-width:700px){
  /* game list: two lines per game (opponent + result / date, ELO, colour); type, end and review live in the game viewer */
@@ -131,6 +131,9 @@ a.side-item{text-decoration:none}a.side-item:hover{text-decoration:none}
  a[href="/raw"],a[href="/settings"]{display:inline-block;padding:14px 8px}
  .muted,.pill,.kpi label,.kpi small,.flabel,[style*="font-size:10px"],[style*="font-size:11px"]{font-size:12px!important}
  .muted{font-size:13px!important}
+ .fgroup{gap:4px}.fgroup .btn{padding:8px 8px}.flabel{min-width:0;width:60px}
+ /* iOS Safari zooms the page when a field under 16px takes focus */
+ input,select{font-size:16px!important}
 }
 
 .cindex{display:flex;gap:6px;overflow-x:auto;margin:12px 0 0;padding-bottom:2px}.cindex .btn{white-space:nowrap;flex:0 0 auto}
