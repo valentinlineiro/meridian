@@ -70,7 +70,7 @@ describe("evaluation cards (P0)", () => {
   });
 
   it("shouldMarkInsuficienteNotSinIndicioWhenSampleIsShortAndEffectIsAlsoBelowCriterion", () => {
-    const h = html({ languages: { xpGained: 0, dailyXpRate: 0 } }).split('<div class="card"').find((c) => c.includes("Mayor XP diario"))!;
+    const h = html({ languages: { xpGained: 0, dailyXpRate: 0 } }).split(/<(?:div|details) class="card/).find((c) => c.includes("Mayor XP diario"))!;
     expect(h).not.toContain("SIN INDICIO");
     expect(h).toContain("INSUFICIENTE");
     expect(h).toContain("0 XP ganados en la ventana; el criterio exige al menos 200.");
@@ -87,7 +87,7 @@ describe("evaluation cards (P0)", () => {
   });
 
   it("shouldMarkRatingJumpInsuficienteWhenNoRatingIsObservedInTheWindow", () => {
-    const h = html({ chess: { ratingDelta: null, currentRating: null } }).split('<div class="card"').find((c) => c.includes("Salto de ELO"))!;
+    const h = html({ chess: { ratingDelta: null, currentRating: null } }).split(/<(?:div|details) class="card/).find((c) => c.includes("Salto de ELO"))!;
     expect(h).toContain("INSUFICIENTE");
     expect(h).not.toContain("SIN INDICIO");
     expect(h).toContain("dos observaciones de ELO en snapshots distintos");
@@ -133,5 +133,19 @@ describe("evaluation cards (P0)", () => {
     const h = html({ chess: { colorDelta: wide } });
     expect(h.indexOf("INDICIO")).toBeGreaterThan(-1);
     expect(h.indexOf("INDICIO")).toBeLessThan(h.indexOf("SIN INDICIO"));
+  });
+});
+
+describe("evaluation cards: verdict first, criteria on demand", () => {
+  it("shouldCollapseEvaluationsWithoutAnAnswerAndKeepAffirmedOnesOpen", () => {
+    const h = html({ languages: { xpGained: 0, dailyXpRate: 0 } });
+    const cards = h.split(/(?=<(?:div|details) class="card)/);
+    const xp = cards.find((c) => c.includes("Mayor XP diario"))!;
+    expect(xp.startsWith('<details class="card evcard"')).toBe(true);
+    expect(xp).not.toContain(" open"); // closed by default
+    expect(xp).toContain("INSUFICIENTE");
+    expect(xp).toContain("0 XP ganados en la ventana; el criterio exige al menos 200."); // the criteria are still there, one tap away
+    const affirmed = cards.find((c) => c.includes("AFIRMADO"))!;
+    expect(affirmed.startsWith('<div class="card"')).toBe(true);
   });
 });
