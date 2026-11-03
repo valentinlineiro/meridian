@@ -1651,9 +1651,9 @@ async function fetchWhatChanged(sinceOverride){
    + '</div>'
    + markNote
    + '<div class="filters" style="margin-top:12px;margin-bottom:0">'
-   + '<button class="btn ' + (is7d ? 'btn-p' : 'btn-g') + '" onclick="setChangesInterval(7)">Últimos 7 días</button>'
-   + '<button class="btn ' + (is30d ? 'btn-p' : 'btn-g') + '" onclick="setChangesInterval(30)">Últimos 30 días</button>'
-   + '<button class="btn ' + (visit ? 'btn-p' : 'btn-g') + '" onclick="setChangesInterval(0)">Desde última visita</button>'
+   + '<button class="btn ' + (is7d ? 'btn-on' : 'btn-g') + '" onclick="setChangesInterval(7)">Últimos 7 días</button>'
+   + '<button class="btn ' + (is30d ? 'btn-on' : 'btn-g') + '" onclick="setChangesInterval(30)">Últimos 30 días</button>'
+   + '<button class="btn ' + (visit ? 'btn-on' : 'btn-g') + '" onclick="setChangesInterval(0)">Desde última visita</button>'
    + '</div>'
    + '</div>';
  }
@@ -1784,16 +1784,24 @@ function renderEvaluationCard(e, state, finding, win){
  } else {
   const obs = evalObserved(e.id, m);
   body = (obs ? '<div style="font-size:13px;color:#c8d7ea;margin-bottom:4px"><strong>Observado:</strong> ' + esc(obs) + '</div>' : '')
-   + '<div style="font-size:13px;font-weight:600;color:#c8d7ea;margin-bottom:4px">' + esc(EVAL_STATE_MSG[state]) + '</div>'
+   + (state === 'INDICIO' ? '<div style="font-size:13px;font-weight:600;color:#c8d7ea;margin-bottom:4px">' + esc(EVAL_STATE_MSG[state]) + '</div>' : '')
    + '<ul class="muted" style="font-size:12px;margin:0;padding-left:18px">' + (e.reasons || []).map(r => '<li>' + esc(evalReasonText(e, r)) + '</li>').join('') + '</ul>';
  }
  const basis = e.kind === 'statistical' ? 'con intervalo de confianza 95%' : 'umbral fijo, sin intervalo de confianza';
+ const foot = '<div class="muted" style="font-size:11px;margin-top:6px">Ventana: ' + esc(win) + ' · ' + basis + '</div>';
+ const scope = '<span class="pill pill-scope">' + esc(meta.scope) + '</span>';
+ if(state === 'INSUFICIENTE' || state === 'SIN INDICIO'){
+  // nothing to claim: show the verdict only and keep the criteria one tap away
+  return '<details class="card evcard" style="margin-bottom:10px"><summary>'
+   + '<span class="evhead"><h3 style="margin:0;font-size:14px;color:#e6edf3">' + esc(meta.title) + '</h3><span class="' + EVAL_STATE_PILL[state] + '">' + state + '</span></span>'
+   + '<span class="muted evmsg">' + esc(EVAL_STATE_MSG[state]) + '</span></summary>'
+   + '<div style="margin-top:8px">' + scope + '</div><div style="margin-top:8px">' + body + '</div>' + foot + '</details>';
+ }
  return '<div class="card" style="margin-bottom:10px">'
   + '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px">'
   + '<h3 style="margin:0;font-size:14px;color:#e6edf3">' + esc(meta.title) + '</h3>'
-  + '<span><span class="' + EVAL_STATE_PILL[state] + '">' + state + '</span> <span class="pill pill-scope">' + esc(meta.scope) + '</span></span></div>'
-  + body
-  + '<div class="muted" style="font-size:11px;margin-top:6px">Ventana: ' + esc(win) + ' · ' + basis + '</div></div>';
+  + '<span><span class="' + EVAL_STATE_PILL[state] + '">' + state + '</span> ' + scope + '</span></div>'
+  + body + foot + '</div>';
 }
 // AFIRMADO first, then INDICIO, INSUFICIENTE, SIN INDICIO; findingFor(e) gives the claim/evidence of an emitted evaluation.
 function evaluationCards(evals, findingFor, win){
@@ -1840,7 +1848,8 @@ function renderWhatChanged(data){
  if(isEmpty){
   if(elEmpty){
    elEmpty.style.display = 'block';
-   elEmpty.textContent = 'No hay actividad registrada entre ' + data.interval.since + ' y ' + data.interval.until + '.';
+   const utc = t => String(t).slice(0, 16).replace('T', ' ') + ' UTC';
+   elEmpty.textContent = 'No hay actividad registrada entre ' + utc(data.interval.since) + ' y ' + utc(data.interval.until) + '.';
   }
   // the evaluations are the answer to "could this window be judged?": a quiet window keeps them (INSUFICIENTE, SIN INDICIO)
   if(elFindings) elFindings.innerHTML = renderEvaluations(data);

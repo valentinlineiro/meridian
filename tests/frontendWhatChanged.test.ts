@@ -84,7 +84,7 @@ describe("Frontend What Changed Navigation & Visual Engine", () => {
     const emptyEl = rt.getEl("#changesEmpty");
     expect(emptyEl.style.display).toBe("block");
     expect(emptyEl.textContent).toBe(
-      "No hay actividad registrada entre 2026-09-24T00:00:00.000Z y 2026-10-01T00:00:00.000Z."
+      "No hay actividad registrada entre 2026-09-24 00:00 UTC y 2026-10-01 00:00 UTC."
     );
     expect(rt.getEl("#changesFindings").innerHTML).toBe("");
     expect(rt.getEl("#changesActivity").innerHTML).toBe("");
