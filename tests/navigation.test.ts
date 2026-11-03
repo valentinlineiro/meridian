@@ -33,9 +33,22 @@ describe("side menu", () => {
   it("shouldGroupTheViewsUnderResumenAjedrezAndIdiomasWithSpanishLabels", async () => {
     const { DASHBOARD_HTML } = await import("../src/frontend.ts");
     const groups = [...DASHBOARD_HTML.matchAll(/class="side-group">([^<]+)</g)].map((m) => m[1]);
-    expect(groups).toEqual(["Resumen", "Ajedrez", "Idiomas"]);
+    expect(groups).toEqual(["Resumen", "Ajedrez", "Idiomas", "Cuenta"]);
     const items = [...DASHBOARD_HTML.matchAll(/class="side-item[^"]*" id="(tabBtn\w+)"[^>]*>([^<]+)</g)].map((m) => `${m[1]}:${m[2]}`);
     expect(items).toEqual(["tabBtnOverview:Hoy", "tabBtnChanges:Qué cambió", "tabBtnTrajectory:Trayectoria", "tabBtnChess:Partidas", "tabBtnProfile:Perfil", "tabBtnLang:Cursos"]);
+  });
+
+  it("shouldKeepAccountActionsInTheSideMenuAndNotInTheHeader", async () => {
+    const { DASHBOARD_HTML } = await import("../src/frontend.ts");
+    const header = DASHBOARD_HTML.slice(DASHBOARD_HTML.indexOf("<header>"), DASHBOARD_HTML.indexOf("</header>"));
+    expect(header).toContain('id="syncMeta"');
+    for (const x of ["syncBtn", "Exportar partidas", "Configuración", "Salir"]) expect(header).not.toContain(x);
+    const menu = DASHBOARD_HTML.slice(DASHBOARD_HTML.indexOf('id="sideMenu"'), DASHBOARD_HTML.indexOf('<div class="content">'));
+    expect(menu).toContain('id="syncBtn"');
+    expect(menu).toContain('id="syncNote"');
+    expect(menu).toContain('href="/api/export/matches.csv" download');
+    expect(menu).toContain('href="/settings"');
+    expect(menu).toContain('action="/logout"');
   });
 
   it("shouldMarkTheCurrentViewForAssistiveTechnology", () => {
