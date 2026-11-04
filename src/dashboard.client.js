@@ -1577,12 +1577,49 @@ const gpct=r=>r==null?'—':Math.round(r*100)+' %';
 const gsigned=(v,suffix)=>{ if(v==null) return '—'; const r=Math.round(v); return (r>0?'+':'')+r+suffix; };
 const gtime=s=>s==null?'—':gmmss(Math.round(s));
 const RANGE_NAMES={'7':'7 días','28':'28 días','90':'90 días','all':'todo el histórico'};
+// Interpretation (P1): the published label, its explanation, and the 28-day arrow. Nothing here is computed: it reads the contract.
+const ARROWS={up:'↑',down:'↓',flat:'→'};
+const LABEL_TEXT={mejora_sostenida:'Mejora sostenida',estable:'Estable (sin cambio detectable)',deterioro:'Deterioro',datos_insuficientes:'Datos insuficientes'};
+const LABEL_CLASS={mejora_sostenida:'pill-win',estable:'',deterioro:'pill-warn',datos_insuficientes:'pill-draw'};
+const LABEL_ORDER={deterioro:0,mejora_sostenida:1,estable:2,datos_insuficientes:3};
+const gsign=(v,d)=>v==null?'—':(v>0?'+':'')+gnum(v,d);
+const gband=b=>gsigned(b[0]*100,' %')+' a '+gsigned(b[1]*100,' %');
+function interpretationLines(x){
+ const i=x.interpretation, b=i.bands, t=x.trend112, r=x.recent28vBase56, out=[];
+ if(i.label==='mejora_sostenida'||(i.label==='deterioro'&&i.reason==='sostenido')){
+  const up=i.label==='mejora_sostenida';
+  out.push('Tendencia '+(up?'al alza':'a la baja')+' en los últimos '+t.days+' días: ρ de Spearman '+gsign(t.rho,2)+' (límite '+gsign(b.rho112[up?1:0],2)+') y pendiente '+gsign(t.slopePctPer28d,1)+' % cada 28 días (n='+t.n+'). Se repite dos semanas seguidas.');
+ } else if(i.label==='deterioro'){
+  out.push('Los últimos 28 días están un '+gsigned(r.delta*100,' %')+' frente a los 56 anteriores; el límite de ruido de este juego es '+gsigned(b['28v56'][0]*100,' %')+' (n='+r.nCur+'/'+r.nBase+'). Se repite dos semanas seguidas.');
+ } else if(i.label==='estable'){
+  out.push('Ninguna señal supera el ruido de este juego: a 28 días solo se detecta un cambio por debajo de '+gsigned(b['28'][0]*100,' %')+' o por encima de '+gsigned(b['28'][1]*100,' %')+'.');
+ } else if(i.reason==='sin_calibracion'){
+  out.push('Este juego aún no tiene límites calibrados (se calibran con al menos 112 días de historia).');
+ } else {
+  out.push('Faltan observaciones con media: hacen falta al menos 68 de los últimos 112 días, 17 de los últimos 28 y 34 de los 56 anteriores.');
+ }
+ if(i.pending) out.push('Señal sin confirmar: '+LABEL_TEXT[i.pending].toLowerCase()+'. Se publicará si se repite la semana próxima.');
+ if(b) out.push('Límites calibrados con datos hasta '+i.calibratedThrough+'.');
+ return out;
+}
+function deltaTitle(w){
+ const e=w.delta&&w.delta.effRel;
+ if(!e||e.value==null) return deltaWhy(w);
+ if(gamesRange!=='28') return null;
+ if(e.arrow==='flat') return 'Dentro del ruido de este juego ('+gband(e.band)+').';
+ if(e.arrow) return 'Supera el ruido de este juego (fuera de '+gband(e.band)+').';
+ return 'Sin calibración o sin observaciones suficientes para interpretar este cambio.';
+}
+function deltaSr(w){
+ const e=w.delta&&w.delta.effRel;
+ return gamesRange==='28'&&e&&e.value!=null&&e.arrow?(e.arrow==='flat'?' (dentro del ruido)':e.arrow==='up'?' (sube, fuera del ruido)':' (baja, fuera del ruido)'):null;
+}
 // Table columns: one source for the header, the cell text and the sort value. nulls always sort last.
 const GCOLS=[
  {k:'name',l:'Juego',v:(g,w,k)=>GAME_NAMES[k]||k,t:(g,w,k)=>GAME_NAMES[k]||k},
  {k:'eff',l:'Eficiencia',v:(g,w)=>w.eff.median,t:(g,w)=>w.eff.median==null?'—':'×'+gnum(w.eff.median,2)+' · n='+w.eff.nEff},
  {k:'beat',l:'Gana a la media',v:(g,w)=>w.beat.rate,t:(g,w)=>w.beat.rate==null?'—':gpct(w.beat.rate)+' · n='+w.beat.nBeat},
- {k:'delta',l:'Δ eficiencia',v:(g,w)=>w.delta?w.delta.effRel.value:null,t:(g,w)=>w.delta&&w.delta.effRel.value!=null?gsigned(w.delta.effRel.value*100,' %')+' · n='+w.delta.effRel.nCur+'/'+w.delta.effRel.nPrev:'—'},
+ {k:'delta',l:'Δ eficiencia',v:(g,w)=>w.delta?w.delta.effRel.value:null,t:(g,w)=>{ const e=w.delta&&w.delta.effRel; if(!e||e.value==null) return '—'; return (gamesRange==='28'&&e.arrow?ARROWS[e.arrow]+' ':'')+gsigned(e.value*100,' %')+' · n='+e.nCur+'/'+e.nPrev; }},
  {k:'time',l:'Tiempo mediano (P25–P75)',v:(g,w)=>w.time.median,t:(g,w)=>w.time.median==null?'—':gtime(w.time.median)+' ('+gtime(w.time.p25)+'–'+gtime(w.time.p75)+') · n='+w.time.nTime},
  {k:'streak',l:'Racha',v:g=>g.beatStreak.current,t:g=>gdays(g.beatStreak.current)},
  {k:'n',l:'n',v:(g,w)=>w.time.nTime,t:(g,w)=>String(w.time.nTime)},
@@ -1612,7 +1649,7 @@ function renderGamesTable(){
  rows.sort((a,b)=>{ const x=col.v(a.g,a.w,a.k), y=col.v(b.g,b.w,b.k); if(x==null&&y==null) return 0; if(x==null) return 1; if(y==null) return -1; return (typeof x==='string'?x.localeCompare(y):x-y)*gamesSort.dir; });
  rows.forEach(r=>{
   const row=document.createElement('tr');
-  GCOLS.forEach(c=>{ const td=document.createElement('td'); td.textContent=c.t(r.g,r.w,r.k); if(c.k==='delta'&&c.v(r.g,r.w)==null) td.setAttribute('title',deltaWhy(r.w)); if(c.k!=='name') td.className='num'; row.appendChild(td); });
+  GCOLS.forEach(c=>{ const td=document.createElement('td'); td.textContent=c.t(r.g,r.w,r.k); if(c.k==='delta'){ const ti=deltaTitle(r.w), sr=deltaSr(r.w); if(ti) td.setAttribute('title',ti); if(sr){ const sp=document.createElement('span'); sp.className='sr-only'; sp.textContent=sr; td.appendChild(sp); } } if(c.k!=='name') td.className='num'; row.appendChild(td); });
   body.appendChild(row);
  });
 }
@@ -1660,11 +1697,12 @@ function renderGamesChart(){
 function renderGamesCards(){
  if(!gamesData) return;
  const s=gamesData, g=q('#gamesList'); g.textContent='';
- Object.keys(s.games).sort((a,b)=>Number(s.games[b].regression)-Number(s.games[a].regression)).forEach(k=>{
-  const x=s.games[k], w=x.windows[gamesRange], card=document.createElement('section');
-  card.className='card gcard'+(x.regression?' reg':'');
+ Object.keys(s.games).sort((a,b)=>LABEL_ORDER[s.games[a].interpretation.label]-LABEL_ORDER[s.games[b].interpretation.label]).forEach(k=>{
+  const x=s.games[k], w=x.windows[gamesRange], lb=x.interpretation.label, card=document.createElement('section');
+  card.className='card gcard'+(lb==='deterioro'?' det':'');
   const h=document.createElement('h3'); h.textContent=GAME_NAMES[k]||k; card.appendChild(h);
-  if(x.regression){ const b=document.createElement('span'); b.className='pill pill-warn'; b.style.marginLeft='8px'; b.textContent='regresión'; h.appendChild(b); }
+  const badge=document.createElement('span'); badge.className='pill '+LABEL_CLASS[lb]; badge.style.marginLeft='8px'; badge.textContent=LABEL_TEXT[lb]; h.appendChild(badge);
+  interpretationLines(x).forEach((t,n)=>{ const p=gameLine(card,t); p.className=n===0?'ginterp':'muted'; });
   const dl=w.delta&&w.delta.effRel.value!=null?gsigned(w.delta.effRel.value*100,' %')+' vs periodo previo (n='+w.delta.effRel.nCur+'/'+w.delta.effRel.nPrev+')':'sin periodo previo comparable';
   gameLine(card,'Eficiencia ('+RANGE_NAMES[gamesRange]+'): '+(w.eff.median==null?'—':'×'+gnum(w.eff.median,2)+' · n='+w.eff.nEff+' ('+dl+')'));
   gameLine(card,'Gana a la media: '+(w.beat.rate==null?'—':gpct(w.beat.rate)+' · n='+w.beat.nBeat));

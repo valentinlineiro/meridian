@@ -105,7 +105,7 @@ describe("period comparison", () => {
     expect(w.delta!.effRel.value).toBeCloseTo(0, 10);
     const none = zip([day(addDays(TODAY, -60), { zip: entry(10, 20) }), day(TODAY, { zip: entry(10, 20) })]).windows["28"]!;
     expect(none.prev!.eff).toEqual({ median: null, nEff: 0 });
-    expect(none.delta!.effRel).toEqual({ value: null, nCur: 1, nPrev: 0 });
+    expect(none.delta!.effRel).toMatchObject({ value: null, nCur: 1, nPrev: 0 });
   });
 
   it("shouldKeepNEffNBeatAndNTimeSeparateInTheContract", () => {
@@ -118,7 +118,8 @@ describe("period comparison", () => {
 
   it("shouldCarryNCurAndNPrevInEveryDelta", () => {
     const w = zip([day(addDays(TODAY, -55), { zip: entry(10, 20) }), day(TODAY, { zip: entry(10, 20) })]).windows["28"]!;
-    for (const d of Object.values(w.delta!)) expect(Object.keys(d).sort()).toEqual(["nCur", "nPrev", "value"]);
+    // P1 adds `arrow` and `band` to the effRel of the 28-day window only; every measured field stays
+    for (const [k, d] of Object.entries(w.delta!)) expect(Object.keys(d).sort()).toEqual(k === "effRel" ? ["arrow", "band", "nCur", "nPrev", "value"] : ["nCur", "nPrev", "value"]);
   });
 });
 
