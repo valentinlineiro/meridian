@@ -1,6 +1,6 @@
 # Diseño P1: interpretación de la evolución en LinkedIn Games (2026-11-04, rev. 4)
 
-Estado: **listo para aprobación.** Sin código. Parte del P0 (medición, `294008d`). Los umbrales salen de la distribución histórica real; lo que es convención está marcado. Scripts y artefacto en `linkedin-games-p1-calibration/`.
+Estado: **implementado en #94** (`f77fc30`, fusionado y desplegado el 2026-11-04) conforme a este documento (rev. 4); validado en producción con sesión autenticada. Parte del P0 (medición, `294008d`). Los umbrales salen de la distribución histórica real; lo que es convención está marcado. Scripts y artefacto en `linkedin-games-p1-calibration/`. **Pendiente:** recalibración de Tango y Wend cuando alcancen 112 días naturales (≈ 2026-12-28), en un PR independiente que reemplace `noise-bands.json` solo con la nueva calibración reproducible (`p1_artifact.py`).
 
 ## 0. Cambios respecto a la rev. 3 (revisión de #93)
 - **La simulación y los datos reales evalúan ya exactamente la regla del diseño.** `label_arrays()` no aplicaba la condición de la pendiente de Theil-Sen. Ahora una tendencia sostenida exige **ρ de Spearman fuera de su límite y pendiente de Theil-Sen del mismo signo**, y la condición es **simétrica**: «deterioro sostenido» también exige pendiente negativa (en la rev. 3 solo la pedía la mejora; era una asimetría sin justificación, y se aclara aquí).
