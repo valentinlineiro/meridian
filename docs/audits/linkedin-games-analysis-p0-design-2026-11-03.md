@@ -1,6 +1,6 @@
 # Diseño P0: análisis de LinkedIn Games (2026-11-03)
 
-Estado: **implementado en #91** (`294008d`, 2026-11-03), conforme a este documento (rev. 2). La interpretación (etiquetas y umbrales) sigue sin diseñar. Parte de `linkedin-games-read-view-design-2026-11-03.md` (PR #86, #88).
+Estado: **implementado en #91** (`294008d`, 2026-11-03), conforme a este documento (rev. 2). La interpretación (etiquetas y umbrales) se diseñó y se implementó después: `linkedin-games-p1-interpretation-design-2026-11-04.md` (#93, #94). Parte de `linkedin-games-read-view-design-2026-11-03.md` (PR #86, #88).
 Separa **medición** (este documento) de **interpretación** (etiquetas y umbrales: PR posterior, fuera de este diseño).
 
 ## 0. Decisiones tomadas
