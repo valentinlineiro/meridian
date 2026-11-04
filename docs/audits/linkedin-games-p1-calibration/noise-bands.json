@@ -1,0 +1,109 @@
+{
+ "version": 1,
+ "calibratedThrough": "2026-11-03",
+ "method": {
+  "null": "block bootstrap of whole 7-day blocks of the game's own history",
+  "tails": [
+   0.025,
+   0.975
+  ],
+  "resamples": 20000,
+  "seeds": [
+   11,
+   22,
+   33,
+   44,
+   55
+  ],
+  "pooled": true,
+  "evaluatedAt": "end of the last complete 7-day block of each resampled history",
+  "coverage": 0.6,
+  "minHistoryDays": 112,
+  "trendHorizonDays": 112,
+  "recentDays": 28,
+  "baselineDays": 56,
+  "statistics": {
+   "d28v28": "relative change of the 28-day median efficiency vs the previous 28 days",
+   "d28v56": "relative change of the 28-day median efficiency vs the previous 56 days",
+   "rho112": "Spearman rho of efficiency vs day over the last 112 days"
+  }
+ },
+ "games": {
+  "mini_sudoku": {
+   "calendarDays": 171,
+   "observations": 170,
+   "limits": {
+    "d28v28": [
+     -0.2259,
+     0.294
+    ],
+    "d28v56": [
+     -0.2041,
+     0.2489
+    ],
+    "rho112": [
+     -0.2747,
+     0.28
+    ]
+   }
+  },
+  "patches": {
+   "calendarDays": 171,
+   "observations": 170,
+   "limits": {
+    "d28v28": [
+     -0.332,
+     0.4975
+    ],
+    "d28v56": [
+     -0.2932,
+     0.4373
+    ],
+    "rho112": [
+     -0.1978,
+     0.2036
+    ]
+   }
+  },
+  "queens": {
+   "calendarDays": 171,
+   "observations": 170,
+   "limits": {
+    "d28v28": [
+     -0.2776,
+     0.3829
+    ],
+    "d28v56": [
+     -0.2423,
+     0.3495
+    ],
+    "rho112": [
+     -0.1512,
+     0.1652
+    ]
+   }
+  },
+  "zip": {
+   "calendarDays": 171,
+   "observations": 170,
+   "limits": {
+    "d28v28": [
+     -0.2552,
+     0.3433
+    ],
+    "d28v56": [
+     -0.2263,
+     0.2971
+    ],
+    "rho112": [
+     -0.1888,
+     0.183
+    ]
+   }
+  }
+ },
+ "uncalibrated": [
+  "tango",
+  "wend"
+ ]
+}
