@@ -3,7 +3,9 @@
 **Fecha:** 2026-11-04
 **Autor:** Principal Product Designer / Product Architect
 **Alcance:** experiencia de lectura de las tres áreas (ajedrez, LinkedIn Games, idiomas) y de la portada común.
-**Naturaleza:** auditoría y documentación. No se ha modificado código, API, contratos, datos ni metodología. No se ha ejecutado ninguna operación contra Neon. No se han creado ramas ni PRs.
+**Naturaleza:** auditoría y documentación. No modifica código, API, contratos, datos ni metodología. No se ha ejecutado ninguna operación contra Neon. La PR es documental y no implementa el rediseño.
+
+> **Nota de alcance.** La auditoría se basa en código, contratos y datasets documentados; no se ejecutó la aplicación ni se hicieron capturas o tests con usuarios. Los hallazgos sobre estructura, copy y datos son observados. Las conclusiones sobre jerarquía visual, densidad, navegación y comportamiento real son **hipótesis de diseño pendientes de validación en pantalla**. Las propuestas de las secciones 5–10 no son un plan de implementación aprobado.
 
 ---
 
@@ -98,6 +100,19 @@ Cada dominio y la portada se puntúan contra las seis preguntas del criterio de 
 | ¿Cómo compruebo? | Parcial: tablas y metodología, sin enlaces | Parcial: metodología, sin enlaces | Sí: `n`, tabla de datos, bandas | **No** |
 
 **Lectura:** ninguna columna supera «parcial». La mejor evidencia del producto no se convierte en la mejor experiencia.
+
+### 2.4 Validación pendiente en pantalla
+
+Antes de convertir esta auditoría en un plan de implementación, hay que validar en la aplicación:
+
+| Experiencia | Qué validar | Criterio |
+|---|---|---|
+| Ajedrez | Que la posición se lea sin scroll y que color/PvP no se interpreten como conclusiones | Un usuario nuevo puede decir dónde está y qué merece atención |
+| Idiomas | Que actividad, avance curricular y competencia no se confundan | XP y racha no se leen como nivel lingüístico |
+| Games | Que la síntesis cross-game y la cobertura de calibración se entiendan sin metodología externa | «Mejora sostenida» y «sin calibrar» se distinguen |
+| Común | Que Posición → Análisis → Evidencia se perciba como una arquitectura única | No se lee como tres dashboards renombrados |
+
+Hasta que exista esa prueba, las conclusiones visuales de este documento son hipótesis, no hallazgos.
 
 ---
 
