@@ -759,6 +759,63 @@ function renderOverviewLangCard(langs, activeDetail){
   elCatalog.textContent = numCourses + ' cursos · ' + xpText(totalCatXp) + ' XP';
  }
 }
+function renderOverviewGamesCard(summary){
+ const elStreak = q('#overviewGamesStreak');
+ const elMeta = q('#overviewGamesMeta');
+ const elDist = q('#overviewGamesDist');
+ const elDistWin = q('#overviewGamesDistWin');
+ const elDistLoss = q('#overviewGamesDistLoss');
+ const elWrLabel = q('#overviewGamesWrLabel');
+ const elWrMeta = q('#overviewGamesWrMeta');
+ const elHist = q('#overviewGamesHistorical');
+
+ if(!summary || !summary.games || !Object.keys(summary.games).length){
+  if(elStreak) elStreak.textContent = '—';
+  if(elMeta) elMeta.textContent = 'Sin partidas registradas aún';
+  if(elDist) elDist.style.display = 'none';
+  if(elWrLabel) elWrLabel.textContent = 'Ganas a la media global';
+  if(elWrMeta) elWrMeta.textContent = '—';
+  if(elHist) elHist.textContent = '0 días registrados';
+  return;
+ }
+
+ const currStreak = summary.playStreak?.current ?? 0;
+ if(elStreak) elStreak.textContent = currStreak > 0 ? '🔥 ' + currStreak + (currStreak === 1 ? ' día' : ' días') : '—';
+ if(elMeta){
+  const maxStreak = summary.playStreak?.max ?? 0;
+  elMeta.textContent = maxStreak > 0 ? 'Racha máxima ' + maxStreak + (maxStreak === 1 ? ' día' : ' días') : 'Sin racha activa';
+ }
+
+ const keys = Object.keys(summary.games);
+ let beat = 0, total = 0;
+ keys.forEach(k => {
+  const g = summary.games[k];
+  if(g && g.beatAvgRate != null && g.nWithAvg){
+   beat += Math.round(g.beatAvgRate * g.nWithAvg);
+   total += g.nWithAvg;
+  }
+ });
+
+ const pct = total ? (beat / total * 100) : null;
+ if(elDist && pct != null){
+  elDist.style.display = 'flex';
+  if(elDistWin) elDistWin.style.width = pct.toFixed(1) + '%';
+  if(elDistLoss) elDistLoss.style.width = (100 - pct).toFixed(1) + '%';
+ } else if(elDist){
+  elDist.style.display = 'none';
+ }
+
+ if(elWrLabel){
+  elWrLabel.textContent = pct != null ? Math.round(pct) + '% ganas a la media global' : 'Ganas a la media global';
+ }
+ if(elWrMeta){
+  elWrMeta.textContent = pct != null ? Math.round(pct) + ' % de ' + total + ' resultados' : '—';
+ }
+
+ if(elHist){
+  elHist.textContent = summary.days ? gdays(summary.days) + ' registrados' : '—';
+ }
+}
 function renderOverview(data){
  if(!data) return;
 
@@ -773,7 +830,8 @@ function renderOverview(data){
  if(elSyncMeta){
   const langSync = data.langs?.updatedAt ? 'Idiomas: sincronizado ' + relDate(data.langs.updatedAt) : 'Idiomas: sin sincronizar';
   const chessSync = data.lastChessSyncedAt ? 'Ajedrez: sincronizado ' + relDate(data.lastChessSyncedAt) : 'Ajedrez: sin sincronizar';
-  elSyncMeta.textContent = langSync + ' · ' + chessSync;
+  const gamesSync = data.gamesSummary?.days ? 'Games: ' + gdays(data.gamesSummary.days) + ' registrados' : 'Games: registro manual';
+  elSyncMeta.textContent = langSync + ' · ' + chessSync + ' · ' + gamesSync;
  }
 
  const summaries = data.xp_summaries !== undefined ? data.xp_summaries : (data.xpData?.summaries || data.summaries || []);
@@ -820,6 +878,7 @@ function renderOverview(data){
  if(elHist && stats.games){
   elHist.textContent = stats.games.toLocaleString('es-ES') + ' partidas disputadas';
  }
+ renderOverviewGamesCard(data.gamesSummary);
 
  // 3. Tu Semana
  const days7 = [];
@@ -985,13 +1044,14 @@ function stat(key,route){
 }
 async function loadOverviewDashboard(){
  try {
-  const [langs, xpData, stats, recent, matches, timeline] = await Promise.all([
+  const [langs, xpData, stats, recent, matches, timeline, gamesRes] = await Promise.all([
    j('/api/languages').catch(()=>null),
    j('/api/languages/xp?days=30').catch(()=>null),
    stat('summary','/api/stats/summary').catch(()=>null),
    stat('recent','/api/stats/recent?limit=50').catch(()=>null),
    j('/api/matches?limit=100').catch(()=>null),
-   stat('timeline','/api/stats/timeline').catch(()=>null)
+   stat('timeline','/api/stats/timeline').catch(()=>null),
+   j('/api/me/linkedin-games/summary?today=' + encodeURIComponent(localToday())).catch(()=>null)
   ]);
   let activeDetail = null;
   if(langs && langs.courses && langs.courses.length){
@@ -1009,7 +1069,8 @@ async function loadOverviewDashboard(){
    stats,
    recent,
    matches: matches? (matches.rows||[]) : null,
-   lastChessSyncedAt: lastSnap?.createdAt || null
+   lastChessSyncedAt: lastSnap?.createdAt || null,
+   gamesSummary: gamesRes?.summary || null
   });
  } catch(err){
   console.error('loadOverviewDashboard', err);
