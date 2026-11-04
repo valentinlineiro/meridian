@@ -5,7 +5,7 @@
 **Alcance:** experiencia de lectura de las tres áreas (ajedrez, LinkedIn Games, idiomas) y de la portada común.
 **Naturaleza:** auditoría y documentación. No modifica código, API, contratos, datos ni metodología. No se ha ejecutado ninguna operación contra Neon. La PR es documental y no implementa el rediseño.
 
-> **Nota de alcance.** La auditoría se basa en código, contratos y datasets documentados; no se ejecutó la aplicación ni se hicieron capturas o tests con usuarios. Los hallazgos sobre estructura, copy y datos son observados. Las conclusiones sobre jerarquía visual, densidad, navegación y comportamiento real son **hipótesis de diseño pendientes de validación en pantalla**. Las propuestas de las secciones 5–10 no son un plan de implementación aprobado.
+> **Nota de alcance y estado de validación.** La versión inicial de esta auditoría se basó en código, contratos y datasets documentados. Las hipótesis de diseño visual, jerarquía, densidad y navegación fueron **validadas en pantalla con datos de prueba y capturas en escritorio y móvil** el 2026-11-04 (véase el informe complementario [MERIDIAN_UX_VISUAL_VALIDATION.md](./MERIDIAN_UX_VISUAL_VALIDATION.md) y las capturas en `docs/ux/screenshots/`). Las propuestas que recibieron matices o refutaciones en la experiencia real (como la preservación de la entrada manual rápida de Games o evitar la fragmentación en URLs rígidas) se encuentran reflejadas en las secciones correspondientes. Las propuestas de las secciones 5–10 proporcionan el marco conceptual aprobado para el roadmap incremental.
 
 ---
 
@@ -101,18 +101,18 @@ Cada dominio y la portada se puntúan contra las seis preguntas del criterio de 
 
 **Lectura:** ninguna columna supera «parcial». La mejor evidencia del producto no se convierte en la mejor experiencia.
 
-### 2.4 Validación pendiente en pantalla
+### 2.4 Validación realizada en pantalla (2026-11-04)
 
-Antes de convertir esta auditoría en un plan de implementación, hay que validar en la aplicación:
+Las hipótesis visuales planteadas en esta auditoría fueron validadas contra la aplicación ejecutándose localmente con datos de prueba (`http://localhost:8787`). El informe exhaustivo de resultados y capturas está documentado en [MERIDIAN_UX_VISUAL_VALIDATION.md](./MERIDIAN_UX_VISUAL_VALIDATION.md).
 
-| Experiencia | Qué validar | Criterio |
+| Experiencia | Qué se validó | Resultado de la validación en pantalla |
 |---|---|---|
-| Ajedrez | Que la posición se lea sin scroll y que color/PvP no se interpreten como conclusiones | Un usuario nuevo puede decir dónde está y qué merece atención |
-| Idiomas | Que actividad, avance curricular y competencia no se confundan | XP y racha no se leen como nivel lingüístico |
-| Games | Que la síntesis cross-game y la cobertura de calibración se entiendan sin metodología externa | «Mejora sostenida» y «sin calibrar» se distinguen |
-| Común | Que Posición → Análisis → Evidencia se perciba como una arquitectura única | No se lee como tres dashboards renombrados |
+| Ajedrez | Lectura sin scroll, redundancia de KPIs, separación de Perfil | **Confirmado:** 4 KPIs redundantes, ELO repetido, Perfil aislado con 0/60 partidas analizadas y sin contexto de cobertura. |
+| Idiomas | Confusión entre actividad y aprendizaje real; CEFR | **Confirmado:** 11 bloques apilados (3.670 px de scroll en móvil); la actividad eclipsa al aprendizaje; secciones A1 inducen a falsa competencia. |
+| Games | Síntesis cross-game, cobertura y rol de la entrada manual | **Matizado:** Confirmada la falta de síntesis cross-game y de progreso hacia calibración; **refutada** la relegación de la entrada manual (operativamente crítica). |
+| Común | Arquitectura Posición → Análisis → Evidencia | **Confirmado en esencia; ajustado en navegación:** Se descarta la división en 3 URLs rígidas por dominio en favor de disclosure progresivo en la ruta canónica. |
 
-Hasta que exista esa prueba, las conclusiones visuales de este documento son hipótesis, no hallazgos.
+El criterio de salida se da por cumplido: se dispone de evidencia directa para acometer el primer tramo de implementación (Fase 0) sin especulación visual.
 
 ---
 
@@ -378,8 +378,9 @@ Evidencia: `src/frontend.ts:404-424`; `src/dashboard.client.js:1730-1737`.
 La misma información aparece en la tabla, en el gráfico y en las tarjetas. Cada una añade algo (ordenar, ver evolución, leer la etiqueta), pero no hay jerarquía: las tres están abiertas por defecto.
 Evidencia: `src/frontend.ts:427-439`.
 
-**G3 · La entrada manual compite con el análisis. Severidad: media.**
-«Registrar resultado» y los chips de hoy ocupan el hero. Es la acción diaria y debe seguir accesible, pero no es la posición. En escritorio desplaza la lectura; en móvil es lo primero que se ve.
+**G3 · La entrada manual compite con el análisis. Severidad: media (matizada en validación visual).**
+«Registrar resultado» y los chips de hoy ocupan el hero. Es la acción diaria y debe seguir accesible, pero no es la posición. En escritorio desplaza la lectura; en móvil es lo primero que se ve.  
+*(Nota de validación 2026-11-04: La validación en pantalla confirmó que, al no existir sincronización automática para LinkedIn Games, la entrada manual es la acción primaria diaria más crítica del usuario; por tanto, no debe relegarse a enlaces secundarios, sino rediseñarse de forma compacta en el hero junto al veredicto).*
 Evidencia: `src/frontend.ts:412`, `423`.
 
 **G4 · Dos juegos sin calibración se ven casi como «estable». Severidad: alta.**
@@ -487,7 +488,8 @@ Configuración               /settings
 ```
 
 - El curso seleccionado sigue siendo una subruta: `/languages/DUOLINGO_XA_EN`.
-- Cada afirmación tiene ancla: `/chess/analysis#color`, `/games/analysis#tango`.
+- Cada afirmación tiene ancla: `/chess#color`, `/games#tango`.
+- *(Nota de validación 2026-11-04: La validación en pantalla desaconseja multiplicar sub-URLs rígidas como `/chess/evidence` o `/games/analysis`, ya que en móvil y en paneles de seguimiento personal añaden fatiga de navegación. La estructura recomendada mantiene la URL canónica por dominio con anclas o disclosure progresivo vertical: Posición visible arriba, Evidencia accesible mediante enlaces directos a anclas).*
 - El menú lateral deja de mezclar niveles: tres dominios, luego dos vistas globales, luego cuenta.
 
 ### 5.4 Qué aparece primero y qué queda bajo demanda
