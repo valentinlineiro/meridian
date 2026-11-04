@@ -1,15 +1,32 @@
-import { beats, dayNo, efficiencyOf as eff, median, trajectory, windows, type Bucket, type Obs, type RangeKey, type WindowResult } from "./GameAnalysis.ts";
+import { beats, dayNo, efficiencyOf as eff, median, trajectory, windows, type Bucket, type Delta, type Obs, type RangeKey, type WindowResult } from "./GameAnalysis.ts";
+import { arrow28, candidate, publish, type Arrow, type Label, type Reason } from "./GameInterpretation.ts";
 import type { DayRecord } from "./LinkedinGames.ts";
+import { NOISE_BANDS, type Band, type GameBands, type NoiseBands } from "./NoiseBands.ts";
+import { recent28vBase56, trend112, type Recent28vBase56, type Trend112 } from "./GameTrend.ts";
 
 // Read-side metrics over the recorded days (design: docs/audits/linkedin-games-read-view-design-2026-11-03.md).
 // Efficiency = the day's published average over the player's time: above 1 is faster than the average, and it already
 // normalises the difficulty of the day.
 export const WINDOW_DAYS = 28; // four whole weeks: cancels the weekend effect when two windows are compared
-export const REGRESSION_DROP = 0.1; // initial operating threshold, not a statistical truth: to be calibrated with more history
-export const MIN_PER_WINDOW = 10;
+const DAY_MS = 86_400_000;
+const addDays = (date: string, n: number) => new Date(Date.parse(`${date}T00:00:00Z`) + n * DAY_MS).toISOString().slice(0, 10);
 
 export interface Streak { current: number; max: number }
 export interface SeriesPoint { date: string; eff: number; roll: number }
+// The 28-day comparison carries its arrow and band (design rev. 4, §2.4); 7 d, 90 d and "Todo" stay exactly as measured in P0.
+export interface Window28 extends Omit<WindowResult, "delta"> {
+  delta: { effRel: Delta & { arrow: Arrow; band: Band | null }; beatPp: Delta; medianSec: Delta } | null;
+}
+export type SummaryWindows = Omit<Record<RangeKey, WindowResult>, "28"> & { "28": Window28 };
+export interface Interpretation {
+  label: Label; // published (option B: the same candidate today and a week ago)
+  reason: Reason | null;
+  candidate: Label; // today, before the two-week rule
+  previousCandidate: Label; // a week ago
+  pending: Label | null; // an unconfirmed candidate; the published label is "estable" meanwhile
+  bands: GameBands | null; // null for a game without calibration
+  calibratedThrough: string | null;
+}
 export interface GameSummary {
   n: number;
   nWithAvg: number;
@@ -17,10 +34,13 @@ export interface GameSummary {
   efficiency: { last28: number | null; prev28: number | null; change: number | null; nLast28: number; nPrev28: number };
   best: { seconds: number; date: string };
   beatStreak: Streak;
-  regression: boolean;
+  regression: boolean; // obsolete: equals interpretation.label === "deterioro"
   series: SeriesPoint[];
   firstDate: string; // start of the game's coverage; a day without play inside it is simply not an observation
-  windows: Record<RangeKey, WindowResult>;
+  windows: SummaryWindows;
+  trend112: Trend112 | null;
+  recent28vBase56: Recent28vBase56 | null;
+  interpretation: Interpretation;
   trajectory: Record<RangeKey, Bucket[]>;
 }
 export interface Summary {
@@ -47,7 +67,7 @@ function streak(days: Array<{ date: string; ok: boolean }>, today: string): Stre
   return { current: last && dayNo(today) - dayNo(last.date) <= 1 ? run : 0, max };
 }
 
-function gameSummary(obs: Obs[], today: string): GameSummary {
+function gameSummary(game: string, obs: Obs[], today: string, noise: NoiseBands): GameSummary {
   const t = dayNo(today);
   const withAvg = obs.filter((o) => o.avg !== null);
   const inWindow = (list: Obs[], from: number, to: number) => list.filter((o) => dayNo(o.date) > t - from && dayNo(o.date) <= t - to);
@@ -55,6 +75,11 @@ function gameSummary(obs: Obs[], today: string): GameSummary {
   const last28 = last.length ? median(last) : null, prev28 = prev.length ? median(prev) : null;
   const change = last28 !== null && prev28 !== null ? (last28 - prev28) / prev28 : null;
   const best = obs.reduce((b, o) => (o.score < b.score ? o : b));
+  const bands = noise.games[game] ?? null, weekAgo = addDays(today, -7);
+  const trend = trend112(obs, today), recent = recent28vBase56(obs, today);
+  const now = candidate(trend, recent, bands), before = candidate(trend112(obs, weekAgo), recent28vBase56(obs, weekAgo), bands);
+  const published = publish(now, before);
+  const w = windows(obs, today), w28 = w["28"];
   return {
     n: obs.length,
     nWithAvg: withAvg.length,
@@ -62,9 +87,12 @@ function gameSummary(obs: Obs[], today: string): GameSummary {
     efficiency: { last28, prev28, change, nLast28: last.length, nPrev28: prev.length },
     best: { seconds: best.score, date: best.date },
     beatStreak: streak(obs.map((o) => ({ date: o.date, ok: beats(o) })), today),
-    regression: change !== null && last.length >= MIN_PER_WINDOW && prev.length >= MIN_PER_WINDOW && change <= -REGRESSION_DROP + 1e-9,
+    regression: published.label === "deterioro",
     firstDate: obs[0]!.date,
-    windows: windows(obs, today),
+    windows: { ...w, "28": { ...w28, delta: w28.delta && { ...w28.delta, effRel: { ...w28.delta.effRel, arrow: arrow28(w28.delta.effRel, bands), band: bands ? bands["28"] : null } } } },
+    trend112: trend,
+    recent28vBase56: recent,
+    interpretation: { label: published.label, reason: published.reason, candidate: now.label, previousCandidate: before.label, pending: published.pending, bands, calibratedThrough: bands ? noise.calibratedThrough : null },
     trajectory: trajectory(obs, today),
     series: withAvg.map((o) => ({
       date: o.date,
@@ -75,7 +103,7 @@ function gameSummary(obs: Obs[], today: string): GameSummary {
 }
 
 // `days` holds the current version of each date, ascending. `today` is the player's calendar date.
-export function summarize(days: DayRecord[], today: string): Summary {
+export function summarize(days: DayRecord[], today: string, noise: NoiseBands = NOISE_BANDS): Summary {
   const byGame = new Map<string, Obs[]>();
   const played: Array<{ date: string; ok: boolean }> = [];
   for (const d of days) {
@@ -93,6 +121,6 @@ export function summarize(days: DayRecord[], today: string): Summary {
     from: played[0]?.date ?? null,
     to: played[played.length - 1]?.date ?? null,
     playStreak: streak(played, today),
-    games: Object.fromEntries([...byGame].map(([g, obs]) => [g, gameSummary(obs, today)])),
+    games: Object.fromEntries([...byGame].map(([g, obs]) => [g, gameSummary(g, obs, today, noise)])),
   };
 }

@@ -121,6 +121,44 @@ describe("linkedin games manual entry over HTTP and D1", () => {
     expect(z.trajectory["7"]).toEqual([{ start: "2026-10-13", n: 1, eff: 17 / 8, beat: 1 }, { start: "2026-10-14", n: 0, eff: null, beat: null }]);
   });
 
+  // 170 consecutive days of zip ending 2026-10-14, inserted directly (one snapshot per date)
+  const seedZip = (days = 170) => {
+    for (let i = 0; i < days; i++) {
+      const date = new Date(Date.parse("2026-10-14T00:00:00Z") - (days - 1 - i) * 86_400_000).toISOString().slice(0, 10);
+      const raw = JSON.stringify({ schema: 1, date, games: { zip: { number: null, score: "0:10", scoreSeconds: 10, avg: "0:20", avgSeconds: 20 + (i % 7) } } });
+      state.db.prepare("INSERT INTO snapshots (id, created_at, source, user_id, raw_json, games_count, pages_count, checksum, size_bytes) VALUES (?,?,'linkedin-games','u1',?,0,0,?,?)")
+        .run(`s${i}`, `${date}T10:00:00Z`, raw, `c${i}`, raw.length);
+    }
+  };
+
+  it("shouldServeTheMeasuresInterpretationAndBandsOfACalibratedGame", async () => {
+    seedZip();
+    const g: any = ((await (await summary({ cookie: await cookie() })).json()) as any).summary.games.zip;
+    expect(g.trend112).toMatchObject({ days: 112, n: 112 });
+    expect(Number.isFinite(g.trend112.rho) && Number.isFinite(g.trend112.slopePctPer28d)).toBe(true);
+    expect(g.recent28vBase56).toMatchObject({ nCur: 28, nBase: 56 });
+    expect(g.interpretation.bands).toEqual({ "28": [-0.2552, 0.3433], "28v56": [-0.2263, 0.2971], rho112: [-0.1888, 0.183] });
+    expect(g.interpretation.calibratedThrough).toBe("2026-11-03");
+    expect(Object.keys(g.interpretation).sort()).toEqual(["bands", "calibratedThrough", "candidate", "label", "pending", "previousCandidate", "reason"]);
+    expect(g.windows["28"].delta.effRel).toMatchObject({ band: [-0.2552, 0.3433] });
+    expect(["up", "down", "flat"]).toContain(g.windows["28"].delta.effRel.arrow);
+    expect(g.regression).toBe(g.interpretation.label === "deterioro");
+  });
+
+  it("shouldMarkAGameWithoutCalibrationAsInsufficientOverHttp", async () => {
+    expect((await put({ ...zip, game: "tango", score: "0:45", avg: "0:50" })).status).toBe(200);
+    const g: any = ((await (await summary({ cookie: await cookie() })).json()) as any).summary.games.tango;
+    expect(g.interpretation).toMatchObject({ label: "datos_insuficientes", reason: "sin_calibracion", bands: null, calibratedThrough: null });
+    expect(g.trend112).toBeNull();
+  });
+
+  it("shouldKeepTheFieldsOfTheOlderContractAndTheMeasuresOfP0InTheSameResponse", async () => {
+    seedZip();
+    const g: any = ((await (await summary({ cookie: await cookie() })).json()) as any).summary.games.zip;
+    for (const k of ["n", "nWithAvg", "beatAvgRate", "efficiency", "best", "beatStreak", "regression", "series", "firstDate", "windows", "trajectory"]) expect(g).toHaveProperty(k);
+    expect(Object.keys(g.windows["7"].delta.effRel).sort()).toEqual(["nCur", "nPrev", "value"]); // no arrow outside the 28-day window
+  });
+
   it("shouldNotIncludeAnotherUsersSnapshots", async () => {
     state.db.exec(`INSERT INTO users VALUES ('u2','t');`);
     state.db.prepare("INSERT INTO snapshots (id, created_at, source, user_id, raw_json, games_count, pages_count, checksum, size_bytes) VALUES ('s1','2026-10-13T10:00:00Z','linkedin-games','u2',?,0,0,'c1',1)")

@@ -436,7 +436,7 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
       <div class="tblwrap"><table class="gtable" id="gamesDataTable" aria-describedby="gamesDataCaption"><caption id="gamesDataCaption" class="sr-only"></caption><thead><tr><th scope="col">Periodo</th><th scope="col">Eficiencia (mediana)</th><th scope="col">Gana a la media</th><th scope="col">n</th></tr></thead><tbody id="gamesDataRows"></tbody></table></div>
      </details>
     </details>
-    <details class="cgroup" id="cg-games" open><summary>Por juego</summary><div id="gamesList" class="grid2"></div></details>
+    <details class="cgroup" id="cg-games" open><summary>Por juego</summary><p class="muted" id="gamesInterpNote">La etiqueta compara con el ruido propio de cada juego (límites calibrados con datos reales) y solo se publica si se repite dos semanas seguidas. «Estable» significa «sin cambio detectable», no «sin cambio». Las flechas de la tabla solo existen en el periodo de 28 días.</p><div id="gamesList" class="grid2"></div></details>
    </section>
   <p class="muted" style="margin-top:16px"><a href="/raw">Datos técnicos</a></p>
 </div>

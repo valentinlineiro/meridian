@@ -70,17 +70,15 @@ describe("summarize", () => {
     expect(e.change).toBeCloseTo(-0.2, 10);
   });
 
-  it("shouldFlagRegressionWhenLast28DropTenPercentOrMoreWithEnoughData", () => {
-    const at = (last: number) => summarize([...run("tango", addDays(TODAY, -28), 10, () => entry(10, 20)), ...run("tango", TODAY, 10, () => entry(10, last))], TODAY).games.tango!;
-    expect(at(18).regression).toBe(true); // exactly -10 %
-    expect(at(19).regression).toBe(false);
+  // The 10 % rule (>= 10 % drop, >= 10 samples) is retired (P1): `regression` now only mirrors the calibrated label.
+  it("shouldNotFlagRegressionForATenPercentDropThatIsInsideTheNoise", () => {
+    const days = [...run("zip", addDays(TODAY, -28), 10, () => entry(10, 20)), ...run("zip", TODAY, 10, () => entry(10, 18))];
+    expect(summarize(days, TODAY).games.zip!.regression).toBe(false);
   });
 
-  it("shouldNotFlagRegressionWhenFewerThanTenSamplesPerWindow", () => {
-    const days = [...run("tango", addDays(TODAY, -28), 9, () => entry(10, 20)), ...run("tango", TODAY, 10, () => entry(10, 10))];
-    const t = summarize(days, TODAY).games.tango!;
-    expect(t.efficiency.change).toBeCloseTo(-0.5, 10);
-    expect(t.regression).toBe(false);
+  it("shouldKeepTheRegressionFlagEqualToTheDeteriorationLabel", () => {
+    const g = summarize(run("zip", TODAY, 40, () => entry(10, 20)), TODAY).games.zip!;
+    expect(g.regression).toBe(g.interpretation.label === "deterioro");
   });
 
   it("shouldLeaveChangeNullWhenThereIsNoPreviousWindow", () => {
