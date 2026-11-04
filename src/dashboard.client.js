@@ -82,7 +82,7 @@ function showTab(name){
  q('#chessTab').classList.toggle('active', activeTab==='chess' || activeTab==='profile');
  if(q('#changesTab')) q('#changesTab').classList.toggle('active', activeTab==='changes');
  if(q('#trajectoryTab')) q('#trajectoryTab').classList.toggle('active', activeTab==='trajectory');
- if(q('#profileTab')) q('#profileTab').classList.toggle('active', activeTab==='profile');
+ if(q('#profileTab')) q('#profileTab').classList.remove('active');
  if(q('#gamesTab')) q('#gamesTab').classList.toggle('active', activeTab==='games');
  // native hidden attribute in addition to the CSS class: the inactive panel must be
  // unambiguously excluded from the accessibility tree, not just visually display:none.
@@ -91,7 +91,7 @@ function showTab(name){
  q('#chessTab').hidden = tab!=='chess' && activeTab!=='profile';
  if(q('#changesTab')) q('#changesTab').hidden = activeTab!=='changes';
  if(q('#trajectoryTab')) q('#trajectoryTab').hidden = activeTab!=='trajectory';
- if(q('#profileTab')) q('#profileTab').hidden = activeTab!=='profile';
+ if(q('#profileTab')) q('#profileTab').hidden = true;
  if(q('#gamesTab')) q('#gamesTab').hidden = activeTab!=='games';
  const NAV={overview:'tabBtnOverview',changes:'tabBtnChanges',trajectory:'tabBtnTrajectory',chess:'tabBtnChess',profile:'tabBtnProfile',games:'tabBtnGames',languages:'tabBtnLang'};
  for(const k in NAV){ const b=q('#'+NAV[k]); if(!b) continue; const on=k===activeTab; b.className='side-item'+(on?' active':''); if(b.setAttribute) b.setAttribute('aria-current',on?'page':'false'); if(on&&q('#sideCurrent')) q('#sideCurrent').textContent=b.textContent; }
@@ -633,14 +633,15 @@ function renderLanguagesView(langData, analyticsData, xpData, activeDetail){
  const elStructure=q('#langCourseStructureDetail');
  const elActivity=q('#langAccountActivityDetail');
 
- const compDelta=deltas.find(d=>d.status==='comparable'&&(d.deltaTotalUnits==null||d.deltaTotalUnits===0)&&d.deltaCompletedUnits!=null&&d.deltaCompletedUnits>0);
+ const strictCompDeltas=deltas.filter(d=>d.status==='comparable'&&d.deltaTotalUnits===0);
+ const compDelta=strictCompDeltas.find(d=>d.deltaCompletedUnits!=null&&d.deltaCompletedUnits>0);
 
  if(elCurProg){
   if(compDelta){
    const compCourse=courses.find(c=>c.courseId===compDelta.courseId);
    const cName=compCourse?(compCourse.title||compCourse.courseId):compDelta.courseId;
    elCurProg.textContent='+'+compDelta.deltaCompletedUnits+' unidades completadas en '+cName+' (mismo árbol curricular: denominador idéntico)';
-  } else if(comparableCount>0){
+  } else if(strictCompDeltas.length>0){
    elCurProg.textContent='Sin variación en unidades completadas en cursos comparables (mismo denominador)';
   } else {
    elCurProg.textContent='Sin observaciones curriculares con denominador idéntico (no se calcula avance)';
@@ -1192,7 +1193,7 @@ function setColDiff(c){ // the single renderer of the white-vs-black line
  q('#colDiff').textContent='Blancas '+(wh.winRate*100).toFixed(1)+'% · Negras '+(bl.winRate*100).toFixed(1)+'% → '+fmtDelta(scaleDelta(c.difference,100));
 }
 
-let lastProfileData=null, lastChessObsDate=null;
+let lastProfileData=null;
 function updateChessEngineCoverage(b, totalGames){
  const elVal = q('#chessEngineCoverageVal');
  const elMeta = q('#chessEngineCoverageMeta');
@@ -1204,7 +1205,8 @@ function updateChessEngineCoverage(b, totalGames){
   elMeta.textContent = 'Análisis pendiente · Denominador: ' + total + ' partidas guardadas en el historial (elegibles para análisis)';
  } else {
   const pct = total > 0 ? (analysed / total * 100).toFixed(1) : '0';
-  const obs = lastChessObsDate ? ' · observado ' + lastChessObsDate : '';
+  const rawDate = b && (b.observedAt || b.updatedAt || b.analyzedAt);
+  const obs = rawDate ? ' · observado ' + String(rawDate).slice(0, 10) : '';
   elVal.textContent = analysed + ' de ' + total + ' partidas analizadas (' + pct + ' %)';
   elMeta.textContent = 'Denominador: ' + total + ' partidas guardadas en el historial (elegibles para análisis)' + obs;
  }
@@ -1217,7 +1219,13 @@ function updateChessPatternSuggested(b){
  if(worst && worst.length){
   const w = worst[0];
   const opp = w.opponent || 'Rival';
-  el.innerHTML = 'Partida sugerida para revisión: <button class="btn btn-g btn-sm" onclick="openGame(' + esc(JSON.stringify(w.matchId)) + ')">Revisar vs ' + esc(opp) + ' (' + w.serious + ' errores graves)</button>';
+  el.textContent = 'Partida sugerida para revisión: ';
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'btn btn-g btn-sm';
+  btn.textContent = 'Revisar vs ' + opp + ' (' + (w.serious || 0) + ' errores graves)';
+  btn.onclick = () => openGame(w.matchId);
+  el.appendChild(btn);
  } else {
   el.textContent = 'Partidas sugeridas para revisión: disponibles tras el análisis de motor.';
  }
@@ -1227,10 +1235,6 @@ function renderChessPatterns(s, c, o, t){
  const card = q('#chessPatternsCard');
  if(!card) return;
  const totalGames = (s && s.games) || 0;
- if(t && t.snapshots && t.snapshots.length){
-  const lastSnap = t.snapshots[t.snapshots.length - 1];
-  if(lastSnap && lastSnap.createdAt) lastChessObsDate = lastSnap.createdAt.slice(0, 10);
- }
 
  const wh = c && c.groups && c.groups.find(g=>g.key==='white');
  const bl = c && c.groups && c.groups.find(g=>g.key==='black');
@@ -1240,8 +1244,9 @@ function renderChessPatterns(s, c, o, t){
   if(wh && bl && wh.winRate != null && bl.winRate != null){
    const whDec = wh.decided || wh.games || 0;
    const blDec = bl.decided || bl.games || 0;
-   colVal.textContent = 'Blancas ' + (wh.winRate * 100).toFixed(1) + '% · Negras ' + (bl.winRate * 100).toFixed(1) + '%';
-   colMeta.textContent = 'n=' + (wh.games + bl.games) + ' (' + whDec + '/' + blDec + ' decididas) · ' + (c.difference ? fmtDelta(scaleDelta(c.difference, 100)) : 'IC95');
+   colVal.textContent = 'Blancas ' + pctCi(wh.winRate, wh.winRateCi) + ' · Negras ' + pctCi(bl.winRate, bl.winRateCi);
+   const diffTxt = c && c.difference ? ' · Dif: ' + fmtDelta(scaleDelta(c.difference, 100)) : '';
+   colMeta.textContent = 'n=' + (wh.games + bl.games) + ' (' + whDec + '/' + blDec + ' decididas)' + diffTxt;
   } else {
    colVal.textContent = '—';
    colMeta.textContent = 'Sin datos de color suficientes';
