@@ -26,7 +26,7 @@ Un umbral único no puede valer para todos. El ciclo semanal (Queens y Mini Sudo
 | Wend | 63 % | 45 % | n/d | n/d |
 El ruido baja como 1/√n. 90 d: n/d (hacen falta ≥ 187 días; hay 171). Tango/Wend a 28 d tienen un solo punto de evaluación: no fiable.
 
-**1.3 La regla actual (aviso `regression`: caída ≥ 10 %, ≥ 10 datos, 28 d frente a 28 d) es sobre todo ruido.** Bajo «sin cambio» marcaría el **36–64 %** de las evaluaciones (Mini Sudoku 46, Patches 64, Queens 54, Tango 36, Wend 40, Zip 50). Sobre los datos reales marcó 7–9 de 17 semanas por juego. Hoy, Queens (−10,2 %) y Tango (−16 %) están **dentro del ruido** (banda de 28 d: Queens ±33 %). El test de Mann-Whitney tampoco vale como sustituto: no es independiente (autocorrelación) y da hasta un 18 % de falsos positivos en Mini Sudoku.
+**1.3 La regla actual (aviso `regression`: caída ≥ 10 %, ≥ 10 datos, 28 d frente a 28 d) es sobre todo ruido.** Bajo «sin cambio» marcaría el **36–64 %** de las evaluaciones (Mini Sudoku 46, Patches 64, Queens 54, Tango 36, Wend 40, Zip 50). Sobre los datos reales marcó 7–9 de 17 semanas por juego. Hoy (4 de noviembre), Queens (−7 %; ayer −10,2 %) y Tango (−16 %) están **dentro del ruido** (banda de 28 d: Queens ±33 %; la de Tango, ≈ ±20 %, se apoya en un solo punto de evaluación y es poco fiable). El test de Mann-Whitney tampoco vale como sustituto: no es independiente (autocorrelación) y da hasta un 18 % de falsos positivos en Mini Sudoku.
 
 **1.4 Dos ventanas de 28 días no pueden ver el progreso real.** Primeros 56 d frente a últimos 56 d: Mini Sudoku +36 %, Queens +31 %, Zip +31 %, Patches +17 % (≈ +7 %/mes), frente a una banda de ruido de 26–42 % a 28 d. El progreso se ve con un **estadístico de tendencia sobre un horizonte largo**.
 
