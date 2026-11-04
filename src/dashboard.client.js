@@ -901,10 +901,12 @@ function renderChessView(stats, matches){
  // 1. HeroCard (Orientación 3s)
  const elo=s.currentElo??s.latestElo??null;
  const delta=(elo!=null&&s.firstElo!=null)? elo - s.firstElo : null;
+ const snapsCount = (st.timeline && Array.isArray(st.timeline.snapshots)) ? st.timeline.snapshots.length : (s.firstElo != null ? 1 : 0);
+ const isSingleObs = snapsCount <= 1;
  const elHeroElo=q('#chessHeroElo');
  if(elHeroElo) elHeroElo.textContent=elo!=null? elo : '—';
  const elHeroEloSub=q('#chessHeroEloSub');
- if(elHeroEloSub) elHeroEloSub.textContent='ELO'+(delta!=null? ' · '+(delta>0?'+':'')+delta+' vs primer snapshot':'');
+ if(elHeroEloSub) elHeroEloSub.textContent=elo!=null? ('ELO'+(isSingleObs ? ' · sin histórico comparable' : (delta!=null? ' · '+(delta>0?'+':'')+delta+' vs primer snapshot':''))) : 'ELO';
  
  const elHeroMeta=q('#chessHeroMeta');
  if(elHeroMeta){
@@ -1267,10 +1269,12 @@ async function loadChessDashboard(){
   // header
   const elo=s.currentElo??s.latestElo??null;
   const delta=(elo!=null && s.firstElo!=null)? elo - s.firstElo : null;
-  const deltaLabel = delta!=null ? (delta>0?'▲ +'+delta:delta<0?'▼ '+Math.abs(delta):'0')+' vs primer snapshot' : '';
+  const snapsCount = (t && Array.isArray(t.snapshots)) ? t.snapshots.length : (s.firstElo != null ? 1 : 0);
+  const isSingleObs = snapsCount <= 1;
+  const deltaLabel = elo!=null ? (isSingleObs ? 'sin histórico comparable' : (delta!=null ? (delta>0?'▲ +'+delta:delta<0?'▼ '+Math.abs(delta):'0')+' vs primer snapshot' : '')) : '';
   const lastSnap=t?.snapshots?.[t.snapshots.length-1];
   const lastDate= lastSnap?.createdAt ? lastSnap.createdAt.slice(0,10) : null;
-  q('#syncMeta').textContent= lastDate ? 'Actualizado '+lastDate+' · '+s.games.toLocaleString('es-ES')+' partidas' : s.games.toLocaleString('es-ES')+' partidas';
+  q('#syncMeta').textContent= lastDate ? 'Actualizado '+lastDate : '';
 
   // kpis
   q('#kpis').innerHTML= kpi('Partidas', s.games.toLocaleString('es-ES'), '') 
@@ -1343,8 +1347,8 @@ async function loadChessDashboard(){
   if(o&&o.macro && o.macro.length && q('#oppMacro')){
    const b=o.macro.find(m=>m.key==='bot'), p=o.macro.find(m=>m.key==='pvp');
    if(b && p){
-    const fWr=v=>v!=null?(v*100).toFixed(1).replace('.',',')+' %':'—';
-    q('#oppMacro').textContent='Bots: '+b.games.toLocaleString('es-ES')+' ('+fWr(b.winRate)+') · PvP: '+p.games.toLocaleString('es-ES')+' ('+fWr(p.winRate)+')';
+    const fWr=m=>m.winRate!=null?(m.winRate*100).toFixed(1).replace('.',',')+' %'+(m.winRateCi?' ['+Math.round(m.winRateCi.lower*100)+'–'+Math.round(m.winRateCi.upper*100)+']':''):'—';
+    q('#oppMacro').textContent='Bots: '+b.games.toLocaleString('es-ES')+' ('+fWr(b)+') · PvP: '+p.games.toLocaleString('es-ES')+' ('+fWr(p)+')';
    }
   }
   q('#opp').innerHTML=o? renderCompare(o.segments || o.groups || [], totalGames) : '<div class="muted">'+NA+'</div>';
@@ -1594,7 +1598,8 @@ function interpretationLines(x){
  } else if(i.label==='estable'){
   out.push('Ninguna señal supera el ruido de este juego: a 28 días solo se detecta un cambio por debajo de '+gsigned(b['28'][0]*100,' %')+' o por encima de '+gsigned(b['28'][1]*100,' %')+'.');
  } else if(i.reason==='sin_calibracion'){
-  out.push('Este juego aún no tiene límites calibrados (se calibran con al menos 112 días de historia).');
+  const daysText = x.n != null ? x.n + ' de 112 días de historia observados' : 'se calibran con al menos 112 días de historia';
+  out.push('Este juego aún no tiene límites calibrados (' + daysText + '; requiere el periodo completo sin validez parcial).');
  } else {
   out.push('Faltan observaciones con media: hacen falta al menos 68 de los últimos 112 días, 17 de los últimos 28 y 34 de los 56 anteriores.');
  }

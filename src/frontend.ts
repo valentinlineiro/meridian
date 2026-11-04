@@ -21,14 +21,15 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
 <div class="side-group">Ajedrez</div>
 <button class="side-item" id="tabBtnChess" onclick="showTab('chess')">Partidas</button>
 <button class="side-item" id="tabBtnProfile" onclick="showTab('profile')">Perfil</button>
+<a class="side-item" href="/api/export/matches.csv" download>Exportar partidas</a>
 <div class="side-group">Idiomas</div>
 <button class="side-item" id="tabBtnLang" onclick="showTab('languages')">Cursos</button>
 <div class="side-group">LinkedIn</div>
 <button class="side-item" id="tabBtnGames" onclick="showTab('games')">Juegos</button>
 <div class="side-group">Cuenta</div>
-<button id="syncBtn" class="btn btn-p side-sync" onclick="doSync()">Sincronizar</button>
+<button id="syncBtn" class="btn btn-p side-sync" onclick="doSync()" aria-describedby="syncScopeHint" title="Sincroniza cuentas conectadas (Duolingo). LinkedIn Games es registro manual.">Sincronizar</button>
+<div class="muted side-note" id="syncScopeHint" style="font-size:11px;margin-top:2px;line-height:1.3">Fuentes conectadas (Duolingo) · Games manual</div>
 <small id="syncNote" class="muted side-note"></small>
-<a class="side-item" href="/api/export/matches.csv" download>Exportar partidas</a>
 <a class="side-item" href="/settings">Configuración</a>
 <form method="post" action="/logout" style="margin:0"><button class="side-item" type="submit">Salir</button></form>
 </div>
@@ -221,6 +222,15 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
     <div id="langContent" style="display:none">
      <!-- Nivel 1: Vista Global -->
      <div id="langGlobalView">
+      <div class="card" id="langLimitsCard" style="margin-bottom:12px;background:#0d1829;border:1px solid #1c314e">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+          <span style="color:#e3b341;font-size:13px" aria-hidden="true">⚠</span>
+          <b style="font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:#e6edf3">Lo que estos datos no pueden decir</b>
+        </div>
+        <div class="muted" style="font-size:12px;line-height:1.5">
+          No miden comprensión auditiva, expresión oral, lectura ni competencia comunicativa real. XP, racha y lecciones completadas son métricas de actividad y avance curricular en la plataforma, no representan dominio lingüístico ni una evaluación de competencia real.
+        </div>
+      </div>
       <div class="card hero-card" id="langCourseHero" style="margin-bottom:12px">
         <div id="langHeroCard">
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
@@ -358,7 +368,8 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
         </div>
       </div>
       <div class="card" id="langCefrCard" style="margin-bottom:12px">
-        <h2>Desglose por nivel CEFR</h2>
+        <h2 style="margin:0 0 4px">Unidades curriculares por nivel CEFR</h2>
+        <div class="muted" style="font-size:11px;margin-bottom:10px">Mide unidades del árbol clasificadas por la fuente bajo cada nivel; no constituye evaluación ni certificación de competencia lingüística.</div>
         <div id="langCefrBody"></div>
       </div>
       <div class="card">
