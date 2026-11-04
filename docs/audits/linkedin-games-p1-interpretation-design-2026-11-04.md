@@ -1,8 +1,12 @@
-# Diseño P1: interpretación de la evolución en LinkedIn Games (2026-11-04, rev. 3)
+# Diseño P1: interpretación de la evolución en LinkedIn Games (2026-11-04, rev. 4)
 
 Estado: **listo para aprobación.** Sin código. Parte del P0 (medición, `294008d`). Los umbrales salen de la distribución histórica real; lo que es convención está marcado. Scripts y artefacto en `linkedin-games-p1-calibration/`.
 
-## 0. Cambios respecto a la rev. 2
+## 0. Cambios respecto a la rev. 3 (revisión de #93)
+- **La simulación y los datos reales evalúan ya exactamente la regla del diseño.** `label_arrays()` no aplicaba la condición de la pendiente de Theil-Sen. Ahora una tendencia sostenida exige **ρ de Spearman fuera de su límite y pendiente de Theil-Sen del mismo signo**, y la condición es **simétrica**: «deterioro sostenido» también exige pendiente negativa (en la rev. 3 solo la pedía la mejora; era una asimetría sin justificación, y se aclara aquí).
+- **Resultado: ninguna cifra cambia** (trayectorias nulas al 2,5 % y al 0,5 %, datos reales y horizontes, idénticos a todos los dígitos). Comprobado: de **61.083** casos nulos con ρ fuera de sus límites (4 juegos, 6000 trayectorias de 52 semanas), **0** tenían pendiente de signo contrario o nula, y tampoco en ningún día de los datos reales. La condición es inerte con estos datos, pero queda en la regla y en las pruebas porque ρ y la pendiente miden cosas distintas y podrían discrepar con otros datos.
+
+## 0.bis Cambios respecto a la rev. 2
 1. **Decisiones del propietario incorporadas (§2.5, §8):** opción B (2,5 % por cola + etiqueta repetida dos semanas), límites como artefacto versionado fuera de línea, **flechas solo a 28 días**, recalibración trimestral y extraordinaria cuando Tango y Wend lleguen a 112 días.
 2. **La simulación de falsos avisos genera exactamente 52 evaluaciones por trayectoria** (antes 53–54 según el desfase por `Lt = H + 7*52 + 7`; ahora `Lt = H + 7*52 − 1 = 475`) y se promedia sobre **los siete desfases** posibles, no cuatro elegidos.
 3. **Una única regla de generación de límites:** agrupación de 5 semillas × 20000 remuestreos (§3). La simulación, los datos reales y la tabla §1.2 leen `noise-bands.json`; ya no se mezclan semillas distintas. `p1_artifact.py --check` verifica que el fichero se reproduce exactamente.
@@ -38,7 +42,7 @@ Un umbral único no vale. El ciclo semanal obliga a ventanas múltiplo de 7 y a 
 
 **1.4 Dos ventanas de 28 días no ven el progreso real.** Primeros 56 d frente a últimos 56 d: Mini Sudoku +36 %, Queens +31 %, Zip +31 %, Patches +17 %, frente a límites superiores de +29 a +50 % a 28 d. El progreso se ve con una **tendencia a horizonte largo**.
 
-**1.5 Horizonte de la tendencia** (evaluaciones semanales marcadas como mejora, contadas hacia atrás desde hoy; límites agrupados de 5 semillas × 10000):
+**1.5 Horizonte de la tendencia** (evaluaciones semanales marcadas como mejora con la regla completa, ρ y pendiente de Theil-Sen, contadas hacia atrás desde hoy; límites agrupados de 5 semillas × 10000):
 | Juego | 56 d | 84 d | 112 d |
 |---|---|---|---|
 | Mini Sudoku | 0 de 17 | 5 de 13 | **7 de 9** |
@@ -67,8 +71,8 @@ Los límites de 28 d y 112 d son estables con B alto (≤ 0,7 % con 20000 por se
 ### 2.1 Etiquetas
 Una por juego, prioridad **Datos insuficientes > Deterioro > Mejora sostenida > Estable**:
 - **Datos insuficientes:** falta algún requisito del §2.2.
-- **Deterioro:** (a) *reciente*: la mediana de los últimos 28 d frente a la de los 56 d anteriores cae por debajo del límite inferior de ese juego; o (b) *sostenido*: ρ a 112 d por debajo de su límite inferior.
-- **Mejora sostenida:** ρ a 112 d por encima de su límite superior (con pendiente de Theil-Sen > 0). No hay «mejora reciente»: un mes de subida no se distingue del ruido.
+- **Deterioro:** (a) *reciente*: la mediana de los últimos 28 d frente a la de los 56 d anteriores cae por debajo del límite inferior de ese juego; o (b) *sostenido*: ρ a 112 d por debajo de su límite inferior **y** pendiente de Theil-Sen < 0.
+- **Mejora sostenida:** ρ a 112 d por encima de su límite superior **y** pendiente de Theil-Sen > 0. No hay «mejora reciente»: un mes de subida no se distingue del ruido.
 - **Estable (sin cambio detectable):** hay datos suficientes y ninguna señal supera su límite. Se muestra con el ruido típico del juego («±30 % a 28 d»): no detectar cambio no prueba que no lo haya. La potencia es asimétrica y se dice (una caída reciente solo se detecta si supera el 20–29 %).
 
 ### 2.2 Umbrales
@@ -101,7 +105,7 @@ Patches: 0 en todas. **Se elige B** (decisión del propietario): conserva el 95 
 - **Límites = artefacto versionado `noise-bands.json`**, generado fuera del Worker y revisable en un PR. **Regla única de generación:** puntos 2,5 % y 97,5 % de la agrupación de 5 semillas (11, 22, 33, 44, 55) × 20000 remuestreos por juego y estadístico, evaluados al final del último bloque completo de cada historial remuestreado, redondeados a 4 decimales; trae `calibratedThrough`, días naturales y observaciones por juego. El fichero contiene **exactamente** los límites que usan la simulación, las pruebas y producción; `p1_artifact.py --check` regenera y falla si difiere. La implementación copia el fichero tal cual al dominio (`src/slices/linkedin-games/domain/`), sin recalcular nada en el Worker.
 - **Recalibración:** trimestral y extraordinaria cuando Tango y Wend alcancen 112 días naturales (≈ finales de diciembre de 2026). Sin límites, un juego es «datos insuficientes»; no hay persistencia ni cálculo diario.
 - **Regla (en cada petición, con `today` del cliente):**
-  1. Candidata en `t`: sin calibración o sin cobertura (≥ 68 de 112 d, ≥ 17 de 28 d y ≥ 34 de 56 d con `avg`) → *datos insuficientes*; si no, ρ de Spearman y pendiente de Theil-Sen de los últimos 112 d, y Δ de medianas de 28 d frente a 56 d previos, contra los límites → *deterioro* / *mejora sostenida* / *estable* (§2.1).
+  1. Candidata en `t`: sin calibración o sin cobertura (≥ 68 de 112 d, ≥ 17 de 28 d y ≥ 34 de 56 d con `avg`) → *datos insuficientes*; si no, ρ de Spearman y pendiente de Theil-Sen de los últimos 112 d (una tendencia exige ambas, con el mismo signo), y Δ de medianas de 28 d frente a 56 d previos, contra los límites → *deterioro* / *mejora sostenida* / *estable* (§2.1).
   2. Se calcula igual la candidata en `t − 7 días` (misma data, hasta esa fecha). Es una segunda evaluación pura, sin persistir nada.
   3. **Etiqueta publicada (opción B):** *datos insuficientes* tal cual; *mejora sostenida* o *deterioro* solo si la candidata de `t` **y** la de `t − 7` coinciden; en otro caso, *estable*, con `pending` indicando la candidata sin confirmar. Si `t − 7` no tiene datos suficientes, no hay confirmación.
 
@@ -120,7 +124,7 @@ Por juego:
 `windows["28"].delta.effRel` gana `arrow: "up"|"down"|"flat"|null` y `band: [lo, hi] | null`. En `windows["7"|"90"|"all"]` **no hay `arrow` ni `band`**. `regression` se mantiene (obsoleto) como `label === "deterioro"`. `trend112` y `recent28vBase56` son `null` sin cobertura. Los campos del P0 no cambian.
 
 ## 5. Pruebas previstas (`shouldXWhenY`)
-Determinismo; la interpretación no modifica ninguna métrica del P0; etiqueta por señal (tendencia, caída reciente), prioridad y «datos insuficientes» (historia < 112 d, cobertura < 60 %, sin calibración); **filtro B:** publicada solo con la misma candidata en `t` y `t − 7`, `pending` en otro caso, y sin confirmación si `t − 7` carece de datos; flecha solo sobre el límite de su cola, → dentro y — sin comparación; sin flecha en 7 d, 90 d ni «Todo»; `regression` ≡ «deterioro»; el contrato añade campos sin cambiar los existentes. **El dominio usa exactamente `noise-bands.json`** (una prueba compara los límites embebidos con el fichero). **Calibración:** una trayectoria sintética estacionaria con esos límites da una tasa de avisos dentro de una tolerancia fija, y una tendencia inyectada de +30 % se detecta. Las cifras de §1 se contrastan con los scripts sobre los 170 días (los datos no se versionan).
+Determinismo; la interpretación no modifica ninguna métrica del P0; etiqueta por señal (tendencia con ρ **y** pendiente de Theil-Sen del mismo signo, en ambos sentidos; ρ fuera de límites con pendiente contraria o nula no cuenta; caída reciente), prioridad y «datos insuficientes» (historia < 112 d, cobertura < 60 %, sin calibración); **filtro B:** publicada solo con la misma candidata en `t` y `t − 7`, `pending` en otro caso, y sin confirmación si `t − 7` carece de datos; flecha solo sobre el límite de su cola, → dentro y — sin comparación; sin flecha en 7 d, 90 d ni «Todo»; `regression` ≡ «deterioro»; el contrato añade campos sin cambiar los existentes. **El dominio usa exactamente `noise-bands.json`** (una prueba compara los límites embebidos con el fichero). **Calibración:** una trayectoria sintética estacionaria con esos límites da una tasa de avisos dentro de una tolerancia fija, y una tendencia inyectada de +30 % se detecta. Las cifras de §1 se contrastan con los scripts sobre los 170 días (los datos no se versionan).
 
 ## 6. Límites y riesgos
 - **Calibrado en la misma muestra**, sin conjunto de validación. Remuestrear semanas deshace la tendencia, pero la varianza entre semanas incluye parte de ella: los límites son, si acaso, algo conservadores.

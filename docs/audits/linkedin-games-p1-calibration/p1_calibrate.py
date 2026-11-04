@@ -96,10 +96,25 @@ def artefact(df):
 def art_limits(path=HERE / "noise-bands.json"):
     a = json.load(open(path)); return {g: {k: tuple(v) for k, v in x["limits"].items()} for g, x in a["games"].items()}
 
+def slope_pct(X, t, rows, h=H):
+    """Theil-Sen slope of log-efficiency over the last h days, in % per 28 days, only for `rows` (the rest stay NaN)."""
+    out = np.full(X.shape[0], np.nan)
+    for k in rows:
+        y = X[k, t - h + 1:t + 1]; m = ~np.isnan(y)
+        out[k] = (np.exp(stats.theilslopes(np.log(y[m]), np.arange(h)[m]).slope * 28) - 1) * 100
+    return out
+
+def trend_flags(X, t, lim, r=None, h=H, key="rho112"):
+    """A sustained trend needs BOTH a Spearman rho beyond its limit and a Theil-Sen slope of the same sign."""
+    r = rho(X, t, h) if r is None else r
+    cand = np.where((r > lim[key][1]) | (r < lim[key][0]))[0]; sl = slope_pct(X, t, cand, h)
+    return (r > lim[key][1]) & (sl > 0), (r < lim[key][0]) & (sl < 0)
+
 def label_arrays(X, t, lim):
-    """Vectorised over rows of X at day t: (mejora, deterioro, arrow28 up, arrow28 down). Limits per tail."""
-    r = rho(X, t); d = dmed(X, t, RECENT, BASE); a28 = dmed(X, t, 28, 28)
-    det = (d < lim["d28v56"][0]) | (r < lim["rho112"][0]); mej = (r > lim["rho112"][1]) & ~det
+    """Vectorised over rows of X at day t: (mejora, deterioro, arrow28 up, arrow28 down). Limits per tail.
+    mejora = trend up (rho and Theil-Sen); deterioro = trend down (rho and Theil-Sen) OR a recent drop (28 d vs 56 d previous)."""
+    d = dmed(X, t, RECENT, BASE); a28 = dmed(X, t, 28, 28); up, down = trend_flags(X, t, lim)
+    det = (d < lim["d28v56"][0]) | down; mej = up & ~det
     return mej, det, a28 > lim["d28v28"][1], a28 < lim["d28v28"][0]
 
 def episodes(Z):
@@ -146,7 +161,8 @@ def simulate(df, g, lim, K=500, weeks=52):
 def part_trajectories(df):
     cal = [g for g in sorted(df.game.unique()) if series(df, g)[2] >= MIN_HISTORY]
     ART = art_limits()
-    for level in (TAILS, (0.005, 0.995)):
+    levels = (TAILS, (0.005, 0.995)) if len(sys.argv) < 4 else ((TAILS,) if sys.argv[3] == "0.025" else ((0.005, 0.995),))
+    for level in levels:
         print(f"--- tails {level[0]*100:.1f} % / {level[1]*100:.1f} % (K=500 null trajectories of 52 weekly evaluations, all 7 phases) ---")
         print("  game         mejora/eval  deterioro/eval | no filter: P(>=1/52w)  episodes/yr | 2 weeks: P(>=1)  episodes/yr [phase min-max] | arrow28 up/down per eval")
         for g in cal:
@@ -186,7 +202,12 @@ def part_horizons(df):
         lim = pooled_limits(arr, ["rho56", "rho84", "rho112"], B=10000); X = arr[None, :]; row = []
         for hh in (56, 84, 112):
             r = [rho(X, t, hh)[0] for t in range(N - 1, hh - 2, -7)]; r = [x for x in r if not np.isnan(x)]
-            row.append(f"{hh}d: up {sum(x > lim[f'rho{hh}'][1] for x in r)} down {sum(x < lim[f'rho{hh}'][0] for x in r)} of {len(r)}")
+            up = dn = n = 0
+            for t in range(N - 1, hh - 2, -7):
+                rr = rho(X, t, hh)
+                if np.isnan(rr[0]): continue
+                u, d_ = trend_flags(X, t, lim, r=rr, h=hh, key=f"rho{hh}"); n += 1; up += int(u[0]); dn += int(d_[0])
+            row.append(f"{hh}d: up {up} down {dn} of {n}")
         print(f"  {g:12} " + " | ".join(row))
 
 if __name__ == "__main__":
