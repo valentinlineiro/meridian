@@ -415,7 +415,7 @@ describe("games interpretation", () => {
     await rt.sandbox.fetchGames();
     const byName = Object.fromEntries(cardsOf(rt).map((c: any) => [nameOf(c), linesOf(c)]));
     expect(byName.Zip[0]).toBe("Tendencia a la baja en los últimos 112 días: ρ de Spearman -0,3 (límite -0,19) y pendiente -4,1 % cada 28 días (n=100). Se repite dos semanas seguidas.");
-    expect(byName.Tango[0]).toBe("Este juego aún no tiene límites calibrados (se calibran con al menos 112 días de historia).");
+    expect(byName.Tango[0]).toBe("Este juego aún no tiene límites calibrados (57 de 112 días de historia observados; requiere el periodo completo sin validez parcial).");
   });
 
   it("shouldSayAnUnconfirmedCandidateIsPendingWhileThePublishedLabelStaysStable", async () => {
