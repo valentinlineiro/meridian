@@ -27,7 +27,7 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
 <div class="side-group">LinkedIn</div>
 <button class="side-item" id="tabBtnGames" onclick="showTab('games')">Juegos</button>
 <div class="side-group">Cuenta</div>
-<button id="syncBtn" class="btn btn-p side-sync" onclick="doSync()" title="Sincroniza cuentas conectadas (Duolingo). LinkedIn Games es registro manual.">Sincronizar</button>
+<button id="syncBtn" class="btn btn-p side-sync" onclick="doSync()" aria-describedby="syncScopeHint" title="Sincroniza cuentas conectadas (Duolingo). LinkedIn Games es registro manual.">Sincronizar</button>
 <div class="muted side-note" id="syncScopeHint" style="font-size:11px;margin-top:2px;line-height:1.3">Fuentes conectadas (Duolingo) · Games manual</div>
 <small id="syncNote" class="muted side-note"></small>
 <a class="side-item" href="/settings">Configuración</a>

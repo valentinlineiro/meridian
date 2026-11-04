@@ -117,6 +117,21 @@ describe("Fase 0 - Verdad, vocabulario y honestidad del dato", () => {
       expect(rt.getEl("#kpis").innerHTML).toContain("sin histórico comparable");
       expect(rt.getEl("#kpis").innerHTML).not.toContain("0 vs primer snapshot");
     });
+
+    it("shouldHandleMissingOrNullEloWithoutSpuriousComparableLabel", async () => {
+      const emptyTimeline = { snapshots: [] };
+      const summaryWithoutElo = { games: 0, currentElo: null, firstElo: null, latestElo: null };
+      const rt = createDashboardRuntime("/chess", undefined, async (url: string) => {
+        if (url.includes("/bundle")) return { ok: true, status: 200, json: async () => ({ summary: summaryWithoutElo, timeline: emptyTimeline }) };
+        if (url.includes("/summary")) return { ok: true, status: 200, json: async () => summaryWithoutElo };
+        if (url.includes("/timeline")) return { ok: true, status: 200, json: async () => emptyTimeline };
+        return { ok: true, status: 200, json: async () => emptyAccountPayload(url) };
+      });
+      await rt.sandbox.loadChessDashboard();
+      expect(rt.getEl("#chessHeroEloSub").textContent).toBe("ELO");
+      expect(rt.getEl("#kpis").innerHTML).not.toContain("sin histórico comparable");
+      expect(rt.getEl("#kpis").innerHTML).not.toContain("vs primer snapshot");
+    });
   });
 
   describe("5. Reubicar Exportar partidas bajo Ajedrez", () => {
@@ -131,10 +146,12 @@ describe("Fase 0 - Verdad, vocabulario y honestidad del dato", () => {
   });
 
   describe("6. Aclarar alcance de Sincronizar", () => {
-    it("shouldClarifySyncScopeInTooltipOrHint", () => {
+    it("shouldClarifySyncScopeInTooltipOrHintAndBeAccessible", () => {
       const menu = DASHBOARD_HTML.slice(DASHBOARD_HTML.indexOf('id="sideMenu"'), DASHBOARD_HTML.indexOf('<div class="content">'));
       expect(menu).toMatch(/Duolingo/);
       expect(menu).toMatch(/manual/i);
+      expect(DASHBOARD_HTML).toContain('id="syncBtn" class="btn btn-p side-sync" onclick="doSync()" aria-describedby="syncScopeHint"');
+      expect(DASHBOARD_HTML).toContain('id="syncScopeHint"');
     });
   });
 });

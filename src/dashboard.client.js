@@ -906,7 +906,7 @@ function renderChessView(stats, matches){
  const elHeroElo=q('#chessHeroElo');
  if(elHeroElo) elHeroElo.textContent=elo!=null? elo : '—';
  const elHeroEloSub=q('#chessHeroEloSub');
- if(elHeroEloSub) elHeroEloSub.textContent='ELO'+(isSingleObs ? ' · sin histórico comparable' : (delta!=null? ' · '+(delta>0?'+':'')+delta+' vs primer snapshot':''));
+ if(elHeroEloSub) elHeroEloSub.textContent=elo!=null? ('ELO'+(isSingleObs ? ' · sin histórico comparable' : (delta!=null? ' · '+(delta>0?'+':'')+delta+' vs primer snapshot':''))) : 'ELO';
  
  const elHeroMeta=q('#chessHeroMeta');
  if(elHeroMeta){
@@ -1271,7 +1271,7 @@ async function loadChessDashboard(){
   const delta=(elo!=null && s.firstElo!=null)? elo - s.firstElo : null;
   const snapsCount = (t && Array.isArray(t.snapshots)) ? t.snapshots.length : (s.firstElo != null ? 1 : 0);
   const isSingleObs = snapsCount <= 1;
-  const deltaLabel = isSingleObs ? 'sin histórico comparable' : (delta!=null ? (delta>0?'▲ +'+delta:delta<0?'▼ '+Math.abs(delta):'0')+' vs primer snapshot' : '');
+  const deltaLabel = elo!=null ? (isSingleObs ? 'sin histórico comparable' : (delta!=null ? (delta>0?'▲ +'+delta:delta<0?'▼ '+Math.abs(delta):'0')+' vs primer snapshot' : '')) : '';
   const lastSnap=t?.snapshots?.[t.snapshots.length-1];
   const lastDate= lastSnap?.createdAt ? lastSnap.createdAt.slice(0,10) : null;
   q('#syncMeta').textContent= lastDate ? 'Actualizado '+lastDate : '';
