@@ -10,7 +10,10 @@ export interface MockElement {
   style: Record<string, string>;
   value: string;
   className: string;
+  type?: string;
+  onclick?: ((e?: unknown) => void) | null;
   hidden?: boolean; // set by the page for panels it hides
+  open?: boolean;
   classList: {
     add(...tokens: string[]): void;
     remove(...tokens: string[]): void;
