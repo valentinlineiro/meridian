@@ -79,7 +79,7 @@ function showTab(name){
  history.replaceState(null, '', targetPath);
  q('#overviewTab').classList.toggle('active', activeTab==='overview');
  q('#langTab').classList.toggle('active', activeTab==='languages');
- q('#chessTab').classList.toggle('active', activeTab==='chess');
+ q('#chessTab').classList.toggle('active', activeTab==='chess' || activeTab==='profile');
  if(q('#changesTab')) q('#changesTab').classList.toggle('active', activeTab==='changes');
  if(q('#trajectoryTab')) q('#trajectoryTab').classList.toggle('active', activeTab==='trajectory');
  if(q('#profileTab')) q('#profileTab').classList.toggle('active', activeTab==='profile');
@@ -88,7 +88,7 @@ function showTab(name){
  // unambiguously excluded from the accessibility tree, not just visually display:none.
  q('#overviewTab').hidden = tab!=='overview' || activeTab==='changes' || activeTab==='trajectory' || activeTab==='profile' || activeTab==='games';
  q('#langTab').hidden = tab!=='languages';
- q('#chessTab').hidden = tab!=='chess';
+ q('#chessTab').hidden = tab!=='chess' && activeTab!=='profile';
  if(q('#changesTab')) q('#changesTab').hidden = activeTab!=='changes';
  if(q('#trajectoryTab')) q('#trajectoryTab').hidden = activeTab!=='trajectory';
  if(q('#profileTab')) q('#profileTab').hidden = activeTab!=='profile';
@@ -99,7 +99,12 @@ function showTab(name){
  if(q('#sideToggle')&&q('#sideToggle').setAttribute) q('#sideToggle').setAttribute('aria-expanded','false');
  if(activeTab==='changes') fetchWhatChanged();
  if(activeTab==='trajectory') fetchTrajectory();
- if(activeTab==='profile') fetchProfile();
+ if(activeTab==='profile'||activeTab==='chess') fetchProfile();
+ if(activeTab==='profile'){
+  const dt=q('#chessEngineProfileDetails');
+  if(dt) dt.open=true;
+  if(dt&&dt.scrollIntoView) dt.scrollIntoView({behavior:'smooth',block:'start'});
+ }
  if(activeTab==='games') fetchGames();
 }
 function toggleSideNav(){ const m=q('#sideMenu'); if(!m) return; const open=!m.classList.contains('open'); m.classList.toggle('open',open); const t=q('#sideToggle'); if(t&&t.setAttribute) t.setAttribute('aria-expanded',open?'true':'false'); }
@@ -623,9 +628,49 @@ function renderLanguagesView(langData, analyticsData, xpData, activeDetail){
   }
  }
 
+ // Bloque 3: Separación estricta de las tres dimensiones
+ const elCurProg=q('#langCurricularProgressDetail');
+ const elStructure=q('#langCourseStructureDetail');
+ const elActivity=q('#langAccountActivityDetail');
+
+ const compDelta=deltas.find(d=>d.status==='comparable'&&(d.deltaTotalUnits==null||d.deltaTotalUnits===0)&&d.deltaCompletedUnits!=null&&d.deltaCompletedUnits>0);
+
+ if(elCurProg){
+  if(compDelta){
+   const compCourse=courses.find(c=>c.courseId===compDelta.courseId);
+   const cName=compCourse?(compCourse.title||compCourse.courseId):compDelta.courseId;
+   elCurProg.textContent='+'+compDelta.deltaCompletedUnits+' unidades completadas en '+cName+' (mismo árbol curricular: denominador idéntico)';
+  } else if(comparableCount>0){
+   elCurProg.textContent='Sin variación en unidades completadas en cursos comparables (mismo denominador)';
+  } else {
+   elCurProg.textContent='Sin observaciones curriculares con denominador idéntico (no se calcula avance)';
+  }
+ }
+
+ if(elStructure){
+  if(structuralCount>0){
+   elStructure.textContent=structuralCount+' curso(s) con CAMBIO ESTRUCTURAL en el árbol curricular (variación en total de unidades; progreso no comparable)';
+  } else if(comparableCount>0){
+   elStructure.textContent='Árbol curricular estable sin cambios estructurales en los cursos observados';
+  } else if(insufficientCount>0){
+   elStructure.textContent='Observación insuficiente para determinar estabilidad (esperando 2ª sincronización)';
+  } else {
+   elStructure.textContent='No se detectaron reestructuraciones de árbol curricular en las sincronizaciones observadas.';
+  }
+ }
+
+ if(elActivity){
+  const activeName=activeCourse?(activeCourse.title||activeCourse.courseId):'';
+  const fTo=activeCourse&&activeCourse.fromLanguage&&activeCourse.learningLanguage? ' ('+activeCourse.fromLanguage.toUpperCase()+' → '+activeCourse.learningLanguage.toUpperCase()+')':'';
+  if(todayXp>0){
+   elActivity.textContent='+'+todayXp.toLocaleString('es-ES')+' XP hoy (cuenta)'+(activeName?' · Curso en foco: '+activeName+fTo:'')+' · No refleja competencia lingüística';
+  } else {
+   elActivity.textContent='Sin XP registrado hoy en la cuenta';
+  }
+ }
+
  const elDet=q('#langObservedDetail');
  if(elDet){
-  const compDelta=deltas.find(d=>d.status==='comparable'&&d.deltaCompletedUnits!=null&&d.deltaCompletedUnits>0);
   if(compDelta){
    const compCourse=courses.find(c=>c.courseId===compDelta.courseId);
    const cName=compCourse?(compCourse.title||compCourse.courseId):compDelta.courseId;
@@ -1146,6 +1191,82 @@ function setColDiff(c){ // the single renderer of the white-vs-black line
  if(!(wh&&bl&&wh.winRate!=null&&bl.winRate!=null&&q('#colDiff'))) return;
  q('#colDiff').textContent='Blancas '+(wh.winRate*100).toFixed(1)+'% · Negras '+(bl.winRate*100).toFixed(1)+'% → '+fmtDelta(scaleDelta(c.difference,100));
 }
+
+let lastProfileData=null, lastChessObsDate=null;
+function updateChessEngineCoverage(b, totalGames){
+ const elVal = q('#chessEngineCoverageVal');
+ const elMeta = q('#chessEngineCoverageMeta');
+ if(!elVal || !elMeta) return;
+ const total = totalGames || (hist ? hist.games : 0) || 0;
+ const analysed = (b && b.analysed) ? b.analysed : 0;
+ if(!b || analysed === 0){
+  elVal.textContent = '0 de ' + total + ' partidas analizadas (0 %)';
+  elMeta.textContent = 'Análisis pendiente · Denominador: ' + total + ' partidas guardadas en el historial (elegibles para análisis)';
+ } else {
+  const pct = total > 0 ? (analysed / total * 100).toFixed(1) : '0';
+  const obs = lastChessObsDate ? ' · observado ' + lastChessObsDate : '';
+  elVal.textContent = analysed + ' de ' + total + ' partidas analizadas (' + pct + ' %)';
+  elMeta.textContent = 'Denominador: ' + total + ' partidas guardadas en el historial (elegibles para análisis)' + obs;
+ }
+}
+
+function updateChessPatternSuggested(b){
+ const el = q('#chessPatternSuggested');
+ if(!el) return;
+ const worst = b && b.review && b.review.worst;
+ if(worst && worst.length){
+  const w = worst[0];
+  const opp = w.opponent || 'Rival';
+  el.innerHTML = 'Partida sugerida para revisión: <button class="btn btn-g btn-sm" onclick="openGame(' + esc(JSON.stringify(w.matchId)) + ')">Revisar vs ' + esc(opp) + ' (' + w.serious + ' errores graves)</button>';
+ } else {
+  el.textContent = 'Partidas sugeridas para revisión: disponibles tras el análisis de motor.';
+ }
+}
+
+function renderChessPatterns(s, c, o, t){
+ const card = q('#chessPatternsCard');
+ if(!card) return;
+ const totalGames = (s && s.games) || 0;
+ if(t && t.snapshots && t.snapshots.length){
+  const lastSnap = t.snapshots[t.snapshots.length - 1];
+  if(lastSnap && lastSnap.createdAt) lastChessObsDate = lastSnap.createdAt.slice(0, 10);
+ }
+
+ const wh = c && c.groups && c.groups.find(g=>g.key==='white');
+ const bl = c && c.groups && c.groups.find(g=>g.key==='black');
+ const colVal = q('#chessPatternColorVal');
+ const colMeta = q('#chessPatternColorMeta');
+ if(colVal && colMeta){
+  if(wh && bl && wh.winRate != null && bl.winRate != null){
+   const whDec = wh.decided || wh.games || 0;
+   const blDec = bl.decided || bl.games || 0;
+   colVal.textContent = 'Blancas ' + (wh.winRate * 100).toFixed(1) + '% · Negras ' + (bl.winRate * 100).toFixed(1) + '%';
+   colMeta.textContent = 'n=' + (wh.games + bl.games) + ' (' + whDec + '/' + blDec + ' decididas) · ' + (c.difference ? fmtDelta(scaleDelta(c.difference, 100)) : 'IC95');
+  } else {
+   colVal.textContent = '—';
+   colMeta.textContent = 'Sin datos de color suficientes';
+  }
+ }
+
+ const b = o && o.macro && o.macro.find(m=>m.key==='bot');
+ const p = o && o.macro && o.macro.find(m=>m.key==='pvp');
+ const oppVal = q('#chessPatternOppVal');
+ const oppMeta = q('#chessPatternOppMeta');
+ if(oppVal && oppMeta){
+  if(b && p && b.games > 0){
+   const fWr = m => m.winRate != null ? (m.winRate * 100).toFixed(1).replace('.', ',') + ' %' + (m.winRateCi ? ' [' + Math.round(m.winRateCi.lower * 100) + '–' + Math.round(m.winRateCi.upper * 100) + ']' : '') : '—';
+   oppVal.textContent = 'Bots ' + fWr(b) + ' · PvP ' + fWr(p);
+   const pvpNote = p.games < 30 ? ' · PvP n=' + p.games + ' (muestra pequeña; incertidumbre visible)' : ' · PvP n=' + p.games;
+   oppMeta.textContent = 'Bots n=' + b.games + pvpNote;
+  } else {
+   oppVal.textContent = '—';
+   oppMeta.textContent = 'Sin partidas suficientes contra bots/PvP';
+  }
+ }
+
+ updateChessEngineCoverage(lastProfileData, totalGames);
+ updateChessPatternSuggested(lastProfileData);
+}
 function pctCi(rate,ci){ return rate!=null?(rate*100).toFixed(1)+'%'+(ci?' ['+Math.round(ci.lower*100)+'–'+Math.round(ci.upper*100)+']':''):'—'; }
 function renderForm(r){
  if(!r.before) return;
@@ -1222,6 +1343,8 @@ function renderCompare(groups, totalGames){
 
 let chip={type:'',result:'',color:''};
 function setChip(group,value,silent){ if(group==='type'&&q('#fOpp')) q('#fOpp').value=''; chip[group]=value; document.querySelectorAll('#matchChips [data-chip]').forEach(b=>{ const [g,v]=b.getAttribute('data-chip').split(':'); b.className='btn '+(chip[g]===v?'btn-p':'btn-g'); }); if(!silent) loadM(0); }
+function filterMatchesAndScroll(group,value){ setChip(group,value); const el=q('#allMatchesCard'); if(el&&el.scrollIntoView) el.scrollIntoView({behavior:'smooth',block:'start'}); }
+function openEngineProfileSection(){ const dt=q('#chessEngineProfileDetails'); if(dt) dt.open=true; if(dt&&dt.scrollIntoView) dt.scrollIntoView({behavior:'smooth',block:'start'}); }
 let searchTimer=null;
 function onSearch(){ clearTimeout(searchTimer); searchTimer=setTimeout(()=>loadM(0),300); }
 function clearF(){ missedOnly=false; paintMissedBtn(); q('#q').value='';q('#fOpp').value='';q('#fMin').value='';q('#fMax').value='';q('#fEnd').value='';q('#fPhase').value='';q('#fOpening').value='';setChip('type','',true);setChip('result','',true);setChip('color',''); }
@@ -1413,6 +1536,8 @@ async function loadChessDashboard(){
    }
   }
   q('#opp').innerHTML=o? renderCompare(o.segments || o.groups || [], totalGames) : '<div class="muted">'+NA+'</div>';
+  renderChessPatterns(s, c, o, t);
+  fetchProfile().catch(()=>{});
 
   // openings
   if(op&&!op.error&&q('#openingsCard')){
@@ -1615,6 +1740,9 @@ function paintProfile(b){
  if(b.invalid) notes.push(b.invalid+' no se pudieron evaluar');
  if(b.unknownVersion) notes.push(b.unknownVersion+' con un formato que este panel no entiende');
  q('#profileNote').textContent='Error grave: jugada que cuesta 3 peones o más (300 cp) según Stockfish a profundidad 12. Son tasas descriptivas, sin intervalo: los errores de una partida no son independientes.'+(notes.length?' Fuera de las cifras: '+notes.join(' · ')+'.':'');
+ lastProfileData=b;
+ updateChessEngineCoverage(b, hist?hist.games:0);
+ updateChessPatternSuggested(b);
 }
 async function fetchProfile(){
  const seq=++profileSeq, cut=profileCut();
@@ -1622,7 +1750,14 @@ async function fetchProfile(){
   const b=await j('/api/stats/profile'+(cut?'?since='+encodeURIComponent(cut):''));
   if(seq!==profileSeq) return;
   paintProfile(b);
- }catch(e){ if(seq===profileSeq) q('#profileKpis').innerHTML='<div class="empty" style="grid-column:1/-1">No se pudo cargar el perfil</div>'; }
+ }catch(e){
+  if(seq===profileSeq){
+   q('#profileKpis').innerHTML='<div class="empty" style="grid-column:1/-1">No se pudo cargar el perfil</div>';
+   lastProfileData=null;
+   updateChessEngineCoverage(null, hist?hist.games:0);
+   updateChessPatternSuggested(null);
+  }
+ }
 }
 
 // ── LinkedIn Games: summary (read) and the entry modal (write). Manual entry; nothing is read from LinkedIn. ──

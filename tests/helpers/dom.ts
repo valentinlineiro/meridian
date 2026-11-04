@@ -11,6 +11,7 @@ export interface MockElement {
   value: string;
   className: string;
   hidden?: boolean; // set by the page for panels it hides
+  open?: boolean;
   classList: {
     add(...tokens: string[]): void;
     remove(...tokens: string[]): void;

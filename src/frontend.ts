@@ -183,6 +183,42 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
   <div id="form"></div>
   <div class="muted" id="streak" style="margin-top:10px"></div></div>
 
+ <div class="card" id="chessPatternsCard" style="margin-top:12px">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+   <h2 style="margin:0">Patrones observados &amp; cobertura de análisis</h2>
+   <span class="muted" style="font-size:11px">Intervalos Wilson al 95 % · Muestras explícitas (n)</span>
+  </div>
+  <div class="grid3" id="chessPatternsGrid" style="margin-top:10px">
+   <div class="card" id="chessPatternColorCard" style="margin:0;background:#0d1522;border:1px solid #1e2e44">
+    <div style="font-weight:600;font-size:13px;color:#8ea0b8;margin-bottom:4px">Rendimiento por color</div>
+    <div id="chessPatternColorVal" style="font-size:16px;font-weight:700">—</div>
+    <div id="chessPatternColorMeta" class="muted" style="font-size:11px;margin:4px 0 8px">—</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+     <button class="btn btn-g" style="font-size:11px;padding:3px 8px" onclick="filterMatchesAndScroll('color','white')">Blancas</button>
+     <button class="btn btn-g" style="font-size:11px;padding:3px 8px" onclick="filterMatchesAndScroll('color','black')">Negras</button>
+    </div>
+   </div>
+   <div class="card" id="chessPatternOppCard" style="margin:0;background:#0d1522;border:1px solid #1e2e44">
+    <div style="font-weight:600;font-size:13px;color:#8ea0b8;margin-bottom:4px">Oponente (Bots vs PvP)</div>
+    <div id="chessPatternOppVal" style="font-size:16px;font-weight:700">—</div>
+    <div id="chessPatternOppMeta" class="muted" style="font-size:11px;margin:4px 0 8px">—</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+     <button class="btn btn-g" style="font-size:11px;padding:3px 8px" onclick="filterMatchesAndScroll('type','bot')">Bots</button>
+     <button class="btn btn-g" style="font-size:11px;padding:3px 8px" onclick="filterMatchesAndScroll('type','pvp')">PvP</button>
+    </div>
+   </div>
+   <div class="card" id="chessPatternEngineCard" style="margin:0;background:#0d1522;border:1px solid #1e2e44">
+    <div style="font-weight:600;font-size:13px;color:#8ea0b8;margin-bottom:4px">Cobertura Stockfish</div>
+    <div id="chessEngineCoverageVal" style="font-size:16px;font-weight:700">—</div>
+    <div id="chessEngineCoverageMeta" class="muted" style="font-size:11px;margin:4px 0 8px">Denominador: partidas guardadas en el historial (elegibles para análisis)</div>
+    <div>
+     <button class="btn btn-g" style="font-size:11px;padding:3px 8px" onclick="openEngineProfileSection()">Ver análisis de motor ▾</button>
+    </div>
+   </div>
+  </div>
+  <div id="chessPatternSuggested" class="muted" style="font-size:11px;margin-top:10px"></div>
+ </div>
+
  <details class="cgroup" id="cg-comp" open><summary>Comparativa por color y oponente</summary>
  <div class="grid2">
   <div class="card" id="colCard"><h2>Rendimiento por color</h2><div id="colDiff" class="muted" style="margin-bottom:8px"></div><div id="col"></div></div>
@@ -209,6 +245,30 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
   <div style="margin-top:12px" id="eloCard"><div id="elo"></div><div class="muted" id="eloNote" style="margin-top:6px"></div></div>
  </details>
  </details>
+
+  <details class="cgroup" id="chessEngineProfileDetails" open>
+   <summary style="cursor:pointer;font-weight:600;font-size:13px;color:#8ea0b8;padding:10px 0">Perfil de juego y análisis de motor (Stockfish) ▾</summary>
+   <div id="chessEngineProfileContent">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin:8px 0 4px">
+     <h2 style="margin:0;font-size:16px">Tu perfil de ajedrez</h2>
+     <span class="muted" style="font-size:11px">Stockfish a profundidad 12</span>
+    </div>
+    <p class="muted" id="profileContext" style="margin:0 0 8px 0">Calculado con Stockfish sobre tus partidas guardadas.</p>
+    <div class="kpis" id="profileKpis"></div>
+    <p id="profileVerdict" class="prof-verdict"></p>
+    <div class="card" id="profileCutCard"><h2>Antes y después de un corte</h2><div class="muted" style="margin-bottom:8px">Para un experimento: compara las partidas anteriores a una partida con las posteriores. Pega el id de la última partida de antes (lo ves en la URL del visor).</div><div class="filters"><input id="profileSinceInput" type="text" aria-label="Id de la partida de corte" placeholder="id de la partida de corte" style="width:100%;max-width:340px"><button class="btn btn-p" id="profileSinceApply" onclick="applyProfileSince()">Aplicar</button><button class="btn btn-g" id="profileSinceClear" onclick="clearProfileSince()">Quitar</button></div><div class="muted" id="profileSinceNote"></div><div id="profileCut"></div></div>
+    <div class="grid2">
+     <div class="card" id="profileQualityCard"><h2>Dónde cometes errores graves</h2><div class="muted" style="margin-bottom:8px">Por cada 100 jugadas tuyas. Menos es mejor.</div><div id="profilePhases"></div><h3 style="margin:12px 0 6px">Por color</h3><div id="profileColors"></div></div>
+     <div class="card" id="profileTrendCard"><h2>Cómo evoluciona</h2><div class="muted" style="margin-bottom:8px">Evolución descriptiva: errores graves por 100 jugadas en bloques de 50 partidas seguidas, de las más antiguas a las más recientes. Cada bloque mezcla rivales y colores distintos, así que no demuestra mejora ni empeoramiento; pasa el cursor por una columna para ver sus partidas y jugadas.</div><div id="profileTrend"></div></div>
+    </div>
+    <div class="grid2">
+     <div class="card" id="profileDecisiveCard"><h2>Cuándo se te escapan las derrotas</h2><div class="muted" style="margin-bottom:8px">Momento decisivo: la primera jugada tuya que convierte una posición jugable en una perdida.</div><div id="profileDecisive"></div></div>
+     <div class="card" id="profileConversionCard"><h2>Ventajas y remontadas</h2><div class="muted" style="margin-bottom:8px">Ventaja sostenida: el motor te daba más de 3 peones durante 3 jugadas seguidas.</div><div id="profileConversion"></div></div>
+    </div>
+    <div class="card" id="profileReviewCard"><h2>Qué partidas revisar</h2><div class="muted">Partidas con al menos 20 jugadas tuyas. Pulsa una para abrirla en el visor.</div><h3 style="margin:12px 0 4px">Las que más te costaron</h3><div id="profileWorst"></div><h3 style="margin:12px 0 4px">Las mejor jugadas</h3><div id="profileBest"></div></div>
+    <div class="muted" id="profileNote" style="margin-top:8px"></div>
+   </div>
+  </details>
 
  <div class="card" style="margin-top:14px" id="allMatchesCard">
   <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px"><h2>Partidas</h2><span class="muted" style="font-size:12px" id="chessMatchesSubtitle">Partidas recientes</span></div>
@@ -332,8 +392,25 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
             <h2 style="margin:0;font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:#8ea0b8">Cambios observados</h2>
           </div>
           <div id="langObservedChangesBody">
-            <div id="langObservedSynthesis" style="font-weight:700;font-size:14px;color:#c8d7ea">—</div>
-            <div id="langObservedDetail" class="muted" style="font-size:12px;margin-top:4px">No se detectaron reestructuraciones de árbol curricular en las sincronizaciones observadas.</div>
+            <div id="langObservedSynthesis" style="font-weight:700;font-size:14px;color:#c8d7ea;margin-bottom:8px">—</div>
+            <div id="langObservedDimensions" style="display:grid;gap:8px;font-size:12px">
+              <div id="langCurricularProgressBlock" class="observed-dim">
+                <div style="font-weight:600;color:#8ea0b8">1. Avance curricular (Δ unidades con ΔtotalUnits = 0)</div>
+                <div id="langCurricularProgressDetail" class="muted" style="margin-top:2px">—</div>
+              </div>
+              <div id="langCourseStructureBlock" class="observed-dim">
+                <div style="font-weight:600;color:#8ea0b8">2. Estructura del curso (árbol curricular)</div>
+                <div id="langCourseStructureDetail" class="muted" style="margin-top:2px">—</div>
+              </div>
+              <div id="langAccountActivityBlock" class="observed-dim">
+                <div style="display:flex;justify-content:space-between;align-items:baseline">
+                  <span style="font-weight:600;color:#8ea0b8">3. Actividad de cuenta (XP y sesiones)</span>
+                  <span class="pill pill-scope" style="font-size:10px">CUENTA · NO ES COMPETENCIA</span>
+                </div>
+                <div id="langAccountActivityDetail" class="muted" style="margin-top:2px">—</div>
+              </div>
+            </div>
+            <div id="langObservedDetail" style="display:none">No se detectaron reestructuraciones de árbol curricular en las sincronizaciones observadas.</div>
           </div>
         </div>
 
@@ -423,21 +500,6 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
     <div id="trajectoryFindings"></div>
    </section>
    <section id="profileTab" class="tab-panel prof" hidden>
-    <h2 style="margin:0 0 4px 0">Tu perfil de ajedrez</h2>
-    <p class="muted" id="profileContext" style="margin:0 0 4px 0">Calculado con Stockfish sobre tus partidas guardadas.</p>
-    <div class="kpis" id="profileKpis"></div>
-    <p id="profileVerdict" class="prof-verdict"></p>
-    <div class="card" id="profileCutCard"><h2>Antes y después de un corte</h2><div class="muted" style="margin-bottom:8px">Para un experimento: compara las partidas anteriores a una partida con las posteriores. Pega el id de la última partida de antes (lo ves en la URL del visor).</div><div class="filters"><input id="profileSinceInput" type="text" aria-label="Id de la partida de corte" placeholder="id de la partida de corte" style="width:100%;max-width:340px"><button class="btn btn-p" id="profileSinceApply" onclick="applyProfileSince()">Aplicar</button><button class="btn btn-g" id="profileSinceClear" onclick="clearProfileSince()">Quitar</button></div><div class="muted" id="profileSinceNote"></div><div id="profileCut"></div></div>
-    <div class="grid2">
-     <div class="card" id="profileQualityCard"><h2>Dónde cometes errores graves</h2><div class="muted" style="margin-bottom:8px">Por cada 100 jugadas tuyas. Menos es mejor.</div><div id="profilePhases"></div><h3 style="margin:12px 0 6px">Por color</h3><div id="profileColors"></div></div>
-     <div class="card" id="profileTrendCard"><h2>Cómo evoluciona</h2><div class="muted" style="margin-bottom:8px">Evolución descriptiva: errores graves por 100 jugadas en bloques de 50 partidas seguidas, de las más antiguas a las más recientes. Cada bloque mezcla rivales y colores distintos, así que no demuestra mejora ni empeoramiento; pasa el cursor por una columna para ver sus partidas y jugadas.</div><div id="profileTrend"></div></div>
-    </div>
-    <div class="grid2">
-     <div class="card" id="profileDecisiveCard"><h2>Cuándo se te escapan las derrotas</h2><div class="muted" style="margin-bottom:8px">Momento decisivo: la primera jugada tuya que convierte una posición jugable en una perdida.</div><div id="profileDecisive"></div></div>
-     <div class="card" id="profileConversionCard"><h2>Ventajas y remontadas</h2><div class="muted" style="margin-bottom:8px">Ventaja sostenida: el motor te daba más de 3 peones durante 3 jugadas seguidas.</div><div id="profileConversion"></div></div>
-    </div>
-    <div class="card" id="profileReviewCard"><h2>Qué partidas revisar</h2><div class="muted">Partidas con al menos 20 jugadas tuyas. Pulsa una para abrirla en el visor.</div><h3 style="margin:12px 0 4px">Las que más te costaron</h3><div id="profileWorst"></div><h3 style="margin:12px 0 4px">Las mejor jugadas</h3><div id="profileBest"></div></div>
-    <div class="muted" id="profileNote" style="margin-top:8px"></div>
    </section>
 
    <section id="gamesTab" class="tab-panel" hidden>
