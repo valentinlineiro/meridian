@@ -47,7 +47,7 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
  </div>
 
  <h2 style="margin:18px 0 10px;font-size:14px;letter-spacing:.05em;text-transform:uppercase;color:#8ea0b8">Estado por dominio</h2>
- <div class="grid2">
+ <div class="grid3" id="overviewDomainsGrid">
   <div class="card" id="overviewLangCard">
    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
     <h3 style="margin:0;font-size:15px;color:#e6edf3">Idiomas</h3>
@@ -95,6 +95,32 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
    <div style="margin-top:12px;padding-top:10px;border-top:1px solid #1e2e44;display:flex;justify-content:space-between;align-items:center">
     <span class="muted" style="font-size:12px">Histórico</span>
     <span id="overviewChessHistorical" class="muted" style="font-size:12px">—</span>
+   </div>
+  </div>
+
+  <div class="card" id="overviewGamesCard">
+   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <h3 style="margin:0;font-size:15px;color:#e6edf3">LinkedIn Games</h3>
+    <button class="btn btn-g" onclick="showTab('games')" style="font-size:12px;padding:4px 10px">Ver Juegos →</button>
+   </div>
+   <div>
+    <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.05em">Racha actual</div>
+    <div id="overviewGamesStreak" style="font-size:24px;font-weight:800;line-height:1.2">—</div>
+    <div id="overviewGamesMeta" class="muted" style="font-size:11px;margin-top:2px"></div>
+   </div>
+   <div style="margin-top:10px">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:12px;margin-bottom:4px">
+     <span class="muted" id="overviewGamesWrLabel">Ganas a la media global</span>
+     <span id="overviewGamesWrMeta" class="muted" style="font-size:11px">—</span>
+    </div>
+    <div class="distribution-bar" id="overviewGamesDist">
+     <i class="bar-win" id="overviewGamesDistWin" style="width:0%"></i>
+     <i class="bar-loss" id="overviewGamesDistLoss" style="width:0%"></i>
+    </div>
+   </div>
+   <div style="margin-top:12px;padding-top:10px;border-top:1px solid #1e2e44;display:flex;justify-content:space-between;align-items:center">
+    <span class="muted" style="font-size:12px">Registro <span class="pill pill-scope">MANUAL</span></span>
+    <span id="overviewGamesHistorical" class="muted" style="font-size:12px">—</span>
    </div>
   </div>
  </div>
@@ -290,57 +316,60 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
       </div>
 
       <!-- Tus Cursos (Comprensión 1m) -->
-      <div class="card" style="margin-bottom:12px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-          <h2 style="margin:0;font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:#8ea0b8">Tus Cursos</h2>
-          <span id="langCoursesCount" class="muted" style="font-size:12px"></span>
+      <details class="cgroup" id="langCoursesDetails" style="margin-bottom:12px">
+        <summary style="cursor:pointer;font-weight:600;font-size:13px;color:#8ea0b8;padding:10px 0">Tus Cursos <span id="langCoursesCount" class="muted" style="font-size:12px"></span></summary>
+        <div class="card" style="margin-top:8px">
+          <div id="langCoursesList"></div>
         </div>
-        <div id="langCoursesList"></div>
-      </div>
+      </details>
 
-      <!-- Cambios Observados (Longitudinal #16.9) -->
-      <div class="card" id="langObservedChangesCard" style="margin-bottom:12px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <h2 style="margin:0;font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:#8ea0b8">Cambios observados</h2>
+      <!-- Análisis y métricas longitudinales (Disclosure Progresivo) -->
+      <details class="cgroup" id="langAnalyticsDetails" style="margin-bottom:12px">
+        <summary style="cursor:pointer;font-weight:600;font-size:13px;color:#8ea0b8;padding:10px 0">Análisis y métricas longitudinales</summary>
+        <!-- Cambios Observados (Longitudinal #16.9) -->
+        <div class="card" id="langObservedChangesCard" style="margin:12px 0">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <h2 style="margin:0;font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:#8ea0b8">Cambios observados</h2>
+          </div>
+          <div id="langObservedChangesBody">
+            <div id="langObservedSynthesis" style="font-weight:700;font-size:14px;color:#c8d7ea">—</div>
+            <div id="langObservedDetail" class="muted" style="font-size:12px;margin-top:4px">No se detectaron reestructuraciones de árbol curricular en las sincronizaciones observadas.</div>
+          </div>
         </div>
-        <div id="langObservedChangesBody">
-          <div id="langObservedSynthesis" style="font-weight:700;font-size:14px;color:#c8d7ea">—</div>
-          <div id="langObservedDetail" class="muted" style="font-size:12px;margin-top:4px">No se detectaron reestructuraciones de árbol curricular en las sincronizaciones observadas.</div>
-        </div>
-      </div>
 
-      <div class="card" style="margin-bottom:12px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <h2 style="margin:0">Actividad de cuenta — últimos 90 días</h2>
-          <span class="pill pill-scope">CUENTA</span>
+        <div class="card" style="margin-bottom:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <h2 style="margin:0">Actividad de cuenta — últimos 90 días</h2>
+            <span class="pill pill-scope">CUENTA</span>
+          </div>
+          <div id="langXpTimeline" style="height:60px;display:flex;align-items:flex-end;gap:2px;padding:8px 0"></div>
+          <div class="muted" id="langXpSummary" style="font-size:12px;margin-top:8px"></div>
         </div>
-        <div id="langXpTimeline" style="height:60px;display:flex;align-items:flex-end;gap:2px;padding:8px 0"></div>
-        <div class="muted" id="langXpSummary" style="font-size:12px;margin-top:8px"></div>
-      </div>
 
-      <!-- Bloques A y B: Intensidad y Perfil Semanal -->
-      <div class="grid2" style="margin-bottom:12px">
-        <div class="card" id="langIntensityCard">
-          <h2>Intensidad descriptiva · cuenta</h2>
-          <div id="langIntensityBody"></div>
+        <!-- Bloques A y B: Intensidad y Perfil Semanal -->
+        <div class="grid2" style="margin-bottom:12px">
+          <div class="card" id="langIntensityCard">
+            <h2>Intensidad descriptiva · cuenta</h2>
+            <div id="langIntensityBody"></div>
+          </div>
+          <div class="card" id="langWeeklyCard">
+            <h2>Perfil por día de la semana · cuenta</h2>
+            <div id="langWeeklyBody"></div>
+          </div>
         </div>
-        <div class="card" id="langWeeklyCard">
-          <h2>Perfil por día de la semana · cuenta</h2>
-          <div id="langWeeklyBody"></div>
+
+        <!-- Bloque D: Concentración Histórica de Cursos -->
+        <div class="card" id="langConcentrationCard" style="margin-bottom:12px">
+          <h2>Concentración histórica · catálogo</h2>
+          <div id="langConcentrationBody"></div>
         </div>
-      </div>
 
-      <!-- Bloque D: Concentración Histórica de Cursos -->
-      <div class="card" id="langConcentrationCard" style="margin-bottom:12px">
-        <h2>Concentración histórica · catálogo</h2>
-        <div id="langConcentrationBody"></div>
-      </div>
-
-      <!-- Bloque E: Comparabilidad Curricular Longitudinal -->
-      <div class="card" id="langComparabilityCard" style="margin-bottom:12px">
-        <h2>Comparabilidad curricular longitudinal · cursos</h2>
-        <div id="langComparabilityBody"></div>
-      </div>
+        <!-- Bloque E: Comparabilidad Curricular Longitudinal -->
+        <div class="card" id="langComparabilityCard" style="margin-bottom:12px">
+          <h2>Comparabilidad curricular longitudinal · cursos</h2>
+          <div id="langComparabilityBody"></div>
+        </div>
+      </details>
 
       <!-- ¿Cómo sabemos esto? (MethodologyDisclosure) -->
       <details class="methodology-disclosure" id="langMethodology" style="margin-top:16px;margin-bottom:16px">

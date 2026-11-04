@@ -17,6 +17,7 @@ main{max-width:1120px;margin:0 auto;padding:20px 16px 40px}
 .kpi-sub{grid-column:1/-1;color:#8ea0b8;font-size:12px;margin-top:-4px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 @media(max-width:860px){.grid2{grid-template-columns:1fr}}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
 .card{background:#131f33;border:1px solid #1e2e44;border-radius:12px;padding:16px}
 .card h2{margin:0 0 12px;font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:#8ea0b8}
 .card h3{margin:0 0 8px;font-size:13px;color:#c8d7ea}
@@ -153,7 +154,9 @@ a.side-item{text-decoration:none}a.side-item:hover{text-decoration:none}
 .lgday{list-style:none;margin:0;padding:0}.lgday li{padding:4px 0;border-top:1px solid #1e2e44;font-size:14px}
 .sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .cindex .btn[aria-pressed=true]{background:#1c2d42;border-color:#38577a;color:#fff}
-.tblwrap{overflow-x:auto;scrollbar-color:#2a3d56 #101a27}.gtable{width:100%;min-width:640px;border-collapse:collapse;font-size:13px}
+.tblwrap{overflow-x:auto;scrollbar-color:#2a3d56 #101a27;-webkit-overflow-scrolling:touch}
+.gtable{width:100%;min-width:640px;border-collapse:separate;border-spacing:0;font-size:13px}
+.gtable th:first-child,.gtable td:first-child{position:sticky;left:0;background:#131f33;z-index:2;box-shadow:2px 0 4px rgba(0,0,0,0.25)}
 .gtable th{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:#8ea0b8;text-align:left;padding:6px;border-bottom:1px solid #1e2e44;white-space:nowrap}
 .gtable th[aria-sort=ascending] .thbtn::after{content:" ▲"}.gtable th[aria-sort=descending] .thbtn::after{content:" ▼"}
 .thbtn{background:none;border:0;color:inherit;font:inherit;letter-spacing:inherit;text-transform:inherit;cursor:pointer;padding:6px 0;min-height:32px}
@@ -163,3 +166,8 @@ a.side-item{text-decoration:none}a.side-item:hover{text-decoration:none}
 #gamesTrajGame{background:#0d1b2a;color:#c8d7ea;border:1px solid #1e2e44;border-radius:6px;padding:8px;font-size:16px;margin:6px 0 10px}
 .gdata{margin:6px 0 10px}.gdata>summary{cursor:pointer;font-size:13px;color:#8ea0b8;padding:6px 0}.gdata .gtable{min-width:0}
 .gtable tbody th{font-weight:400;text-align:left;padding:9px 6px;border-bottom:1px solid #162236;text-transform:none;letter-spacing:0;font-size:13px;color:#c8d7ea}
+@media(max-width:600px){
+ .thbtn{min-height:44px;padding:8px 0}
+ .lgcard select,.lgcard input{min-height:44px}
+ .chips button.pill{min-height:40px;padding:6px 14px}
+}
