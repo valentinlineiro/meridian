@@ -237,6 +237,14 @@ describe("Fase 2 - Análisis (Patrones, cobertura y evidencia navegable)", () =>
       expect(text(rt, "#langCurricularProgressDetail")).toBe(
         "Sin observaciones curriculares con denominador idéntico (no se calcula avance)"
       );
+      // Denominator is unknown: structure must NOT be declared stable, and synthesis treats it as insufficient observation
+      expect(text(rt, "#langCourseStructureDetail")).toBe(
+        "Observación insuficiente para determinar estabilidad (esperando 2ª sincronización)"
+      );
+      expect(text(rt, "#langCourseStructureDetail")).not.toMatch(/estable/i);
+      expect(text(rt, "#langObservedSynthesis")).toBe(
+        "0 de 2 cursos comparables sin cambio estructural · 1 con observación insuficiente"
+      );
 
       // Case B: structural change (deltaTotalUnits != 0)
       const analyticsStructural = {

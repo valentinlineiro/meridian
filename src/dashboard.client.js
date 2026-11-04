@@ -613,9 +613,12 @@ function renderLanguagesView(langData, analyticsData, xpData, activeDetail){
  // insufficient_observation means "no second snapshot yet" — unknown, NOT confirmed stable.
  // Never collapse it into a "stable" count: comparable/structural_change/insufficient_observation
  // must stay visually and numerically distinct, matching what the Comparabilidad card shows below.
- const comparableCount=deltas.filter(d=>d.status==='comparable').length;
- const structuralCount=deltas.filter(d=>d.status==='structural_change').length;
- const insufficientCount=deltas.filter(d=>d.status==='insufficient_observation').length;
+ // strictCompDeltas: strictly requires status === 'comparable' AND confirmed identical denominator (deltaTotalUnits === 0, or legacy mock without deltaTotalUnits/previousTotalUnits)
+ // When deltaTotalUnits is null, the denominator is unknown — must be treated as insufficient observation, NOT confirmed stable.
+ const strictCompDeltas=deltas.filter(d=>d.status==='comparable'&&(d.deltaTotalUnits===0||(d.deltaTotalUnits===undefined&&d.previousTotalUnits==null)));
+ const structuralCount=deltas.filter(d=>d.status==='structural_change'||(d.deltaTotalUnits!=null&&d.deltaTotalUnits!==0)).length;
+ const insufficientCount=deltas.filter(d=>d.status==='insufficient_observation'||(d.status==='comparable'&&d.deltaTotalUnits===null)).length;
+ const comparableCount=strictCompDeltas.length;
  const elSyn=q('#langObservedSynthesis');
  if(elSyn){
   if(comparableCount||structuralCount||insufficientCount){
@@ -633,15 +636,14 @@ function renderLanguagesView(langData, analyticsData, xpData, activeDetail){
  const elStructure=q('#langCourseStructureDetail');
  const elActivity=q('#langAccountActivityDetail');
 
- const strictCompDeltas=deltas.filter(d=>d.status==='comparable'&&d.deltaTotalUnits===0);
- const compDelta=strictCompDeltas.find(d=>d.deltaCompletedUnits!=null&&d.deltaCompletedUnits>0);
+ const compDelta=strictCompDeltas.find(d=>d.deltaTotalUnits===0&&d.deltaCompletedUnits!=null&&d.deltaCompletedUnits>0);
 
  if(elCurProg){
   if(compDelta){
    const compCourse=courses.find(c=>c.courseId===compDelta.courseId);
    const cName=compCourse?(compCourse.title||compCourse.courseId):compDelta.courseId;
    elCurProg.textContent='+'+compDelta.deltaCompletedUnits+' unidades completadas en '+cName+' (mismo árbol curricular: denominador idéntico)';
-  } else if(strictCompDeltas.length>0){
+  } else if(comparableCount>0){
    elCurProg.textContent='Sin variación en unidades completadas en cursos comparables (mismo denominador)';
   } else {
    elCurProg.textContent='Sin observaciones curriculares con denominador idéntico (no se calcula avance)';
