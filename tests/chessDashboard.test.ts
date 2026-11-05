@@ -147,7 +147,7 @@ describe("chess tab: phases separate the owner's disconnections (P3)", () => {
     expect(h).toContain("Win 30,8 %");                                        // every game still there, as before
     expect(h).toContain("Sin desconexiones: Win 45,2 %");                     // the same rate without them ...
     expect(h).toContain("en 115 decididas");
-    expect(h).toContain("54 derrotas por desconexión (47% de las derrotas)"); // ... and how many they are
+    expect(h).toContain("54 derrotas por desconexión (47 % de las derrotas)"); // ... and how many they are
   });
   it("shouldExplainThatThePhaseIsWhereTheGameEnded", async () => {
     const { DASHBOARD_HTML } = await import("../src/frontend.ts");

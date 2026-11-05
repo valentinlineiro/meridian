@@ -1386,7 +1386,7 @@ function discLine(g){
  if(g.disconnections==null||!g.competitive) return '';
  if(!g.disconnections) return '<div class="muted" style="margin-top:4px">Sin desconexiones en esta fase</div>';
  const c=g.competitive;
- return '<div class="muted" style="margin-top:4px;display:flex;gap:10px;flex-wrap:wrap"><span>Sin desconexiones: Win '+pctCi(c.winRate,c.winRateCi)+' en '+c.decided+' decididas</span><span>· '+g.disconnections+' derrota'+(g.disconnections===1?'':'s')+' por desconexión'+(g.losses?' ('+Math.round(g.disconnections/g.losses*100)+'% de las derrotas)':'')+'</span></div>';
+ return '<div class="muted" style="margin-top:4px;display:flex;gap:10px;flex-wrap:wrap"><span>Sin desconexiones: Win '+pctCi(c.winRate,c.winRateCi)+' en '+c.decided+' decididas</span><span>· '+g.disconnections+' derrota'+(g.disconnections===1?'':'s')+' por desconexión'+(g.losses?' ('+pc0(g.disconnections/g.losses*100)+' de las derrotas)':'')+'</span></div>';
 }
 // P4: a long list shows its first rows and keeps the rest one tap away (native <details>: no state, nothing is dropped, keyboard and screen-reader friendly).
 function moreRows(rows, n, noun){
@@ -2229,12 +2229,12 @@ const EVAL_META = {
 // The criteria come from the evaluation itself (e.criteria): the rule's own thresholds, never copied here.
 function evalReasonText(e, r){
  const id = e.id, m = e.metrics || {}, k = e.criteria || {};
- const f = (v, d) => v == null ? '—' : Number(v).toFixed(d == null ? 1 : d);
+ const f = (v, d) => v == null ? '—' : Number(v).toFixed(d == null ? 1 : d).replace('.', ',');
  const need = (v, unit) => v == null ? 'no se alcanza el criterio' : 'el criterio exige al menos ' + String(v).replace('.', ',') + unit;
  if(id === 'CHESS_COLOR_ASYMMETRY'){
   if(r === 'insufficient_sample') return f(m.decidedCount, 0) + ' partidas decididas observadas; ' + need(k.minDecided, '') + '.';
   if(r === 'effect_below_threshold') return 'Diferencia observada entre colores: ' + f(m.diffPp) + ' pp; ' + need(k.minDiffPp, ' pp') + '.';
-  if(r === 'interval_includes_zero') return 'El intervalo de confianza 95% de la diferencia [' + f(m.diffCiLower, 0) + ', ' + f(m.diffCiUpper, 0) + '] pp incluye 0.';
+  if(r === 'interval_includes_zero') return 'El intervalo de confianza del 95 % de la diferencia [' + f(m.diffCiLower, 0) + ', ' + f(m.diffCiUpper, 0) + '] pp incluye 0.';
   if(r === 'data_unavailable') return 'Falta al menos un color con partidas decididas en la ventana.';
  }
  if(id === 'CHESS_COLOR_ASYMMETRY_LONGITUDINAL'){
@@ -2242,7 +2242,7 @@ function evalReasonText(e, r){
   if(r === 'insufficient_sample') return 'Decididas: blancas ' + f(m.whiteDecided, 0) + ', negras ' + f(m.blackDecided, 0) + '; días con actividad: ' + f(m.activeDays, 0) + '. ' + (k.minDecidedPerColor != null && k.minActiveDays != null ? 'El criterio exige al menos ' + k.minDecidedPerColor + ' decididas por color y ' + k.minActiveDays + ' días con actividad.' : 'No se alcanza el criterio.');
   if(r === 'span_too_short') return 'El historial de ajedrez cubre ' + f(m.totalDays, 0) + ' días; ' + need(k.minSpanDays, '') + '.';
   if(r === 'effect_below_threshold') return 'Diferencia observada entre colores: ' + f(m.diffPp) + ' pp; ' + need(k.minDiffPp, ' pp') + '.';
-  if(r === 'interval_includes_zero') return 'El intervalo de confianza 95% de la diferencia global [' + f(m.diffCiLower, 0) + ', ' + f(m.diffCiUpper, 0) + '] pp incluye 0.';
+  if(r === 'interval_includes_zero') return 'El intervalo de confianza del 95 % de la diferencia global [' + f(m.diffCiLower, 0) + ', ' + f(m.diffCiUpper, 0) + '] pp incluye 0.';
   if(r === 'persistence_not_met') return 'La diferencia no se mantiene con el mismo signo en las dos mitades del historial: ' + sg(m.h1DiffSigned) + ' pp en la primera y ' + sg(m.h2DiffSigned) + ' pp en la segunda (blancas − negras); ' + need(k.minEraDiffPp, ' pp') + ' en ambas.';
   if(r === 'data_unavailable') return 'Falta información en el historial: fechas, o algún color sin partidas decididas en alguna de las dos mitades.';
  }
@@ -2260,9 +2260,9 @@ function evalReasonText(e, r){
  return {insufficient_sample:'Muestra insuficiente.', effect_below_threshold:'El efecto observado no alcanza el criterio.', interval_includes_zero:'El intervalo de confianza incluye 0.', persistence_not_met:'El efecto no se mantiene en ambas mitades del historial.', span_too_short:'La ventana es demasiado corta.', data_unavailable:'Faltan datos necesarios.'}[r] || r;
 }
 function evalObserved(id, m){
- const f = (v, d) => Number(v).toFixed(d == null ? 1 : d);
- if(id === 'CHESS_COLOR_ASYMMETRY' && m.whiteWinRate != null && m.blackWinRate != null) return 'Blancas ' + f(m.whiteWinRate) + '% · Negras ' + f(m.blackWinRate) + '% (' + m.decidedCount + ' partidas decididas)';
- if(id === 'CHESS_COLOR_ASYMMETRY_LONGITUDINAL' && m.whiteWinRate != null && m.blackWinRate != null) return 'Blancas ' + f(m.whiteWinRate) + '% · Negras ' + f(m.blackWinRate) + '% (' + m.whiteDecided + ' y ' + m.blackDecided + ' decididas' + (m.totalDays != null ? ', ' + m.totalDays + ' días' : '') + ')';
+ const f = (v, d) => Number(v).toFixed(d == null ? 1 : d).replace('.', ',');
+ if(id === 'CHESS_COLOR_ASYMMETRY' && m.whiteWinRate != null && m.blackWinRate != null) return 'Blancas ' + f(m.whiteWinRate) + ' % · Negras ' + f(m.blackWinRate) + ' % (' + m.decidedCount + ' partidas decididas)';
+ if(id === 'CHESS_COLOR_ASYMMETRY_LONGITUDINAL' && m.whiteWinRate != null && m.blackWinRate != null) return 'Blancas ' + f(m.whiteWinRate) + ' % · Negras ' + f(m.blackWinRate) + ' % (' + m.whiteDecided + ' y ' + m.blackDecided + ' decididas' + (m.totalDays != null ? ', ' + m.totalDays + ' días' : '') + ')';
  if(id === 'CHESS_RATING_JUMP' && m.baselineRating != null && m.currentRating != null) return 'ELO leído en snapshots: ' + m.baselineRating + ' → ' + m.currentRating + ' (' + m.gamesCount + ' partidas en la ventana)';
  if(id === 'LANG_XP_ACCELERATION' && m.dailyRate != null){
   // a historical rate of 0 means "no reference" (data_unavailable), not an observed 0 XP/day
@@ -2302,7 +2302,7 @@ function renderEvaluationCard(e, state, finding, win){
  // calibratedThrough is how far the artefact's data go, not proof that a band exists.
  const kc = e.criteria || {}, em = e.metrics || {};
  const edgeAdmitted = e.id === 'CHESS_RATING_JUMP' ? kc[(em.ratingDelta != null && em.ratingDelta < 0 ? 'lower95' : 'upper95') + 'Admitted'] === 1 : kc.upper95Admitted === 1;
- const basis = e.kind === 'statistical' ? 'con intervalo de confianza 95%'
+ const basis = e.kind === 'statistical' ? 'con intervalo de confianza del 95 %'
   : kc.calibratedThrough ? (edgeAdmitted ? 'límites de lo habitual calibrados con tu historial (hasta ' + kc.calibratedThrough + ')' : 'sin banda calibrada todavía; datos evaluados hasta ' + kc.calibratedThrough)
   : 'umbral fijo, sin intervalo de confianza';
  const foot = '<div class="muted" style="font-size:11px;margin-top:6px">Ventana: ' + esc(win) + ' · ' + basis + '</div>';
