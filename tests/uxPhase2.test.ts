@@ -87,7 +87,7 @@ describe("Fase 2 - Análisis (Patrones, cobertura y evidencia navegable)", () =>
 
       // Case 2: Partial analysis without its own date - MUST NOT borrow date from ELO snapshot
       run(rt, `updateChessEngineCoverage({ analysed: 42 }, 100)`);
-      expect(text(rt, "#chessEngineCoverageVal")).toBe("42 de 100 partidas analizadas (42.0 %)");
+      expect(text(rt, "#chessEngineCoverageVal")).toBe("42 de 100 partidas analizadas (42,0 %)");
       expect(text(rt, "#chessEngineCoverageMeta")).toBe("Denominador: 100 partidas guardadas en el historial (elegibles para análisis)");
       expect(text(rt, "#chessEngineCoverageMeta")).not.toContain("observado");
 
