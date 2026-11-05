@@ -1234,7 +1234,7 @@ function updateChessEngineCoverage(b, totalGames){
   elVal.textContent = '0 de ' + total + ' partidas analizadas (0 %)';
   elMeta.textContent = 'Análisis pendiente · Denominador: ' + total + ' partidas guardadas en el historial (elegibles para análisis)';
  } else {
-  const pct = total > 0 ? (analysed / total * 100).toFixed(1) : '0';
+  const pct = total > 0 ? dec1(analysed / total * 100) : '0';
   const rawDate = b && (b.observedAt || b.updatedAt || b.analyzedAt);
   const obs = rawDate ? ' · observado ' + String(rawDate).slice(0, 10) : '';
   elVal.textContent = analysed + ' de ' + total + ' partidas analizadas (' + pct + ' %)';
