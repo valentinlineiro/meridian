@@ -130,6 +130,19 @@ describe("profile tab", () => {
     expect(d).toContain("Aparte: <b>10</b> derrotas por desconexión (6 con un momento decisivo registrado)");
   });
 
+  it("shouldNotRenderZeroOfZeroWhenEveryLossWasADisconnection", async () => {
+    const all = sec({ decisive: { lossGames: 10, withDecisive: 6, medianMove: 5, byPhase: { opening: 6, middlegame: 0, endgame: 0 },
+      competitive: { lossGames: 0, withDecisive: 0, medianMove: null, byPhase: { opening: 0, middlegame: 0, endgame: 0 } },
+      disconnection: { lossGames: 10, withDecisive: 6, byPhase: { opening: 6, middlegame: 0, endgame: 0 } } } });
+    const { rt } = await openProfile({ ...PROFILE, all });
+    const d = html(rt, "#profileDecisive");
+    expect(d).not.toContain("0 de 0");
+    expect(d).toContain("Ninguna derrota fue una partida competitiva");
+    expect(d).toContain("Aparte: <b>10</b> derrotas por desconexión (6 con un momento decisivo registrado)"); // the disconnections stay visible
+    expect(html(rt, "#profileKpis")).not.toContain("0 de 0");
+    expect(text(rt, "#profileVerdict")).not.toContain("0 de 0");
+  });
+
   it("shouldRenderConversionWithDrawsApartAndNoUnexplainedThreshold", async () => {
     const { rt } = await openProfile();
     const c = html(rt, "#profileConversion");
