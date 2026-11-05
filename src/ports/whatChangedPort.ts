@@ -50,6 +50,8 @@ export interface WhatChangedPort {
   resolveUserId(explicitUserId?: string | null): Promise<string | null>;
   getChessBaseline(userId: string, since: string): Promise<{ data: ChessPointInTime | null; status: "exactOrPrevious" | "firstHistorical" | "unavailable" }>;
   getChessInterval(userId: string, since: string, until: string): Promise<ChessIntervalData>;
+  // k of the ELO calibration (A7): games played in (after, until], any colour or result, exactly the count between two consecutive anchors in docs/audits/calibration-elo-xp/exploration.py.
+  countGamesBetween(userId: string, after: string, until: string): Promise<number>;
   getLanguagesBaseline(userId: string, since: string): Promise<{ data: LanguagesPointInTime | null; status: "exactOrPrevious" | "firstHistorical" | "unavailable" }>;
   getLanguagesTarget(userId: string, until: string): Promise<{ data: LanguagesPointInTime | null; status: "exactOrPrevious" | "unavailable" }>;
   getLanguagesInterval(userId: string, since: string, until: string): Promise<LanguagesIntervalData>;

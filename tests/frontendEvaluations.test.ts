@@ -1,12 +1,13 @@
 import { describe, it, expect } from "vitest";
 import { evaluateChanges, salience, type WhatChangedDeltas } from "../src/domain/whatChanged.ts";
 import { createDashboardRuntime, fetchOnly } from "./helpers/dom.ts";
+import { ADMITTED, withAdmitted } from "./fixtures/calibration.ts";
 
 const ctx = { userId: "u1", baselineAt: "2026-09-20T00:00:00.000Z", until: "2026-09-27T00:00:00.000Z" };
 const clear = { diff: 40, lower: 10, upper: 60 }, wide = { diff: 40, lower: -16, upper: 72 };
 type Over = { chess?: Partial<WhatChangedDeltas["chess"]>; languages?: Partial<WhatChangedDeltas["languages"]> };
 const deltas = (o: Over = {}): WhatChangedDeltas => ({
-  chess: { gamesCount: 20, decidedCount: 20, ratingDelta: 0, baselineRating: 800, currentRating: 800, intervalWinRate: 50, intervalWhiteWinRate: 70, intervalBlackWinRate: 30, historicalWinRateDelta: null, colorDelta: clear, historicalDelta: null, ...o.chess },
+  chess: { gamesCount: 20, decidedCount: 20, ratingDelta: 0, ratingGames: 20, baselineRating: 800, currentRating: 800, intervalWinRate: 50, intervalWhiteWinRate: 70, intervalBlackWinRate: 30, historicalWinRateDelta: null, colorDelta: clear, historicalDelta: null, ...o.chess },
   languages: { intervalDays: 7, observedDays: 1, partialDaysExcluded: 0, historicalObservedDays: 1, historicalSpanDays: null, historicalSpanStart: null, xpGained: 500, sessionsCount: 5, totalSessionMinutes: 60, baselineCourseId: "A", currentCourseId: "A", courseChanged: false, dailyXpRate: 100, historicalDailyXpRate: 50, ...o.languages },
   streak: { baselineStreak: 10, currentStreak: 12, streakDelta: 2, status: "active", streakStarted: false, streakMilestone: null },
 });
@@ -24,14 +25,17 @@ describe("evaluation cards (P0)", () => {
   it("shouldAgreeWithDomainSalienceForEveryEvaluationOverAGrid", () => {
     const rt = createDashboardRuntime("/changes");
     const want = { finding: "AFIRMADO", inconclusive: "INDICIO", no_indication: ["SIN INDICIO", "INSUFICIENTE"] } as const;
+    const onlyUncalibrated = (e: any) => e.reasons.length === 1 && e.reasons[0] === "calibration_unavailable";
     for (const decidedCount of [0, 9, 40])
       for (const colorDelta of [null, clear, wide])
         for (const [w, b] of [[null, null], [70, 30], [55, 45]] as const)
           for (const [intervalDays, xpGained, hist] of [[7, 500, 50], [2, 500, 50], [7, 100, 50], [7, 500, 0]] as const)
             for (const e of evaluateChanges(deltas({ chess: { decidedCount, colorDelta, intervalWhiteWinRate: w, intervalBlackWinRate: b }, languages: { intervalDays, xpGained, historicalDailyXpRate: hist } }), ctx).evaluations) {
               const got = rt.sandbox.evalState(e);
-              expect([want[salience(e)]].flat()).toContain(got);
-              const limited = e.reasons.some((r) => r === "data_unavailable" || r === "span_too_short" || r === "insufficient_sample");
+              // A7 §15.2.4: not knowing the usual variation is "inconclusive" in the domain but reads INSUFICIENTE on screen (SIN INDICIO if there is no effect)
+              if (onlyUncalibrated(e)) expect(got).toBe(salience(e) === "inconclusive" ? "INSUFICIENTE" : "SIN INDICIO");
+              else expect([want[salience(e)]].flat()).toContain(got);
+              const limited = e.reasons.some((r) => r === "data_unavailable" || r === "span_too_short" || r === "insufficient_sample" || (r === "calibration_unavailable" && got === "INSUFICIENTE"));
               if (got === "INSUFICIENTE") expect(limited).toBe(true);
               if (got === "SIN INDICIO") expect(limited).toBe(false); // never "nothing found" when the evidence was limited
             }
@@ -69,11 +73,11 @@ describe("evaluation cards (P0)", () => {
     expect(h).toContain("no equivale a demostrar que no hubo cambio");
   });
 
-  it("shouldMarkInsuficienteNotSinIndicioWhenSampleIsShortAndEffectIsAlsoBelowCriterion", () => {
-    const h = html({ languages: { xpGained: 0, dailyXpRate: 0 } }).split(/<(?:div|details) class="card/).find((c) => c.includes("Mayor XP diario"))!;
+  it("shouldMarkInsuficienteNotSinIndicioWhenTheWindowIsTooShort", () => {
+    const h = html({ languages: { intervalDays: 2 } }).split(/<(?:div|details) class="card/).find((c) => c.includes("Mayor XP diario"))!;
     expect(h).not.toContain("SIN INDICIO");
     expect(h).toContain("INSUFICIENTE");
-    expect(h).toContain("0 XP ganados en la ventana; el criterio exige al menos 200.");
+    expect(h).toContain("La ventana contiene 2 días completos (UTC); el criterio exige al menos 3.");
   });
 
   it("shouldNotRenderMissingHistoricalReferenceAsZeroWhenRateHasNoReference", () => {
@@ -125,8 +129,8 @@ describe("evaluation cards (P0)", () => {
     expect(rt.getEl("#changesHeader").innerHTML).not.toContain("10:37:59.169Z");
   });
 
-  it("shouldDisclaimFixedThresholdWhenEvaluationIsThresholdKind", () => {
-    expect(html()).toContain("umbral fijo, sin intervalo de confianza");
+  it("shouldNotClaimCalibratedLimitsWhenNoBandIsAdmitted", () => {
+    expect(html()).toContain("sin banda calibrada todavía; datos evaluados hasta");
   });
 
   it("shouldOrderAfirmadoBeforeIndicioBeforeSinIndicio", () => {
@@ -138,14 +142,58 @@ describe("evaluation cards (P0)", () => {
 
 describe("evaluation cards: verdict first, criteria on demand", () => {
   it("shouldCollapseEvaluationsWithoutAnAnswerAndKeepAffirmedOnesOpen", () => {
-    const h = html({ languages: { xpGained: 0, dailyXpRate: 0 } });
+    const h = html({ languages: { intervalDays: 2 } });
     const cards = h.split(/(?=<(?:div|details) class="card)/);
     const xp = cards.find((c) => c.includes("Mayor XP diario"))!;
     expect(xp.startsWith('<details class="card evcard"')).toBe(true);
     expect(xp).not.toContain(" open"); // closed by default
     expect(xp).toContain("INSUFICIENTE");
-    expect(xp).toContain("0 XP ganados en la ventana; el criterio exige al menos 200."); // the criteria are still there, one tap away
+    expect(xp).toContain("La ventana contiene 2 días completos (UTC); el criterio exige al menos 3."); // the criteria are still there, one tap away
     const affirmed = cards.find((c) => c.includes("AFIRMADO"))!;
     expect(affirmed.startsWith('<div class="card"')).toBe(true);
+  });
+});
+
+describe("A7: calibrated rules abstain on screen", () => {
+  const elo = (chess: any) => html({ chess }).split(/(?=<(?:div|details) class="card)/).find((c) => c.includes("Salto de ELO"))!;
+  it("shouldShowInsuficienteWithTheObservedEffectWhenTheUsualVariationIsUnknown", () => {
+    const h = elo({ ratingDelta: -40, ratingGames: 10, gamesCount: 30 });
+    expect(h).toContain("INSUFICIENTE");
+    expect(h).toContain("Cambio de ELO observado: -40 puntos en 10 partidas entre las dos lecturas. Sin referencia de variación habitual todavía.");
+    expect(h).not.toContain("SIN INDICIO");
+  });
+  it("shouldShowSinIndicioWhenThereIsNoEffect", () => {
+    expect(elo({ ratingDelta: 0 })).toContain("SIN INDICIO");
+  });
+  it("shouldAttributeCalibrationOnlyToTheRulesThatUseIt", () => {
+    const cards = html().split(/(?=<(?:div|details) class="card)/);
+    const of = (t: string) => cards.find((c) => c.includes(t))!;
+    expect(of("Asimetría por color")).toContain("con intervalo de confianza 95%");
+    expect(of("Asimetría por color")).not.toContain("calibrados");
+    // the shipped artefact admits no edge: neither calibrated rule may claim to be calibrated
+    for (const t of ["Salto de ELO", "Mayor XP diario"]) {
+      expect(of(t)).toContain("sin banda calibrada todavía; datos evaluados hasta 2026-11-05");
+      expect(of(t)).not.toContain("calibrados con tu historial");
+    }
+  });
+  it("shouldClaimCalibrationOnlyWhenTheEdgeOfTheDirectionIsAdmitted", () => {
+    const withBands = (over: any, cal: any) => {
+      const p = { ...payload(over) } as any;
+      p.evaluations = evaluateChanges(deltas(over), ctx, cal).evaluations;
+      return createDashboardRuntime("/changes").sandbox.renderEvaluations(p) as string;
+    };
+    const eloCard = (h: string) => h.split(/(?=<(?:div|details) class="card)/).find((c) => c.includes("Salto de ELO"))!;
+    const up = withAdmitted({ upper95: { 10: 74 } }); // only the rise is calibrated
+    expect(eloCard(withBands({ chess: { ratingDelta: 30, ratingGames: 10 } }, up))).toContain("calibrados con tu historial (hasta ");
+    expect(eloCard(withBands({ chess: { ratingDelta: -30, ratingGames: 10 } }, up))).toContain("sin banda calibrada todavía");
+    expect(eloCard(withBands({ chess: { ratingDelta: -30, ratingGames: 10 } }, withAdmitted({ lower95: { 10: -62 } })))).toContain("calibrados con tu historial");
+    const xp = (h: string) => h.split(/(?=<(?:div|details) class="card)/).find((c) => c.includes("Mayor XP diario"))!;
+    expect(xp(withBands({}, ADMITTED))).toContain("calibrados con tu historial"); // XP window of 7 days has upper95 admitted
+    expect(xp(withBands({ languages: { intervalDays: 14 } }, ADMITTED))).toContain("sin banda calibrada todavía");
+  });
+  it("shouldNeverQuoteTheRetiredFixedThresholds", () => {
+    const h = html({ chess: { ratingDelta: 30 }, languages: { dailyXpRate: 65, historicalDailyXpRate: 50, xpGained: 100 } });
+    expect(h).not.toMatch(/25 puntos|1,3|200 XP|al menos 25|al menos 200/);
+    expect(h).not.toContain("AFIRMADO Salto");
   });
 });

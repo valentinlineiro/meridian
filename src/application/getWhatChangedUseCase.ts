@@ -102,6 +102,12 @@ export async function getWhatChangedUseCase(
   // A rating is observed only by a game inside the window: with none, "no change" is not an observation (amendment A2).
   const currentRating = chessInt.latestRating;
   const ratingDelta = baselineRating !== null && currentRating !== null ? currentRating - baselineRating : null;
+  // A7: the band depends on the games between the two anchors the delta compares (not on the window), as in the calibration.
+  const baseAt = chessBase.data?.ratingAt ?? null;
+  const ratingGames =
+    ratingDelta !== null && baseAt !== null && chessInt.latestRatingAt !== null
+      ? await port.countGamesBetween(userId, baseAt, chessInt.latestRatingAt)
+      : null;
 
   // Rates are over decided games: an unknown result is neither a win nor a loss.
   const intervalWinRate =
@@ -181,6 +187,7 @@ export async function getWhatChangedUseCase(
       gamesCount: chessInt.gamesCount,
       decidedCount: chessInt.decidedCount,
       ratingDelta,
+      ratingGames,
       baselineRating,
       currentRating,
       intervalWinRate,

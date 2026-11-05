@@ -206,6 +206,14 @@ export function createD1WhatChangedAdapter(db: D1Database): WhatChangedPort {
       };
     },
 
+    async countGamesBetween(userId: string, after: string, until: string): Promise<number> {
+      const row = await db
+        .prepare(`SELECT COUNT(*) AS n FROM matches WHERE user_id = ? AND played_at IS NOT NULL AND played_at > ? AND played_at <= ?`)
+        .bind(userId, Math.floor(new Date(after).getTime() / 1000), Math.floor(new Date(until).getTime() / 1000))
+        .first<{ n: number }>();
+      return row?.n ?? 0;
+    },
+
     async getLanguagesBaseline(
       userId: string,
       since: string

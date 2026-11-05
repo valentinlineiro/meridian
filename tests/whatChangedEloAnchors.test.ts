@@ -34,22 +34,38 @@ async function run(games: Parameters<typeof world>[0]) {
 }
 
 describe("What Changed ELO with anchors (A4)", () => {
-  it("shouldCompareTheAnchorsOfTwoSnapshotsAndEmitWhenTheDeltaReachesTheThreshold", async () => {
+  it("shouldCompareTheAnchorsOfTwoSnapshotsAndAbstainWhenNoBandIsAdmitted", async () => {
     const { r, jump } = await run([
       ["base", "s1", since - 100, 1000],
       ["now", "s2", since + 100, 1030],
     ]);
     expect(r.chess.ratingDelta).toBe(30);
-    expect(jump.status).toBe("emitted");
+    expect(jump.status).toBe("not_emitted"); // A7: the observed effect is kept; no fixed threshold decides
+    expect(jump.reasons).toEqual(["calibration_unavailable"]);
+    expect(jump.metrics).toMatchObject({ ratingDelta: 30 });
   });
 
-  it("shouldKeepTheCriterionWhenTheAnchorsDifferByLessThanTheThreshold", async () => {
+  it("shouldKeepTheObservedEffectWhenTheAnchorsDifferByLittle", async () => {
     const { r, jump } = await run([
       ["base", "s1", since - 100, 1000],
       ["now", "s2", since + 100, 1010],
     ]);
     expect(r.chess.ratingDelta).toBe(10);
-    expect(jump.reasons).toEqual(["effect_below_threshold"]);
+    expect(jump.reasons).toEqual(["calibration_unavailable"]);
+  });
+
+  it("shouldCountTheGamesBetweenTheTwoAnchorsNotTheGamesOfTheWindow", async () => {
+    // A7: k is what the calibration measured (games between consecutive anchors). Here 3 games are in the window but the current
+    // anchor is the second one, and the last game (batch s3, no ELO) is after it: k = 2 (the game before the anchor and the anchor itself).
+    const { r, jump } = await run([
+      ["base", "s1", since - 100, 1000],
+      ["early", "s2", since + 100, null],
+      ["now", "s2", since + 200, 1030],
+      ["late", "s3", since + 300, null],
+    ]);
+    expect(r.chess.gamesCount).toBe(3);
+    expect(r.chess.ratingDelta).toBe(30);
+    expect(jump.metrics).toMatchObject({ games: 2, gamesCount: 3 });
   });
 
   it("shouldReportDataUnavailableInsteadOfAZeroWhenBaselineAndCurrentShareOneBatch", async () => {
@@ -134,7 +150,7 @@ describe("What Changed ELO with anchors (A4)", () => {
     const nonElo = (r: typeof withElo) => ({ f: r.findings.filter((f) => f.id !== "CHESS_RATING_JUMP"), e: r.evaluations.filter((e) => e.id !== "CHESS_RATING_JUMP") });
     expect(nonElo(withElo)).toEqual(nonElo(noElo));
     const ids = withElo.findings.map((f) => f.id);
-    expect(ids).toContain("LANG_XP_ACCELERATION"); // the comparison is not vacuous
+    expect(ids).not.toContain("LANG_XP_ACCELERATION"); // A7: no admitted XP band, so no finding
     expect(ids).toContain("CHESS_COLOR_ASYMMETRY");
   });
 

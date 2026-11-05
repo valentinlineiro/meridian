@@ -2187,6 +2187,8 @@ function evalState(e){
  if(e.status === 'emitted') return 'AFIRMADO';
  const rs = e.reasons || [];
  if(rs.length && rs.every(r => r === 'insufficient_sample' || r === 'interval_includes_zero')) return 'INDICIO';
+ // A7: not knowing the usual variation is INSUFICIENTE if an effect was observed (the card states it), SIN INDICIO if there is none
+ if(rs.length === 1 && rs[0] === 'calibration_unavailable'){ const m = e.metrics || {}; const eff = m.ratingDelta != null ? m.ratingDelta : (m.ratio != null ? m.ratio - 1 : 0); return eff !== 0 ? 'INSUFICIENTE' : 'SIN INDICIO'; }
  return rs.some(r => r === 'data_unavailable' || r === 'span_too_short' || r === 'insufficient_sample') ? 'INSUFICIENTE' : 'SIN INDICIO';
 }
 const EVAL_STATE_ORDER = ['AFIRMADO', 'INDICIO', 'INSUFICIENTE', 'SIN INDICIO'];
@@ -2223,13 +2225,14 @@ function evalReasonText(e, r){
   if(r === 'data_unavailable') return 'Falta información en el historial: fechas, o algún color sin partidas decididas en alguna de las dos mitades.';
  }
  if(id === 'CHESS_RATING_JUMP'){
-  if(r === 'effect_below_threshold') return 'Cambio de ELO observado: ' + f(m.ratingDelta, 0) + ' puntos; ' + need(k.minAbsDelta, '') + '.';
+  if(r === 'effect_below_threshold') return 'Cambio de ELO observado: ' + f(m.ratingDelta, 0) + ' puntos en ' + f(m.games, 0) + ' partidas entre las dos lecturas, dentro de lo habitual' + (m.bandLower != null ? ' (límite ' + f(m.bandLower, 0) + ' puntos)' : m.bandUpper != null ? ' (límite +' + f(m.bandUpper, 0) + ' puntos)' : '') + '.';
+  if(r === 'calibration_unavailable') return 'Cambio de ELO observado: ' + f(m.ratingDelta, 0) + ' puntos' + (m.games != null ? ' en ' + f(m.games, 0) + ' partidas entre las dos lecturas' : '') + '. Sin referencia de variación habitual todavía.';
   if(r === 'data_unavailable') return 'No hay dos observaciones de ELO en snapshots distintos alrededor de la ventana.';
  }
  if(id === 'LANG_XP_ACCELERATION'){
   if(r === 'span_too_short') return 'La ventana contiene ' + f(m.intervalDays, 0) + ' días completos (UTC)' + (m.partialDaysExcluded ? '; ' + m.partialDaysExcluded + ' parcial(es) excluido(s)' : '') + '; ' + need(k.minDays, '') + '.';
-  if(r === 'insufficient_sample') return f(m.xpGained, 0) + ' XP ganados en la ventana; ' + need(k.minXp, '') + '.';
-  if(r === 'effect_below_threshold') return 'XP diario observado: ' + f(m.ratio) + '× la media histórica; ' + need(k.minRatio, '×') + '.';
+  if(r === 'effect_below_threshold') return 'XP diario observado: ' + f(m.ratio) + '× la media histórica, dentro de lo habitual' + (m.bandUpper != null ? ' (límite ' + f(m.bandUpper) + '×)' : '') + '.';
+  if(r === 'calibration_unavailable') return 'XP diario observado: ' + f(m.ratio) + '× la media histórica (' + f(m.xpGained, 0) + ' XP en ' + f(m.intervalDays, 0) + ' días). Sin referencia de variación habitual todavía.';
   if(r === 'data_unavailable') return (m.observedDays === 0 ? 'Ningún día de la ventana tiene registro de XP. ' : '') + (m.historicalRate > 0 ? '' : 'No hay media histórica de referencia.');
  }
  return {insufficient_sample:'Muestra insuficiente.', effect_below_threshold:'El efecto observado no alcanza el criterio.', interval_includes_zero:'El intervalo de confianza incluye 0.', persistence_not_met:'El efecto no se mantiene en ambas mitades del historial.', span_too_short:'La ventana es demasiado corta.', data_unavailable:'Faltan datos necesarios.'}[r] || r;
@@ -2273,7 +2276,13 @@ function renderEvaluationCard(e, state, finding, win){
    + (state === 'INDICIO' ? '<div style="font-size:13px;font-weight:600;color:#c8d7ea;margin-bottom:4px">' + esc(EVAL_STATE_MSG[state]) + '</div>' : '')
    + '<ul class="muted" style="font-size:12px;margin:0;padding-left:18px">' + (e.reasons || []).map(r => '<li>' + esc(evalReasonText(e, r)) + '</li>').join('') + '</ul>';
  }
- const basis = e.kind === 'statistical' ? 'con intervalo de confianza 95%' : 'umbral fijo, sin intervalo de confianza';
+ // A7: "calibrated" only if the edge that decides this evaluation is admitted (ELO: the one of the direction of the change; XP: upper95).
+ // calibratedThrough is how far the artefact's data go, not proof that a band exists.
+ const kc = e.criteria || {}, em = e.metrics || {};
+ const edgeAdmitted = e.id === 'CHESS_RATING_JUMP' ? kc[(em.ratingDelta != null && em.ratingDelta < 0 ? 'lower95' : 'upper95') + 'Admitted'] === 1 : kc.upper95Admitted === 1;
+ const basis = e.kind === 'statistical' ? 'con intervalo de confianza 95%'
+  : kc.calibratedThrough ? (edgeAdmitted ? 'límites de lo habitual calibrados con tu historial (hasta ' + kc.calibratedThrough + ')' : 'sin banda calibrada todavía; datos evaluados hasta ' + kc.calibratedThrough)
+  : 'umbral fijo, sin intervalo de confianza';
  const foot = '<div class="muted" style="font-size:11px;margin-top:6px">Ventana: ' + esc(win) + ' · ' + basis + '</div>';
  const scope = '<span class="pill pill-scope">' + esc(meta.scope) + '</span>';
  if(state === 'INSUFICIENTE' || state === 'SIN INDICIO'){

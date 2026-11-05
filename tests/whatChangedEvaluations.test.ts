@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { evaluateChanges, evaluateSignificantChanges, salience, CRITERIA, type WhatChangedDeltas } from "../src/domain/whatChanged.ts";
 import { evaluateSignificantChanges as legacy } from "./fixtures/legacyWhatChanged.ts"; // verbatim copy of the function on main before this change
 import { newcombeDiff, scaleDelta, distinguishable } from "../src/domain/proportion.ts";
+import { ADMITTED, withAdmitted } from "./fixtures/calibration.ts";
 import { getWhatChangedUseCase } from "../src/application/getWhatChangedUseCase.ts";
 import type { WhatChangedPort } from "../src/ports/whatChangedPort.ts";
 
@@ -10,11 +11,12 @@ const clear = { diff: 40, lower: 10, upper: 60 }, wide = { diff: 40, lower: -16,
 
 type Over = { chess?: Partial<WhatChangedDeltas["chess"]>; languages?: Partial<WhatChangedDeltas["languages"]>; streak?: Partial<WhatChangedDeltas["streak"]> };
 const deltas = (o: Over = {}): WhatChangedDeltas => ({
-  chess: { gamesCount: 20, decidedCount: 20, ratingDelta: 0, baselineRating: 800, currentRating: 800, intervalWinRate: 50, intervalWhiteWinRate: 70, intervalBlackWinRate: 30, historicalWinRateDelta: null, colorDelta: clear, historicalDelta: null, ...o.chess },
+  chess: { gamesCount: 20, decidedCount: 20, ratingDelta: 0, ratingGames: 20, baselineRating: 800, currentRating: 800, intervalWinRate: 50, intervalWhiteWinRate: 70, intervalBlackWinRate: 30, historicalWinRateDelta: null, colorDelta: clear, historicalDelta: null, ...o.chess },
   languages: { intervalDays: 7, observedDays: 1, partialDaysExcluded: 0, historicalObservedDays: 1, historicalSpanDays: null, historicalSpanStart: null, xpGained: 500, sessionsCount: 5, totalSessionMinutes: 60, baselineCourseId: "A", currentCourseId: "A", courseChanged: false, dailyXpRate: 100, historicalDailyXpRate: 50, ...o.languages },
   streak: { baselineStreak: 10, currentStreak: 12, streakDelta: 2, status: "active", streakStarted: false, streakMilestone: null, ...o.streak },
 });
 const evalOf = (id: string, o: Over = {}) => evaluateChanges(deltas(o), ctx).evaluations.find((e) => e.id === id)!;
+const evalWith = (id: string, o: Over = {}) => evaluateChanges(deltas(o), ctx, ADMITTED).evaluations.find((e) => e.id === id)!; // with admitted bands
 
 // Amendment A3 rewrites the wording of one finding (XP observed, not "learning pace"); the legacy fixture stays verbatim and
 // only that title/claim is mapped, so every other field of every finding is still compared byte for byte.
@@ -26,7 +28,7 @@ const amendedWording = (fs: any[]) => fs.map((f) => f.id !== "LANG_XP_ACCELERATI
   evidence: f.evidence.replace(/^(\d+) XP\/día en el intervalo vs (\d+) XP\/día histórico \(\+(\d+) XP\)\.$/, "$1 XP/día con registro en el intervalo vs $2 XP/día con registro histórico (+$3 XP en 1 día con registro)."),
 });
 
-describe("golden: findings are unchanged by the evaluation refactor", () => {
+describe("golden: findings are unchanged by the evaluation refactor (except the calibrated rules, A7 §15.5)", () => {
   it("shouldProduceByteIdenticalFindingsAcrossAGridOfInputs", () => {
     let n = 0;
     for (const ratingDelta of [null, 0, 24, 25, -30])
@@ -41,8 +43,11 @@ describe("golden: findings are unchanged by the evaluation refactor", () => {
         languages: { intervalDays, xpGained, historicalDailyXpRate: hist, dailyXpRate: rate, courseChanged },
         streak: { streakMilestone: milestone, status },
       });
-      expect(JSON.stringify(evaluateSignificantChanges(d, ctx))).toBe(JSON.stringify(amendedWording(legacy(d, ctx))));
-      expect(JSON.stringify(evaluateChanges(d, ctx).findings)).toBe(JSON.stringify(amendedWording(legacy(d, ctx))));
+      // A7 §15.5: the only exception to byte equality are the two calibrated rules, which do not emit while the artefact admits no band
+      const calibrated = (f: any) => f.id === "CHESS_RATING_JUMP" || f.id === "LANG_XP_ACCELERATION";
+      const expected = JSON.stringify(amendedWording(legacy(d, ctx)).filter((f: any) => !calibrated(f)));
+      expect(JSON.stringify(evaluateSignificantChanges(d, ctx))).toBe(expected);
+      expect(JSON.stringify(evaluateChanges(d, ctx).findings)).toBe(expected);
       n++;
     }
     expect(n).toBe(5 * 4 * 8 * 4 * 9 * 2 * 3);
@@ -80,57 +85,108 @@ describe("CHESS_COLOR_ASYMMETRY evaluation", () => {
   });
 });
 
-describe("CHESS_RATING_JUMP evaluation", () => {
-  it("shouldBeEmittedWhenTheJumpReachesTheThreshold", () => {
-    expect(evalOf("CHESS_RATING_JUMP", { chess: { ratingDelta: -25 } })).toMatchObject({ kind: "threshold", status: "emitted", reasons: [] });
+describe("CHESS_RATING_JUMP evaluation (A7)", () => {
+  it("shouldAbstainWithCalibrationUnavailableWhenNoBandIsAdmitted", () => {
+    const e = evalOf("CHESS_RATING_JUMP", { chess: { ratingDelta: -40, ratingGames: 10, gamesCount: 40 } });
+    expect(e).toMatchObject({ status: "not_emitted", reasons: ["calibration_unavailable"] });
+    expect(e.metrics).toMatchObject({ ratingDelta: -40, games: 10, gamesCount: 40 }); // the observed effect is kept
+    expect(salience(e)).toBe("inconclusive"); // effect observed, usual variation unknown
   });
-  it("shouldReportEffectBelowThresholdWhenTheJumpIsSmall", () => {
-    const e = evalOf("CHESS_RATING_JUMP", { chess: { ratingDelta: 24 } });
+  it("shouldBeNoIndicationWhenThereIsNoEffectAndNoBand", () => {
+    expect(salience(evalOf("CHESS_RATING_JUMP", { chess: { ratingDelta: 0 } }))).toBe("no_indication");
+  });
+  it("shouldBeEmittedBeyondTheAdmittedBandInEitherDirection", () => {
+    expect(evalWith("CHESS_RATING_JUMP", { chess: { ratingDelta: 75, ratingGames: 10, gamesCount: 40 } })).toMatchObject({ status: "emitted", reasons: [], metrics: { games: 10, gamesCount: 40, level: "relevant", bandUpper: 74 } });
+    expect(evalWith("CHESS_RATING_JUMP", { chess: { ratingDelta: -63, ratingGames: 10, gamesCount: 40 } })).toMatchObject({ status: "emitted", metrics: { level: "relevant", bandLower: -62 } });
+    expect(evalWith("CHESS_RATING_JUMP", { chess: { ratingDelta: 84, ratingGames: 10, gamesCount: 40 } }).metrics).toMatchObject({ level: "exceptional" });
+  });
+  it("shouldReportEffectBelowThresholdInsideTheUsualVariation", () => {
+    const e = evalWith("CHESS_RATING_JUMP", { chess: { ratingDelta: 74, ratingGames: 10, gamesCount: 40 } });
     expect(e).toMatchObject({ status: "not_emitted", reasons: ["effect_below_threshold"] });
-    expect(e.metrics).toMatchObject({ ratingDelta: 24 });
+    expect(salience(e)).toBe("no_indication");
   });
-  it("shouldReportDataUnavailableWhenThereIsNoRatingDelta", () => {
+  it("shouldNeedTheEdgeOfTheDirectionOfTheEffect", () => {
+    const upOnly = withAdmitted({ upper95: { 10: 74 } });
+    const at = (d: number) => evaluateChanges(deltas({ chess: { ratingDelta: d, ratingGames: 10, gamesCount: 40 } }), ctx, upOnly).evaluations.find((e) => e.id === "CHESS_RATING_JUMP")!;
+    expect(at(80).status).toBe("emitted");
+    expect(at(-80).reasons).toEqual(["calibration_unavailable"]); // a drop is not covered by an admitted upper edge
+  });
+  it.each([[7], [25], [0]])("shouldBeUnavailableForKOffTheValidatedGridOrBeyondKMax (k=%i)", (k) => {
+    expect(evalWith("CHESS_RATING_JUMP", { chess: { ratingDelta: 200, ratingGames: k, gamesCount: 40 } }).reasons).toEqual(["calibration_unavailable"]);
+  });
+  it("shouldUseTheGamesBetweenTheAnchorsAndNotTheGamesOfTheWindow", () => {
+    // 40 games in the window but 10 between the anchors: the k of the band is 10 (the calibrated statistic), not 40 (> kMax)
+    const e = evalWith("CHESS_RATING_JUMP", { chess: { ratingDelta: 80, ratingGames: 10, gamesCount: 40 } });
+    expect(e.status).toBe("emitted");
+    expect(e.metrics).toMatchObject({ games: 10, gamesCount: 40 });
+    // and the reverse: 10 in the window but 40 between the anchors is beyond kMax
+    expect(evalWith("CHESS_RATING_JUMP", { chess: { ratingDelta: 80, ratingGames: 40, gamesCount: 10 } }).reasons).toEqual(["calibration_unavailable"]);
+  });
+  it("shouldBeUnavailableWhenTheGamesBetweenTheAnchorsAreUnknown", () => {
+    expect(evalWith("CHESS_RATING_JUMP", { chess: { ratingDelta: 80, ratingGames: null } }).reasons).toEqual(["calibration_unavailable"]);
+  });
+  it("shouldReportDataUnavailableWhenThereIsNoRatingDeltaAndNeverCalibrationUnavailable", () => {
     expect(evalOf("CHESS_RATING_JUMP", { chess: { ratingDelta: null } }).reasons).toEqual(["data_unavailable"]);
+  });
+  it("shouldNeverEmitTheOldFixedThresholdAsAFallback", () => {
+    for (const d of [25, -25, 30, 100, -100]) expect(evaluateChanges(deltas({ chess: { ratingDelta: d, ratingGames: 10, gamesCount: 40 } }), ctx).findings.some((f) => f.id === "CHESS_RATING_JUMP")).toBe(false);
   });
 });
 
-describe("LANG_XP_ACCELERATION evaluation", () => {
-  it("shouldBeEmittedWhenAllConditionsHold", () => {
-    expect(evalOf("LANG_XP_ACCELERATION", { languages: { dailyXpRate: 65, historicalDailyXpRate: 50 } })).toMatchObject({ kind: "threshold", status: "emitted", reasons: [] });
+describe("LANG_XP_ACCELERATION evaluation (A7)", () => {
+  const xp = (languages: any) => ({ languages: { intervalDays: 7, dailyXpRate: 100, historicalDailyXpRate: 50, ...languages } });
+  it("shouldAbstainWithCalibrationUnavailableWhenNoBandIsAdmitted", () => {
+    const e = evalOf("LANG_XP_ACCELERATION", xp({ dailyXpRate: 200 }));
+    expect(e).toMatchObject({ status: "not_emitted", reasons: ["calibration_unavailable"] });
+    expect(e.metrics).toMatchObject({ ratio: 4 });
+    expect(salience(e)).toBe("inconclusive");
+  });
+  it("shouldBeEmittedAboveTheAdmittedQuantileOnlyAndNotBelowIt", () => {
+    expect(evalWith("LANG_XP_ACCELERATION", xp({ dailyXpRate: 76 }))).toMatchObject({ status: "emitted", metrics: { level: "relevant", bandUpper: 1.5 } });
+    expect(evalWith("LANG_XP_ACCELERATION", xp({ dailyXpRate: 101 })).metrics).toMatchObject({ level: "exceptional" });
+    expect(evalWith("LANG_XP_ACCELERATION", xp({ dailyXpRate: 75 })).reasons).toEqual(["effect_below_threshold"]); // unilateral: ratio 1.5 is not above
+    expect(evalWith("LANG_XP_ACCELERATION", xp({ dailyXpRate: 10 })).reasons).toEqual(["effect_below_threshold"]); // a slowdown is never an alert
+  });
+  it("shouldBeUnavailableForAWindowLengthNobodyValidated", () => {
+    expect(evalWith("LANG_XP_ACCELERATION", xp({ intervalDays: 5, dailyXpRate: 500 })).reasons).toEqual(["calibration_unavailable"]);
   });
   it.each([
     ["span_too_short", { intervalDays: 2 }],
-    ["insufficient_sample", { xpGained: 199 }],
     ["data_unavailable", { historicalDailyXpRate: 0 }],
-    ["effect_below_threshold", { dailyXpRate: 64 }],
-  ])("shouldReportOnly%sWhenOnlyThatConditionFails", (reason, languages) => {
-    expect(evalOf("LANG_XP_ACCELERATION", { languages: { dailyXpRate: 100, historicalDailyXpRate: 50, ...languages } as any }).reasons).toEqual([reason]);
+  ])("shouldReportOnly%sAndNeverAddCalibrationUnavailableWhenTheDataToClassifyAreMissing", (reason, languages) => {
+    expect(evalOf("LANG_XP_ACCELERATION", xp(languages)).reasons).toEqual([reason]);
   });
-  it("shouldCombineSpanVolumeAndEffectReasons", () => {
-    expect(evalOf("LANG_XP_ACCELERATION", { languages: { intervalDays: 1, observedDays: 1, partialDaysExcluded: 0, historicalObservedDays: 1, historicalSpanDays: null, historicalSpanStart: null, xpGained: 10, dailyXpRate: 10, historicalDailyXpRate: 50 } }).reasons)
-      .toEqual(["insufficient_sample", "effect_below_threshold", "span_too_short"]);
+  it("shouldReportDataUnavailableWhenNoDayHasARecord", () => {
+    expect(evalOf("LANG_XP_ACCELERATION", xp({ observedDays: 0 })).reasons).toEqual(["data_unavailable"]);
+  });
+  it("shouldNotUseTheOld200XpMinimumNorTheOldRatioAsAFallback", () => {
+    expect(evalOf("LANG_XP_ACCELERATION", xp({ xpGained: 10, dailyXpRate: 100 })).reasons).toEqual(["calibration_unavailable"]); // no insufficient_sample at 10 XP
+    expect(evaluateChanges(deltas(xp({ dailyXpRate: 65 })), ctx).findings.some((f) => f.id === "LANG_XP_ACCELERATION")).toBe(false);
+  });
+  it("shouldBeNoIndicationWhenThereIsNoRateDifference", () => {
+    expect(salience(evalOf("LANG_XP_ACCELERATION", xp({ dailyXpRate: 50 })))).toBe("no_indication");
   });
 });
 
 describe("evaluations carry the criteria their rule applies (amendment A3)", () => {
   it("shouldCarryTheCriteriaOfEveryEvaluation", () => {
-    for (const e of evaluateChanges(deltas(), ctx).evaluations) expect(e.criteria).toEqual((CRITERIA as any)[e.id]);
+    for (const e of evaluateChanges(deltas(), ctx).evaluations) {
+      // A7: the calibrated rules also state the artefact they used and the edges of their grid point (checked in calibration.test.ts)
+      const own = Object.keys((CRITERIA as any)[e.id]);
+      expect(Object.fromEntries(own.map((k) => [k, e.criteria[k]]))).toEqual((CRITERIA as any)[e.id]);
+      expect(typeof e.criteria.calibratedThrough === "string").toBe(e.id === "CHESS_RATING_JUMP" || e.id === "LANG_XP_ACCELERATION");
+    }
   });
   // the criteria are the rule's own thresholds: at the value the rule emits, one step below it does not
   it("shouldEmitAtTheCarriedThresholdAndNotBelowIt", () => {
-    const j = CRITERIA.CHESS_RATING_JUMP.minAbsDelta;
-    expect(evalOf("CHESS_RATING_JUMP", { chess: { ratingDelta: j } }).status).toBe("emitted");
-    expect(evalOf("CHESS_RATING_JUMP", { chess: { ratingDelta: j - 1 } }).status).toBe("not_emitted");
     const c = CRITERIA.CHESS_COLOR_ASYMMETRY;
     expect(evalOf("CHESS_COLOR_ASYMMETRY", { chess: { decidedCount: c.minDecided } }).status).toBe("emitted");
     expect(evalOf("CHESS_COLOR_ASYMMETRY", { chess: { decidedCount: c.minDecided - 1 } }).reasons).toContain("insufficient_sample");
     expect(evalOf("CHESS_COLOR_ASYMMETRY", { chess: { intervalWhiteWinRate: 50 + c.minDiffPp, intervalBlackWinRate: 50 } }).reasons).not.toContain("effect_below_threshold");
     expect(evalOf("CHESS_COLOR_ASYMMETRY", { chess: { intervalWhiteWinRate: 50 + c.minDiffPp - 0.1, intervalBlackWinRate: 50 } }).reasons).toContain("effect_below_threshold");
     const x = CRITERIA.LANG_XP_ACCELERATION;
-    expect(evalOf("LANG_XP_ACCELERATION", { languages: { intervalDays: x.minDays, xpGained: x.minXp, historicalDailyXpRate: 50, dailyXpRate: 50 * x.minRatio } }).status).toBe("emitted");
     expect(evalOf("LANG_XP_ACCELERATION", { languages: { intervalDays: x.minDays - 0.1 } }).reasons).toContain("span_too_short");
-    expect(evalOf("LANG_XP_ACCELERATION", { languages: { xpGained: x.minXp - 1 } }).reasons).toContain("insufficient_sample");
-    expect(evalOf("LANG_XP_ACCELERATION", { languages: { historicalDailyXpRate: 50, dailyXpRate: 50 * x.minRatio - 0.1 } }).reasons).toContain("effect_below_threshold");
+    expect(evalOf("LANG_XP_ACCELERATION", { languages: { intervalDays: x.minDays } }).reasons).not.toContain("span_too_short");
   });
 });
 
@@ -178,6 +234,7 @@ describe("what-changed use case transports evaluations", () => {
     getLanguagesInterval: async () => ({ xpGained: 0, sessionsCount: 0, totalSessionMinutes: 0, daysWithActivity: 0 }),
     getHistoricalDailyXpRate: async () => 0,
     getHistoricalXpCoverage: async () => ({ spanStart: null, spanDays: null, observedDays: 0 }),
+    countGamesBetween: async () => 0,
   });
 
   it("shouldReportTheFiveVsFiveCaseAsInconclusiveWithoutAddingAFinding", async () => {

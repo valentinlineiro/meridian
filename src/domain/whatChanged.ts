@@ -1,4 +1,5 @@
 import { distinguishable, type Delta } from "./proportion.ts";
+import { CALIBRATION, eloVerdict, xpVerdict, edgeCriteria, type Calibration } from "./calibration.ts";
 
 export interface FindingContext {
   userId: string;
@@ -10,6 +11,7 @@ export interface ChessDeltas {
   gamesCount: number; // observed
   decidedCount: number; // usable evidence: the sample the thresholds below refer to
   ratingDelta: number | null;
+  ratingGames: number | null; // A7: games between the two anchors of ratingDelta (the k of the calibration); null when unknown
   baselineRating: number | null;
   currentRating: number | null;
   intervalWinRate: number | null;
@@ -74,14 +76,15 @@ export const REASONS = [
   "persistence_not_met",
   "span_too_short",
   "data_unavailable",
+  "calibration_unavailable", // A7: the user's own history does not tell us the usual variation (ELO/XP rules only)
 ] as const;
 export type Reason = (typeof REASONS)[number];
 
 // The thresholds of each rule: the single source for the rule and for the criteria an evaluation carries (amendment A3).
 export const CRITERIA = {
-  CHESS_RATING_JUMP: { minAbsDelta: 25 },
+  CHESS_RATING_JUMP: { kMax: CALIBRATION.elo.kMax }, // A7: no fixed threshold; the limits come from the calibration artefact
   CHESS_COLOR_ASYMMETRY: { minDecided: 10, minDiffPp: 15 },
-  LANG_XP_ACCELERATION: { minDays: 3, minXp: 200, minRatio: 1.3 },
+  LANG_XP_ACCELERATION: { minDays: 3 }, // A7: the 200 XP and 1.3x thresholds are gone; the limits come from the calibration artefact
   CHESS_COLOR_ASYMMETRY_LONGITUDINAL: { minDecidedPerColor: 40, minActiveDays: 60, minSpanDays: 60, minDiffPp: 15, minEraDiffPp: 10 },
 } as const;
 
@@ -91,16 +94,26 @@ export interface Evaluation {
   status: "emitted" | "not_emitted";
   reasons: Reason[];
   metrics: Record<string, number | string>; // keeps the observed effect even when not emitted
-  criteria: Record<string, number>; // the thresholds this rule applies, so a consumer can state them without copying them
+  criteria: Record<string, number | string>; // the thresholds this rule applies, so a consumer can state them without copying them
 }
 
 // Derived from the evaluation alone: inconclusive = the effect was observed and reaches the threshold, and only the sample
 // and/or the interval stand in the way.
 export function salience(e: Evaluation): "finding" | "inconclusive" | "no_indication" {
   if (e.status === "emitted") return "finding";
+  // A7: not knowing the usual variation is inconclusive only if an effect was observed; with no effect there is nothing to be unsure about.
+  if (e.reasons.length === 1 && e.reasons[0] === "calibration_unavailable") return observedEffect(e) !== 0 ? "inconclusive" : "no_indication";
   return e.reasons.length > 0 && e.reasons.every((r) => r === "insufficient_sample" || r === "interval_includes_zero")
     ? "inconclusive"
     : "no_indication";
+}
+
+// The observed effect of a calibrated rule, from the evaluation alone: ELO points, or XP rate ratio − 1.
+export function observedEffect(e: Evaluation): number {
+  const m = e.metrics;
+  if (typeof m.ratingDelta === "number") return m.ratingDelta;
+  if (typeof m.ratio === "number") return m.ratio - 1;
+  return 0;
 }
 
 export const canonical = (rs: Set<Reason>): Reason[] => REASONS.filter((r) => rs.has(r));
@@ -114,23 +127,28 @@ export function evaluateSignificantChanges(deltas: WhatChangedDeltas, context: F
 // One evaluation of every rule's conditions yields both the findings (exactly the emitted ones) and the evaluations.
 export function evaluateChanges(
   deltas: WhatChangedDeltas,
-  context: FindingContext
+  context: FindingContext,
+  cal: Calibration = CALIBRATION
 ): { findings: Finding[]; evaluations: Evaluation[] } {
   const findings: Finding[] = [];
   const evaluations: Evaluation[] = [];
 
 
-  // 1. Chess rating jump (|delta| >= CRITERIA.CHESS_RATING_JUMP.minAbsDelta)
+  // 1. Chess rating jump (A7: outside the usual variation for k games, from the calibration artefact; unavailable beyond what it validates)
   {
     const delta = deltas.chess.ratingDelta;
     const why = new Set<Reason>();
-    if (delta === null) why.add("data_unavailable");
-    else if (Math.abs(delta) < CRITERIA.CHESS_RATING_JUMP.minAbsDelta) why.add("effect_below_threshold");
+    const k = deltas.chess.ratingGames;
+    const v = delta === null ? null : k === null ? ({ available: false } as const) : eloVerdict(delta, k, cal);
+    if (v === null) why.add("data_unavailable");
+    else if (!v.available) why.add("calibration_unavailable");
+    else if (!v.relevant) why.add("effect_below_threshold");
     const emitted = why.size === 0;
+    const band = v && v.available ? numeric({ level: v.level ?? undefined, bandLower: v.lower, bandUpper: v.upper }) : {};
     evaluations.push({
       id: "CHESS_RATING_JUMP", kind: "threshold", status: emitted ? "emitted" : "not_emitted", reasons: canonical(why),
-      metrics: numeric({ ratingDelta: delta, baselineRating: deltas.chess.baselineRating, currentRating: deltas.chess.currentRating, gamesCount: deltas.chess.gamesCount }),
-      criteria: CRITERIA.CHESS_RATING_JUMP,
+      metrics: { ...numeric({ ratingDelta: delta, games: k, baselineRating: deltas.chess.baselineRating, currentRating: deltas.chess.currentRating, gamesCount: deltas.chess.gamesCount }), ...band },
+      criteria: { ...CRITERIA.CHESS_RATING_JUMP, ...edgeCriteria("elo", k, cal) },
     });
     if (emitted) {
       const sign = delta! > 0 ? "+" : "";
@@ -138,7 +156,7 @@ export function evaluateChanges(
         id: "CHESS_RATING_JUMP",
         category: "chess",
         title: "Salto de ELO",
-        claim: `Tu ELO cambió ${sign}${delta} puntos en el periodo.`,
+        claim: `Tu ELO cambió ${sign}${delta} puntos en ${k} partidas, fuera de lo habitual.`,
         evidence: `Inicial: ${deltas.chess.baselineRating ?? "—"} → Final: ${deltas.chess.currentRating ?? "—"} (${deltas.chess.gamesCount} partidas jugadas).`,
         baselineAt: context.baselineAt,
         until: context.until,
@@ -147,6 +165,7 @@ export function evaluateChanges(
           baselineRating: deltas.chess.baselineRating ?? 0,
           currentRating: deltas.chess.currentRating ?? 0,
           gamesCount: deltas.chess.gamesCount,
+          ...band,
         },
       });
     }
@@ -210,26 +229,32 @@ export function evaluateChanges(
     });
   }
 
-  // 4. Language XP acceleration (interval daily rate >= 1.3 * historical rate with min 200 XP and min 3 days duration)
+  // 4. Language XP acceleration (A7: rate ratio above the usual variation for the window length, from the calibration artefact; min 3 days)
   {
     const l = deltas.languages;
     const why = new Set<Reason>();
     if (l.intervalDays < CRITERIA.LANG_XP_ACCELERATION.minDays) why.add("span_too_short");
-    if (l.xpGained < CRITERIA.LANG_XP_ACCELERATION.minXp) why.add("insufficient_sample");
     // A5 §13.3: a rate over no day with a record is not defined (never "0 XP/day")
     if (l.observedDays === 0) why.add("data_unavailable");
     if (!(l.historicalDailyXpRate > 0)) why.add("data_unavailable");
-    else if (l.dailyXpRate < CRITERIA.LANG_XP_ACCELERATION.minRatio * l.historicalDailyXpRate) why.add("effect_below_threshold");
+    // A7 §15.8.7: only classify when the data to classify exist; otherwise the reasons above stand alone
+    let v: ReturnType<typeof xpVerdict> | null = null;
+    if (why.size === 0) {
+      v = xpVerdict(l.dailyXpRate / l.historicalDailyXpRate, l.intervalDays, cal);
+      if (!v.available) why.add("calibration_unavailable");
+      else if (!v.relevant) why.add("effect_below_threshold");
+    }
     const emitted = why.size === 0;
+    const band = v && v.available ? numeric({ level: v.level ?? undefined, bandUpper: v.upper }) : {};
     evaluations.push({
       id: "LANG_XP_ACCELERATION", kind: "threshold", status: emitted ? "emitted" : "not_emitted", reasons: canonical(why),
-      metrics: numeric({
+      metrics: { ...numeric({
         intervalDays: l.intervalDays, xpGained: l.xpGained, dailyRate: l.observedDays > 0 ? l.dailyXpRate : null, historicalRate: l.historicalDailyXpRate,
         ratio: l.observedDays > 0 && l.historicalDailyXpRate > 0 ? l.dailyXpRate / l.historicalDailyXpRate : null,
         observedDays: l.observedDays, partialDaysExcluded: l.partialDaysExcluded, historicalObservedDays: l.historicalObservedDays,
         historicalSpanDays: l.historicalSpanDays, historicalSpanStart: l.historicalSpanStart,
-      }),
-      criteria: CRITERIA.LANG_XP_ACCELERATION,
+      }), ...band },
+      criteria: { ...CRITERIA.LANG_XP_ACCELERATION, ...edgeCriteria("xp", l.intervalDays, cal) },
     });
     if (emitted) {
       const ratio = (l.dailyXpRate / l.historicalDailyXpRate).toFixed(1);
@@ -245,6 +270,7 @@ export function evaluateChanges(
           dailyRate: l.dailyXpRate,
           historicalRate: l.historicalDailyXpRate,
           xpGained: l.xpGained,
+          ...band,
         },
       });
     }
