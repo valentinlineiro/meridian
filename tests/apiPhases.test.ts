@@ -106,6 +106,27 @@ describe("GET /api/stats/phases", () => {
     expect(body.phases[2].scoreRate).toBe(1.0);
   });
 
+  it("shouldSeparateTheOwnersDisconnectionLossesFromEachPhaseWithoutRemovingThem", async () => {
+    const { db, d1 } = createTestDb();
+    const rows: Array<[string, number, string, string | null]> = [ // id, played_at, result, end_condition
+      ["o1", 1, "loss", "checkmate"], ["o2", 2, "win", "checkmate"], ["o3", 3, "loss", "disconnection"], ["o4", 4, "loss", "disconnection"],
+      ["o5", 5, "win", "disconnection"], // the opponent dropped: not the owner's disconnection, stays in both series
+      ["m1", 6, "loss", null],
+    ];
+    for (const [id, t, r] of rows) db.prepare(`INSERT INTO matches (match_id, user_id, snapshot_id, first_seen_at, last_seen_at, raw_json, played_at, result) VALUES (?, 'u1', 's1', 'd', 'd', '{}', ?, ?)`).run(id, t, r);
+    for (const [id, , , ec] of rows) db.prepare(`INSERT INTO match_details (match_id, user_id, status, move_history, move_timestamps, phase_key, ply_count, end_condition) VALUES (?, 'u1', 'completed', '[]', '[]', ?, 20, ?)`).run(id, id.startsWith("o") ? "opening" : "middlegame", ec);
+    const body = await (await handleStats(d1, "phases", new URL("http://localhost/api/stats/phases"))).json() as any;
+    const open = body.phases.find((p: any) => p.key === "opening");
+    // every game still counts in the phase, as before ...
+    expect(open).toMatchObject({ games: 5, wins: 2, losses: 3, winRate: 0.4, disconnections: 2 });
+    // ... and the same summary without the owner's disconnection losses is given apart
+    expect(open.competitive).toMatchObject({ games: 3, wins: 2, losses: 1, decided: 3 });
+    expect(open.competitive.winRate).toBeCloseTo(2 / 3);
+    const mid = body.phases.find((p: any) => p.key === "middlegame");
+    expect(mid).toMatchObject({ games: 1, disconnections: 0 });
+    expect(mid.competitive).toMatchObject({ games: 1, losses: 1 });
+  });
+
   it("shouldFilterPhasesStatsByUserIdWhenProvided", async () => {
     const { db, d1 } = createTestDb();
 

@@ -17,7 +17,7 @@ const X = (path: string) => `CASE WHEN json_valid(md.engine_eval) THEN json_extr
 const CTE = (where: string) => `
   WITH x AS (
     SELECT m.match_id, m.result, LOWER(TRIM(m.user_color)) AS color, LOWER(m.opponent_type) AS otype, m.opponent_name AS oname, m.played_at, COALESCE(m.played_at, 0) AS t, m.rowid AS rid,
-      md.match_id IS NULL AS no_detail, md.engine_eval IS NULL AS is_null, COALESCE(json_valid(md.engine_eval), 0) AS valid,
+      md.match_id IS NULL AS no_detail, md.end_condition AS ec, md.engine_eval IS NULL AS is_null, COALESCE(json_valid(md.engine_eval), 0) AS valid,
       ${X("$.v")} AS v, ${X("$.status")} AS status, ${X("$.reason")} AS reason, ${X("$.moves")} AS moves, ${X("$.loss")} AS loss,
       ${X("$.byPhase.opening[0]")} AS o_m, ${X("$.byPhase.opening[1]")} AS o_s,
       ${X("$.byPhase.middlegame[0]")} AS m_m, ${X("$.byPhase.middlegame[1]")} AS m_s,
@@ -42,11 +42,14 @@ const CTE = (where: string) => `
     FROM x
   )`;
 
+// P3: a loss by the owner's disconnection is where the game ended, not a moment the owner lost it. The decisive-moment figures keep every loss (`decisive`
+// as before) and add the same figures for competitive losses (`competitive`) and the disconnections apart (`disconnection`); nothing is removed.
+const DISC = "ec = 'disconnection'";
 const rate = (serious: number, moves: number) => (moves ? (100 * serious) / moves : null);
 const n = (v: unknown) => Number(v ?? 0);
 
 // One section of the profile (all games, or before / after the cut), from a single aggregate row and the decisive moves of the lost games.
-function section(r: Record<string, unknown>, decisiveMoves: number[]) {
+function section(r: Record<string, unknown>, decisiveMoves: number[], competitiveMoves: number[]) {
   const phase = (m: unknown, s: unknown) => ({ moves: n(m), serious: n(s), ratePer100: rate(n(s), n(m)) });
   const colour = (g: unknown, m: unknown, s: unknown) => ({ games: n(g), moves: n(m), serious: n(s), ratePer100: rate(n(s), n(m)) });
   const out = (g: unknown, w: unknown, d: unknown, l: unknown) => ({ games: n(g), win: n(w), draw: n(d), loss: n(l) });
@@ -58,6 +61,11 @@ function section(r: Record<string, unknown>, decisiveMoves: number[]) {
     decisive: {
       lossGames: n(r.lost), withDecisive: n(r.with_dec), medianMove: decisiveMoves.length ? median(decisiveMoves) : null,
       byPhase: { opening: n(r.d_open), middlegame: n(r.d_mid), endgame: n(r.d_end) },
+      competitive: {
+        lossGames: n(r.lost) - n(r.disc_lost), withDecisive: n(r.with_dec) - n(r.disc_dec), medianMove: competitiveMoves.length ? median(competitiveMoves) : null,
+        byPhase: { opening: n(r.d_open) - n(r.disc_open), middlegame: n(r.d_mid) - n(r.disc_mid), endgame: n(r.d_end) - n(r.disc_end) },
+      },
+      disconnection: { lossGames: n(r.disc_lost), withDecisive: n(r.disc_dec), byPhase: { opening: n(r.disc_open), middlegame: n(r.disc_mid), endgame: n(r.disc_end) } },
     },
     conversion: { advantage: out(r.adv_g, r.adv_w, r.adv_d, r.adv_l), disadvantage: out(r.dis_g, r.dis_w, r.dis_d, r.dis_l), thrown: n(r.adv_l) },
   };
@@ -69,6 +77,8 @@ const SECTION_SELECT = `
     SUM(color = 'white') AS w_g, SUM(CASE WHEN color = 'white' THEN moves END) AS w_m, SUM(CASE WHEN color = 'white' THEN serious END) AS w_s,
     SUM(color = 'black') AS b_g, SUM(CASE WHEN color = 'black' THEN moves END) AS b_m, SUM(CASE WHEN color = 'black' THEN serious END) AS b_s,
     SUM(result = 'loss') AS lost, SUM(result = 'loss' AND dec IS NOT NULL) AS with_dec,
+    SUM(result = 'loss' AND ${DISC}) AS disc_lost, SUM(result = 'loss' AND ${DISC} AND dec IS NOT NULL) AS disc_dec,
+    SUM(result = 'loss' AND ${DISC} AND dec <= 20) AS disc_open, SUM(result = 'loss' AND ${DISC} AND dec > 20 AND dec <= 60) AS disc_mid, SUM(result = 'loss' AND ${DISC} AND dec > 60) AS disc_end,
     SUM(result = 'loss' AND dec <= 20) AS d_open, SUM(result = 'loss' AND dec > 20 AND dec <= 60) AS d_mid, SUM(result = 'loss' AND dec > 60) AS d_end,
     SUM(adv = 1) AS adv_g, SUM(adv = 1 AND result = 'win') AS adv_w, SUM(adv = 1 AND result = 'draw') AS adv_d, SUM(adv = 1 AND result = 'loss') AS adv_l,
     SUM(dis = 1) AS dis_g, SUM(dis = 1 AND result = 'win') AS dis_w, SUM(dis = 1 AND result = 'draw') AS dis_d, SUM(dis = 1 AND result = 'loss') AS dis_l
@@ -81,11 +91,12 @@ export async function handleStatsProfile(db: D1Database, url: URL): Promise<Resp
   const base = userId ? [userId] : [];
   const run = async <T>(sql: string, ...extra: unknown[]) => (await db.prepare(CTE(where) + sql).bind(...base, ...extra).all<T>()).results ?? [];
   const sectionAt = async (cond: string, ...extra: unknown[]) => {
-    const [rows, dec] = await Promise.all([
+    const [rows, dec, comp] = await Promise.all([
       run<Record<string, unknown>>(SECTION_SELECT + cond, ...extra),
       run<{ mv: number }>(`SELECT (dec + 1) / 2 AS mv FROM c WHERE state = 'ok' AND result = 'loss' AND dec IS NOT NULL${cond}`, ...extra),
+      run<{ mv: number }>(`SELECT (dec + 1) / 2 AS mv FROM c WHERE state = 'ok' AND result = 'loss' AND dec IS NOT NULL AND NOT COALESCE(${DISC}, 0)${cond}`, ...extra),
     ]);
-    return section(rows[0] ?? {}, dec.map((d) => d.mv));
+    return section(rows[0] ?? {}, dec.map((d) => d.mv), comp.map((d) => d.mv));
   };
 
   // The cut belongs to "before". Games are totally ordered by (played_at, rowid) — the same order as the trend blocks — so games sharing the cut's timestamp fall on the side their position says; undated games are in neither side. An unknown or undated cut is reported as null, never as an error.

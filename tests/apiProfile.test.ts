@@ -19,11 +19,11 @@ describe("player profile reads", () => {
   let db: any;
   let d1: D1Database;
   let at = 0;
-  const game = (id: string, engine: string | null, over: { result?: string; color?: string; type?: string; playedAt?: number | null; userId?: string } = {}) => {
+  const game = (id: string, engine: string | null, over: { result?: string; color?: string; type?: string; playedAt?: number | null; userId?: string; end?: string } = {}) => {
     const t = over.playedAt === undefined ? ++at : over.playedAt;
     db.prepare("INSERT INTO matches (match_id, user_id, snapshot_id, first_seen_at, last_seen_at, raw_json, played_at, result, user_color, opponent_type) VALUES (?, ?, 's', 'd', 'd', '{}', ?, ?, ?, ?)")
       .run(id, over.userId ?? "u1", t, over.result ?? "win", over.color ?? "white", over.type ?? "bot");
-    db.prepare("INSERT INTO match_details (match_id, user_id, status, move_history, move_timestamps, ply_count, engine_eval) VALUES (?, ?, 'c', '[]', '[]', 0, ?)").run(id, over.userId ?? "u1", engine);
+    db.prepare("INSERT INTO match_details (match_id, user_id, status, move_history, move_timestamps, ply_count, engine_eval, end_condition) VALUES (?, ?, 'c', '[]', '[]', 0, ?, ?)").run(id, over.userId ?? "u1", engine, over.end ?? null);
   };
   const profile = async (qs = "") => (await handleStats(d1, "profile", new URL(`http://x/api/stats/profile${qs}`))).json() as Promise<any>;
 
@@ -91,7 +91,25 @@ describe("player profile reads", () => {
     game("l4", ev({ decisivePly: null }), { result: "loss" });
     game("w1", ev({ decisivePly: 5 }), { result: "win" });    // wins are not part of it
     const d = (await profile()).all.decisive;
-    expect(d).toEqual({ lossGames: 4, withDecisive: 3, medianMove: 21, byPhase: { opening: 1, middlegame: 1, endgame: 1 } });
+    expect(d).toMatchObject({ lossGames: 4, withDecisive: 3, medianMove: 21, byPhase: { opening: 1, middlegame: 1, endgame: 1 } });
+    expect(d.competitive).toEqual({ lossGames: 4, withDecisive: 3, medianMove: 21, byPhase: { opening: 1, middlegame: 1, endgame: 1 } });
+    expect(d.disconnection).toEqual({ lossGames: 0, withDecisive: 0, byPhase: { opening: 0, middlegame: 0, endgame: 0 } });
+  });
+
+  it("shouldSeparateDisconnectionLossesFromCompetitiveOnesWithoutRemovingThem", async () => {
+    game("c1", ev({ decisivePly: 7 }), { result: "loss", end: "checkmate" });     // move 4, opening
+    game("c2", ev({ decisivePly: 41 }), { result: "loss", end: "resignation" });  // move 21, middlegame
+    game("c3", ev({ decisivePly: null }), { result: "loss", end: "checkmate" });
+    game("d1", ev({ decisivePly: 5 }), { result: "loss", end: "disconnection" }); // move 3, opening
+    game("d2", ev({ decisivePly: 9 }), { result: "loss", end: "disconnection" }); // move 5, opening
+    game("d3", ev({ decisivePly: null }), { result: "loss", end: "disconnection" });
+    game("w1", ev({ decisivePly: 5 }), { result: "win", end: "disconnection" });  // the opponent's disconnection: not the owner's
+    game("n1", ev({ decisivePly: 7 }), { result: "loss" });                       // no end condition recorded: competitive
+    const d = (await profile()).all.decisive;
+    expect(d).toMatchObject({ lossGames: 7, withDecisive: 5, byPhase: { opening: 4, middlegame: 1, endgame: 0 } }); // every loss, as before
+    expect(d.competitive).toEqual({ lossGames: 4, withDecisive: 3, medianMove: 4, byPhase: { opening: 2, middlegame: 1, endgame: 0 } });
+    expect(d.disconnection).toEqual({ lossGames: 3, withDecisive: 2, byPhase: { opening: 2, middlegame: 0, endgame: 0 } });
+    expect(d.competitive.lossGames + d.disconnection.lossGames).toBe(d.lossGames); // nothing lost, nothing counted twice
   });
 
   it("shouldCountOutcomesAfterSustainedAdvantageAndDisadvantageWithDrawsApart", async () => {
