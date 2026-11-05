@@ -831,19 +831,11 @@ function gamesStreakView(s){
 function renderOverviewGamesCard(summary){
  const elStreak = q('#overviewGamesStreak');
  const elMeta = q('#overviewGamesMeta');
- const elDist = q('#overviewGamesDist');
- const elDistWin = q('#overviewGamesDistWin');
- const elDistLoss = q('#overviewGamesDistLoss');
- const elWrLabel = q('#overviewGamesWrLabel');
- const elWrMeta = q('#overviewGamesWrMeta');
  const elHist = q('#overviewGamesHistorical');
 
  if(!summary || !summary.games || !Object.keys(summary.games).length){
   if(elStreak) elStreak.textContent = '—';
   if(elMeta) elMeta.textContent = 'Sin partidas registradas aún';
-  if(elDist) elDist.style.display = 'none';
-  if(elWrLabel) elWrLabel.textContent = 'Ganas a la media global';
-  if(elWrMeta) elWrMeta.textContent = '—';
   if(elHist) elHist.textContent = '0 días registrados';
   return;
  }
@@ -853,32 +845,6 @@ function renderOverviewGamesCard(summary){
  if(elStreakLabel) elStreakLabel.textContent = sv.label;
  if(elStreak){ elStreak.textContent = sv.short; elStreak.style.fontSize = sv.label==='Racha actual' ? '' : '16px'; }
  if(elMeta) elMeta.textContent = sv.meta;
-
- const keys = Object.keys(summary.games);
- let beat = 0, total = 0;
- keys.forEach(k => {
-  const g = summary.games[k];
-  if(g && g.beatAvgRate != null && g.nWithAvg){
-   beat += Math.round(g.beatAvgRate * g.nWithAvg);
-   total += g.nWithAvg;
-  }
- });
-
- const pct = total ? (beat / total * 100) : null;
- if(elDist && pct != null){
-  elDist.style.display = 'flex';
-  if(elDistWin) elDistWin.style.width = pct.toFixed(1) + '%';
-  if(elDistLoss) elDistLoss.style.width = (100 - pct).toFixed(1) + '%';
- } else if(elDist){
-  elDist.style.display = 'none';
- }
-
- if(elWrLabel){
-  elWrLabel.textContent = pct != null ? Math.round(pct) + '% ganas a la media global' : 'Ganas a la media global';
- }
- if(elWrMeta){
-  elWrMeta.textContent = pct != null ? Math.round(pct) + ' % de ' + total + ' resultados' : '—';
- }
 
  if(elHist){
   elHist.textContent = summary.days ? gdays(summary.days) + ' registrados' : '—';
@@ -1472,7 +1438,7 @@ async function openGame(id){
   if(!res.ok||!b||!b.ok) throw new Error(b&&b.code==='ILLEGAL_GAME'?'Las jugadas guardadas no son una partida válida.':'No hay partida completa guardada para esta partida.');
   if(gameId!==id) return;
   game=b; gamePly=0;
-  q('#gTitle').textContent='vs '+(b.opponent||'rival sin nombre')+' · '+(b.userColor==='black'?'negras':'blancas');
+  q('#gTitle').textContent='vs '+(b.opponent||'bot')+' · '+(b.userColor==='black'?'negras':'blancas');
   q('#gPgn').href='/api/me/matches/'+encodeURIComponent(id)+'/game.pgn';
   q('#gMissed').innerHTML=(b.missedPlies||[]).map(n=>'<div><a href="#" data-p="'+n+'">Jugada '+n+' ('+esc((b.plies[n-1]||{}).san||'')+'): el rival tenía mate en 1 y lo jugó</a></div>').join('');
   paintEngineErrors(b);
@@ -1760,7 +1726,7 @@ function profGameRow(r){
  const date=r.playedAt?new Date(r.playedAt*1000).toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'}):'';
  const res=r.result==='win'?['pill-win','Victoria']:r.result==='loss'?['pill-loss','Derrota']:r.result==='draw'?['pill-draw','Tablas']:['pill','—'];
  const what=r.decisivePly?'Se torció en tu jugada '+Math.ceil(r.decisivePly/2)+'. ':'';
- return '<a href="#" class="prof-game" data-g="'+esc(r.matchId)+'"><b>'+esc(r.opponent||'Rival sin nombre')+'</b> <span class="pill '+res[0]+'">'+res[1]+'</span> <span class="muted">'+esc(date)+(r.color==='white'?' · blancas':r.color==='black'?' · negras':'')+'</span><br><span class="muted">'+what+r.serious+' errores graves en '+r.moves+' jugadas · pérdida media de evaluación: '+profPawns(r.acpl)+' peones por jugada</span></a>';
+ return '<a href="#" class="prof-game" data-g="'+esc(r.matchId)+'"><b>'+esc(r.opponent||'Bot')+'</b> <span class="pill '+res[0]+'">'+res[1]+'</span> <span class="muted">'+esc(date)+(r.color==='white'?' · blancas':r.color==='black'?' · negras':'')+'</span><br><span class="muted">'+what+r.serious+' errores graves en '+r.moves+' jugadas · pérdida media de evaluación: '+profPawns(r.acpl)+' peones por jugada</span></a>';
 }
 function profCompare(b,a){
  const cell=(x,f)=>x.games?f(x):'—';
@@ -1838,6 +1804,8 @@ const GAME_NAMES={zip:'Zip',tango:'Tango',queens:'Queens',mini_sudoku:'Mini Sudo
 const gnum=(v,d)=>v==null?'—':v.toLocaleString('es-ES',{maximumFractionDigits:d});
 const gmmss=s=>Math.floor(s/60)+':'+String(s%60).padStart(2,'0');
 const gdays=n=>n+(n===1?' día':' días');
+// A manual log has no broken streak: with no record for 2+ days the run is 0 because nothing was recorded.
+const gbeatStreak=x=>x.beatStreak.current>0||!gamesData||(gamesData.playStreak&&gamesData.playStreak.current>0)?gdays(x.beatStreak.current):(gamesData.to?'sin registro desde '+gamesData.to:'—');
 function localToday(){ return new Date().toLocaleDateString('sv-SE'); } // a declaration, not a const: fetchGames runs from initTab() before this line is reached
 function gameSpark(series){
  const v=series.map(p=>p.roll); if(v.length<2) return '';
@@ -1895,7 +1863,7 @@ const GCOLS=[
  {k:'beat',l:'Gana a la media',v:(g,w)=>w.beat.rate,t:(g,w)=>w.beat.rate==null?'—':gpct(w.beat.rate)+' · n='+w.beat.nBeat},
  {k:'delta',l:'Δ eficiencia',v:(g,w)=>w.delta?w.delta.effRel.value:null,t:(g,w)=>{ const e=w.delta&&w.delta.effRel; if(!e||e.value==null) return '—'; return (gamesRange==='28'&&e.arrow?ARROWS[e.arrow]+' ':'')+gsigned(e.value*100,' %')+' · n='+e.nCur+'/'+e.nPrev; }},
  {k:'time',l:'Tiempo mediano (P25–P75)',v:(g,w)=>w.time.median,t:(g,w)=>w.time.median==null?'—':gtime(w.time.median)+' ('+gtime(w.time.p25)+'–'+gtime(w.time.p75)+') · n='+w.time.nTime},
- {k:'streak',l:'Racha',v:g=>g.beatStreak.current,t:g=>gdays(g.beatStreak.current)},
+ {k:'streak',l:'Racha',v:g=>g.beatStreak.current,t:g=>gbeatStreak(g)},
  {k:'n',l:'n',v:(g,w)=>w.time.nTime,t:(g,w)=>String(w.time.nTime)},
 ];
 function deltaWhy(w){
@@ -1982,7 +1950,7 @@ function renderGamesCards(){
   gameLine(card,'Gana a la media: '+(w.beat.rate==null?'—':gpct(w.beat.rate)+' · n='+w.beat.nBeat));
   gameLine(card,'Tiempo típico: '+(w.time.median==null?'—':gtime(w.time.median)+' (P25–P75 '+gtime(w.time.p25)+'–'+gtime(w.time.p75)+') · n='+w.time.nTime));
   gameLine(card,'Mejor marca: '+gmmss(x.best.seconds)+' ('+x.best.date+')');
-  gameLine(card,'Racha ganando a la media: '+gdays(x.beatStreak.current)+' (máx '+x.beatStreak.max+')');
+  gameLine(card,'Racha ganando a la media: '+gbeatStreak(x)+' (máx '+x.beatStreak.max+')');
   const sp=document.createElement('div'); sp.innerHTML=gameSpark(x.series); card.appendChild(sp);
   gameLine(card,'Línea: mediana móvil de 28 días (suavizada).').className='muted';
   g.appendChild(card);
@@ -2000,17 +1968,12 @@ function paintGames(s,day){
  const done=new Set(Object.keys((day&&day.games)||{}));
  const chips=q('#gamesToday'); chips.textContent='';
  Object.keys(GAME_NAMES).forEach(k=>{ const b=document.createElement('button'); b.type='button'; b.className='pill '+(done.has(k)?'pill-win':'pill-scope'); b.textContent=(done.has(k)?'✓ ':'')+GAME_NAMES[k]; b.setAttribute('data-game',k); b.onclick=()=>openGamesEntry(k); chips.appendChild(b); });
- if(!keys.length){ q('#gamesHeroStreak').textContent='—'; q('#gamesHeroMeta').textContent='Aún no hay datos.'; q('#gamesHeroDays').textContent='—'; q('#gamesHeroWrLabel').textContent=''; q('#gamesHeroDistMeta').textContent='—'; q('#gamesHead').textContent=''; q('#gamesRows').textContent=''; q('#gamesChart').textContent=''; q('#gamesChartNote').textContent=''; q('#gamesDataRows').textContent=''; q('#gamesList').textContent=''; return; }
+ if(!keys.length){ q('#gamesHeroStreak').textContent='—'; q('#gamesHeroMeta').textContent='Aún no hay datos.'; q('#gamesHeroDays').textContent='—'; q('#gamesHead').textContent=''; q('#gamesRows').textContent=''; q('#gamesChart').textContent=''; q('#gamesChartNote').textContent=''; q('#gamesDataRows').textContent=''; q('#gamesList').textContent=''; return; }
  const sv=gamesStreakView(s);
  q('#gamesHeroStreakLabel').textContent=sv.label==='Racha actual'?'LinkedIn Games · racha actual':'LinkedIn Games · último registro';
  q('#gamesHeroStreak').textContent=sv.value;
  q('#gamesHeroMeta').textContent=sv.meta;
  q('#gamesHeroDays').textContent=gdays(s.days)+' registrados · '+s.from+' → '+s.to;
- let beat=0, total=0; keys.forEach(k=>{ const x=s.games[k]; if(x.beatAvgRate!=null){ beat+=Math.round(x.beatAvgRate*x.nWithAvg); total+=x.nWithAvg; } });
- const pct=total?beat/total*100:0;
- q('#gamesDistWin').style.width=pct+'%'; q('#gamesDistLoss').style.width=(total?100-pct:0)+'%';
- q('#gamesHeroWrLabel').textContent='Ganas a la media global (todos los juegos)';
- q('#gamesHeroDistMeta').textContent=total?Math.round(pct)+' % de '+total+' resultados':'—';
  renderGamesAnalysis();
 }
 async function fetchGames(){
@@ -2177,6 +2140,9 @@ async function fetchWhatChanged(sinceOverride){
    return;
   }
   const data=res.data;
+  // the course names come from the Idiomas catalogue: load it when the page was opened directly on this tab
+  if(!lastLangsData) lastLangsData=await j('/api/languages').catch(()=>null);
+  if(seq!==changesSeq) return;
   // what is marked is what was shown: the until of this response, not the time of the click
   changesShownUntil=(data.interval && data.interval.until) || until;
   renderWhatChanged(data);
@@ -2387,9 +2353,11 @@ function renderWhatChanged(data){
   const row = (label, value) => '<div class="row"><span class="muted">' + label + '</span><b>' + value + '</b></div>';
   const block = (title, rows) => '<div><div class="muted" style="font-size:11px;letter-spacing:.05em;text-transform:uppercase;margin-bottom:4px">' + title + '</div>' + rows.join('') + '</div>';
   const xpText = l.xpGained > 0 ? '+' + l.xpGained.toLocaleString('es-ES') : String(l.xpGained);
-  const courseText = l.courseChanged
-   ? (esc(l.baselineCourseId || '—') + ' → ' + esc(l.currentCourseId || '—'))
-   : esc(l.currentCourseId || '—');
+  // a course outside the catalogue (Duolingo's own chess course, CHESS_CH) says nothing here: show names, never raw ids
+  const catalog = (lastLangsData && lastLangsData.courses) || [];
+  const courseName = id => { const c = catalog.find(x => x.courseId === id); return c ? esc(c.title || id) : null; };
+  const curName = courseName(l.currentCourseId), baseName = courseName(l.baselineCourseId);
+  const courseText = l.courseChanged && curName && baseName ? baseName + ' → ' + curName : curName;
   const streakDeltaText = s.streakDelta !== null ? (s.streakDelta > 0 ? '+' + s.streakDelta : String(s.streakDelta)) : '—';
   elActivity.innerHTML = '<div class="card">'
    + '<h2>Actividad en la ventana</h2>'
@@ -2403,7 +2371,7 @@ function renderWhatChanged(data){
       row('XP ganado', xpText),
       row('Sesiones completadas', l.sessionsCount),
       row('Tiempo invertido', l.totalSessionMinutes == null ? '—' : l.totalSessionMinutes + ' min'),
-      row('Curso activo', courseText)])
+      ...(courseText ? [row('Curso activo', courseText)] : [])])
    + block('Racha', [
       row('Racha actual', '🔥 ' + (s.currentStreak ?? '—')),
       row('Racha anterior', s.baselineStreak ?? '—'),

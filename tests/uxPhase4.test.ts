@@ -292,3 +292,16 @@ describe("11. Idiomas: detalles de la verificación en producción", () => {
     expect(text(rt, "#langXpGapNote")).toBe("");
   });
 });
+
+describe("audit step 1: demonstrated defects", () => {
+  it("shouldNameNamelessOpponentsBotsBecauseEveryNamelessMatchInProductionIsABot", () => {
+    const rt = createDashboardRuntime("/profile");
+    const html = rt.sandbox.profGameRow({ matchId: "m1", result: "loss", opponent: null, playedAt: 1762000000, color: "white", moves: 30, serious: 2, acpl: 0.4, decisivePly: null });
+    expect(html).toContain("<b>Bot</b>");
+    expect(html).not.toContain("sin nombre");
+  });
+
+  it("shouldLetTheCourseSelectShrinkInsideItsCardInsteadOfOverflowingOnPhones", () => {
+    expect(DASHBOARD_HTML).toMatch(/id="langCourseSelect"[^>]*style="flex:1 1 0;min-width:0;max-width:100%/);
+  });
+});
