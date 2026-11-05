@@ -56,12 +56,12 @@ describe("chess tab: mate-threat card", () => {
   it("shouldShowTheRateWithItsDenominator", async () => {
     const { rt } = await openChess();
     expect(rt.getEl("#threatsCard").style.display).toBe("block");
-    expect(text(rt, "#threatsMain")).toBe("Neutralizadas 283 de 499 (57%) · te mataron 104 · el rival no las jugó 112");
+    expect(text(rt, "#threatsMain")).toBe("Neutralizadas 283 de 499 (57 %) · te mataron 104 · el rival no las jugó 112");
   });
 
   it("shouldShowEachPhaseWithItsDenominator", async () => {
     const { rt } = await openChess();
-    expect(text(rt, "#threatsPhases")).toBe("Apertura 53 de 74 (72%) · Medio juego 132 de 268 (49%) · Final 98 de 157 (62%)");
+    expect(text(rt, "#threatsPhases")).toBe("Apertura 53 de 74 (72 %) · Medio juego 132 de 268 (49 %) · Final 98 de 157 (62 %)");
   });
 
   it("shouldMarkAPhaseWithNoThreatsAsNoDataInsteadOfZeroPercent", async () => {
@@ -72,7 +72,7 @@ describe("chess tab: mate-threat card", () => {
 
   it("shouldShowRecentAgainstTheRest", async () => {
     const { rt } = await openChess();
-    expect(text(rt, "#threatsTrend")).toBe("Últimas 100 partidas analizadas: 90 de 150 (60%) · el resto (226): 193 de 349 (55%)");
+    expect(text(rt, "#threatsTrend")).toBe("Últimas 100 partidas analizadas: 90 de 150 (60 %) · el resto (226): 193 de 349 (55 %)");
   });
 
   it("shouldStateThatOnlyMateInOneIsCountedAndWhyThereIsNoInterval", async () => {

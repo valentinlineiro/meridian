@@ -69,7 +69,7 @@ describe("evaluation cards (P0)", () => {
   it("shouldMarkSinIndicioWhenEffectIsBelowCriterion", () => {
     const h = html({ chess: { intervalWhiteWinRate: 52, intervalBlackWinRate: 48 } });
     expect(h).toContain("SIN INDICIO");
-    expect(h).toContain("Diferencia observada entre colores: 4.0 pp");
+    expect(h).toContain("Diferencia observada entre colores: 4,0 pp");
     expect(h).toContain("no equivale a demostrar que no hubo cambio");
   });
 
@@ -168,7 +168,7 @@ describe("A7: calibrated rules abstain on screen", () => {
   it("shouldAttributeCalibrationOnlyToTheRulesThatUseIt", () => {
     const cards = html().split(/(?=<(?:div|details) class="card)/);
     const of = (t: string) => cards.find((c) => c.includes(t))!;
-    expect(of("Asimetría por color")).toContain("con intervalo de confianza 95%");
+    expect(of("Asimetría por color")).toContain("con intervalo de confianza del 95 %");
     expect(of("Asimetría por color")).not.toContain("calibrados");
     // the shipped artefact admits no edge: neither calibrated rule may claim to be calibrated
     for (const t of ["Salto de ELO", "Mayor XP diario"]) {
@@ -192,8 +192,17 @@ describe("A7: calibrated rules abstain on screen", () => {
     expect(xp(withBands({ languages: { intervalDays: 14 } }, ADMITTED))).toContain("sin banda calibrada todavía");
   });
   it("shouldNeverQuoteTheRetiredFixedThresholds", () => {
-    const h = html({ chess: { ratingDelta: 30 }, languages: { dailyXpRate: 65, historicalDailyXpRate: 50, xpGained: 100 } });
+    const h = html({ chess: { ratingDelta: 30 }, languages: { dailyXpRate: 70, historicalDailyXpRate: 50, xpGained: 100 } }); // ratio 1,4: not the retired 1,3
     expect(h).not.toMatch(/25 puntos|1,3|200 XP|al menos 25|al menos 200/);
     expect(h).not.toContain("AFIRMADO Salto");
+  });
+});
+
+describe("audit P8: evaluation cards use the same notation", () => {
+  it("shouldWriteTheObservedRatesAndTheReasonsWithCommaAndSpace", () => {
+    const h = html({ chess: { intervalWhiteWinRate: 64.7, intervalBlackWinRate: 52.3 } }).replace(/<[^>]*>/g, " ");
+    expect(h).toContain("Blancas 64,7 % · Negras 52,3 %");
+    expect(h).toContain("Diferencia observada entre colores: 12,4 pp");
+    expect(h.match(/.{0,25}(\d\.\d+ ?(%|pp)|\d%).{0,10}/g)).toBeNull();
   });
 });

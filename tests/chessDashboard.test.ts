@@ -55,13 +55,13 @@ const text = (rt: any, sel: string): string => rt.getEl(sel).textContent;
 describe("chess tab: results card", () => {
   it("shouldBreakDownLossesAndDrawsByHowTheGamesEnded", async () => {
     const rt = await openChess();
-    expect(text(rt, "#lossContext")).toBe("Derrotas: 4 mates · 2 desconexiones (10%) · 3 rendiciones");
+    expect(text(rt, "#lossContext")).toBe("Derrotas: 4 mates · 2 desconexiones (10 %) · 3 rendiciones");
     expect(text(rt, "#drawContext")).toBe("Tablas: 1 ahogados · 2 repetición · 1 material · 1 50 jugadas");
   });
 
   it("shouldStateTheLossRateWithoutDisconnectionsAndItsDenominatorWhenSomeGamesEndedThatWay", async () => {
     const rt = await openChess();
-    expect(text(rt, "#lossRateNote")).toBe("Sin contar desconexiones: 18 derrotas de 100 partidas (18%)"); // 20 losses - 2 disconnections, same 100 games
+    expect(text(rt, "#lossRateNote")).toBe("Sin contar desconexiones: 18 derrotas de 100 partidas (18 %)"); // 20 losses - 2 disconnections, same 100 games
   });
 
   it("shouldNotAddALossRateNoteWhenNoLossWasADisconnection", async () => {
@@ -73,7 +73,7 @@ describe("chess tab: results card", () => {
 describe("chess tab: colour gap", () => {
   it("shouldHeadlineTheWhiteBlackGapWithItsIntervalWhenThePageOpens", async () => {
     const rt = await openChess();
-    expect(text(rt, "#colDiff")).toBe("Blancas 70.0% · Negras 45.0% → +25.0 pp · IC95 [+4, +43]");
+    expect(text(rt, "#colDiff")).toBe("Blancas 70,0 % · Negras 45,0 % → +25,0 pp · IC95 [+3,8; +43,3]");
   });
 });
 
@@ -121,16 +121,33 @@ describe("chess tab: openings and phases", () => {
   });
 });
 
+describe("chess tab: one notation for percentages (P8)", () => {
+  const stripTags = (h: string) => h.replace(/<[^>]*>/g, " ");
+  const OLD = /\d\.\d+ ?%|\d%/; // a decimal point, or a sign glued to the number
+  it("shouldWriteTheDonutScoreWithACommaAndASpace", async () => {
+    const rt = await openChess();
+    const t = stripTags(rt.getEl("#res").innerHTML);
+    expect(t).toMatch(/\d+,\d \%/);
+    expect(t).not.toMatch(OLD);
+  });
+  it("shouldWriteTheOpponentEloSharesWithACommaAndASpace", async () => {
+    const rt = await openChess();
+    const t = stripTags(rt.getEl("#elo").innerHTML);
+    expect(t).toMatch(/40,0 % de 100/);
+    expect(t).not.toMatch(OLD);
+  });
+});
+
 describe("chess tab: phases separate the owner's disconnections (P3)", () => {
   const comp = (o: any = {}) => ({ games: 115, wins: 52, losses: 61, draws: 2, unknown: 0, decided: 115, winRate: 0.452, winRateCi: { lower: 0.36, upper: 0.55 }, scoreRate: 0.46, ...o });
   const phase = (o: any = {}) => ({ key: "opening", label: "Apertura", games: 169, wins: 52, losses: 115, draws: 2, unknown: 0, decided: 169, winRate: 0.308, winRateCi: { lower: 0.24, upper: 0.38 }, scoreRate: 0.31, disconnections: 54, competitive: comp(), ...o });
   it("shouldKeepTheRowAndAddTheWinRateWithoutDisconnectionsAndTheirCount", async () => {
     const rt = await openChess();
     const h = rt.sandbox.renderCompare([phase()], 1683) as string;
-    expect(h).toContain("Win 30.8%");                                        // every game still there, as before
-    expect(h).toContain("Sin desconexiones: Win 45.2%");                     // the same rate without them ...
+    expect(h).toContain("Win 30,8 %");                                        // every game still there, as before
+    expect(h).toContain("Sin desconexiones: Win 45,2 %");                     // the same rate without them ...
     expect(h).toContain("en 115 decididas");
-    expect(h).toContain("54 derrotas por desconexión (47% de las derrotas)"); // ... and how many they are
+    expect(h).toContain("54 derrotas por desconexión (47 % de las derrotas)"); // ... and how many they are
   });
   it("shouldExplainThatThePhaseIsWhereTheGameEnded", async () => {
     const { DASHBOARD_HTML } = await import("../src/frontend.ts");
@@ -249,6 +266,6 @@ describe("chess tab: stats bundle", () => {
     const rt = await openChess({ "/api/stats/bundle": { ok: false } });
     expect(statRequests("bundle")).toHaveLength(1);
     for (const r of STATS) expect(statRequests(r)).toHaveLength(1);
-    expect(text(rt, "#colDiff")).toBe("Blancas 70.0% · Negras 45.0% → +25.0 pp · IC95 [+4, +43]");
+    expect(text(rt, "#colDiff")).toBe("Blancas 70,0 % · Negras 45,0 % → +25,0 pp · IC95 [+3,8; +43,3]");
   });
 });

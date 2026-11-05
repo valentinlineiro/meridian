@@ -586,7 +586,7 @@ describe("dashboard #16.9.2 runtime value and scope isolation", () => {
     expect(rt.getEl("#langAccountXp").textContent).toMatch(/421[.,]?500\s*XP/);
     expect(rt.getEl("#langAccountXp").textContent).not.toMatch(/94[.,]?000/);
     expect(rt.getEl("#langAccountStreak").textContent).toMatch(/🔥\s*1[.,]?212\s*días/);
-    expect(rt.getEl("#langAccountDays").textContent).toBe("1 / 1 días activos");
+    expect(rt.getEl("#langAccountDays").textContent).toBe("1 de 1 días con XP (registro desde 2026-11-05)");
     expect(rt.getEl("#langAccountCourses").textContent).toBe("2 cursos");
   });
 
@@ -624,7 +624,7 @@ describe("dashboard #16.9.2 runtime value and scope isolation", () => {
     // 4. ACCOUNT metrics remain strictly identical
     expect(rt.getEl("#langAccountXp").textContent).toMatch(/421[.,]?500\s*XP/);
     expect(rt.getEl("#langAccountStreak").textContent).toMatch(/🔥\s*1[.,]?212\s*días/);
-    expect(rt.getEl("#langAccountDays").textContent).toBe("1 / 1 días activos");
+    expect(rt.getEl("#langAccountDays").textContent).toBe("1 de 1 días con XP (registro desde 2026-11-05)");
     expect(rt.getEl("#langAccountCourses").textContent).toBe("2 cursos");
   });
 
@@ -659,7 +659,7 @@ describe("dashboard #16.9.2 runtime value and scope isolation", () => {
     // ACCOUNT metrics remain strictly identical
     expect(rt.getEl("#langAccountXp").textContent).toMatch(/421[.,]?500\s*XP/);
     expect(rt.getEl("#langAccountStreak").textContent).toMatch(/🔥\s*1[.,]?212\s*días/);
-    expect(rt.getEl("#langAccountDays").textContent).toBe("1 / 1 días activos");
+    expect(rt.getEl("#langAccountDays").textContent).toBe("1 de 1 días con XP (registro desde 2026-11-05)");
     expect(rt.getEl("#langAccountCourses").textContent).toBe("2 cursos");
   });
 
