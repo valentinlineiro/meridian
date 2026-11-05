@@ -146,6 +146,8 @@ function getCourseProgress(detail){
  }
  return {completed,total};
 }
+// 'YYYY-MM-DD' -> '03-nov'; anything else is returned as it came
+function shortDate(d){ const m=/^\d{4}-(\d{2})-(\d{2})$/.exec(String(d)); return m? m[2]+'-'+['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'][Number(m[1])-1] : String(d); }
 function relDate(iso){
  if(!iso) return '—';
  const days=Math.floor((Date.now()-new Date(iso).getTime())/864e5);
@@ -892,7 +894,8 @@ function renderOverview(data){
  if(elSyncMeta){
   const langSync = data.langs?.updatedAt ? 'Idiomas: sincronizado ' + relDate(data.langs.updatedAt) : 'Idiomas: sin sincronizar';
   const chessSync = data.lastChessSyncedAt ? 'Ajedrez: sincronizado ' + relDate(data.lastChessSyncedAt) : 'Ajedrez: sin sincronizar';
-  const gamesSync = data.gamesSummary?.days ? 'Games: ' + gdays(data.gamesSummary.days) + ' registrados' : 'Games: registro manual';
+  const gTo = data.gamesSummary?.to;
+  const gamesSync = gTo ? 'Games: último registro ' + shortDate(gTo) + ' · manual' : data.gamesSummary?.days ? 'Games: ' + gdays(data.gamesSummary.days) + ' registrados' : 'Games: registro manual';
   elSyncMeta.textContent = langSync + ' · ' + chessSync + ' · ' + gamesSync;
  }
 
@@ -1221,13 +1224,13 @@ async function setRecent(n,preloaded){ const seq=++recentSeq; recentN=n; for(con
 // One component, two different questions (shared by Ajedrez, Trayectoria and Qué cambió): is a colour difference DETECTABLE (the 95% interval of
 // the difference excludes 0) and does it meet the stricter rule (minimum effect, and persistence in both halves for the whole history)? Presentation only:
 // it reads the interval and the verdict that the evaluation already carries. lo/hi are in percentage points.
-function colorConclusion(lo, hi, rule){
+function colorConclusion(diff, lo, hi, rule){
  if(lo==null||hi==null) return null;
- const sg=v=>(v>0?'+':v<0?'−':'')+Math.abs(v).toFixed(0);
+ const n1=v=>Math.abs(v).toFixed(1).replace('.',','), sg=v=>(v>0?'+':v<0?'−':'')+n1(v);
  const det=lo>0||hi<0;
  const ruleTxt=rule&&rule.known===false?'sin evaluar':rule&&rule.met?'sí':'no demostrado';
  return {detectable:det, rule:rule&&rule.met===true,
-  line1:'Diferencia detectable: '+(det?'sí':'no')+' (IC95 ['+sg(lo)+', '+sg(hi)+'] pp'+(det?' excluye 0':' incluye 0')+')',
+  line1:'Diferencia detectable: '+(det?'sí':'no')+' ('+(diff!=null?sg(diff)+' pp · ':'')+'IC95 ['+sg(lo)+'; '+sg(hi)+'] pp, '+(det?'excluye 0':'incluye 0')+')',
   line2:(rule&&rule.label||'Patrón persistente')+': '+ruleTxt};
 }
 function fmtDelta(d){ // d in percentage points: {diff,lower,upper}. Never shown without its interval.
@@ -1285,13 +1288,13 @@ function colorPersistence(){ return colorPersistencePromise||(colorPersistencePr
 async function paintColorConclusion(delta){
  const el=q('#chessPatternColorConclusion');
  if(!el) return;
- const first=colorConclusion(delta&&delta.lower, delta&&delta.upper, {known:false});
+ const first=colorConclusion(delta&&delta.diff, delta&&delta.lower, delta&&delta.upper, {known:false});
  if(!first){ el.textContent=''; return; }
  el.textContent=first.line1+' · patrón persistente: comprobando…';
  const ev=await colorPersistence();
  const m=ev&&ev.metrics||{}, k=ev&&ev.criteria||{};
  const label='Patrón persistente (≥ '+(k.minDiffPp!=null?k.minDiffPp:15)+' pp y en ambas mitades)';
- const cc=colorConclusion(delta.lower, delta.upper, ev ? {met:ev.status==='emitted', label} : {known:false, label});
+ const cc=colorConclusion(delta.diff, delta.lower, delta.upper, ev ? {met:ev.status==='emitted', label} : {known:false, label});
  el.textContent=cc.line1+' · '+cc.line2;
 }
 function renderChessPatterns(s, c, o, t){
@@ -2276,7 +2279,8 @@ function evalColorView(e, state){
  const m=e.metrics||{}, k=e.criteria||{}, rs=e.reasons||[];
  if(rs.some(r=>r==='insufficient_sample'||r==='data_unavailable')) return null; // without a sample there is no interval worth reading
  const longi=e.id==='CHESS_COLOR_ASYMMETRY_LONGITUDINAL';
- const cc=colorConclusion(m.diffCiLower, m.diffCiUpper, {met:false, label: longi ? 'Patrón persistente (≥ '+(k.minDiffPp!=null?k.minDiffPp:15)+' pp y en ambas mitades)' : 'Efecto mínimo del criterio (≥ '+(k.minDiffPp!=null?k.minDiffPp:'—')+' pp)'});
+ const signed=m.whiteWinRate!=null&&m.blackWinRate!=null? m.whiteWinRate-m.blackWinRate : null; // white − black, signed like the interval (diffPp is absolute in one evaluation)
+ const cc=colorConclusion(signed, m.diffCiLower, m.diffCiUpper, {met:false, label: longi ? 'Patrón persistente (≥ '+(k.minDiffPp!=null?k.minDiffPp:15)+' pp y en ambas mitades)' : 'Efecto mínimo del criterio (≥ '+(k.minDiffPp!=null?k.minDiffPp:'—')+' pp)'});
  if(!cc) return null;
  return {cc, summary: cc.detectable ? 'Hay una diferencia detectable entre colores, pero no se demuestra '+(longi?'un patrón persistente':'un efecto de la magnitud que exige el criterio')+'.' : null};
 }

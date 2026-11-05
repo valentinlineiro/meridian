@@ -60,7 +60,7 @@ describe("Fase 2 - Análisis (Patrones, cobertura y evidencia navegable)", () =>
       expect(colMeta).toContain("n=60");
       expect(colMeta).toContain("25/35 decididas");
       expect(colMeta).not.toContain("Dif:");
-      expect(text(rt, "#chessPatternColorConclusion")).toContain("Diferencia detectable: no (IC95 [−18, +30] pp incluye 0)");
+      expect(text(rt, "#chessPatternColorConclusion")).toContain("Diferencia detectable: no (+6,0 pp · IC95 [−18,0; +30,0] pp, incluye 0)");
 
       const oppVal = text(rt, "#chessPatternOppVal");
       const oppMeta = text(rt, "#chessPatternOppMeta");

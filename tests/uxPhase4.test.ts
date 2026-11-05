@@ -141,6 +141,7 @@ describe("5. Color: dos preguntas, dos conclusiones", () => {
     const html = await render(payload(prod));
     expect(html).toContain("Diferencia detectable: sí");
     expect(html).toContain("excluye 0");
+    expect(html).toMatch(/\+5,6 pp · IC95 \[\+0,9; \+10,3\] pp/); // magnitude and interval as measured: 596/852 vs 450/699
     expect(html).toContain("no demostrado");
     expect(html).toContain("Hay una diferencia detectable entre colores, pero no se demuestra un patrón persistente.");
     expect(html).not.toContain("No hay evidencia suficiente");
@@ -155,16 +156,16 @@ describe("5. Color: dos preguntas, dos conclusiones", () => {
 
   it("shouldSayNoWhenTheIntervalIncludesZero", () => {
     const rt = createDashboardRuntime("/chess");
-    expect(run(rt, `colorConclusion(-5, 12, {met:false})`)).toMatchObject({ detectable: false, line1: "Diferencia detectable: no (IC95 [−5, +12] pp incluye 0)" });
-    expect(run(rt, `colorConclusion(1, 10, {met:false})`)).toMatchObject({ detectable: true, line2: "Patrón persistente: no demostrado" });
-    expect(run(rt, `colorConclusion(1, 10, {met:true})`)).toMatchObject({ line2: "Patrón persistente: sí" });
+    expect(run(rt, `colorConclusion(3.4, -5, 12, {met:false})`)).toMatchObject({ detectable: false, line1: "Diferencia detectable: no (+3,4 pp · IC95 [−5,0; +12,0] pp, incluye 0)" });
+    expect(run(rt, `colorConclusion(5.6, 0.9, 10.3, {met:false})`)).toMatchObject({ detectable: true, line2: "Patrón persistente: no demostrado" });
+    expect(run(rt, `colorConclusion(5.6, 0.9, 10.3, {met:true})`)).toMatchObject({ line2: "Patrón persistente: sí" });
   });
 
   it("shouldFillThePersistenceLineOfTheChessCardFromTheTrajectoryEvaluation", async () => {
     const rt = createDashboardRuntime("/chess", undefined, fetchOnly("/api/trajectory", async () => ({ ok: true, json: async () => payload(prod) })));
     await settle();
     await run(rt, `paintColorConclusion({diff:5.6, lower:0.9, upper:10.3})`);
-    expect(text(rt, "#chessPatternColorConclusion")).toBe("Diferencia detectable: sí (IC95 [+1, +10] pp excluye 0) · Patrón persistente (≥ 15 pp y en ambas mitades): no demostrado");
+    expect(text(rt, "#chessPatternColorConclusion")).toBe("Diferencia detectable: sí (+5,6 pp · IC95 [+0,9; +10,3] pp, excluye 0) · Patrón persistente (≥ 15 pp y en ambas mitades): no demostrado");
   });
 });
 
@@ -230,5 +231,30 @@ describe("9. Evidencia de ajedrez: qué ordena «las que más te costaron»", ()
     const rt = createDashboardRuntime("/chess");
     run(rt, `updateChessPatternSuggested({ review: { worst: [{ matchId: "bot|1775750442|elvzn2a6", opponent: "Bot 8", serious: 6 }] } })`);
     expect(text(rt, "#chessPatternSuggested")).toContain("mayor pérdida media por jugada");
+  });
+});
+
+describe("10. Ajustes de revisión (PR #100)", () => {
+  it("shouldShowTheObservedDifferenceWithOneDecimalAndTheSameIntervalPrecision", () => {
+    const rt = createDashboardRuntime("/chess");
+    expect(run(rt, `colorConclusion(5.575, 0.886, 10.266, {met:false}).line1`)).toBe("Diferencia detectable: sí (+5,6 pp · IC95 [+0,9; +10,3] pp, excluye 0)");
+    expect(run(rt, `colorConclusion(-13.3, -35, 11, {met:false}).line1`)).toBe("Diferencia detectable: no (−13,3 pp · IC95 [−35,0; +11,0] pp, incluye 0)");
+  });
+
+  it("shouldShowTheSignedDifferenceInTheWindowEvaluationEvenThoughItsDiffPpIsAbsolute", async () => {
+    const rt = createDashboardRuntime("/changes");
+    const e = { id: "CHESS_COLOR_ASYMMETRY", kind: "statistical", status: "not_emitted", reasons: ["effect_below_threshold"], criteria: { minDiffPp: 15 },
+      metrics: { decidedCount: 300, whiteWinRate: 60, blackWinRate: 66, diffPp: 6, diffCiLower: -1, diffCiUpper: 12.5 } };
+    const view = run(rt, `evalColorView(${JSON.stringify(e)}, 'SIN INDICIO')`);
+    expect(view.cc.line1).toBe("Diferencia detectable: no (−6,0 pp · IC95 [−1,0; +12,5] pp, incluye 0)");
+  });
+
+  it("shouldReportTheGamesFreshnessAsTheLastRecordDateInTheOverviewLine", () => {
+    const rt = createDashboardRuntime("/overview");
+    rt.sandbox.renderOverview({ userState: { streak: 1 }, langs: null, gamesSummary: { days: 170, from: "2026-05-17", to: "2026-11-03", playStreak: { current: 0, max: 122 }, games: {} } });
+    expect(text(rt, "#overviewSyncMeta")).toContain("Games: último registro 03-nov · manual");
+    expect(text(rt, "#overviewSyncMeta")).not.toContain("registrados");
+    expect(run(rt, `shortDate('2026-01-09')`)).toBe("09-ene");
+    expect(run(rt, `shortDate('x')`)).toBe("x");
   });
 });
