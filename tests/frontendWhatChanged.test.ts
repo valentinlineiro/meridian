@@ -156,7 +156,7 @@ describe("Frontend What Changed Navigation & Visual Engine", () => {
     // chess
     expect(activityHtml).toContain("Partidas jugadas");
     expect(activityHtml).toContain("15");
-    expect(activityHtml).toContain("60.0%");
+    expect(activityHtml).toContain("60,0 %");
     // languages
     expect(activityHtml).toContain("450");
     expect(activityHtml).toContain("6");

@@ -155,6 +155,8 @@ function relDate(iso){
 }
 let off=0, lastRows=[], lastTotal=0;
 const NA='No disponible';
+// P7: "90/90" says nothing when every day has XP; what matters is how far back the record goes (the streak is far longer than the XP history).
+const activeDaysText=(active,total,firstSec)=>active+' de '+total+' días con XP'+(firstSec&&isFinite(new Date(firstSec*1000))?' (registro desde '+new Date(firstSec*1000).toISOString().slice(0,10)+')':'');
 const xpText=v=>v==null?'—':Number(v).toLocaleString('es-ES');
 const pc=v=>v==null?'—':Math.round(v)+'%';
 const SYNC_KEY='meridian.syncRun';
@@ -228,7 +230,9 @@ function accountStaleNote(l){
  return l.updatedAt && day(obs)!==day(l.updatedAt) ? ' · XP y racha observados el '+day(obs) : '';
 }
 const fmt=n=>n==null?'—':String(n);
-const pct=(a,b)=>b? (a/b*100).toFixed(1)+'%':'—';
+// P8: one way to write a percentage with a decimal: Spanish comma and a space before the sign ("64,7 %"), as the colour and result components already do.
+const dec1=v=>Number(v).toFixed(1).replace('.',','), pc1=v=>dec1(v)+' %';
+const pct=(a,b)=>b? pc1(a/b*100):'—';
 
 function kpi(label,val,sub){return '<div class="kpi"><label>'+label+'</label><b>'+val+'</b><small>'+(sub||'')+'</small></div>'}
 
@@ -246,7 +250,7 @@ function donut(w,l,d){
   acc+=parseFloat(dash);
   return '<circle r="16" cx="36" cy="36" fill="transparent" stroke="'+s.c+'" stroke-width="8" stroke-dasharray="'+dash+' '+(100-parseFloat(dash))+'" stroke-dashoffset="'+off2+'" transform="rotate(-90 36 36)"/>';
  }).join('');
- const legend=segs.map(s=>'<span><i class="dot" style="background:'+s.c+'"></i>'+s.k+' '+s.v+' · '+(s.v/total*100).toFixed(1)+'%</span>').join('');
+ const legend=segs.map(s=>'<span><i class="dot" style="background:'+s.c+'"></i>'+s.k+' '+s.v+' · '+pc1(s.v/total*100)+'</span>').join('');
  const score=((w+0.5*d)/total*100).toFixed(1);
  return '<div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap"><svg width="96" height="96" viewBox="0 0 72 72"><circle r="16" cx="36" cy="36" fill="transparent" stroke="#1e2e44" stroke-width="8"/>'+circles+'</svg><div><div style="font-size:24px;font-weight:800">'+score+'% <span class="muted" style="font-weight:400;font-size:13px">score</span></div><div class="legend">'+legend+'</div></div></div>';
 }
@@ -283,7 +287,7 @@ function renderLang(d){
  const t=d.totals;
  const elAccountXp=q('#langAccountXp')||q('#langHeroXp'); if(elAccountXp) elAccountXp.textContent=d.totalXp!=null? d.totalXp.toLocaleString('es-ES')+' XP' : '—';
  const elAccountStreak=q('#langAccountStreak')||q('#langHeroStreak'); if(elAccountStreak) elAccountStreak.textContent=d.streak!=null? '🔥 '+d.streak+' días': '';
- const elAccountDays=q('#langAccountDays')||q('#langHeroDays'); if(elAccountDays) elAccountDays.textContent=t.activeDays+'/'+t.days+' días activos';
+ const elAccountDays=q('#langAccountDays')||q('#langHeroDays'); if(elAccountDays) elAccountDays.textContent=activeDaysText(t.activeDays,t.days,d.summaries.length?d.summaries[0].date:null);
  const relDate=(iso)=>{ if(!iso) return '—'; const days=Math.floor((Date.now()-new Date(iso).getTime())/864e5); return days<=0?'hoy':days===1?'ayer':'hace '+days+'d'; };
  const lastActivityDay=d.summaries.length? d.summaries[d.summaries.length-1].date*1000 : null;
  const lastPathSync=(d.courseProgressIndex||[]).reduce((max,e)=> !max||e.capturedAt>max? e.capturedAt:max, null);
@@ -509,7 +513,7 @@ function renderLanguagesView(langData, analyticsData, xpData, activeDetail){
  if(elAccountStreak) elAccountStreak.textContent=langs.streak!=null? '🔥 '+Number(langs.streak).toLocaleString('es-ES')+' días':'—';
  const activeDays=summaries.filter(s=>s.gainedXp>0).length;
  const elAccountDays=q('#langAccountDays')||q('#langHeroDays');
- if(elAccountDays) elAccountDays.textContent=summaries.length? activeDays+' / '+summaries.length+' días activos':'—';
+ if(elAccountDays) elAccountDays.textContent=summaries.length? activeDaysText(activeDays,summaries.length,summaries[0].date):'—';
  const elAccountCourses=q('#langAccountCourses')||q('#langHeroCourses');
  if(elAccountCourses) elAccountCourses.textContent=courses.length+' cursos';
 
@@ -1208,14 +1212,15 @@ function colorConclusion(diff, lo, hi, rule){
 }
 function fmtDelta(d){ // d in percentage points: {diff,lower,upper}. Never shown without its interval.
  if(!d) return '—';
- const sg=(v,dec,raw)=>{ const t=Math.abs(v).toFixed(dec); return v===0||(!raw&&Number(t)===0)?t:(v>0?'+':'−')+t; }; // raw: a limit keeps its true sign even when it rounds to 0, so [+0, …] reads as "excludes 0"
- return sg(d.diff,1)+' pp · IC95 ['+sg(d.lower,0,1)+', '+sg(d.upper,0,1)+']'+(d.lower<=0&&d.upper>=0?' · sin evidencia suficiente':'');
+ const sg=(v,dec,raw)=>{ const n=Math.abs(v).toFixed(dec), t=n.replace('.',','); return v===0||(!raw&&Number(n)===0)?t:(v>0?'+':'−')+t; }; // raw: a limit keeps its true sign even when it rounds to 0, so [+0, …] reads as "excludes 0"
+ // P8: same notation as the colour conclusion: one decimal, comma, "; " between the limits
+ return sg(d.diff,1)+' pp · IC95 ['+sg(d.lower,1,1)+'; '+sg(d.upper,1,1)+']'+(d.lower<=0&&d.upper>=0?' · sin evidencia suficiente':'');
 }
 function scaleDelta(d,k){ return d?{diff:d.diff*k,lower:d.lower*k,upper:d.upper*k}:null; }
 function setColDiff(c){ // the single renderer of the white-vs-black line
  const g=c.groups||[], wh=g.find(x=>x.key==='white'), bl=g.find(x=>x.key==='black');
  if(!(wh&&bl&&wh.winRate!=null&&bl.winRate!=null&&q('#colDiff'))) return;
- q('#colDiff').textContent='Blancas '+(wh.winRate*100).toFixed(1)+'% · Negras '+(bl.winRate*100).toFixed(1)+'% → '+fmtDelta(scaleDelta(c.difference,100));
+ q('#colDiff').textContent='Blancas '+pc1(wh.winRate*100)+' · Negras '+pc1(bl.winRate*100)+' → '+fmtDelta(scaleDelta(c.difference,100));
 }
 
 let lastProfileData=null;
@@ -1312,11 +1317,11 @@ function renderChessPatterns(s, c, o, t){
  updateChessEngineCoverage(lastProfileData, totalGames);
  updateChessPatternSuggested(lastProfileData);
 }
-function pctCi(rate,ci){ return rate!=null?(rate*100).toFixed(1)+'%'+(ci?' ['+Math.round(ci.lower*100)+'–'+Math.round(ci.upper*100)+']':''):'—'; }
+function pctCi(rate,ci){ return rate!=null?pc1(rate*100)+(ci?' ['+Math.round(ci.lower*100)+'–'+Math.round(ci.upper*100)+']':''):'—'; }
 function renderForm(r){
  if(!r.before) return;
  const hr=r.before; // games before the window: the window is never part of its own baseline
- const pctR=v=>v!=null?(v*100).toFixed(1)+'%':'—';
+ const pctR=v=>v!=null?pc1(v*100):'—';
 
  q('#form').innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;text-align:center">'
   +'<div><div class="muted" style="font-size:11px;letter-spacing:.04em;text-transform:uppercase">Últimas '+r.games+'</div><div style="font-weight:700">'+pctCi(r.winRate,r.winRateCi)+' WR</div><div class="muted">'+pctR(r.scoreRate)+' score · '+r.wins+'W '+r.losses+'L '+r.draws+'D</div>'+(r.delta?'<div class="muted" style="margin-top:4px;font-size:11px">'+fmtDelta(scaleDelta(r.delta,100))+' vs anteriores</div>':'')+'</div>'
@@ -1393,9 +1398,9 @@ function renderCompare(groups, totalGames, cap, noun){
  const segLabels={noisy_neural:'Noisy Neural',neural:'Neural',blended:'Blended',stockfish:'Stockfish',pvp:'PvP',bot:'Bots',white:'Blancas',black:'Negras'};
  const out=groups.map(g=>{
   const dec=g.decided||0, w=dec?Math.round(g.wins/dec*100):0, l=dec?Math.round(g.losses/dec*100):0, d=dec?100-w-l:0; // bars are shares of decided games; unknowns are reported apart
-  const pctGames=totalGames? (g.games/totalGames*100).toFixed(1):'0';
+  const pctGames=totalGames? dec1(g.games/totalGames*100):'0';
   const label=g.label||g.name||segLabels[g.key]||g.key;
-  return '<div class="row"><div style="flex:1"><div style="display:flex;justify-content:space-between;align-items:baseline"><b>'+esc(label)+'</b><span class="muted">'+g.games+' · '+pctGames+'%</span></div><div class="bar" style="margin-top:6px;display:flex"><i class="bar-win" style="width:'+w+'%"></i><i class="bar-loss" style="width:'+l+'%"></i><i class="bar-draw" style="width:'+d+'%"></i></div><div class="muted" style="margin-top:4px;display:flex;gap:10px;flex-wrap:wrap"><span>Win '+pctCi(g.winRate,g.winRateCi)+'</span><span>Score '+(g.scoreRate!=null?(g.scoreRate*100).toFixed(1)+'%':'—')+'</span>'+'<span>· barra sobre '+dec+' decididas'+(g.unknown?' · '+g.unknown+' sin resultado':'')+'</span>'+'</div>'+discLine(g)+'</div></div>';
+  return '<div class="row"><div style="flex:1"><div style="display:flex;justify-content:space-between;align-items:baseline"><b>'+esc(label)+'</b><span class="muted">'+g.games+' · '+pctGames+' %</span></div><div class="bar" style="margin-top:6px;display:flex"><i class="bar-win" style="width:'+w+'%"></i><i class="bar-loss" style="width:'+l+'%"></i><i class="bar-draw" style="width:'+d+'%"></i></div><div class="muted" style="margin-top:4px;display:flex;gap:10px;flex-wrap:wrap"><span>Win '+pctCi(g.winRate,g.winRateCi)+'</span><span>Score '+(g.scoreRate!=null?pc1(g.scoreRate*100):'—')+'</span>'+'<span>· barra sobre '+dec+' decididas'+(g.unknown?' · '+g.unknown+' sin resultado':'')+'</span>'+'</div>'+discLine(g)+'</div></div>';
  });
  return moreRows(out,cap,noun||'filas') || '<div class="muted">Sin datos</div>';
 }
@@ -1517,7 +1522,7 @@ async function loadChessDashboard(){
   // kpis
   // ELO and % de victorias live in the hero: one main place per figure
   q('#kpis').innerHTML= kpi('Partidas', s.games.toLocaleString('es-ES'), '') 
-    + kpi('Score', s.scoreRate!=null?(s.scoreRate*100).toFixed(1)+'%':'—', 'victoria 1 · tablas 0,5');
+    + kpi('Score', s.scoreRate!=null?pc1(s.scoreRate*100):'—', 'victoria 1 · tablas 0,5');
   // racha
   const sk=streakWord(s.currentStreak,s.currentStreakKind);
   q('#streak').innerHTML= (s.currentStreak? '<b>Racha actual: '+s.currentStreak+' '+sk+'</b> · ':'') + 'Mejor racha: '+ (s.longestWin!=null? s.longestWin+'W' : '—') + (s.longestLoss? ' · Peor: '+s.longestLoss+'L':'');
@@ -1540,7 +1545,7 @@ async function loadChessDashboard(){
   else {
    const elos=points.map(p=>p.elo); const mx=Math.max(...elos), mn=Math.min(...elos);
    const dlt=elos[elos.length-1]-elos[0];
-   q('#evoNote').textContent= points.length+' días · '+mn+'–'+mx+' · '+(dlt>0?'+':'')+dlt+' desde inicio · ELO observado en sincronizaciones';
+   q('#evoNote').textContent= points.length+' días con ELO leído · lecturas entre '+mn+' y '+mx+' · '+(dlt>0?'+':'')+dlt+' desde la primera lectura';
   }
 
   // results
@@ -1646,7 +1651,7 @@ async function loadChessDashboard(){
   q('#eloNote').textContent=e.note || (known+' / '+total+' partidas con ELO rival conocido — la mayoría son bots sin ELO');
   const eloSummaryMeta=q('#eloSummaryMeta');
   if(eloSummaryMeta && total){
-    eloSummaryMeta.textContent = '· muestra conocida: '+known+' ('+(known/total*100).toFixed(1)+'%)';
+    eloSummaryMeta.textContent = '· muestra conocida: '+known+' ('+pc1(known/total*100)+')';
   }
   }
   renderChessView({ summary: s, results: r, color: c, opponents: o, elo: e, timeline: t, openings: op, phases: ph, mates: mt, threats: th, recent: rec50 }, lastRows);
@@ -2391,7 +2396,7 @@ function renderWhatChanged(data){
    + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px">'
    + block('Ajedrez', [
       row('Partidas jugadas', c.gamesCount),
-      row('% de victorias en intervalo', c.intervalWinRate !== null ? c.intervalWinRate.toFixed(1) + '%' : '—'),
+      row('% de victorias en intervalo', c.intervalWinRate !== null ? pc1(c.intervalWinRate) : '—'),
       row('Delta WR histórico', fmtDelta(c.historicalDelta))])
    + block('Idiomas', [
       row('XP ganado', xpText),

@@ -32,7 +32,7 @@ describe("legacy languages DOM", () => {
     rt.sandbox.renderLang({ totals: { days: 3, activeDays: 2 }, summaries: [{ date: 1790000000 }], courses: [], totalXp: 100, streak: 3, createdAt: new Date().toISOString(), courseProgressIndex: [] });
     expect(rt.getEl("#langAccountXp").textContent).toContain("100 XP");
     expect(rt.getEl("#langAccountStreak").textContent).toContain("3 días");
-    expect(rt.getEl("#langAccountDays").textContent).toBe("2/3 días activos");
+    expect(rt.getEl("#langAccountDays").textContent).toBe("2 de 3 días con XP (registro desde 2026-09-21)");
     expect(rt.getEl("#langSyncMeta").textContent).toMatch(/^Sincronizado hoy · Actividad hasta /);
   });
 });

@@ -46,7 +46,7 @@ describe("recent form rendering", () => {
   it("shouldCompareAgainstTheGamesBeforeTheWindowAndNeverAgainstTheWholeHistory", () => {
     const html = render({ games: 500, winRate: 0.9 });
     expect(html).toContain("Anteriores · 40");
-    expect(html).toContain("30.0%");
+    expect(html).toContain("30,0 %");
     expect(html).not.toContain("90.0%"); // the whole-history rate is not the baseline
   });
 

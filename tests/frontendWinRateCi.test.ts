@@ -10,7 +10,7 @@ const widths = (html: string) => ["win", "loss", "draw"].map((k) => Number(html.
 describe("renderCompare", () => {
   it("shouldShowIntervalNextToWinRateWhenPresent", () => {
     const html = renderCompare([group({ games: 20, wins: 13, losses: 7, decided: 20, winRate: 0.65, winRateCi: { lower: 0.4327, upper: 0.8188 } })], 20);
-    expect(html).toContain("65.0%");
+    expect(html).toContain("65,0 %");
     expect(html).toContain("[43–82]");
   });
 

@@ -73,7 +73,7 @@ describe("chess tab: results card", () => {
 describe("chess tab: colour gap", () => {
   it("shouldHeadlineTheWhiteBlackGapWithItsIntervalWhenThePageOpens", async () => {
     const rt = await openChess();
-    expect(text(rt, "#colDiff")).toBe("Blancas 70.0% · Negras 45.0% → +25.0 pp · IC95 [+4, +43]");
+    expect(text(rt, "#colDiff")).toBe("Blancas 70,0 % · Negras 45,0 % → +25,0 pp · IC95 [+3,8; +43,3]");
   });
 });
 
@@ -127,8 +127,8 @@ describe("chess tab: phases separate the owner's disconnections (P3)", () => {
   it("shouldKeepTheRowAndAddTheWinRateWithoutDisconnectionsAndTheirCount", async () => {
     const rt = await openChess();
     const h = rt.sandbox.renderCompare([phase()], 1683) as string;
-    expect(h).toContain("Win 30.8%");                                        // every game still there, as before
-    expect(h).toContain("Sin desconexiones: Win 45.2%");                     // the same rate without them ...
+    expect(h).toContain("Win 30,8 %");                                        // every game still there, as before
+    expect(h).toContain("Sin desconexiones: Win 45,2 %");                     // the same rate without them ...
     expect(h).toContain("en 115 decididas");
     expect(h).toContain("54 derrotas por desconexión (47% de las derrotas)"); // ... and how many they are
   });
@@ -249,6 +249,6 @@ describe("chess tab: stats bundle", () => {
     const rt = await openChess({ "/api/stats/bundle": { ok: false } });
     expect(statRequests("bundle")).toHaveLength(1);
     for (const r of STATS) expect(statRequests(r)).toHaveLength(1);
-    expect(text(rt, "#colDiff")).toBe("Blancas 70.0% · Negras 45.0% → +25.0 pp · IC95 [+4, +43]");
+    expect(text(rt, "#colDiff")).toBe("Blancas 70,0 % · Negras 45,0 % → +25,0 pp · IC95 [+3,8; +43,3]");
   });
 });

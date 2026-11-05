@@ -54,8 +54,8 @@ describe("Fase 2 - Análisis (Patrones, cobertura y evidencia navegable)", () =>
       const colVal = text(rt, "#chessPatternColorVal");
       const colMeta = text(rt, "#chessPatternColorMeta");
       // Individual Wilson CIs must be visible in colVal
-      expect(colVal).toContain("Blancas 68.0% [48–83]");
-      expect(colVal).toContain("Negras 62.0% [45–77]");
+      expect(colVal).toContain("Blancas 68,0 % [48–83]");
+      expect(colVal).toContain("Negras 62,0 % [45–77]");
       // Sample size in colMeta; the difference and its CI are said once, by the conclusion line (Fase 4)
       expect(colMeta).toContain("n=60");
       expect(colMeta).toContain("25/35 decididas");
