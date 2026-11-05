@@ -1,7 +1,7 @@
 # Contrato: señales descartadas (evaluaciones de hallazgo)
 
 **Fecha:** 2026-10-06
-**Estado:** 🔒 **CONGELADO (2026-10-06), sin implementar.** D1–D4, D6 y D7 aprobadas; D5 y D8 fuera de este contrato (§7). `LANG_FOCUS_SHIFT_LONGITUDINAL` pendiente de un contrato propio. Cualquier cambio posterior entra por enmienda explícita. **Enmienda A3 (2026-10-08, aprobada y desplegada, §10): criterios en la evaluación y redacción de `LANG_XP_ACCELERATION`.** **Enmienda A4 (2026-10-09, aprobada e implementada, §12): el ELO de un snapshot solo se atribuye a la partida ancla de su lote; excepción acotada a la igualdad de `findings` de D3.** **Enmiendas A5 y A6 (2026-10-13, §13 y §14; implementadas en el PR #49, merge `ba27302`, 2026-10-13): A5 aprobada parcialmente (§13.2–13.4; §13.5 abierta) y A6 aprobada con condición explícita (§14.4 y §14.2); comparabilidad de la tasa de XP de `LANG_XP_ACCELERATION` y ganancia comparable por curso en Trayectoria. Implementación ≠ validación con datos reales: O1, O3, P1, P2 y P4 siguen abiertas.** **Enmienda A2 (2026-10-08, aprobada y desplegada, §9): `CHESS_RATING_JUMP` — sin ELO observado en la ventana no es "Δ = 0".** **Enmienda 2026-10-06:** el invariante de trazabilidad de §4 pasa de igualdad a inclusión (*Inconcluso* ⊇ eliminados por IC); la definición operativa y §8 no cambian.
+**Estado:** 🔒 **CONGELADO (2026-10-06), sin implementar.** D1–D4, D6 y D7 aprobadas; D5 y D8 fuera de este contrato (§7). `LANG_FOCUS_SHIFT_LONGITUDINAL` pendiente de un contrato propio. Cualquier cambio posterior entra por enmienda explícita. **Enmienda A3 (2026-10-08, aprobada y desplegada, §10): criterios en la evaluación y redacción de `LANG_XP_ACCELERATION`.** **Enmienda A4 (2026-10-09, aprobada e implementada, §12): el ELO de un snapshot solo se atribuye a la partida ancla de su lote; excepción acotada a la igualdad de `findings` de D3.** **Enmiendas A5 y A6 (2026-10-13, §13 y §14; implementadas en el PR #49, merge `ba27302`, 2026-10-13): A5 aprobada parcialmente (§13.2–13.4; §13.5 abierta) y A6 aprobada con condición explícita (§14.4 y §14.2); comparabilidad de la tasa de XP de `LANG_XP_ACCELERATION` y ganancia comparable por curso en Trayectoria. Implementación ≠ validación con datos reales: O1, O3, P1, P2 y P4 siguen abiertas.** **Enmienda A7 (2026-11-05, propuesta, §15): la variación habitual de ELO y XP se calibra con la serie del usuario o no se afirma; `calibration_unavailable`.** **Enmienda A2 (2026-10-08, aprobada y desplegada, §9): `CHESS_RATING_JUMP` — sin ELO observado en la ventana no es "Δ = 0".** **Enmienda 2026-10-06:** el invariante de trazabilidad de §4 pasa de igualdad a inclusión (*Inconcluso* ⊇ eliminados por IC); la definición operativa y §8 no cambian.
 **Origen:** hoy un hallazgo cuya evidencia no basta **desaparece**: What-changed y Trayectoria solo devuelven lo que se emite. Tras P1.5 eso oculta la distinción más útil: *"no hay señal"* frente a *"hay indicio, pero los datos no permiten afirmarlo"*. Es también el requisito previo de cualquier capa de interpretación (LLM): esta no debe decidir qué se descartó ni por qué.
 
 **Principio:** *Insufficient evidence no significa ausencia de señal.* Meridian decide, de forma determinista, qué se afirma, qué queda inconcluso y por qué. Nada de esto lo decide un modelo.
@@ -23,7 +23,7 @@ Evaluation {
 ```
 
 - La clasificación *Inconcluso* se reproduce solo con la evaluación transportada (sin datos ni reglas).
-- `emitted` ⇔ el hallazgo existe hoy con el mismo contenido. **El conjunto de hallazgos emitidos no cambia** respecto al comportamiento vigente; esto es una vista añadida, no una regla nueva.
+- `emitted` ⇔ el hallazgo existe hoy con el mismo contenido. **El conjunto de hallazgos emitidos no cambia** respecto al comportamiento vigente (salvo las excepciones acotadas A4, A5, A6 y **A7, §15.5**: `CHESS_RATING_JUMP` y `LANG_XP_ACCELERATION` dejan de emitir mientras no haya banda calibrada); esto es una vista añadida, no una regla nueva.
 - Un hallazgo emitido se identifica igual que ahora; las `not_emitted` no se presentan como hallazgos.
 
 ## 2. Tipos de regla (qué admite descarte informativo)
@@ -31,7 +31,7 @@ Evaluation {
 | `kind` | Reglas actuales | Descartes |
 |---|---|---|
 | `statistical` | `CHESS_COLOR_ASYMMETRY`, `CHESS_COLOR_ASYMMETRY_LONGITUDINAL` | **Sí**: comparan proporciones con n, umbral e IC |
-| `threshold` | `CHESS_RATING_JUMP`, `LANG_XP_ACCELERATION` (`LANG_FOCUS_SHIFT_LONGITUDINAL` queda fuera, §3.1) | **Sí, sin incertidumbre**: cumplen o no un umbral determinista; no hay IC y no se inventa |
+| `threshold` | `CHESS_RATING_JUMP`, `LANG_XP_ACCELERATION` (`LANG_FOCUS_SHIFT_LONGITUDINAL` queda fuera, §3.1) | **Sí**: la decisión final compara un efecto con límites. Hasta A7 los límites eran fijos y sin incertidumbre; **desde A7 (§15) los de `CHESS_RATING_JUMP` y `LANG_XP_ACCELERATION` son bandas empíricas con incertidumbre estadística en sus bordes** (estimada al calibrar, no en cada evaluación). El `kind` no cambia, y no hay IC de la diferencia ni se inventa |
 | `event` | `LANG_ACTIVE_COURSE_SWITCH`, `STREAK_MILESTONE`, `STREAK_BROKEN` | **No**: el evento ocurrió o no; no ocurrir no es una señal descartada |
 
 ## 3. Motivos de no emisión (enumerado cerrado)
@@ -44,6 +44,7 @@ Evaluation {
 | `persistence_not_met` | Trayectoria: el efecto no se mantiene con el mismo signo en las dos eras | statistical |
 | `span_too_short` | Trayectoria: la ventana cubre menos días que el mínimo de la regla | statistical, threshold |
 | `data_unavailable` | Falta un dato necesario (sin baseline, un color sin partidas decididas, tasa histórica 0) | statistical, threshold |
+| `calibration_unavailable` | *(A7, §15)* La serie del usuario no permite conocer la variación habitual con estabilidad suficiente: **historia insuficiente para calibrar**, no ventana corta | threshold (`CHESS_RATING_JUMP`, `LANG_XP_ACCELERATION`) |
 
 Reglas:
 
@@ -53,6 +54,8 @@ Reglas:
 4. `effect_below_threshold` **no** afirma ausencia de efecto: el IC puede contener el umbral. Meridian no ofrece un resultado "no hay efecto" (eso exigiría equivalencia estadística; fuera de alcance).
 
 ### 3.1 Qué condición cae en qué motivo
+
+> **A7 (§15) sustituye los criterios de efecto de `CHESS_RATING_JUMP` (|Δ ELO| ≥ 25) y de `LANG_XP_ACCELERATION` (XP ≥ 200, ritmo ≥ 1,3 ×) de las filas siguientes.** Quedan como histórico del contrato congelado y **no son vigentes tras la implementación de A7**; la fuente es §15. Las demás condiciones de esas filas (ELO observado, anclas, intervalo ≥ 3 días, tasa histórica definida) siguen vigentes.
 
 Tres fallos distintos, que no se mezclan:
 
@@ -105,7 +108,7 @@ Se derivan **solo de la evaluación transportada** (`status`, `reasons` y `metri
 
 ## 5. Compatibilidad
 
-- `findings` **no cambia** (forma ni contenido): los consumidores existentes, incluido el cliente externo de ingesta, no se ven afectados.
+- `findings` **no cambia en forma**, y en contenido solo cambia por las excepciones del invariante de igualdad del golden (§8; A7 las amplía a `CHESS_RATING_JUMP` y `LANG_XP_ACCELERATION`, §15.5): los consumidores existentes, incluido el cliente externo de ingesta, no se ven afectados.
 - Las evaluaciones viajan en un **campo nuevo** (`evaluations`) en `/api/what-changed` y `/api/trajectory`. Aditivo; sin migración.
 - Las evaluaciones se calculan en el dominio (funciones puras), junto a las reglas, para que **emitir y descartar sea la misma evaluación** y no puedan divergir. Los adaptadores de persistencia no las calculan.
 
@@ -121,8 +124,8 @@ Se derivan **solo de la evaluación transportada** (`status`, `reasons` y `metri
 | ID | Pregunta | Propuesta |
 |---|---|---|
 | **D1** | ¿Dos estados o tres? | ✅ **Aprobada.** Dos estados; "inconcluso" se deriva solo de `status` + `reasons` + `metrics` transportados (§4). |
-| **D2** | ¿El enumerado de §3 es completo? | ✅ **Aprobada.** Seis motivos con las definiciones de §3.1; `LANG_FOCUS_SHIFT_LONGITUDINAL` fuera, pendiente de contrato propio. |
-| **D3** | ¿Todos los fallos o solo el primero? | ✅ **Aprobada.** Todos (regla 1 de §3). Amplía la explicación; no cambia el conjunto de hallazgos emitidos. |
+| **D2** | ¿El enumerado de §3 es completo? | ✅ **Aprobada.** Siete motivos (A7 añade `calibration_unavailable`, que solo aplica a `CHESS_RATING_JUMP` y `LANG_XP_ACCELERATION`) con las definiciones de §3.1; `LANG_FOCUS_SHIFT_LONGITUDINAL` fuera, pendiente de contrato propio. |
+| **D3** | ¿Todos los fallos o solo el primero? | ✅ **Aprobada.** Todos (regla 1 de §3). Amplía la explicación; por sí sola no cambia el conjunto de hallazgos emitidos (los cambios vienen de las enmiendas, §8). *No confundir con el «invariante de oro» de §8, que antes se llamaba también «D3».* |
 | **D4** | ¿Qué `kind` generan evaluación? | ✅ **Aprobada.** `statistical` y `threshold`; `event` no. Los `threshold` no son homogéneos: §3.1 muestra que XP-aceleración y salto de ELO caben en el enumerado; foco de idioma no. |
 | **D5** | Formato del `evidenceId` | ⚠️ **Retirada de este contrato:** se decide en el contrato de salida estructurada. |
 | **D6** | ¿Campo aditivo `evaluations`? | ✅ **Aprobada.** Aditivo (§5). |
@@ -136,7 +139,7 @@ Se derivan **solo de la evaluación transportada** (`status`, `reasons` y `metri
 - *Inconcluso* ⊇ hallazgos eliminados por la condición de IC de A(b): 5 vs 5 con +40 pp → inconcluso con `interval_includes_zero`; 9 decididas con +30 pp → `insufficient_sample` e inconcluso solo si el resto de condiciones pasan.
 - `data_unavailable` nunca se confunde con `effect_below_threshold`.
 - Ninguna evaluación de tipo `event`.
-- **Invariante de oro (D3)** *(con la excepción acotada de A4, §12.5, y las de A5, §13.6, y A6, §14.6, aprobadas e implementadas el 2026-10-13, PR #49)*: para los mismos inputs, `findings` es idéntico antes y después (mismo contenido, mismo orden); evaluar todas las condiciones solo amplía `evaluations`.
+- **Invariante de igualdad del golden** *(antes «invariante de oro (D3)»; no es la decisión D3 de §7)*, con las excepciones acotadas **A4 (§12.5), A5 (§13.6) y A6 (§14.6)**, aprobadas e implementadas el 2026-10-13 (PR #49), y **A7 (§15.5)**, propuesta (solo `CHESS_RATING_JUMP` y `LANG_XP_ACCELERATION`): para los mismos inputs, `findings` es idéntico antes y después (mismo contenido, mismo orden); evaluar todas las condiciones solo amplía `evaluations`.
 - Los motivos no dependen del orden en que se evalúan las condiciones.
 
 ---
@@ -164,7 +167,7 @@ Se añade a la tabla de §3.1, fila de `CHESS_RATING_JUMP`: *"ELO observado **de
 ### 9.3 Qué no cambia
 
 - El umbral (`|Δ| ≥ 25`), el enumerado de motivos, `kind`, `salience()` y la forma de `evaluations`.
-- **Los hallazgos emitidos (invariante de oro, D3):** un Δ de 0 y un Δ `null` no emiten, así que `findings` es idéntico antes y después para las mismas entradas. Cambia solo `evaluations` de `CHESS_RATING_JUMP` en ventanas sin ELO observado, y los campos `chess.ratingDelta` / `chess.currentRating` de la respuesta de `/api/what-changed`, que pasan de `0` / ELO inicial a `null`.
+- **Los hallazgos emitidos (invariante de igualdad del golden, §8):** un Δ de 0 y un Δ `null` no emiten, así que `findings` es idéntico antes y después para las mismas entradas. Cambia solo `evaluations` de `CHESS_RATING_JUMP` en ventanas sin ELO observado, y los campos `chess.ratingDelta` / `chess.currentRating` de la respuesta de `/api/what-changed`, que pasan de `0` / ELO inicial a `null`.
 - No se añade ningún mínimo de partidas: una partida con ELO basta para observarlo; exigir más sería un umbral nuevo sin dato que lo respalde.
 
 ### 9.4 Alternativas descartadas
@@ -298,7 +301,7 @@ Son dos cosas distintas y A4 no las trata igual:
 ### 12.4 Qué no cambia
 Umbral `|Δ| ≥ 25`, motivos, `kind`, `salience()`, `criteria`, la forma de `evaluations`; `/api/stats/summary` y la línea de ELO (leen `snapshots.eloRating`, una observación de snapshot declarada como tal); `matches.page_elo` (no se toca ni se borra); el historial.
 
-### 12.5 Excepción acotada a D3 (invariante de oro)
+### 12.5 Excepción acotada al invariante de igualdad del golden (§8; antes «D3»)
 El propietario aprueba (2026-10-09) esta precisión: lo que se preserva no es que los hallazgos anteriores permanezcan idénticos tras corregir una semántica defectuosa, sino que **emitir y descartar consumen la misma evaluación y sus estados epistemológicos**.
 
 - A4 puede **hacer desaparecer** un hallazgo `CHESS_RATING_JUMP` que antes se emitía, si el ELO en que se apoyaba no es de un ancla o no hay dos anclas de snapshots distintos. Es aceptable porque ese hallazgo no tenía evidencia suficiente; ahora aparece como INSUFICIENTE, con `data_unavailable`.
@@ -420,7 +423,7 @@ Los motivos de §3 no cambian; cambia **qué mide** cada condición:
 
 **Cuando se resuelva** (nueva enmienda A5.1, no esta): si L1/L2, la base pasa a «día natural» y los días ausentes cuentan como 0 (dentro de lo que la evidencia permita); si L0, quedan como desconocidos y la referencia exige una cobertura mínima **cuyo valor se fija con la distribución real, no ahora** (decisión O3). **O1 permanece abierta:** no se atribuye semántica a una fila inexistente sin verificar el origen.
 
-### 13.6 Excepción acotada a D3 (invariante de oro) — **aprobada (2026-10-13)**
+### 13.6 Excepción acotada al invariante de igualdad del golden (§8; antes «D3») — **aprobada (2026-10-13)**
 Como en A4 (§12.5): lo que se preserva es que **emitir y descartar consumen la misma evaluación**, no que los hallazgos anteriores permanezcan idénticos tras corregir una semántica defectuosa.
 
 - A5 puede **cambiar en ambos sentidos** la emisión de `LANG_XP_ACCELERATION`: ventanas que hoy emiten pueden pasar a `span_too_short` o `effect_below_threshold`; ventanas que hoy no emiten pueden emitir. No es una dirección única y no se estima.
@@ -570,3 +573,61 @@ Reproducción sintética (`tests/e1/courseGainSemantics.test.ts`, 7 tests de car
    - Ninguna cuota se renormaliza en silencio y ningún desconocido se sustituye por 0.
    - No hay `Evaluation` para el patrón (sigue `SIN EVALUAR`).
 9. `CHESS_COLOR_ASYMMETRY_LONGITUDINAL` y su golden no cambian.
+
+---
+
+## 15. Enmienda A7 (2026-11-05) — la variación habitual se calibra con la serie del usuario o no se afirma
+
+**Estado:** 📝 **PROPUESTA**, pendiente de aprobación del propietario. Hasta entonces el contrato vigente es el de §1–§14. Esta PR solo enmienda el contrato: **sin código, sin tests, sin artefacto**; la implementación es otra PR. Método aprobado en `docs/audits/2026-11-05-calibration-elo-xp-design.md` (rev. 5, PR #106, `8014501`); las cifras y el criterio de cada decisión están allí y aquí no se repiten.
+
+### 15.1 Dato que la motiva
+
+Los umbrales de `CHESS_RATING_JUMP` (|Δ ELO| ≥ 25) y `LANG_XP_ACCELERATION` (ritmo ≥ 1,3 ×, XP ≥ 200) no tienen origen empírico: no responden a «¿qué tan raro es esto para ti?». El diseño de calibración (PR #106) mide la variación habitual de la serie del usuario, y con los datos actuales **ningún borde de ELO ni de XP cumple los criterios de suficiencia**.
+
+### 15.2 Qué cambia
+
+1. **Motivo nuevo `calibration_unavailable`** en el enumerado cerrado de §3 (tabla actualizada; D2 pasa de seis a siete motivos para esas dos reglas) (se añade a `REASONS` tras `persistence_not_met`/`span_too_short`, orden canónico a fijar en la implementación): «la serie no permite conocer la variación habitual con estabilidad suficiente». Se emite para `CHESS_RATING_JUMP` y `LANG_XP_ACCELERATION` cuando la banda del artefacto no está admitida (k fuera de la rejilla validada, borde inestable, histórico corto). `data_unavailable`, `span_too_short` e `insufficient_sample` conservan su significado. **Son dos dimensiones distintas:** `span_too_short` = la *ventana de observación* es más corta que el mínimo de la regla; `calibration_unavailable` = la *historia* del usuario no basta para calibrar la banda (o k queda fuera de lo validado). Una no implica ni sustituye a la otra.
+2. **`effect_below_threshold` pasa a significar «dentro de la variación habitual»** para esas dos reglas (con banda admitida). Las demás reglas no cambian.
+3. **Los umbrales fijos (25 puntos, 1,3 ×, 200 XP) dejan de ser criterio de emisión y no se conservan como reserva.** Sin banda admitida no hay afirmación. (El mínimo de 3 días y el histórico ≥ 28 días de A5 se mantienen como condiciones de datos.)
+4. **Saliencia (§4).** `calibration_unavailable` es *Inconcluso* solo si el efecto observado es distinto de cero; con efecto cero, *Sin indicio*. Nunca es *Hallazgo*. En la UI, INSUFICIENTE y SIN INDICIO respectivamente. Esto no cambia la regla de que `metrics` conserva el efecto observado.
+5. **Evaluación con banda admitida:** `status: "emitted"` si el efecto supera el límite de «relevante». `metrics` conserva el efecto y añade `bandLower`/`bandUpper` (XP: solo `bandUpper`), `level` (`relevant` | `exceptional`) y, en ELO, `games`. `criteria` lleva los límites, la incertidumbre de cada borde y `calibratedThrough`.
+6. **Artefacto de calibración.** `calibration-elo-xp.json` junto al dominio, generado por un script reproducible con `--check`, copiado tal cual y **nunca recalculado en el Worker**. Contiene `calibratedThrough`, los intervalos/semanas usados, `kVal` y, **por borde, nivel y dirección**, su incertidumbre y si está admitido. Una banda sin entrada admitida equivale a `calibration_unavailable`.
+7. **Niveles y semántica** (aprobados en el diseño): 95 % «relevante» y 99 % «excepcional», como convenciones de conteo esperado bajo el nulo, no tasas reales de falsa alarma; ELO bilateral por cola, XP unilateral; ELO solo con k ≤ 20 (k > 20 → `calibration_unavailable`).
+8. **Texto de usuario:** «Sin referencia de variación habitual todavía». Se muestra siempre el efecto observado (partidas o días); la regla puede observar un cambio sin clasificarlo.
+
+### 15.3 Estado a la fecha de la enmienda
+
+Ningún borde de ELO se admite y XP queda sin calibración (el remuestreo por bloques ensayado no conserva la dependencia; no se afirma que ningún método pueda). Por tanto, **con el artefacto inicial, todas las evaluaciones de `CHESS_RATING_JUMP` y `LANG_XP_ACCELERATION` salen `not_emitted` con `calibration_unavailable`** (o `data_unavailable`/`span_too_short` si aplican antes).
+
+### 15.4 Qué no cambia
+
+- `kind`, la forma de `evaluations`, `salience()` salvo el punto 4, y todas las demás reglas (`CHESS_COLOR_ASYMMETRY_LONGITUDINAL`, `LANG_FOCUS_SHIFT_LONGITUDINAL`, A2, A4, A5, A6).
+- La atribución del ELO a la partida ancla (A4) y la comparabilidad de la tasa de XP (A5).
+
+### 15.5 Invariante de igualdad del golden (§8): se añade una excepción, y se declara
+
+A diferencia de A2, **`findings` deja de ser idéntico**: `CHESS_RATING_JUMP` y `LANG_XP_ACCELERATION` no emitirán hallazgos mientras el artefacto no admita bandas. Es la consecuencia buscada, no un efecto lateral. El golden se actualiza en la PR de implementación solo para esas dos reglas; los hallazgos de las demás se comparan byte a byte sin cambios. La pérdida es temporal; no se recupera con umbrales arbitrarios.
+
+### 15.6 Alternativas descartadas
+
+- **Mantener 25 ELO y 1,3 × como reserva:** reintroduce las afirmaciones sin origen que se eliminan.
+- **Relajar el 20 % de semiancho relativo para admitir algún borde hoy:** convierte una estimación inestable en afirmación.
+- **Calibrar XP con el máximo de bloques de 7 y 14 días:** no se demostró conservador (PR #106, §5).
+- **Filtro de confirmación estilo Games:** descartado en el diseño.
+
+### 15.7 Consecuencias en consumidores
+
+- La UI mapea el motivo nuevo a INSUFICIENTE/SIN INDICIO según el efecto, con el texto de 15.2.8. «Qué cambió» y Trayectoria dejan de mostrar hallazgos de ELO y XP hasta que haya bandas.
+- Los textos de la UI que citan «25 puntos» y «1,3 ×» (deuda declarada en §10) se retiran con la implementación.
+- El cliente de ingesta no consume `/api/what-changed`.
+
+### 15.8 Tests exigidos (en la PR de implementación, no en esta)
+
+1. Sin banda admitida: `CHESS_RATING_JUMP` y `LANG_XP_ACCELERATION` salen `not_emitted` con `calibration_unavailable`, `metrics` con el efecto observado; INSUFICIENTE si el efecto ≠ 0 y SIN INDICIO si = 0; nunca *Hallazgo*.
+2. Con banda admitida (fixture): emite solo por encima del límite; `level`, `bandLower/bandUpper` y `criteria.calibratedThrough` presentes; dentro de la banda, `effect_below_threshold`.
+3. ELO con k > 20: `calibration_unavailable`.
+4. Dirección y nivel independientes: admitir un borde no admite los demás.
+5. Artefacto: `--check` falla si el JSON no coincide con el script; el dominio no recalcula.
+6. Golden: `findings` de las demás reglas byte a byte; ELO/XP sin hallazgos con el artefacto inicial.
+7. Datos ausentes (A2, A5): la regla 1 de §3 sigue vigente y se registran **todos** los motivos que fallan. `calibration_unavailable` solo se añade cuando los datos necesarios para clasificar existen: si falta un dato (`data_unavailable`) o la ventana es corta (`span_too_short`), no se añade `calibration_unavailable`. Los demás motivos se registran conforme a la regla general (todos los que realmente fallen, incluidas sus combinaciones). Nunca 0. Un test cubre cada combinación (`span_too_short` + historia suficiente; ventana suficiente + historia insuficiente).
+8. UI: ningún texto cita 25 puntos, 1,3 × ni «aprendizaje»; muestra «Sin referencia de variación habitual todavía».
