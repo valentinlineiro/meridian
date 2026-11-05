@@ -54,6 +54,20 @@ describe("What Changed ELO with anchors (A4)", () => {
     expect(jump.reasons).toEqual(["calibration_unavailable"]);
   });
 
+  it("shouldCountTheGamesBetweenTheTwoAnchorsNotTheGamesOfTheWindow", async () => {
+    // A7: k is what the calibration measured (games between consecutive anchors). Here 3 games are in the window but the current
+    // anchor is the second one, and the last game (batch s3, no ELO) is after it: k = 2 (the game before the anchor and the anchor itself).
+    const { r, jump } = await run([
+      ["base", "s1", since - 100, 1000],
+      ["early", "s2", since + 100, null],
+      ["now", "s2", since + 200, 1030],
+      ["late", "s3", since + 300, null],
+    ]);
+    expect(r.chess.gamesCount).toBe(3);
+    expect(r.chess.ratingDelta).toBe(30);
+    expect(jump.metrics).toMatchObject({ games: 2, gamesCount: 3 });
+  });
+
   it("shouldReportDataUnavailableInsteadOfAZeroWhenBaselineAndCurrentShareOneBatch", async () => {
     // Before A4: both games carried the same page_elo, so delta = 0 and the card read "SIN INDICIO".
     const { r, jump } = await run([

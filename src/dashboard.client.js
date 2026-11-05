@@ -2225,8 +2225,8 @@ function evalReasonText(e, r){
   if(r === 'data_unavailable') return 'Falta información en el historial: fechas, o algún color sin partidas decididas en alguna de las dos mitades.';
  }
  if(id === 'CHESS_RATING_JUMP'){
-  if(r === 'effect_below_threshold') return 'Cambio de ELO observado: ' + f(m.ratingDelta, 0) + ' puntos en ' + f(m.games, 0) + ' partidas, dentro de lo habitual' + (m.bandLower != null ? ' (límite ' + f(m.bandLower, 0) + ' puntos)' : m.bandUpper != null ? ' (límite +' + f(m.bandUpper, 0) + ' puntos)' : '') + '.';
-  if(r === 'calibration_unavailable') return 'Cambio de ELO observado: ' + f(m.ratingDelta, 0) + ' puntos en ' + f(m.gamesCount, 0) + ' partidas. Sin referencia de variación habitual todavía.';
+  if(r === 'effect_below_threshold') return 'Cambio de ELO observado: ' + f(m.ratingDelta, 0) + ' puntos en ' + f(m.games, 0) + ' partidas entre las dos lecturas, dentro de lo habitual' + (m.bandLower != null ? ' (límite ' + f(m.bandLower, 0) + ' puntos)' : m.bandUpper != null ? ' (límite +' + f(m.bandUpper, 0) + ' puntos)' : '') + '.';
+  if(r === 'calibration_unavailable') return 'Cambio de ELO observado: ' + f(m.ratingDelta, 0) + ' puntos' + (m.games != null ? ' en ' + f(m.games, 0) + ' partidas entre las dos lecturas' : '') + '. Sin referencia de variación habitual todavía.';
   if(r === 'data_unavailable') return 'No hay dos observaciones de ELO en snapshots distintos alrededor de la ventana.';
  }
  if(id === 'LANG_XP_ACCELERATION'){
@@ -2276,7 +2276,7 @@ function renderEvaluationCard(e, state, finding, win){
    + (state === 'INDICIO' ? '<div style="font-size:13px;font-weight:600;color:#c8d7ea;margin-bottom:4px">' + esc(EVAL_STATE_MSG[state]) + '</div>' : '')
    + '<ul class="muted" style="font-size:12px;margin:0;padding-left:18px">' + (e.reasons || []).map(r => '<li>' + esc(evalReasonText(e, r)) + '</li>').join('') + '</ul>';
  }
- const basis = e.kind === 'statistical' ? 'con intervalo de confianza 95%' : 'límites de lo habitual calibrados con tu historial';
+ const basis = e.kind === 'statistical' ? 'con intervalo de confianza 95%' : (e.criteria && e.criteria.calibratedThrough ? 'límites de lo habitual calibrados con tu historial (hasta ' + e.criteria.calibratedThrough + ')' : 'umbral fijo, sin intervalo de confianza');
  const foot = '<div class="muted" style="font-size:11px;margin-top:6px">Ventana: ' + esc(win) + ' · ' + basis + '</div>';
  const scope = '<span class="pill pill-scope">' + esc(meta.scope) + '</span>';
  if(state === 'INSUFICIENTE' || state === 'SIN INDICIO'){

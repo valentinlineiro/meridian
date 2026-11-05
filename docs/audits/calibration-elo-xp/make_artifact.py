@@ -27,8 +27,10 @@ assert set(admitted) == set(NAMES.values()) and all(len(e) == 4 for e in edges.v
 artefact = {
     "calibratedThrough": "2026-11-05",
     "design": "docs/audits/2026-11-05-calibration-elo-xp-design.md (rev. 5)",
-    "elo": {"kVal": [5, 10, 15, 20], "kMax": 20, "edges": edges, "admitted": admitted},
-    "xp": {"windows": [7, 14, 28], "admitted": {}, "note": "sin calibración: el remuestreo por bloques no conserva la dependencia (diseño §5)"},
+    "elo": {"grid": [5, 10, 15, 20], "kMax": 20, "edges": edges, "admitted": admitted},
+    # XP queda sin calibración (diseño §5): sin bordes calculados ni admitidos. Misma forma que ELO para que una recalibración los rellene.
+    "xp": {"grid": [7, 14, 28], "edges": {"upper95": {}, "upper99": {}}, "admitted": {"upper95": [], "upper99": []},
+           "note": "sin calibración: el remuestreo por bloques no conserva la dependencia (diseño §5)"},
 }
 body = json.dumps(artefact, indent=2, ensure_ascii=False) + "\n"
 if "--check" in sys.argv:

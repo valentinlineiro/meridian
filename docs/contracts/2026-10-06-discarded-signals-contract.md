@@ -634,8 +634,8 @@ A diferencia de A2, **`findings` deja de ser idéntico**: `CHESS_RATING_JUMP` y 
 
 ### 15.9 Decisiones de implementación
 
-- **k de ELO = `gamesCount`** (partidas con fecha en la ventana). El diseño define k como las partidas entre las dos anclas; ambas cifras coinciden salvo cuando una sincronización llega tarde (§9 del diseño). No se refina aquí.
+- **k de ELO = partidas entre las dos anclas** que compara el Δ: las del usuario con `played_at` en `(ancla de referencia, última ancla]`, de cualquier color o resultado (`countGamesBetween`), igual que el recuento por intervalos de `exploration.py`. `gamesCount` (partidas de la ventana) sigue en `metrics` y puede diferir; sin ambas anclas k es desconocido y la regla abstiene.
 - **Rejilla exacta:** una banda solo se aplica si k pertenece exactamente a {5, 10, 15, 20} y el borde de esa dirección está admitido; cualquier otro k es `calibration_unavailable`. Interpolar entre puntos de la rejilla queda para una recalibración que lo valide.
 - **XP por longitud de ventana exacta** (7, 14, 28 días); la salida de `intervalDays` solo coincide si la ventana contiene días naturales completos.
 - **Saliencia:** el dominio clasifica `calibration_unavailable` con efecto ≠ 0 como *Inconcluso* (§4); la pantalla lo muestra INSUFICIENTE (no INDICIO), como fija §15.2.4. Efecto de XP = ratio − 1.
-- `Evaluation.criteria` admite también valores de texto (`calibratedThrough`).
+- `Evaluation.criteria` admite también texto (`calibratedThrough`) y lleva, para el punto de la rejilla evaluado (k o ventana), el límite, la incertidumbre y si está admitido de **cada** borde (`upper95`, `upper95Uncertainty`, `upper95Admitted`, …). `parseCalibration` rechaza un artefacto fuera de las rejillas {5, 10, 15, 20} y {7, 14, 28}, con cuantiles no numéricos o con «excepcional» menos exigente que «relevante».

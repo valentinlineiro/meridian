@@ -6,7 +6,7 @@ const ctx = { userId: "u1", baselineAt: "2026-09-20T00:00:00.000Z", until: "2026
 const clear = { diff: 40, lower: 10, upper: 60 }, wide = { diff: 40, lower: -16, upper: 72 };
 type Over = { chess?: Partial<WhatChangedDeltas["chess"]>; languages?: Partial<WhatChangedDeltas["languages"]> };
 const deltas = (o: Over = {}): WhatChangedDeltas => ({
-  chess: { gamesCount: 20, decidedCount: 20, ratingDelta: 0, baselineRating: 800, currentRating: 800, intervalWinRate: 50, intervalWhiteWinRate: 70, intervalBlackWinRate: 30, historicalWinRateDelta: null, colorDelta: clear, historicalDelta: null, ...o.chess },
+  chess: { gamesCount: 20, decidedCount: 20, ratingDelta: 0, ratingGames: 20, baselineRating: 800, currentRating: 800, intervalWinRate: 50, intervalWhiteWinRate: 70, intervalBlackWinRate: 30, historicalWinRateDelta: null, colorDelta: clear, historicalDelta: null, ...o.chess },
   languages: { intervalDays: 7, observedDays: 1, partialDaysExcluded: 0, historicalObservedDays: 1, historicalSpanDays: null, historicalSpanStart: null, xpGained: 500, sessionsCount: 5, totalSessionMinutes: 60, baselineCourseId: "A", currentCourseId: "A", courseChanged: false, dailyXpRate: 100, historicalDailyXpRate: 50, ...o.languages },
   streak: { baselineStreak: 10, currentStreak: 12, streakDelta: 2, status: "active", streakStarted: false, streakMilestone: null },
 });
@@ -156,13 +156,21 @@ describe("evaluation cards: verdict first, criteria on demand", () => {
 describe("A7: calibrated rules abstain on screen", () => {
   const elo = (chess: any) => html({ chess }).split(/(?=<(?:div|details) class="card)/).find((c) => c.includes("Salto de ELO"))!;
   it("shouldShowInsuficienteWithTheObservedEffectWhenTheUsualVariationIsUnknown", () => {
-    const h = elo({ ratingDelta: -40, gamesCount: 10 });
+    const h = elo({ ratingDelta: -40, ratingGames: 10, gamesCount: 30 });
     expect(h).toContain("INSUFICIENTE");
-    expect(h).toContain("Cambio de ELO observado: -40 puntos en 10 partidas. Sin referencia de variación habitual todavía.");
+    expect(h).toContain("Cambio de ELO observado: -40 puntos en 10 partidas entre las dos lecturas. Sin referencia de variación habitual todavía.");
     expect(h).not.toContain("SIN INDICIO");
   });
   it("shouldShowSinIndicioWhenThereIsNoEffect", () => {
     expect(elo({ ratingDelta: 0 })).toContain("SIN INDICIO");
+  });
+  it("shouldAttributeCalibrationOnlyToTheRulesThatUseIt", () => {
+    const cards = html().split(/(?=<(?:div|details) class="card)/);
+    const of = (t: string) => cards.find((c) => c.includes(t))!;
+    expect(of("Asimetría por color")).toContain("con intervalo de confianza 95%");
+    expect(of("Asimetría por color")).not.toContain("calibrados");
+    expect(of("Salto de ELO")).toContain("calibrados con tu historial");
+    expect(of("Mayor XP diario")).toContain("calibrados con tu historial");
   });
   it("shouldNeverQuoteTheRetiredFixedThresholds", () => {
     const h = html({ chess: { ratingDelta: 30 }, languages: { dailyXpRate: 65, historicalDailyXpRate: 50, xpGained: 100 } });

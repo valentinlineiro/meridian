@@ -205,6 +205,21 @@ describe("d1WhatChangedAdapter", () => {
     });
   });
 
+  describe("countGamesBetween (k of the ELO calibration, A7)", () => {
+    it("shouldCountEveryGameOfTheUserAfterTheFirstInstantUpToTheSecondIncluded", async () => {
+      const { db, d1 } = setupTestDb();
+      db.prepare(`INSERT INTO snapshots (id, created_at, source, user_id, raw_json, games_count, pages_count, checksum, size_bytes) VALUES ('s', '2026-12-31T00:00:00.000Z', 'duolingo-chess', 'u1', '{}', 0, 0, 'c', 2)`).run();
+      const ins = db.prepare(`INSERT INTO matches (match_id, user_id, snapshot_id, raw_json, first_seen_at, last_seen_at, played_at, user_color, result) VALUES (?, ?, 's', '{}', '2026-09-21', '2026-09-21', ?, ?, ?)`);
+      ins.run("a", "u1", 100, "white", "win");   // excluded: at the first instant
+      ins.run("b", "u1", 101, null, null);       // counted: any colour or result, as in the calibration
+      ins.run("c", "u1", 200, "black", "loss");  // counted: the second instant is included
+      ins.run("d", "u1", 201, "white", "win");   // excluded: after
+      ins.run("e", "u2", 150, "white", "win");   // excluded: another user
+      const at = (s: number) => new Date(s * 1000).toISOString();
+      expect(await createD1WhatChangedAdapter(d1).countGamesBetween("u1", at(100), at(200))).toBe(2);
+    });
+  });
+
   describe("getChessInterval", () => {
     it("shouldComputeIntervalMetricsWhenMatchesOccurInInterval", async () => {
       const { db, d1 } = setupTestDb();

@@ -1,5 +1,5 @@
 import { distinguishable, type Delta } from "./proportion.ts";
-import { CALIBRATION, eloVerdict, xpVerdict, type Calibration } from "./calibration.ts";
+import { CALIBRATION, eloVerdict, xpVerdict, edgeCriteria, type Calibration } from "./calibration.ts";
 
 export interface FindingContext {
   userId: string;
@@ -11,6 +11,7 @@ export interface ChessDeltas {
   gamesCount: number; // observed
   decidedCount: number; // usable evidence: the sample the thresholds below refer to
   ratingDelta: number | null;
+  ratingGames: number | null; // A7: games between the two anchors of ratingDelta (the k of the calibration); null when unknown
   baselineRating: number | null;
   currentRating: number | null;
   intervalWinRate: number | null;
@@ -137,16 +138,17 @@ export function evaluateChanges(
   {
     const delta = deltas.chess.ratingDelta;
     const why = new Set<Reason>();
-    const v = delta === null ? null : eloVerdict(delta, deltas.chess.gamesCount, cal);
+    const k = deltas.chess.ratingGames;
+    const v = delta === null ? null : k === null ? ({ available: false } as const) : eloVerdict(delta, k, cal);
     if (v === null) why.add("data_unavailable");
     else if (!v.available) why.add("calibration_unavailable");
     else if (!v.relevant) why.add("effect_below_threshold");
     const emitted = why.size === 0;
-    const band = v && v.available ? numeric({ games: deltas.chess.gamesCount, level: v.level ?? undefined, bandLower: v.lower, bandUpper: v.upper }) : {};
+    const band = v && v.available ? numeric({ level: v.level ?? undefined, bandLower: v.lower, bandUpper: v.upper }) : {};
     evaluations.push({
       id: "CHESS_RATING_JUMP", kind: "threshold", status: emitted ? "emitted" : "not_emitted", reasons: canonical(why),
-      metrics: { ...numeric({ ratingDelta: delta, baselineRating: deltas.chess.baselineRating, currentRating: deltas.chess.currentRating, gamesCount: deltas.chess.gamesCount }), ...band },
-      criteria: { ...CRITERIA.CHESS_RATING_JUMP, calibratedThrough: cal.calibratedThrough },
+      metrics: { ...numeric({ ratingDelta: delta, games: k, baselineRating: deltas.chess.baselineRating, currentRating: deltas.chess.currentRating, gamesCount: deltas.chess.gamesCount }), ...band },
+      criteria: { ...CRITERIA.CHESS_RATING_JUMP, ...edgeCriteria("elo", k, cal) },
     });
     if (emitted) {
       const sign = delta! > 0 ? "+" : "";
@@ -154,7 +156,7 @@ export function evaluateChanges(
         id: "CHESS_RATING_JUMP",
         category: "chess",
         title: "Salto de ELO",
-        claim: `Tu ELO cambió ${sign}${delta} puntos en ${deltas.chess.gamesCount} partidas, fuera de lo habitual.`,
+        claim: `Tu ELO cambió ${sign}${delta} puntos en ${k} partidas, fuera de lo habitual.`,
         evidence: `Inicial: ${deltas.chess.baselineRating ?? "—"} → Final: ${deltas.chess.currentRating ?? "—"} (${deltas.chess.gamesCount} partidas jugadas).`,
         baselineAt: context.baselineAt,
         until: context.until,
@@ -252,7 +254,7 @@ export function evaluateChanges(
         observedDays: l.observedDays, partialDaysExcluded: l.partialDaysExcluded, historicalObservedDays: l.historicalObservedDays,
         historicalSpanDays: l.historicalSpanDays, historicalSpanStart: l.historicalSpanStart,
       }), ...band },
-      criteria: { ...CRITERIA.LANG_XP_ACCELERATION, calibratedThrough: cal.calibratedThrough },
+      criteria: { ...CRITERIA.LANG_XP_ACCELERATION, ...edgeCriteria("xp", l.intervalDays, cal) },
     });
     if (emitted) {
       const ratio = (l.dailyXpRate / l.historicalDailyXpRate).toFixed(1);

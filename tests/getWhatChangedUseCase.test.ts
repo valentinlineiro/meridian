@@ -82,6 +82,7 @@ function createMockPort(overrides: Partial<WhatChangedPort> = {}): WhatChangedPo
     }),
     getHistoricalDailyXpRate: async () => 60,
     getHistoricalXpCoverage: async () => ({ spanStart: null, spanDays: null, observedDays: 0 }),
+    countGamesBetween: async () => 0,
     ...overrides,
   };
 }
@@ -405,6 +406,7 @@ describe("Get What Changed Use Case", () => {
       }),
       getHistoricalDailyXpRate: async () => 0,
       getHistoricalXpCoverage: async () => ({ spanStart: null, spanDays: null, observedDays: 0 }),
+      countGamesBetween: async () => 0,
     });
 
     const res = await getWhatChangedUseCase(port, {

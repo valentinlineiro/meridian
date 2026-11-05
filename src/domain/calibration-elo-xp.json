@@ -2,7 +2,7 @@
   "calibratedThrough": "2026-11-05",
   "design": "docs/audits/2026-11-05-calibration-elo-xp-design.md (rev. 5)",
   "elo": {
-    "kVal": [
+    "grid": [
       5,
       10,
       15,
@@ -91,12 +91,19 @@
     }
   },
   "xp": {
-    "windows": [
+    "grid": [
       7,
       14,
       28
     ],
-    "admitted": {},
+    "edges": {
+      "upper95": {},
+      "upper99": {}
+    },
+    "admitted": {
+      "upper95": [],
+      "upper99": []
+    },
     "note": "sin calibración: el remuestreo por bloques no conserva la dependencia (diseño §5)"
   }
 }
