@@ -1,14 +1,17 @@
 # Calibración de los umbrales de ELO y XP — diseño del método
 
-Fecha: 2026-11-05 (rev. 2, tras la revisión) · Estado: **propuesta para revisión final. No implementa nada, no cambia código ni contratos vigentes, no toca producción.**
+Fecha: 2026-11-05 (rev. 3, tras dos revisiones) · Estado: **propuesta para revisión final. No implementa nada, no cambia código ni contratos vigentes, no toca producción.**
 Origen: hallazgo P4 de `2026-11-05-product-quality-audit.md`. Secuencia: (1) este documento, (2) revisión final del método, (3) enmienda del contrato, (4) implementación y pruebas en otra PR.
 
 Cifras reproducibles con `calibration-elo-xp/exploration.py` (semilla fija, ≈ 45 s; la entrada son lecturas de solo lectura de D1 y no se versiona). Se recalcularon el 2026-11-05
 y difieren algo de las de la auditoría, que usaba pares de 7 días entre anclas consecutivas.
 
-**Cambios de la rev. 2** (revisión de la rev. 1): niveles unilaterales para XP y bilaterales para ELO; el remuestreo de ELO ahora respeta k exacto (la rev. 1 podía pasarse de k y normalizaba
-mal); la incertidumbre de las bandas se estima con dependencia temporal; la suficiencia depende de la estabilidad de cada borde, no de un contador, y esto **reduce** lo que ELO admite hoy
-(§4); se retira el criterio de «≥ 200 intervalos».
+**Cambios de la rev. 2:** niveles unilaterales para XP y bilaterales para ELO; remuestreo de ELO con k exacto; incertidumbre de las bandas con dependencia temporal; suficiencia por estabilidad de cada borde;
+se retira «≥ 200 intervalos».
+
+**Cambios de la rev. 3:** (a) el nulo de ELO sin invertir signos ahora **retira la deriva observada** (−0,33 puntos por partida) y conserva solo la asimetría; (b) la sensibilidad de XP al tamaño de bloque
+(3, 7 y 14 días) está medida, **diverge** y se adopta un procedimiento más conservador; (c) con el nulo corregido, **ELO queda sin calibración en ambas direcciones hoy** (la rev. 2 admitía k ≤ 5: era un
+efecto del nulo con signos invertidos, que oculta la incertidumbre de la cola inferior).
 
 ## 1. Qué está mal hoy
 
@@ -60,23 +63,24 @@ no una tasa de falsas alarmas observada; las ventanas solapadas agrupan las aler
 
 **Estadístico.** Δ = ELO de la última ancla de la ventana − ELO de la última ancla anterior a `since` (como hoy). Nuevo: **k = partidas jugadas entre esas dos anclas**; la banda depende de k, no de los días.
 
-**Modelo.** `Δ/√k` con escala σ estimada de los intervalos entre anclas consecutivas, y cuantiles de un nulo «sin deriva» construido remuestreando intervalos **hasta k exactamente** (los de más partidas
-de las que faltan se descartan; los de 1 partida siempre caben; la rev. 1 podía sumar más de k y normalizaba con k, lo que estrechaba la banda).
+**Nulo de referencia («C»).** «Sin deriva» se construye así: (1) se retira de cada intervalo la deriva observada por partida (−84 puntos en 253 partidas = −0,33 por partida): `Δᵢ − μ̂·kᵢ`; (2) se conserva la asimetría de esos
+residuos (no se invierten signos); (3) se concatenan **bloques de 3 intervalos consecutivos, en orden** (dependencia corta) hasta k exactamente (los intervalos con más partidas de las que faltan se
+descartan; los de 1 partida siempre caben). Los límites se toman **por cola**, como en Games.
 
-**Hipótesis y su sensibilidad.** El nulo supone intercambiabilidad de los intervalos y, si se invierten signos, simetría. Los datos las matizan:
+**Sensibilidad a las hipótesis.** Δ al 95 % (arriba) y al 99 % (abajo) con cuatro nulos; solo C es de referencia:
 
-| | k = 5 | k = 10 | k = 20 |
-|---|---|---|---|
-| Banda 95 %, signos invertidos | ±44 | ±70 | ±98 |
-| Banda 95 %, bloques de 3 intervalos consecutivos (dependencia) | ±48 | ±66 | ±88 |
-| Banda 95 %, sin invertir signos (asimétrica) | [−44; +41] | [−77; +67] | [−103; +95] |
-| Banda 99 %, signos invertidos | ±54 | ±100 | ±129…134 |
-| Banda 99 %, bloques de 3 | ±53 | ±80 | ±114 |
-| Banda 99 %, sin invertir signos | [−55; +45] | [−109; +78] | [−139; +121] |
+| k | A: signos, iid | B: sin signos, iid | **C: sin signos, bloques de 3** | D: signos, bloques de 3 |
+|---|---|---|---|---|
+| 5, 95 % | ±44 | [−42; +43] | **[−48; +48]** | ±48 |
+| 5, 99 % | ±54 | [−54; +47] | **[−54; +50]** | ±53 |
+| 10, 95 % | ±71 | [−71; +71] | **[−62; +74]** | ±65 |
+| 10, 99 % | ±99 | [−103; +82] | **[−70; +83]** | ±80 |
+| 20, 95 % | ±99 | [−99; +103] | **[−76; +104]** | ±89 |
+| 20, 99 % | ±131 | [−135; +130] | **[−98; +131]** | ±115 |
 
-Asimetría de Δ/√k = −0,51 (cola de bajadas más larga; con 62 datos es 1,6 errores típicos, indicio, no prueba). Autocorrelación entre intervalos: −0,06 en Δ/√k (−0,15 en Δ sin normalizar). **Consecuencia:**
-la inversión de signos no se usa para fijar los límites (impone una simetría que los datos no tienen); se usa como sensibilidad. Los límites se calculan sin invertir signos, **por cola**, como en Games, y
-la dependencia se evalúa con bloques.
+Retirar la deriva cambió lo que la rev. 2 llamaba «sin invertir signos» (que arrastraba la tendencia observada, −84 puntos). Con el nulo corregido, la cola de bajadas **se acorta** en C (a k = 10: −62 frente a +74)
+porque los bloques consecutivos reflejan la reversión del ELO; B (iid) la deja más ancha. Asimetría de Δ/√k = −0,51 (1,6 errores típicos: indicio, no prueba) y autocorrelación −0,06 (−0,15 en Δ sin normalizar).
+La inversión de signos (A, D) solo se usa como sensibilidad, no para fijar límites: impone simetría.
 
 **Dónde deja de valer √k.** Sobre pares de anclas del periodo denso (solapados: el tamaño efectivo es menor que el indicado):
 
@@ -89,56 +93,59 @@ la dependencia se evalúa con bloques.
 | 41–80 | 460 | 63,4 | 8,2 |
 | > 80 | 843 | 67,2 | 5,9 |
 
-La escala por √k solo se sostiene hasta ≈ 20 partidas (reversión). Más allá no se extrapola: **k > 20 → `calibration_unavailable`**. A 6 partidas al día, las ventanas de 7 días (≈ 42 partidas) y de
-30 días quedan sin calibración, no se fabrica una conclusión para completar la ventana. Es una propiedad del conocimiento disponible, no un defecto de presentación.
+La escala por √k solo se sostiene hasta ≈ 20 partidas (reversión). Más allá no se extrapola: **k > 20 → `calibration_unavailable`**. A 6 partidas al día, las ventanas de 7 días (≈ 42 partidas) y de 30 días
+quedan sin calibración; no se fabrica una conclusión para completar la ventana. Es una propiedad del conocimiento disponible, no un defecto de presentación.
 
-**Suficiencia: estabilidad de cada borde, con dependencia.** Una banda (un borde de un nivel, para un k) se admite cuando se cumplen las dos condiciones siguientes. Los números son convenciones
-iniciales:
+**Suficiencia: estabilidad de cada borde, por dirección.** Un borde (de un nivel, para un k y una dirección) se admite si (1) el semiancho relativo del IC95 de su valor, por bootstrap de bloques de 3 intervalos
+consecutivos que **rehace toda la banda, deriva incluida**, es ≤ 20 %; (2) no cambia más del 20 % entre los cuatro nulos A–D; (3) lo cumplen también los k vecinos del mismo borde (k ± 5), para no admitir un k
+aislado que cruza el umbral por ruido de estimación. Los números son convenciones iniciales. Una dirección se afirma solo si su propio borde está admitido.
 
-1. **Incertidumbre del borde:** semiancho relativo del IC95 ≤ 20 %, por bootstrap de **bloques móviles de intervalos consecutivos** sobre el origen, rehaciendo toda la banda cada vez. Los 62 intervalos no
-   se tratan como 62 observaciones independientes.
-2. **Sensibilidad al nulo:** el borde no cambia más del 20 % entre los tres nulos de la tabla (signos, bloques, sin invertir).
+Resultado hoy (semiancho relativo del IC95 del borde):
 
-Resultado hoy (semiancho relativo del IC95 del borde superior):
-
-| k | borde 95 % | borde 99 % | admite 95 % | admite 99 % |
+| k | 95 % superior | 95 % inferior | 99 % superior | 99 % inferior |
 |---|---|---|---|---|
-| 5 | +43 ± 17 % | +54 ± 15 % | sí | sí (sensibilidad 18 %) |
-| 10 | +70 ± 24 % | +99 ± 23 % | no | no (además, sensibilidad 24 %) |
-| 20 | +96 ± 21 % | +132 ± 26 % | no (por poco) | no |
+| 5 | +49 ± 21 % | −48 ± 35 % | +50 ± 15 % | −54 ± 33 % |
+| 10 | +74 ± 18 % | −62 ± 32 % | +83 ± 16 % | −71 ± 35 % |
+| 20 | +104 ± 22 % | −76 ± 37 % | +131 ± 19 % | −99 ± 43 % |
 
-σ sola sale mejor (semiancho 15–18 % con bloques de 1 a 8), pero el borde de la banda es lo que se compara y tiene más incertidumbre. **Esto corrige mi propuesta anterior:** aunque √k vale hasta
-k = 20, con 62 intervalos solo se admite hoy **k ≤ 5 (≈ 1 día de partidas)**. Las bandas de k = 6–20 se irán admitiendo solas: la incertidumbre baja como 1/√n; pasar de 24 % a 20 % pide ≈ 1,4 veces los
-intervalos (≈ 90, a 1,5 intervalos al día, ≈ finales de noviembre), y de 26 % a 20 %, ≈ 1,7 veces (≈ diciembre). Es una proyección, y la sensibilidad al nulo del 99 % tardará más.
+Los bordes superiores están en 15–22 % (en el límite) y los inferiores en 32–43 %: con 62 intervalos y dependencia, la cola de bajadas es la menos conocida. Sensibilidad entre nulos: bordes superiores 11–21 %,
+inferiores hasta 37 %. Con la condición (3), **hoy ningún borde se admite**: el superior de k = 10 al 95 % (18 %) pasaría solo, pero sus vecinos k = 5 (21 %) y k = 20 (22 %) no. **ELO queda sin
+calibración en ambas direcciones** y las evaluaciones muestran el efecto con las partidas, sin afirmarlo. Es peor que lo que decía la rev. 2, y es lo que los datos permiten.
 
-La suficiencia **no depende de un contador** de intervalos. La regla de «≥ 200 intervalos para el 99 %» se retira. Para ventanas de k > 20 sí hará falta, además de la estabilidad, comprobar que el
-ruido sigue una ley conocida con ventanas independientes del mismo k, y hoy hay ≈ 6 de 40 partidas; ese análisis queda fuera hasta tener cientos de partidas más.
+Proyección (la incertidumbre baja como 1/√n; 62 intervalos hoy, ≈ 1,5 más por día): los bordes superiores (≈ 20 %) se admitirían en ≈ 2–3 semanas; los inferiores (≈ 35 %) piden ≈ 3 veces los intervalos
+(≈ 190), es decir, ≈ febrero de 2027. La suficiencia no depende de un contador: si la incertidumbre no baja, el hito se mueve.
 
 ## 5. XP
 
 **Estadístico.** Cociente r = media diaria de XP en los días con registro de la ventana / media diaria histórica (días con registro hasta `since`), como hoy; se entiende («×1,4 tu ritmo»). La banda
-depende de la longitud de la ventana w y de la del histórico h.
+depende de la longitud de la ventana w y de la del histórico h. Contraste **unilateral** (solo aceleración).
 
-**Banda.** Nulo por remuestreo de bloques de 7 días de la propia serie (la autocorrelación a 7 días es 0,18; el día de la semana apenas pesa, medias por día entre 595 y 663). **Contraste unilateral**
-(solo aceleración), con h = 100 días:
+**Sensibilidad al tamaño de bloque (medida).** Cuantiles 95 % / 99 % del nulo con h = 100 días y bloques de 3, 7 y 14 días (la serie tiene 44, 19 y 9 bloques):
 
-| w | cuantil 95 % (relevante) | cuantil 99 % (excepcional) | incertidumbre 95 % / 99 % |
+| w | 3 d | 7 d | 14 d |
 |---|---|---|---|
-| 3 d | 1,66 | 1,94 | — |
-| 7 d | 1,51 | 1,75 | ±10 % / ±15 % |
-| 14 d | 1,43 | 1,63 | ±8 % / ±11 % |
-| 28 d | 1,34 | 1,49 | ±7 % / ±10 % |
+| 7 d | 1,41 / 1,61 | 1,51 / 1,75 | 1,68 / 1,91 |
+| 14 d | 1,31 / 1,46 | 1,43 / 1,62 | 1,47 / 1,65 |
+| 28 d | 1,23 / 1,34 | 1,34 / 1,49 | 1,40 / 1,56 |
 
-La incertidumbre es el semiancho relativo del IC95 del cuantil cuando la serie de origen se remuestrea por semanas (19 bloques). La rev. 1 usaba la banda central 95 % (límite superior 1,41 a 28 días), que
-correspondía a una cola del 2,5 %; el contraste unilateral del 5 % da 1,34.
+**Divergen**, y siempre en el mismo sentido: cuanto más largo el bloque, más ancha la banda. La autocorrelación del XP diario no se agota a los 7 días (lag 1: +0,51; 7: +0,18; 14: +0,31; 21: +0,17; 28: +0,09; error
+típico ≈ 0,09), así que los bloques de 7 días subestiman la dependencia. **Procedimiento adoptado (más conservador):** cada borde es el **máximo entre los bloques de 7 y de 14 días**; los bloques de 3 días se
+descartan porque rompen una dependencia observada. Condición (c): el borde de 14 días no debe superar al de 7 en más del 20 % (hoy: 11 % a w = 7, 3 % a 14, 4 % a 28 con el 95 %; se cumple).
 
-Hoy: 7 días ×1,47 → habitual (< 1,51); 14 días ×1,27 → habitual; **28 días ×1,40 → relevante (> 1,34), pero dentro de la incertidumbre del propio borde (1,34 ± 0,09)**: es un caso límite, no un hallazgo
-firme. La regla actual emite 7 y 28 días.
+| w | relevante (95 %) | excepcional (99 %) | incertidumbre del borde (bloques de 14 d), 95 % / 99 % |
+|---|---|---|---|
+| 7 d | 1,68 | 1,91 | ±17 % / ±19 % |
+| 14 d | 1,47 | 1,65 | ±12 % / ±16 % |
+| 28 d | 1,40 | 1,56 | ±11 % / ±13 % |
 
-**Suficiencia.** Dos condiciones: (a) **mínimo de 26 semanas** de histórico (≈ 2026-12-24) para *evaluar* la suficiencia; no es una garantía de calibración; (b) estabilidad de cada borde: semiancho relativo del IC95 ≤ 20 % por
-bootstrap de bloques semanales y, antes de implementar, sensibilidad al tamaño de bloque (7 frente a 14 días; no medida todavía). Con las 19 semanas actuales (b) ya se cumpliría (7–15 %), pero (a) no, así que
-**hoy XP está sin calibración**. El 99 % se evalúa con los mismos criterios, por separado. El histórico mínimo h (≥ 28 días) y el mínimo de 200 XP: este último desaparece (la banda ya penaliza las
-ventanas con pocos días).
+(Con bloques de 7 días: ±10/15, ±10/11, ±7/10 %.) Ventanas de menos de 7 días: sin calibración (no medidas con bloques de 14). La regla actual exige ≥ 3 días: las ventanas de 3 a 6 días pasan a
+`calibration_unavailable`.
+
+Hoy: 7 días ×1,47 → habitual (< 1,68); 14 días ×1,27 → habitual (< 1,47); 28 días ×1,40 → **en el límite del borde (1,40), dentro de su incertidumbre**: no se afirma. La regla actual emite 7 y 28 días.
+
+**Suficiencia.** (a) **Mínimo de 26 semanas** de histórico (≈ 2026-12-24) para *evaluar* la suficiencia; no la garantiza (con bloques de 14 días, 13 bloques); (b) estabilidad de cada borde: semiancho relativo
+del IC95 ≤ 20 % con bootstrap por bloques del mismo tamaño que el nulo, para los dos tamaños; (c) la condición de sensibilidad anterior. Con los datos actuales (b) y (c) se cumplen, pero (a) no: **hoy XP está
+sin calibración**. El 99 % se evalúa con los mismos criterios, por separado. Desaparece el mínimo de 200 XP (la banda ya penaliza las ventanas con pocos días); el histórico mínimo h es ≥ 28 días.
 
 ## 6. Contrato (a enmendar tras aprobar el método)
 
@@ -159,16 +166,16 @@ Recalibrar es un PR que reemplaza el artefacto, sin tocar el dominio, cada 28 d�
 
 | Hito | Cuándo |
 |---|---|
-| ELO admite k = 6–20 al 95 % | ≈ finales de noviembre – diciembre 2026 |
+| ELO: bordes superiores admitidos (≈ 20 % hoy) | ≈ 2–3 semanas, si la incertidumbre baja como 1/√n |
+| ELO: bordes inferiores admitidos (≈ 35 % hoy) | ≈ febrero 2027 |
 | XP supera el mínimo de 26 semanas y empieza a evaluarse | ≈ 2026-12-24 |
-| ELO admite el 99 % para k > 5 | depende de la sensibilidad al nulo; no se proyecta |
 | ELO con ventanas k > 20 (7 días) | requiere un estudio aparte; no se proyecta |
 
 Cada recalibración puede cambiar una etiqueta de ayer: es correcto, la referencia mejora. Se muestra siempre la fecha de calibración; las evaluaciones no se guardan, se calculan al leer.
 
 ## 8. Validación propuesta para la implementación
 
-- Serie sintética estacionaria con los σ, asimetría y dependencia del estudio: frecuencia de «relevante» ≈ 5 % y de «excepcional» ≈ 1 % por evaluación (ELO bilateral, XP unilateral), con tolerancia fija.
+- Serie sintética estacionaria con los σ, asimetría, dependencia (ELO: bloques; XP: autocorrelación a 14 días) del estudio: frecuencia de «relevante» ≈ 5 % y de «excepcional» ≈ 1 % por evaluación (ELO bilateral, XP unilateral), con tolerancia fija.
 - Tendencia inyectada (p. ej. +40 puntos de ELO con k = 5; ×1,6 de XP en 14 días): se detecta con la potencia declarada.
 - El remuestreo de ELO produce exactamente k (prueba).
 - El dominio usa **exactamente** los valores del artefacto; sin banda admitida, ninguna afirmación.
@@ -179,20 +186,24 @@ Fuera de alcance: reglas de «caída» de XP o de ELO, STREAK, color, Games (ya 
 ## 9. Limitaciones
 
 - **Un usuario, 42 días densos de ELO y 133 de XP.** No es una calibración poblacional ni permite estimar **tasas reales de falsas alarmas**: solo las que implica el modelo nulo. Las cifras orientan el método; no son umbrales.
-- La incertidumbre de los bordes se estima con 62 intervalos y bloques de 3: es una estimación, y los bloques elegidos no se prueban frente a otros tamaños salvo en σ (1, 3, 5, 8).
+- La incertidumbre de los bordes de ELO se estima con 62 intervalos y bloques de 3; el tamaño de bloque se probó para σ (1, 3, 5, 8) pero no para los bordes. Con 150 réplicas externas el propio porcentaje tiene un error de unos pocos puntos: de ahí la condición de vecindad.
+- XP: con bloques de 14 días la serie tiene 9 bloques; la banda de 14 días es la más incierta y la que decide.
 - El nulo de ELO supone que los intervalos son intercambiables; hay reversión y asimetría. Se usa la forma menos restrictiva disponible, con sensibilidad, no una prueba de la hipótesis.
 - σ del ELO depende del nivel de rating y del rival (bots de distinto ELO); si cambian, la banda queda vieja hasta la siguiente calibración.
 - Los pares de anclas de §4 se solapan; las diferencias entre escalas de k son orientativas, no contrastes.
 - XP: el nulo asume que 133 días representan el ritmo habitual; un cambio de régimen legítimo (p. ej. nuevo curso) se verá como cambio, sin explicarlo.
 - Las anclas de ELO son las de la regla actual (último dato de cada sincronización); si una sincronización llega tarde, k puede incluir partidas que no están en la ventana visible.
 
-## 10. Decisiones tomadas en la revisión de la rev. 1
+## 10. Decisiones
 
-| # | Decisión |
-|---|---|
-| 1 | Niveles 95 % y 99 %, como convenciones interpretables; ELO bilateral, XP unilateral con cuantiles 95 y 99 (§3). El coste anual es un número esperado bajo el modelo. |
-| 2 | ELO con k ≤ 20 como rango de escala; las ventanas con k > 20 son «sin calibración». Admisión real por estabilidad (hoy k ≤ 5, §4). |
-| 3 | Semiancho ≤ 20 % con bootstrap dependiente; sin «≥ 200 intervalos»; XP: 26 semanas habilitan evaluar la suficiencia, no la garantizan. |
-| 4 | Texto «Sin referencia de variación habitual todavía», con el efecto medido y las partidas/días. Nunca una afirmación estadística. |
-| 5 | INSUFICIENTE solo con efecto distinto de cero. |
-| 6 | Sin filtro de confirmación. |
+| # | Decisión | Estado |
+|---|---|---|
+| 1 | Niveles 95 % y 99 %; ELO bilateral por cola, XP unilateral (§3) | Aprobado |
+| 2 | ELO con k ≤ 20 como rango de escala; k > 20 sin calibración | Aprobado |
+| 3 | Admisión por estabilidad de cada borde, semiancho ≤ 20 % con bootstrap dependiente; sin «≥ 200 intervalos» | Aprobado (con la condición de vecindad de §4, nueva) |
+| 4 | XP: 26 semanas para evaluar la suficiencia | Aprobado |
+| 5 | `calibration_unavailable` con «Sin referencia de variación habitual todavía»; INSUFICIENTE solo con efecto distinto de cero | Aprobado |
+| 6 | Sin filtro de confirmación | Aprobado |
+| 7 | Nulo de ELO sin deriva y asimétrico (§4) | Hecho en la rev. 3; pendiente de revisión |
+| 8 | Sensibilidad de XP a bloques de 7 y 14 días (§5) | Medida, diverge; procedimiento conservador adoptado; pendiente de revisión |
+| 9 | Condición de vecindad (k ± 5) para admitir un borde de ELO | Propuesta nueva |
