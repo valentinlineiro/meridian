@@ -78,31 +78,48 @@ def null_window(k, B=20000, blocks=1, flip=False):
     return out
 VARIANTS = (("A signos, iid", dict(flip=True)), ("B sin signos, iid", dict()), ("C sin signos, bloques de 3 (nulo de referencia)", dict(blocks=3)), ("D signos, bloques de 3", dict(flip=True, blocks=3)))
 print("  nulo con k exacto; Δ al 95 % / 99 % bilateral por cola. El de referencia es C: residuos sin deriva, sin invertir signos, bloques consecutivos")
-for k in (5, 10, 20):
+VAR = {}
+for k in (5, 10, 15, 20):
     for name, kw in VARIANTS:
         n = null_window(k, **kw)
         lo, hi, elo, ehi = (pct(n, p) * math.sqrt(k) for p in (.025, .975, .005, .995))
+        VAR[k, name[0]] = (hi, ehi, lo, elo)  # superior 95, superior 99, inferior 95, inferior 99
         print(f"  k={k:>2} {name:<48} 95 % [{lo:+.0f}, {hi:+.0f}]  99 % [{elo:+.0f}, {ehi:+.0f}]")
 
 
-def band_ci(k, level, B=150):
-    """Incertidumbre de un borde de la banda de referencia C (semiancho relativo del IC95): se rehace TODA la banda (deriva incluida) sobre series de intervalos remuestreadas por bloques."""
+LEVELS = (.975, .995, .025, .005)  # superior 95 %, superior 99 %, inferior 95 %, inferior 99 %
+
+
+def band_ci(k, B=400):
+    """Incertidumbre de los 4 bordes de la referencia C (semiancho relativo del IC95): cada réplica rehace TODA la banda (deriva incluida) sobre una serie de
+    intervalos remuestreada por bloques; los cuatro bordes salen de las mismas réplicas."""
     global dense, centered
-    base, bc, edges = dense, centered, []
+    base, bc, edges = dense, centered, [[] for _ in LEVELS]
     for _ in range(B):
         dense = block_resample(base, 3)
         dr = sum(r[2] for r in dense) / sum(r[1] for r in dense)
         centered = [(r[0], r[1], r[2] - dr * r[1]) for r in dense]
-        edges.append(pct(null_window(k, B=1500, blocks=3), level) * math.sqrt(k))
+        n = null_window(k, B=2000, blocks=3)
+        for j, lv in enumerate(LEVELS): edges[j].append(pct(n, lv) * math.sqrt(k))
     dense, centered = base, bc
-    ref = pct(null_window(k, blocks=3), level) * math.sqrt(k)
-    return ref, (pct(edges, .975) - pct(edges, .025)) / 2 / abs(ref)
-print("  incertidumbre del borde SUPERIOR y del INFERIOR de la referencia C (bootstrap de bloques de 3 sobre el origen), semiancho relativo del IC95")
-for k in (5, 10, 20):
-    out = []
-    for lvl in (.975, .995, .025, .005):
-        r, h = band_ci(k, lvl); out.append(f"{r:+.0f} ±{h:.0%}")
-    print(f"  k={k:>2}: 95 % sup {out[0]}  inf {out[2]} | 99 % sup {out[1]}  inf {out[3]}")
+    n = null_window(k, blocks=3)
+    return [(pct(n, lv) * math.sqrt(k), (pct(e, .975) - pct(e, .025)) / 2 / abs(pct(n, lv) * math.sqrt(k))) for lv, e in zip(LEVELS, edges)]
+print("  incertidumbre de los bordes de la referencia C (bootstrap de bloques de 3 sobre el origen, 400 réplicas), semiancho relativo del IC95")
+OC = {}
+for k in (5, 10, 15, 20):
+    o = OC[k] = band_ci(k)
+    print(f"  k={k:>2}: 95 % sup {o[0][0]:+.0f} ±{o[0][1]:.1%}  inf {o[2][0]:+.0f} ±{o[2][1]:.1%} | 99 % sup {o[1][0]:+.0f} ±{o[1][1]:.1%}  inf {o[3][0]:+.0f} ±{o[3][1]:.1%}")
+print("  sensibilidad entre nulos A-D (rango / media del borde) y admisión (incertidumbre ≤ 20 % y sensibilidad ≤ 20 % en k-5, k y k+5)")
+NAMES = ("95 % sup", "99 % sup", "95 % inf", "99 % inf")
+OK = {}
+for j, nm in enumerate(NAMES):
+    row = []
+    for k in (5, 10, 15, 20):
+        v = [VAR[k, c][j] for c in "ABCD"]; sens = (max(v) - min(v)) / abs(st.mean(v))
+        OK[j, k] = OC[k][j][1] <= .20 and sens <= .20
+        row.append(f"k={k}: inc {OC[k][j][1]:.1%} sens {sens:.1%} {'✓' if OK[j, k] else '✗'}")
+    adm = [k for k in (10, 15) if OK[j, k - 5] and OK[j, k] and OK[j, k + 5]]
+    print(f"  {nm}: " + " | ".join(row) + f"  → admitido: {adm if adm else 'ninguno'}")
 
 print("  referencia: ventanas reales (ancla ≤ since → última ancla de la ventana), |Δ| p50/p90 y % ≥ 25")
 for w in (7, 14, 28):
@@ -143,7 +160,7 @@ base_blocks = blocks
 print("  sensibilidad al tamaño de bloque: cuantiles 95 % / 99 % del nulo (h=100) con bloques de 3, 7, 14 días (nº de bloques de la serie: " + ", ".join(f"{L}d→{len(make_blocks(L))}" for L in (3, 7, 14)) + ")")
 for w in (7, 14, 28):
     cells = []
-    for L in (3, 7, 14):
+    for L in (3, 7, 14, 21, 28):
         blocks = make_blocks(L); n = null_ratio(w, 100); cells.append(f"{L:>2}d: {pct(n, .95):.2f} / {pct(n, .99):.2f}")
     blocks = base_blocks
     print(f"  w={w:>2}d  " + "   ".join(cells))
@@ -163,10 +180,23 @@ def xp_band_ci(w, q, L, B=150):
 print("  incertidumbre del cuantil: la serie de origen se remuestrea por bloques del mismo tamaño que el nulo; semiancho relativo del IC95")
 for w in (7, 14, 28):
     cells = []
-    for L in (7, 14):
+    for L in (7, 14, 21, 28):
         r95, h95 = xp_band_ci(w, .95, L); r99, h99 = xp_band_ci(w, .99, L)
         cells.append(f"{L:>2}d: 95 % {r95:.2f} ±{h95:.0%}  99 % {r99:.2f} ±{h99:.0%}")
     print(f"  w={w:>2}d  " + "   ".join(cells))
+
+def sim_series(L):
+    sb = make_blocks(L); out = []
+    while len(out) < len(xs): out += random.choice(sb)
+    return out[:len(xs)]
+def acf_of(v, l):
+    mv = st.mean(v); return sum((v[i] - mv) * (v[i + l] - mv) for i in range(len(v) - l)) / sum((x - mv) ** 2 for x in v)
+print("  ¿el remuestreo conserva la dependencia? autocorrelación media de las series remuestreadas frente a la observada")
+LAGS = (1, 3, 7, 14, 21, 28)
+print("  observada      " + "  ".join(f"l{l}:{acf_of(xs, l):+.2f}" for l in LAGS))
+for L in (3, 7, 14, 21, 28):
+    sims = [sim_series(L) for _ in range(1500)]
+    print(f"  bloques de {L:>2} d " + "  ".join(f"l{l}:{st.mean(acf_of(v, l) for v in sims):+.2f}" for l in LAGS))
 acf = lambda l: sum((xs[i] - m) * (xs[i + l] - m) for i in range(len(xs) - l)) / den
 print("  autocorrelación del XP diario a lag " + ", ".join(f"{l}: {acf(l):+.2f}" for l in (1, 3, 7, 14, 21, 28)) + f"  (error típico ≈ {1 / len(xs) ** .5:.2f}): la dependencia no se agota a los 7 días")
 print("  referencia: ventanas reales históricas con ≥ 28 días previos, % con cociente ≥ 1,3 (incluye deriva real)")
