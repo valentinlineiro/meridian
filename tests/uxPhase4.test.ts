@@ -303,5 +303,7 @@ describe("audit step 1: demonstrated defects", () => {
 
   it("shouldLetTheCourseSelectShrinkInsideItsCardInsteadOfOverflowingOnPhones", () => {
     expect(DASHBOARD_HTML).toMatch(/id="langCourseSelect"[^>]*style="flex:1 1 0;min-width:0;max-width:100%/);
+    // its container is a flex item sized by the select's longest option: it must be able to shrink too (measured in production with the 13 real labels)
+    expect(DASHBOARD_HTML).toMatch(/<div style="min-width:0;max-width:100%">\s*<div class="muted"[^>]*>Curso seleccionado/);
   });
 });
