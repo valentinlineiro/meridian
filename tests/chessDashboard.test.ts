@@ -80,7 +80,7 @@ describe("chess tab: colour gap", () => {
 describe("chess tab: rating", () => {
   it("shouldSayTheEloChangeIsAgainstTheFirstSnapshot", async () => {
     const rt = await openChess();
-    expect(rt.getEl("#kpis").innerHTML).toContain("▲ +100 vs primer snapshot");
+    expect(rt.getEl("#kpis").innerHTML).not.toContain("vs primer snapshot"); // the hero is the one place for the ELO change
     expect(text(rt, "#chessHeroEloSub")).toBe("ELO · +100 vs primer snapshot");
     expect(text(rt, "#chessHeroMeta")).toContain("ELO observado en sincronizaciones");
   });

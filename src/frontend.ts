@@ -18,14 +18,10 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
 <button class="side-item active" id="tabBtnOverview" onclick="showTab('overview')">Hoy</button>
 <button class="side-item" id="tabBtnChanges" onclick="showTab('changes')">Qué cambió</button>
 <button class="side-item" id="tabBtnTrajectory" onclick="showTab('trajectory')">Trayectoria</button>
-<div class="side-group">Ajedrez</div>
-<button class="side-item" id="tabBtnChess" onclick="showTab('chess')">Partidas</button>
-<button class="side-item" id="tabBtnProfile" onclick="showTab('profile')">Perfil</button>
-<a class="side-item" href="/api/export/matches.csv" download>Exportar partidas</a>
-<div class="side-group">Idiomas</div>
-<button class="side-item" id="tabBtnLang" onclick="showTab('languages')">Cursos</button>
-<div class="side-group">LinkedIn</div>
-<button class="side-item" id="tabBtnGames" onclick="showTab('games')">Juegos</button>
+<div class="side-group">Dominios</div>
+<button class="side-item" id="tabBtnChess" onclick="showTab('chess')">Ajedrez</button>
+<button class="side-item" id="tabBtnLang" onclick="showTab('languages')">Idiomas</button>
+<button class="side-item" id="tabBtnGames" onclick="showTab('games')">LinkedIn Games</button>
 <div class="side-group">Cuenta</div>
 <button id="syncBtn" class="btn btn-p side-sync" onclick="doSync()" aria-describedby="syncScopeHint" title="Sincroniza cuentas conectadas (Duolingo). LinkedIn Games es registro manual.">Sincronizar</button>
 <div class="muted side-note" id="syncScopeHint" style="font-size:11px;margin-top:2px;line-height:1.3">Fuentes conectadas (Duolingo) · Games manual</div>
@@ -42,7 +38,7 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
     <h2 style="margin:0;font-size:18px">Tu actividad</h2>
     <div class="muted" style="font-size:12px;margin-top:2px" id="overviewSyncMeta">Pulso unificado y verificado por dominio</div>
    </div>
-   <span style="display:flex;align-items:center;gap:6px"><span id="overviewStreak" class="pill pill-win" style="font-size:13px;font-weight:700">🔥 —</span><span class="pill pill-scope">CUENTA</span></span>
+   <span style="display:flex;align-items:center;gap:6px;max-width:100%"><span id="overviewStreak" class="pill pill-win" style="font-size:13px;font-weight:700;white-space:normal;max-width:100%">Duolingo · 🔥 —</span></span>
   </div>
  </div>
 
@@ -83,7 +79,7 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
    </div>
    <div style="margin-top:10px">
     <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:12px;margin-bottom:4px">
-     <span class="muted" id="overviewChessWrLabel">% de victorias (últimas 50 partidas, todos los rivales)</span>
+     <span class="muted" id="overviewChessWrLabel">% de victorias (historial completo, todos los rivales)</span>
      <span id="overviewChessWrMeta" class="muted" style="font-size:11px">—</span>
     </div>
     <div class="distribution-bar" id="overviewChessDist">
@@ -101,10 +97,10 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
   <div class="card" id="overviewGamesCard">
    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
     <h3 style="margin:0;font-size:15px;color:#e6edf3">LinkedIn Games</h3>
-    <button class="btn btn-g" onclick="showTab('games')" style="font-size:12px;padding:4px 10px">Ver Juegos →</button>
+    <button class="btn btn-g" onclick="showTab('games')" style="font-size:12px;padding:4px 10px">Ver LinkedIn Games →</button>
    </div>
    <div>
-    <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.05em">Racha actual</div>
+    <div id="overviewGamesStreakLabel" class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.05em">Racha actual</div>
     <div id="overviewGamesStreak" style="font-size:24px;font-weight:800;line-height:1.2">—</div>
     <div id="overviewGamesMeta" class="muted" style="font-size:11px;margin-top:2px"></div>
    </div>
@@ -126,7 +122,7 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
  </div>
 
  <h2 style="margin:18px 0 10px;font-size:14px;letter-spacing:.05em;text-transform:uppercase;color:#8ea0b8">Tu semana</h2>
- <div class="grid2">
+ <div class="grid3">
   <div class="card" id="overviewLangWeekCard">
    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
     <div>
@@ -143,6 +139,13 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
     <span id="overviewChessWeekSummary" class="muted" style="font-size:11px">—</span>
    </div>
    <div class="activity-strip" id="overviewChessWeek"></div>
+  </div>
+  <div class="card" id="overviewGamesWeekCard">
+   <div style="display:flex;justify-content:space-between;align-items:baseline">
+    <h3 style="margin:0;font-size:13px;color:#c8d7ea">Games · últimos 7 días <span class="pill pill-scope">MANUAL</span></h3>
+    <span id="overviewGamesWeekSummary" class="muted" style="font-size:11px">—</span>
+   </div>
+   <div class="activity-strip" id="overviewGamesWeek"></div>
   </div>
  </div>
 </section>
@@ -164,7 +167,7 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
   </div>
   <div style="margin-top:14px">
    <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:12px;margin-bottom:6px">
-    <span id="chessHeroWrLabel" style="font-weight:600">% de victorias (últimas 50 partidas, todos los rivales)</span>
+    <span id="chessHeroWrLabel" style="font-weight:600">% de victorias (historial completo, todos los rivales)</span>
     <span id="chessHeroDistMeta" class="muted" style="font-size:11px">—</span>
    </div>
    <div class="distribution-bar" id="chessHeroDist">
@@ -193,6 +196,7 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
     <div style="font-weight:600;font-size:13px;color:#8ea0b8;margin-bottom:4px">Rendimiento por color</div>
     <div id="chessPatternColorVal" style="font-size:16px;font-weight:700">—</div>
     <div id="chessPatternColorMeta" class="muted" style="font-size:11px;margin:4px 0 8px">—</div>
+    <div id="chessPatternColorConclusion" style="font-size:11px;margin:0 0 8px"></div>
     <div style="display:flex;gap:6px;flex-wrap:wrap">
      <button class="btn btn-g" style="font-size:11px;padding:3px 8px" onclick="filterMatchesAndScroll('color','white')">Blancas</button>
      <button class="btn btn-g" style="font-size:11px;padding:3px 8px" onclick="filterMatchesAndScroll('color','black')">Negras</button>
@@ -265,13 +269,13 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
      <div class="card" id="profileDecisiveCard"><h2>Cuándo se te escapan las derrotas</h2><div class="muted" style="margin-bottom:8px">Momento decisivo: la primera jugada tuya que convierte una posición jugable en una perdida.</div><div id="profileDecisive"></div></div>
      <div class="card" id="profileConversionCard"><h2>Ventajas y remontadas</h2><div class="muted" style="margin-bottom:8px">Ventaja sostenida: el motor te daba más de 3 peones durante 3 jugadas seguidas.</div><div id="profileConversion"></div></div>
     </div>
-    <div class="card" id="profileReviewCard"><h2>Qué partidas revisar</h2><div class="muted">Partidas con al menos 20 jugadas tuyas. Pulsa una para abrirla en el visor.</div><h3 style="margin:12px 0 4px">Las que más te costaron</h3><div id="profileWorst"></div><h3 style="margin:12px 0 4px">Las mejor jugadas</h3><div id="profileBest"></div></div>
+    <div class="card" id="profileReviewCard"><h2>Qué partidas revisar</h2><div class="muted">Partidas con al menos 20 jugadas tuyas, ordenadas por pérdida media por jugada (los errores graves se muestran como información adicional, no como criterio de orden). Pulsa una para abrirla en el visor.</div><h3 style="margin:12px 0 4px">Las que más te costaron</h3><div id="profileWorst"></div><h3 style="margin:12px 0 4px">Las mejor jugadas</h3><div id="profileBest"></div></div>
     <div class="muted" id="profileNote" style="margin-top:8px"></div>
    </div>
   </details>
 
  <div class="card" style="margin-top:14px" id="allMatchesCard">
-  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px"><h2>Partidas</h2><span class="muted" style="font-size:12px" id="chessMatchesSubtitle">Partidas recientes</span></div>
+  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px"><h2>Partidas</h2><span class="muted" style="font-size:12px" id="chessMatchesSubtitle">Partidas recientes</span><a class="btn btn-g" style="font-size:11px;padding:3px 8px;margin-left:8px" href="/api/export/matches.csv" download>Exportar CSV</a></div>
   <div class="filters" id="matchChips">
    <div class="fgroup" role="group" aria-label="Rival"><span class="flabel">Rival</span><button class="btn btn-p" data-chip="type:" onclick="setChip('type','')">Todos</button><button class="btn btn-g" data-chip="type:bot" onclick="setChip('type','bot')">Bots</button><button class="btn btn-g" data-chip="type:pvp" onclick="setChip('type','pvp')">PvP</button></div>
    <div class="fgroup" role="group" aria-label="Resultado"><span class="flabel">Resultado</span><button class="btn btn-p" data-chip="result:" onclick="setChip('result','')">Todos</button><button class="btn btn-g" data-chip="result:win" onclick="setChip('result','win')">Victorias</button><button class="btn btn-g" data-chip="result:loss" onclick="setChip('result','loss')">Derrotas</button><button class="btn btn-g" data-chip="result:draw" onclick="setChip('result','draw')">Tablas</button></div>
@@ -506,7 +510,7 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
     <div class="hero-card" id="gamesHero">
      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px">
       <div>
-       <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.05em">LinkedIn Games · Racha actual</div>
+       <div id="gamesHeroStreakLabel" class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.05em">LinkedIn Games · racha actual</div>
        <div style="display:flex;align-items:baseline;gap:8px;margin-top:2px"><span id="gamesHeroStreak" style="font-size:28px;font-weight:800;line-height:1">—</span></div>
        <div id="gamesHeroMeta" class="muted" style="font-size:12px;margin-top:4px">—</div>
       </div>

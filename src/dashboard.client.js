@@ -93,8 +93,11 @@ function showTab(name){
  if(q('#trajectoryTab')) q('#trajectoryTab').hidden = activeTab!=='trajectory';
  if(q('#profileTab')) q('#profileTab').hidden = true;
  if(q('#gamesTab')) q('#gamesTab').hidden = activeTab!=='games';
+ // the header's freshness line is written by the chess load: it belongs to the chess view only
+ if(q('#syncMeta')){ const on=activeTab==='chess'||activeTab==='profile'; q('#syncMeta').hidden=!on; q('#syncMeta').style.display=on?'':'none'; } // the .h-left small rule sets display:block, which [hidden] does not beat
+ // /profile opens the chess view: it has no menu entry of its own, so the chess entry is the active one
  const NAV={overview:'tabBtnOverview',changes:'tabBtnChanges',trajectory:'tabBtnTrajectory',chess:'tabBtnChess',profile:'tabBtnProfile',games:'tabBtnGames',languages:'tabBtnLang'};
- for(const k in NAV){ const b=q('#'+NAV[k]); if(!b) continue; const on=k===activeTab; b.className='side-item'+(on?' active':''); if(b.setAttribute) b.setAttribute('aria-current',on?'page':'false'); if(on&&q('#sideCurrent')) q('#sideCurrent').textContent=b.textContent; }
+ for(const k in NAV){ const b=q('#'+NAV[k]); if(!b) continue; const on=k===(activeTab==='profile'?'chess':activeTab); b.className='side-item'+(on?' active':''); if(b.setAttribute) b.setAttribute('aria-current',on?'page':'false'); if(on&&q('#sideCurrent')) q('#sideCurrent').textContent=b.textContent; }
  if(q('#sideMenu')) q('#sideMenu').classList.remove('open');
  if(q('#sideToggle')&&q('#sideToggle').setAttribute) q('#sideToggle').setAttribute('aria-expanded','false');
  if(activeTab==='changes') fetchWhatChanged();
@@ -504,7 +507,7 @@ function renderLanguagesView(langData, analyticsData, xpData, activeDetail){
  const lastActivityDay=summaries.length? summaries[summaries.length-1].date*1000 : null;
  const lastActivityIso=lastActivityDay? new Date(lastActivityDay).toISOString().slice(0,10) : null;
  const elSyncMeta=q('#langSyncMeta');
- if(elSyncMeta) elSyncMeta.textContent='Sincronizado '+relDate(langs.updatedAt||langs.createdAt)+(lastActivityIso?' · Actividad hasta '+lastActivityIso:'')+(duolingoCurrentCourseId?' · Último curso en Duolingo: '+duolingoCurrentCourseId:'')+accountStaleNote(langs);
+ if(elSyncMeta) elSyncMeta.textContent='Sincronizado '+relDate(langs.updatedAt||langs.createdAt)+(lastActivityIso?' · Actividad hasta '+lastActivityIso:'')+(duolingoCurrentCourseId&&courses.some(c=>c.courseId===duolingoCurrentCourseId)?' · Último curso en Duolingo: '+duolingoCurrentCourseId:'')+accountStaleNote(langs);
 
  // 2. ActivityStrip (Estado 10s)
  const days7=[];
@@ -780,7 +783,8 @@ function renderOverviewLangCard(langs, activeDetail){
  if(elSourceCourse){
   const src = langs.currentCourseId;
   const srcCourse = src ? (langs.courses || []).find(c => c.courseId === src) : null;
-  elSourceCourse.textContent = src && src !== selectedCourseId ? 'Último curso en Duolingo: ' + (srcCourse ? (srcCourse.title || src) : src) : '';
+  // a course outside the Idiomas catalogue (Duolingo's own chess course, CHESS_CH) is not shown: its raw id says nothing here
+  elSourceCourse.textContent = srcCourse && src !== selectedCourseId ? 'Último curso en Duolingo: ' + (srcCourse.title || src) : '';
  }
 
  const {completed: completedUnits, total: totalUnits} = getCourseProgress(activeDetail);
@@ -807,6 +811,14 @@ function renderOverviewLangCard(langs, activeDetail){
   elCatalog.textContent = numCourses + ' cursos · ' + xpText(totalCatXp) + ' XP';
  }
 }
+// A manual log has no "broken streak": with no record for 2+ days the current run is 0 because nothing was recorded, not because it failed. Say when the last record is.
+function gamesStreakView(s){
+ const cur=s.playStreak?.current??0, max=s.playStreak?.max??0;
+ const maxTxt=max>0?'Racha máxima '+gdays(max):'';
+ if(cur>0) return {label:'Racha actual', value:gdays(cur)+(cur===1?' seguido':' seguidos'), short:'🔥 '+gdays(cur), meta:maxTxt};
+ const none=s.to?'Sin registro desde '+s.to:'—';
+ return {label:'Último registro', value:none, short:none, meta:[maxTxt,'registro manual'].filter(Boolean).join(' · ')};
+}
 function renderOverviewGamesCard(summary){
  const elStreak = q('#overviewGamesStreak');
  const elMeta = q('#overviewGamesMeta');
@@ -827,12 +839,11 @@ function renderOverviewGamesCard(summary){
   return;
  }
 
- const currStreak = summary.playStreak?.current ?? 0;
- if(elStreak) elStreak.textContent = currStreak > 0 ? '🔥 ' + currStreak + (currStreak === 1 ? ' día' : ' días') : '—';
- if(elMeta){
-  const maxStreak = summary.playStreak?.max ?? 0;
-  elMeta.textContent = maxStreak > 0 ? 'Racha máxima ' + maxStreak + (maxStreak === 1 ? ' día' : ' días') : 'Sin racha activa';
- }
+ const sv = gamesStreakView(summary);
+ const elStreakLabel = q('#overviewGamesStreakLabel');
+ if(elStreakLabel) elStreakLabel.textContent = sv.label;
+ if(elStreak){ elStreak.textContent = sv.short; elStreak.style.fontSize = sv.label==='Racha actual' ? '' : '16px'; }
+ if(elMeta) elMeta.textContent = sv.meta;
 
  const keys = Object.keys(summary.games);
  let beat = 0, total = 0;
@@ -872,7 +883,10 @@ function renderOverview(data){
  const elStreak = q('#overviewStreak');
  if(elStreak){
   elStreak.className = 'pill' + (streakVal ? ' pill-win' : '');
-  elStreak.textContent = streakVal != null ? '🔥 ' + Number(streakVal).toLocaleString('es-ES') + ' días de racha' : '🔥 —';
+  // The streak is Duolingo's: name the source and, when the last sync is old, say how old the figure is.
+  const synced = data.langs?.updatedAt;
+  const old = synced && Date.now() - new Date(synced).getTime() > 2 * 864e5;
+  elStreak.textContent = streakVal != null ? 'Duolingo · 🔥 ' + Number(streakVal).toLocaleString('es-ES') + ' días de racha' + (old ? ' (sincronizado ' + relDate(synced) + ')' : '') : 'Duolingo · 🔥 —';
  }
  const elSyncMeta = q('#overviewSyncMeta');
  if(elSyncMeta){
@@ -900,21 +914,20 @@ function renderOverview(data){
  const elEloMeta = q('#overviewChessEloMeta');
  if(elEloMeta) elEloMeta.textContent = (stats.currentElo ?? stats.latestElo ?? null) != null && data.lastChessSyncedAt ? 'último snapshot de Chess: ' + relDate(data.lastChessSyncedAt) : '';
 
- const recentKnown = data.recent != null;
- const recent = data.recent || {};
- const wins = recent.wins || 0, losses = recent.losses || 0, draws = recent.draws || 0;
- const rTotal = wins + losses + draws || (recent.games || 0);
- const wrVal = recent.winRate != null ? (recent.winRate * 100).toFixed(0) : (rTotal ? (wins / rTotal * 100).toFixed(0) : '—');
+ // The historical rate is the one reference on the overview; the 20/50/100 windows live in "Forma actual" (chess view).
+ const histKnown = stats.wins != null && stats.losses != null && stats.draws != null;
+ const wins = stats.wins || 0, losses = stats.losses || 0, draws = stats.draws || 0;
+ const wrVal = stats.winRate != null ? (stats.winRate * 100).toFixed(1).replace('.', ',') : '—';
  const elWrLabel = q('#overviewChessWrLabel');
  const elWrMeta = q('#overviewChessWrMeta');
  const elDist = q('#overviewChessDist');
  if(elWrLabel){
-  elWrLabel.textContent = wrVal !== '—' ? wrVal + '% victorias (últimas ' + (recent.limit || 50) + ' partidas, todos los rivales)' : '% de victorias (últimas 50 partidas, todos los rivales)';
+  elWrLabel.textContent = wrVal !== '—' ? wrVal + ' % de victorias (historial completo, todos los rivales)' : '% de victorias (historial completo, todos los rivales)';
  }
  if(elWrMeta){
-  elWrMeta.textContent = recentKnown ? wins + ' W · ' + losses + ' L · ' + draws + ' D' : '—';
+  elWrMeta.textContent = histKnown ? wins + ' W · ' + losses + ' L · ' + draws + ' D' : '—';
  }
- if(elDist && !(recentKnown && wins + losses + draws > 0)) elDist.innerHTML = '';
+ if(elDist && !(histKnown && wins + losses + draws > 0)) elDist.innerHTML = '';
  else if(elDist){
   const sumR = wins + losses + draws || 1;
   const wP = (wins / sumR * 100).toFixed(1);
@@ -985,6 +998,26 @@ function renderOverview(data){
    elChessWeekSum.textContent = matches === null ? NA : wGames + (wGames === 1 ? ' partida en 7 días' : ' partidas en 7 días');
   }
  }
+ renderOverviewGamesWeek(data.gamesSummary, days7);
+}
+
+// Games logged per day in the last 7 days, from the summary that already feeds the card (each game's daily buckets, n = records that day).
+function renderOverviewGamesWeek(summary, days7){
+ const el=q('#overviewGamesWeek'), sum=q('#overviewGamesWeekSummary');
+ if(!el) return;
+ if(!summary){ el.innerHTML=''; if(sum) sum.textContent=NA; return; }
+ const perDay={};
+ for(const g of Object.values(summary.games||{})) for(const b of ((g.trajectory||{})['7']||[])) perDay[b.start]=(perDay[b.start]||0)+(b.n||0);
+ let total=0;
+ el.innerHTML=days7.map(day=>{
+  const n=perDay[day.date]||0; total+=n;
+  const c=n>=4?'#2ea043':n>0?'#58a6ff':'#1e2e44';
+  return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px" title="'+day.date+': '+n+' resultados con media global">'
+   +'<span class="muted" style="font-size:11px">'+day.dayLetter+'</span>'
+   +'<div style="width:20px;height:20px;border-radius:50%;background:'+c+'"></div>'
+   +'<span class="muted" style="font-size:10px">'+(n>0?n:'—')+'</span></div>';
+ }).join('');
+ if(sum) sum.textContent=total+(total===1?' resultado con media en 7 días':' resultados con media en 7 días');
 }
 
 let lastChessStats=null, lastChessMatches=null, lastRecent=null;
@@ -1028,24 +1061,26 @@ function renderChessView(stats, matches){
  }
  const elHeroGames=q('#chessHeroGames');
  if(elHeroGames&&s.games){
-  elHeroGames.textContent=(s.winRate!=null? (s.winRate*100).toFixed(1)+'% WR histórico':'');
+  const bots=o.macro&&o.macro.find(m=>m.key==='bot');
+  elHeroGames.textContent=bots&&bots.games>=0? bots.games.toLocaleString('es-ES')+' de '+s.games.toLocaleString('es-ES')+' partidas contra bots' : '';
  }
 
- // DistributionBar in HeroCard (last 50 matches or recent)
- const rWins=recent.wins||0, rLosses=recent.losses||0, rDraws=recent.draws||0;
- const rTotal=rWins+rLosses+rDraws||(recent.games||0);
- const rWr=recent.winRate!=null? (recent.winRate*100).toFixed(0) : (rTotal? (rWins/rTotal*100).toFixed(0):'—');
- 
+ // DistributionBar in HeroCard: the historical rate is the one reference here; the 20/50/100 windows live in "Forma actual"
+ const rWins=s.wins||0, rLosses=s.losses||0, rDraws=s.draws||0;
+ const rTotal=rWins+rLosses+rDraws;
+ const rWr=s.winRate!=null? (s.winRate*100).toFixed(1).replace('.',',') : '—';
+ const histKnown=s.wins!=null&&s.losses!=null&&s.draws!=null; // counts the summary did not carry are unknown, not 0
+
  const elHeroWrLabel=q('#chessHeroWrLabel');
  if(elHeroWrLabel){
-  elHeroWrLabel.textContent=rWr!=='—'? rWr+'% victorias (últimas '+(recent.limit||50)+' partidas, todos los rivales)' : '% de victorias (últimas 50 partidas, todos los rivales)';
+  elHeroWrLabel.textContent=rWr!=='—'? rWr+' % de victorias (historial completo, todos los rivales)' : '% de victorias (historial completo, todos los rivales)';
  }
  const elHeroDistMeta=q('#chessHeroDistMeta');
  if(elHeroDistMeta){
-  elHeroDistMeta.textContent=recentKnown? rWins+'W · '+rLosses+'L · '+rDraws+'D' : '—';
+  elHeroDistMeta.textContent=histKnown? rWins+'W · '+rLosses+'L · '+rDraws+'D' : '—';
  }
  const elHeroDist=q('#chessHeroDist');
- if(elHeroDist && !recentKnown) elHeroDist.innerHTML='';
+ if(elHeroDist && !histKnown) elHeroDist.innerHTML='';
  else if(elHeroDist && rTotal>0){
   const sumR=rWins+rLosses+rDraws||1;
   const wP=(rWins/sumR*100).toFixed(1);
@@ -1183,6 +1218,18 @@ function phasesMeta(ph){ const h=ph.population&&ph.population.hydrated; return '
 function arrow(a,b){ if(a==null||b==null) return ''; return a>b?' ↑':a<b?' ↓':' ·'; }
 let recentSeq=0;
 async function setRecent(n,preloaded){ const seq=++recentSeq; recentN=n; for(const k of [20,50,100]){ const el=q('#b'+k); if(el){ el.className=n===k?'btn btn-p':'btn btn-g'; } } let r=preloaded; if(!r){ try{ r=await j('/api/stats/recent?limit='+n); }catch(e){ if(seq!==recentSeq) return; lastRecent=null; q('#form').innerHTML='<div class="muted">'+NA+'</div>'; renderChessView({ recent: null }, lastRows); return; } } if(seq!==recentSeq) return; lastRecent=r; renderForm(r); renderChessView({ recent: r }, lastRows); }
+// One component, two different questions (shared by Ajedrez, Trayectoria and Qué cambió): is a colour difference DETECTABLE (the 95% interval of
+// the difference excludes 0) and does it meet the stricter rule (minimum effect, and persistence in both halves for the whole history)? Presentation only:
+// it reads the interval and the verdict that the evaluation already carries. lo/hi are in percentage points.
+function colorConclusion(lo, hi, rule){
+ if(lo==null||hi==null) return null;
+ const sg=v=>(v>0?'+':v<0?'−':'')+Math.abs(v).toFixed(0);
+ const det=lo>0||hi<0;
+ const ruleTxt=rule&&rule.known===false?'sin evaluar':rule&&rule.met?'sí':'no demostrado';
+ return {detectable:det, rule:rule&&rule.met===true,
+  line1:'Diferencia detectable: '+(det?'sí':'no')+' (IC95 ['+sg(lo)+', '+sg(hi)+'] pp'+(det?' excluye 0':' incluye 0')+')',
+  line2:(rule&&rule.label||'Patrón persistente')+': '+ruleTxt};
+}
 function fmtDelta(d){ // d in percentage points: {diff,lower,upper}. Never shown without its interval.
  if(!d) return '—';
  const sg=(v,dec,raw)=>{ const t=Math.abs(v).toFixed(dec); return v===0||(!raw&&Number(t)===0)?t:(v>0?'+':'−')+t; }; // raw: a limit keeps its true sign even when it rounds to 0, so [+0, …] reads as "excludes 0"
@@ -1221,7 +1268,7 @@ function updateChessPatternSuggested(b){
  if(worst && worst.length){
   const w = worst[0];
   const opp = w.opponent || 'Rival';
-  el.textContent = 'Partida sugerida para revisión: ';
+  el.textContent = 'Partida sugerida para revisión (mayor pérdida media por jugada): ';
   const btn = document.createElement('button');
   btn.type = 'button';
   btn.className = 'btn btn-g btn-sm';
@@ -1233,6 +1280,20 @@ function updateChessPatternSuggested(b){
  }
 }
 
+let colorPersistencePromise=null;
+function colorPersistence(){ return colorPersistencePromise||(colorPersistencePromise=j('/api/trajectory').then(d=>(d.evaluations||[]).find(e=>e.id==='CHESS_COLOR_ASYMMETRY_LONGITUDINAL')||null).catch(()=>{ colorPersistencePromise=null; return undefined; })); }
+async function paintColorConclusion(delta){
+ const el=q('#chessPatternColorConclusion');
+ if(!el) return;
+ const first=colorConclusion(delta&&delta.lower, delta&&delta.upper, {known:false});
+ if(!first){ el.textContent=''; return; }
+ el.textContent=first.line1+' · patrón persistente: comprobando…';
+ const ev=await colorPersistence();
+ const m=ev&&ev.metrics||{}, k=ev&&ev.criteria||{};
+ const label='Patrón persistente (≥ '+(k.minDiffPp!=null?k.minDiffPp:15)+' pp y en ambas mitades)';
+ const cc=colorConclusion(delta.lower, delta.upper, ev ? {met:ev.status==='emitted', label} : {known:false, label});
+ el.textContent=cc.line1+' · '+cc.line2;
+}
 function renderChessPatterns(s, c, o, t){
  const card = q('#chessPatternsCard');
  if(!card) return;
@@ -1247,8 +1308,9 @@ function renderChessPatterns(s, c, o, t){
    const whDec = wh.decided || wh.games || 0;
    const blDec = bl.decided || bl.games || 0;
    colVal.textContent = 'Blancas ' + pctCi(wh.winRate, wh.winRateCi) + ' · Negras ' + pctCi(bl.winRate, bl.winRateCi);
-   const diffTxt = c && c.difference ? ' · Dif: ' + fmtDelta(scaleDelta(c.difference, 100)) : '';
-   colMeta.textContent = 'n=' + (wh.games + bl.games) + ' (' + whDec + '/' + blDec + ' decididas)' + diffTxt;
+   // the difference and its interval are said once, by the conclusion line below (colorConclusion)
+   colMeta.textContent = 'n=' + (wh.games + bl.games) + ' (' + whDec + '/' + blDec + ' decididas)';
+   paintColorConclusion(c && c.difference ? scaleDelta(c.difference, 100) : null);
   } else {
    colVal.textContent = '—';
    colMeta.textContent = 'Sin datos de color suficientes';
@@ -1458,20 +1520,14 @@ async function loadChessDashboard(){
   hist=s; hist.groups=c? c.groups : undefined;
 
   // header
-  const elo=s.currentElo??s.latestElo??null;
-  const delta=(elo!=null && s.firstElo!=null)? elo - s.firstElo : null;
-  const snapsCount = (t && Array.isArray(t.snapshots)) ? t.snapshots.length : (s.firstElo != null ? 1 : 0);
-  const isSingleObs = snapsCount <= 1;
-  const deltaLabel = elo!=null ? (isSingleObs ? 'sin histórico comparable' : (delta!=null ? (delta>0?'▲ +'+delta:delta<0?'▼ '+Math.abs(delta):'0')+' vs primer snapshot' : '')) : '';
   const lastSnap=t?.snapshots?.[t.snapshots.length-1];
   const lastDate= lastSnap?.createdAt ? lastSnap.createdAt.slice(0,10) : null;
-  q('#syncMeta').textContent= lastDate ? 'Actualizado '+lastDate : '';
+  q('#syncMeta').textContent= lastDate ? 'Ajedrez · actualizado '+lastDate : '';
 
   // kpis
+  // ELO and % de victorias live in the hero: one main place per figure
   q('#kpis').innerHTML= kpi('Partidas', s.games.toLocaleString('es-ES'), '') 
-    + kpi('% de victorias', s.winRate!=null?(s.winRate*100).toFixed(1)+'%':'—', '') 
-    + kpi('Score', s.scoreRate!=null?(s.scoreRate*100).toFixed(1)+'%':'—', 'victoria 1 · tablas 0,5') 
-    + kpi('ELO actual', fmt(elo), deltaLabel);
+    + kpi('Score', s.scoreRate!=null?(s.scoreRate*100).toFixed(1)+'%':'—', 'victoria 1 · tablas 0,5');
   // racha
   const sk=streakWord(s.currentStreak,s.currentStreakKind);
   q('#streak').innerHTML= (s.currentStreak? '<b>Racha actual: '+s.currentStreak+' '+sk+'</b> · ':'') + 'Mejor racha: '+ (s.longestWin!=null? s.longestWin+'W' : '—') + (s.longestLoss? ' · Peor: '+s.longestLoss+'L':'');
@@ -1935,8 +1991,10 @@ function paintGames(s,day){
  const chips=q('#gamesToday'); chips.textContent='';
  Object.keys(GAME_NAMES).forEach(k=>{ const b=document.createElement('button'); b.type='button'; b.className='pill '+(done.has(k)?'pill-win':'pill-scope'); b.textContent=(done.has(k)?'✓ ':'')+GAME_NAMES[k]; b.setAttribute('data-game',k); b.onclick=()=>openGamesEntry(k); chips.appendChild(b); });
  if(!keys.length){ q('#gamesHeroStreak').textContent='—'; q('#gamesHeroMeta').textContent='Aún no hay datos.'; q('#gamesHeroDays').textContent='—'; q('#gamesHeroWrLabel').textContent=''; q('#gamesHeroDistMeta').textContent='—'; q('#gamesHead').textContent=''; q('#gamesRows').textContent=''; q('#gamesChart').textContent=''; q('#gamesChartNote').textContent=''; q('#gamesDataRows').textContent=''; q('#gamesList').textContent=''; return; }
- q('#gamesHeroStreak').textContent=gdays(s.playStreak.current)+' seguidos';
- q('#gamesHeroMeta').textContent='Racha máxima '+gdays(s.playStreak.max);
+ const sv=gamesStreakView(s);
+ q('#gamesHeroStreakLabel').textContent=sv.label==='Racha actual'?'LinkedIn Games · racha actual':'LinkedIn Games · último registro';
+ q('#gamesHeroStreak').textContent=sv.value;
+ q('#gamesHeroMeta').textContent=sv.meta;
  q('#gamesHeroDays').textContent=gdays(s.days)+' registrados · '+s.from+' → '+s.to;
  let beat=0, total=0; keys.forEach(k=>{ const x=s.games[k]; if(x.beatAvgRate!=null){ beat+=Math.round(x.beatAvgRate*x.nWithAvg); total+=x.nWithAvg; } });
  const pct=total?beat/total*100:0;
@@ -2212,9 +2270,20 @@ function evalObserved(id, m){
  }
  return '';
 }
+// Colour evaluations carry the interval of the difference: when it already excludes 0 the verdict is not "no evidence"; it is "detectable, but not the stricter pattern".
+function evalColorView(e, state){
+ if(!(e.id==='CHESS_COLOR_ASYMMETRY'||e.id==='CHESS_COLOR_ASYMMETRY_LONGITUDINAL')||state==='AFIRMADO') return null;
+ const m=e.metrics||{}, k=e.criteria||{}, rs=e.reasons||[];
+ if(rs.some(r=>r==='insufficient_sample'||r==='data_unavailable')) return null; // without a sample there is no interval worth reading
+ const longi=e.id==='CHESS_COLOR_ASYMMETRY_LONGITUDINAL';
+ const cc=colorConclusion(m.diffCiLower, m.diffCiUpper, {met:false, label: longi ? 'Patrón persistente (≥ '+(k.minDiffPp!=null?k.minDiffPp:15)+' pp y en ambas mitades)' : 'Efecto mínimo del criterio (≥ '+(k.minDiffPp!=null?k.minDiffPp:'—')+' pp)'});
+ if(!cc) return null;
+ return {cc, summary: cc.detectable ? 'Hay una diferencia detectable entre colores, pero no se demuestra '+(longi?'un patrón persistente':'un efecto de la magnitud que exige el criterio')+'.' : null};
+}
 function renderEvaluationCard(e, state, finding, win){
  const meta = EVAL_META[e.id] || {title: e.id, scope: ''};
  const m = e.metrics || {};
+ const colorView = evalColorView(e, state);
  if(m.startedAt && m.endedAt) win = String(m.startedAt).slice(0, 10) + ' → ' + String(m.endedAt).slice(0, 10); // the evaluation's own window wins over the response's
  let body;
  if(state === 'AFIRMADO' && finding){
@@ -2223,6 +2292,7 @@ function renderEvaluationCard(e, state, finding, win){
  } else {
   const obs = evalObserved(e.id, m);
   body = (obs ? '<div style="font-size:13px;color:#c8d7ea;margin-bottom:4px"><strong>Observado:</strong> ' + esc(obs) + '</div>' : '')
+   + (colorView ? '<div class="evcolor" style="font-size:12px;color:#c8d7ea;margin-bottom:4px">' + esc(colorView.cc.line1) + '<br>' + esc(colorView.cc.line2) + '</div>' : '')
    + (state === 'INDICIO' ? '<div style="font-size:13px;font-weight:600;color:#c8d7ea;margin-bottom:4px">' + esc(EVAL_STATE_MSG[state]) + '</div>' : '')
    + '<ul class="muted" style="font-size:12px;margin:0;padding-left:18px">' + (e.reasons || []).map(r => '<li>' + esc(evalReasonText(e, r)) + '</li>').join('') + '</ul>';
  }
@@ -2233,7 +2303,7 @@ function renderEvaluationCard(e, state, finding, win){
   // nothing to claim: show the verdict only and keep the criteria one tap away
   return '<details class="card evcard" style="margin-bottom:10px"><summary>'
    + '<span class="evhead"><h3 style="margin:0;font-size:14px;color:#e6edf3">' + esc(meta.title) + '</h3><span class="' + EVAL_STATE_PILL[state] + '">' + state + '</span></span>'
-   + '<span class="muted evmsg">' + esc(EVAL_STATE_MSG[state]) + '</span></summary>'
+   + '<span class="muted evmsg">' + esc((colorView && colorView.summary) || EVAL_STATE_MSG[state]) + '</span></summary>'
    + '<div style="margin-top:8px">' + scope + '</div><div style="margin-top:8px">' + body + '</div>' + foot + '</details>';
  }
  return '<div class="card" style="margin-bottom:10px">'

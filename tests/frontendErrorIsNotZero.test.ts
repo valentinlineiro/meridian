@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import vm from "node:vm";
 import { createDashboardRuntime, emptyAccountPayload, fetchOnly } from "./helpers/dom.ts";
 
 // A request that failed is "no disponible", never an observed zero or an empty list (Meridian: unknown is not converted to 0).
@@ -24,9 +25,9 @@ describe("overview: a failed request is not an observed zero", () => {
     expect(text(rt, "#overviewChessWeekSummary")).toBe("No disponible");
   });
 
-  it("shouldNotPrintZeroWinsLossesDrawsWhenTheRecentFormIsUnavailable", async () => {
-    const rt = createDashboardRuntime("/overview", undefined, fetchOnly(["/api/stats/bundle", "/api/stats/recent"], http500));
-    await settle();
+  it("shouldNotPrintZeroWinsLossesDrawsWhenTheSummaryIsUnavailable", () => {
+    const rt = createDashboardRuntime("/overview");
+    rt.sandbox.renderOverview({ langs, stats: null, matches: [], xp_summaries: [] });
     expect(text(rt, "#overviewChessWrMeta")).toBe("—");
   });
 });
@@ -129,18 +130,18 @@ describe("review of PR #60: combined fallback and stale state", () => {
     for (const sel of ["#col", "#opp", "#evo", "#elo"]) expect(rt.getEl(sel).innerHTML).toContain("No disponible");
   });
 
-  it("shouldNotPrintZeroCountsInTheChessHeroWhenTheRecentFormIsUnavailable", () => {
+  it("shouldNotPrintZeroCountsInTheChessHeroWhenTheSummaryCarriesNoCounts", () => {
     const rt = createDashboardRuntime("/chess");
     rt.sandbox.renderChessView({ summary: { games: 3, winRate: 0.5 } }, []);
     expect(text(rt, "#chessHeroDistMeta")).toBe("—");
   });
 
-  it("shouldClearTheOverviewDistributionBarWhenTheRecentFormBecomesUnavailable", () => {
+  it("shouldClearTheOverviewDistributionBarWhenTheHistoricalSummaryBecomesUnavailable", () => {
     const rt = createDashboardRuntime("/overview");
-    const base = { langs: langs, stats: {}, matches: [], xp_summaries: [] };
-    rt.sandbox.renderOverview({ ...base, recent: { wins: 5, losses: 3, draws: 2, games: 10 } });
+    const base = { langs: langs, matches: [], xp_summaries: [] };
+    rt.sandbox.renderOverview({ ...base, stats: { games: 10, wins: 5, losses: 3, draws: 2, winRate: 0.5 } });
     expect(rt.getEl("#overviewChessDist").innerHTML).toContain("bar-win");
-    rt.sandbox.renderOverview({ ...base, recent: null });
+    rt.sandbox.renderOverview({ ...base, stats: {} });
     expect(text(rt, "#overviewChessWrMeta")).toBe("—");
     expect(rt.getEl("#overviewChessDist").innerHTML).not.toContain("bar-win");
   });
@@ -162,12 +163,12 @@ describe("review of PR #60 (round 2): a failed refresh replaces the last recent 
     const rt = createDashboardRuntime("/chess", undefined, fetchOnly(["/api/stats/bundle", "/api/stats/recent"], async (url: string) =>
       url.startsWith("/api/stats/bundle") ? ok(bundle)() : fail ? http500() : ok({ ...bundle.recent, limit: 20 })()));
     await settle();
-    expect(text(rt, "#chessHeroDistMeta")).toBe("6W · 3L · 1D");
+    expect(vm.runInContext("lastRecent && lastRecent.limit", rt.sandbox)).toBe(50);
     fail = true;
     await rt.sandbox.setRecent(20);
-    expect(text(rt, "#chessHeroDistMeta")).toBe("—");
-    expect(rt.getEl("#chessHeroDist").innerHTML).not.toContain("bar-win");
+    expect(text(rt, "#form")).toBe("No disponible"); // the form card says so; the hero is the historical rate and does not follow the window
+    expect(vm.runInContext("lastRecent", rt.sandbox)).toBeNull();
     rt.sandbox.renderChessView(null, []); // a later render (e.g. the matches table) must not bring the old window back
-    expect(text(rt, "#chessHeroDistMeta")).toBe("—");
+    expect(vm.runInContext("lastRecent", rt.sandbox)).toBeNull();
   });
 });

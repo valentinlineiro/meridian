@@ -56,10 +56,11 @@ describe("Fase 2 - Análisis (Patrones, cobertura y evidencia navegable)", () =>
       // Individual Wilson CIs must be visible in colVal
       expect(colVal).toContain("Blancas 68.0% [48–83]");
       expect(colVal).toContain("Negras 62.0% [45–77]");
-      // Sample size and difference CI must be in colMeta
+      // Sample size in colMeta; the difference and its CI are said once, by the conclusion line (Fase 4)
       expect(colMeta).toContain("n=60");
       expect(colMeta).toContain("25/35 decididas");
-      expect(colMeta).toContain("Dif: +6.0 pp · IC95 [−18, +30]");
+      expect(colMeta).not.toContain("Dif:");
+      expect(text(rt, "#chessPatternColorConclusion")).toContain("Diferencia detectable: no (IC95 [−18, +30] pp incluye 0)");
 
       const oppVal = text(rt, "#chessPatternOppVal");
       const oppMeta = text(rt, "#chessPatternOppMeta");
@@ -97,8 +98,8 @@ describe("Fase 2 - Análisis (Patrones, cobertura y evidencia navegable)", () =>
 
     it("shouldPreserveProfileRouteNavigationWithoutLeavingTwoActivePanelsSimultaneously", () => {
       const rt = createDashboardRuntime("/profile");
-      expect(rt.getEl("#tabBtnProfile").className).toBe("side-item active");
-      expect(rt.getEl("#tabBtnProfile").getAttribute("aria-current")).toBe("page");
+      expect(rt.getEl("#tabBtnChess").className).toBe("side-item active");
+      expect(rt.getEl("#tabBtnChess").getAttribute("aria-current")).toBe("page");
       // Exactly one panel active: #chessTab is visible and active; #profileTab is kept hidden
       expect(rt.getEl("#chessTab").hidden).toBe(false);
       expect(rt.getEl("#chessTab").classList.contains("active")).toBe(true);
@@ -180,7 +181,7 @@ describe("Fase 2 - Análisis (Patrones, cobertura y evidencia navegable)", () =>
 
       run(rt, `updateChessPatternSuggested(${JSON.stringify(profile)})`);
       const suggestedEl = rt.getEl("#chessPatternSuggested");
-      expect(suggestedEl.textContent).toContain("Partida sugerida para revisión: ");
+      expect(suggestedEl.textContent).toContain("Partida sugerida para revisión");
 
       // Test safe DOM click execution
       const btn = suggestedEl.children[0];
