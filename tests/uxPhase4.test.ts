@@ -123,10 +123,10 @@ describe("4. Games entra en «Tu semana» sin tocar el backend", () => {
 });
 
 describe("5. Color: dos preguntas, dos conclusiones", () => {
-  // Production tallies (2026-11-04): white 596/852 decided, black 450/699, 281 active days.
+  // Production tallies as the dashboard shows them (2026-11-05): white 596 wins in 922 games, black 450 in 761 (draws included), 281 active days.
   const era = (ww: number, wd: number, bw: number, bd: number) => ({ whiteGames: wd, whiteDecided: wd, whiteWins: ww, blackGames: bd, blackDecided: bd, blackWins: bw });
   const prod: TrajectoryInput = {
-    chess: { startedAt: "2025-09-10T00:00:00.000Z", endedAt: "2026-11-04T00:00:00.000Z", totalGames: 1683, activeDays: 281, ...era(596, 852, 450, 699), h1: era(298, 426, 225, 350), h2: era(298, 426, 225, 349) },
+    chess: { startedAt: "2025-09-10T00:00:00.000Z", endedAt: "2026-11-04T00:00:00.000Z", totalGames: 1683, activeDays: 281, ...era(596, 922, 450, 761), h1: era(298, 461, 225, 380), h2: era(298, 461, 225, 381) },
     languages: { startedAt: null, endedAt: null, activeDays: 0, h1: { courses: [] }, h2: { courses: [] } },
   };
   const payload = (i: TrajectoryInput) => { const r = evaluateTrajectory(i); return { userId: "u", temporalSpan: { startedAt: i.chess.startedAt, endedAt: i.chess.endedAt, totalDays: 420 }, findings: r.findings, evaluations: r.evaluations }; };
@@ -141,7 +141,7 @@ describe("5. Color: dos preguntas, dos conclusiones", () => {
     const html = await render(payload(prod));
     expect(html).toContain("Diferencia detectable: sí");
     expect(html).toContain("excluye 0");
-    expect(html).toMatch(/\+5,6 pp · IC95 \[\+0,9; \+10,3\] pp/); // magnitude and interval as measured: 596/852 vs 450/699
+    expect(html).toMatch(/\+5,5 pp · IC95 \[\+0,9; \+10,2\] pp/); // magnitude and interval as the production dashboard shows them: 596/922 vs 450/761
     expect(html).toContain("no demostrado");
     expect(html).toContain("Hay una diferencia detectable entre colores, pero no se demuestra un patrón persistente.");
     expect(html).not.toContain("No hay evidencia suficiente");
@@ -256,5 +256,39 @@ describe("10. Ajustes de revisión (PR #100)", () => {
     expect(text(rt, "#overviewSyncMeta")).not.toContain("registrados");
     expect(run(rt, `shortDate('2026-01-09')`)).toBe("09-ene");
     expect(run(rt, `shortDate('x')`)).toBe("x");
+  });
+});
+
+describe("11. Idiomas: detalles de la verificación en producción", () => {
+  const courses = [
+    { courseId: "DUOLINGO_RU_EN", title: "Russian", xp: 159280, fromLanguage: "en", learningLanguage: "ru" },
+    { courseId: "DUOLINGO_RU_ES", title: "Russian", xp: 36335, fromLanguage: "es", learningLanguage: "ru" },
+  ];
+  const render = (rt: any, langs: object) => rt.renderLanguagesView({ currentCourseId: null, updatedAt: new Date().toISOString(), streak: 1, courses, ...langs }, null, { summaries: [] }, null);
+
+  it("shouldTellCoursesWithTheSameTitleApartInTheSelector", () => {
+    const rt = createDashboardRuntime("/languages");
+    render(rt, { totalXp: 195615 });
+    const html = String(rt.getEl("#langCourseSelect").innerHTML);
+    expect(html).toContain("Russian · EN → RU (159.280 XP)");
+    expect(html).toContain("Russian · ES → RU (36.335 XP)");
+  });
+
+  it("shouldSeparateTheCoursesTitleFromItsCount", () => {
+    expect(DASHBOARD_HTML).toMatch(/Tus Cursos <span id="langCoursesCount" class="muted" style="[^"]*margin-left:8px/);
+  });
+
+  it("shouldExplainWhyTheAccountTotalExceedsTheSumOfTheListedCourses", () => {
+    const rt = createDashboardRuntime("/languages");
+    render(rt, { totalXp: 195615 + 260607 });
+    expect(text(rt, "#langXpGapNote")).toBe("El total de la cuenta supera en 260.607 XP la suma de los 2 cursos del catálogo: esa parte no está asignada a ninguno de ellos.");
+  });
+
+  it("shouldSayNothingWhenTheTotalMatchesOrAnyCourseXpIsUnknown", () => {
+    const rt = createDashboardRuntime("/languages");
+    render(rt, { totalXp: 195615 });
+    expect(text(rt, "#langXpGapNote")).toBe("");
+    rt.renderLanguagesView({ totalXp: 999999, currentCourseId: null, updatedAt: new Date().toISOString(), streak: 1, courses: [{ ...courses[0], xp: null }, courses[1]] }, null, { summaries: [] }, null);
+    expect(text(rt, "#langXpGapNote")).toBe("");
   });
 });

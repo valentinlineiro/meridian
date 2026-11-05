@@ -6,7 +6,7 @@
 
 Auditoría de integración sobre `main` (datos demo, capturas locales) y validación de solo lectura contra producción
 (SQL agregado, sin escrituras, sin Neon). Hechos de producción usados (corte 2026-11-04): 1.683 partidas, 1.650 contra bots y 33 PvP;
-blancas 596/852 decididas y negras 450/699; racha de Duolingo 1.117 días; Games con 170 días, último registro 2026-11-03; el
+blancas 596 victorias en 922 partidas y negras 450 en 761 (tablas incluidas, como las muestra el panel; +5,5 pp, IC95 [+0,9; +10,2]); racha de Duolingo 1.117 días; Games con 170 días, último registro 2026-11-03; el
 último curso que reporta Duolingo (`CHESS_CH`) no existe en la tabla `courses`.
 
 ## Regla de la fase

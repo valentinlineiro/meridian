@@ -358,6 +358,7 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
           <div class="kpi"><label>Catálogo</label><b id="langAccountCourses">—</b></div>
         </div>
         <div class="muted" id="langSyncMeta" style="font-size:12px;margin-top:10px"></div>
+        <div class="muted" id="langXpGapNote" style="font-size:11px;margin-top:6px"></div>
       </div>
 
       <!-- Tira semanal (Estado 10s) -->
@@ -381,7 +382,7 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
 
       <!-- Tus Cursos (Comprensión 1m) -->
       <details class="cgroup" id="langCoursesDetails" style="margin-bottom:12px">
-        <summary style="cursor:pointer;font-weight:600;font-size:13px;color:#8ea0b8;padding:10px 0">Tus Cursos <span id="langCoursesCount" class="muted" style="font-size:12px"></span></summary>
+        <summary style="cursor:pointer;font-weight:600;font-size:13px;color:#8ea0b8;padding:10px 0">Tus Cursos <span id="langCoursesCount" class="muted" style="font-size:12px;margin-left:8px"></span></summary>
         <div class="card" style="margin-top:8px">
           <div id="langCoursesList"></div>
         </div>
