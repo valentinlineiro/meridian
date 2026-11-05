@@ -17,7 +17,7 @@ describe("Overview states which entity each number measures (P1 #5)", () => {
   });
 
   it("shouldTagAccountScopedNumbersAsCuenta", () => {
-    expect(DASHBOARD_HTML).toMatch(/id="overviewStreak"[^>]*>🔥 —<\/span><span class="pill pill-scope">CUENTA<\/span>/);
+    expect(DASHBOARD_HTML).toMatch(/id="overviewStreak"[^>]*>Duolingo · 🔥 —<\/span>/);
     expect(DASHBOARD_HTML).toMatch(/Todos los cursos <span class="pill pill-scope">CUENTA<\/span>/);
     expect(DASHBOARD_HTML).toMatch(/Cuenta · últimos 7 días <span class="pill pill-scope">CUENTA<\/span>/);
   });
@@ -25,7 +25,7 @@ describe("Overview states which entity each number measures (P1 #5)", () => {
   it("shouldStateTheWindowAndTheEntityOfTheChessNumbers", () => {
     expect(DASHBOARD_HTML).toContain("Ajedrez · últimos 7 días");
     expect(DASHBOARD_HTML).toContain("ELO observado");
-    expect(DASHBOARD_HTML).toContain("% de victorias (últimas 50 partidas, todos los rivales)");
+    expect(DASHBOARD_HTML).toContain("% de victorias (historial completo, todos los rivales)");
   });
 
   it("shouldSayWhatDuolingoReportsWhenItDiffersFromTheSelectedCourse", () => {

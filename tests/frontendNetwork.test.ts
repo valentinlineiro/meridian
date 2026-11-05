@@ -61,7 +61,7 @@ describe("late responses never overwrite a later choice", () => {
     await rt.sandbox.setRecent(100);
     slow.resolve(win(20, 2));
     await first;
-    expect(rt.getEl("#chessHeroDistMeta").textContent).toBe("9W · 1L · 0D");
+    expect(vm.runInContext("lastRecent.limit", rt.sandbox)).toBe(100); // the later window owns the form card; the hero is historical and does not follow it
   });
 });
 

@@ -36,7 +36,7 @@ describe("Fase 1 - Posición y descompresión de scroll", () => {
       expect(rt.getEl("#overviewGamesStreak").textContent).toBe("🔥 12 días");
       expect(rt.getEl("#overviewGamesMeta").textContent).toBe("Racha máxima 20 días");
       expect(rt.getEl("#overviewGamesHistorical").textContent).toContain("57 días registrados");
-      expect(rt.getEl("#overviewSyncMeta").textContent).toContain("Games: 57 días registrados");
+      expect(rt.getEl("#overviewSyncMeta").textContent).toContain("Games: último registro 03-nov · manual");
     });
 
     it("shouldGracefullyDegradeOverviewGamesCardWhenSummaryIsEmptyOrNull", () => {

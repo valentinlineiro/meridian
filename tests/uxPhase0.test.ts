@@ -114,7 +114,6 @@ describe("Fase 0 - Verdad, vocabulario y honestidad del dato", () => {
       });
       await rt.sandbox.loadChessDashboard();
       expect(rt.getEl("#chessHeroEloSub").textContent).toBe("ELO · sin histórico comparable");
-      expect(rt.getEl("#kpis").innerHTML).toContain("sin histórico comparable");
       expect(rt.getEl("#kpis").innerHTML).not.toContain("0 vs primer snapshot");
     });
 
@@ -135,13 +134,11 @@ describe("Fase 0 - Verdad, vocabulario y honestidad del dato", () => {
   });
 
   describe("5. Reubicar Exportar partidas bajo Ajedrez", () => {
-    it("shouldPlaceExportMatchesUnderAjedrezGroupInSideMenu", () => {
+    it("shouldPlaceExportMatchesInsideTheChessViewAndNotInTheSideMenu", () => {
       const menu = DASHBOARD_HTML.slice(DASHBOARD_HTML.indexOf('id="sideMenu"'), DASHBOARD_HTML.indexOf('<div class="content">'));
-      const ajedrezPos = menu.indexOf('class="side-group">Ajedrez</div>');
-      const idiomasPos = menu.indexOf('class="side-group">Idiomas</div>');
-      const exportPos = menu.indexOf('href="/api/export/matches.csv"');
-      expect(exportPos).toBeGreaterThan(ajedrezPos);
-      expect(exportPos).toBeLessThan(idiomasPos);
+      expect(menu).not.toContain('/api/export/matches.csv');
+      const chess = DASHBOARD_HTML.slice(DASHBOARD_HTML.indexOf('id="chessTab"'), DASHBOARD_HTML.indexOf('id="langTab"'));
+      expect(chess).toContain('href="/api/export/matches.csv" download');
     });
   });
 

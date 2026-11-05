@@ -30,12 +30,12 @@ describe("opening the dashboard", () => {
 });
 
 describe("side menu", () => {
-  it("shouldGroupTheViewsUnderResumenAjedrezIdiomasAndLinkedinWithSpanishLabels", async () => {
+  it("shouldGroupTheViewsUnderResumenAndDominiosWithOneEntryPerDomain", async () => {
     const { DASHBOARD_HTML } = await import("../src/frontend.ts");
     const groups = [...DASHBOARD_HTML.matchAll(/class="side-group">([^<]+)</g)].map((m) => m[1]);
-    expect(groups).toEqual(["Resumen", "Ajedrez", "Idiomas", "LinkedIn", "Cuenta"]);
+    expect(groups).toEqual(["Resumen", "Dominios", "Cuenta"]);
     const items = [...DASHBOARD_HTML.matchAll(/class="side-item[^"]*" id="(tabBtn\w+)"[^>]*>([^<]+)</g)].map((m) => `${m[1]}:${m[2]}`);
-    expect(items).toEqual(["tabBtnOverview:Hoy", "tabBtnChanges:Qué cambió", "tabBtnTrajectory:Trayectoria", "tabBtnChess:Partidas", "tabBtnProfile:Perfil", "tabBtnLang:Cursos", "tabBtnGames:Juegos"]);
+    expect(items).toEqual(["tabBtnOverview:Hoy", "tabBtnChanges:Qué cambió", "tabBtnTrajectory:Trayectoria", "tabBtnChess:Ajedrez", "tabBtnLang:Idiomas", "tabBtnGames:LinkedIn Games"]);
   });
 
   it("shouldKeepAccountActionsInTheSideMenuAndNotInTheHeader", async () => {
@@ -46,15 +46,15 @@ describe("side menu", () => {
     const menu = DASHBOARD_HTML.slice(DASHBOARD_HTML.indexOf('id="sideMenu"'), DASHBOARD_HTML.indexOf('<div class="content">'));
     expect(menu).toContain('id="syncBtn"');
     expect(menu).toContain('id="syncNote"');
-    expect(menu).toContain('href="/api/export/matches.csv" download');
+    expect(menu).not.toContain('/api/export/matches.csv'); // exporting is an action of the chess view, not a destination
     expect(menu).toContain('href="/settings"');
     expect(menu).toContain('action="/logout"');
   });
 
   it("shouldMarkTheCurrentViewForAssistiveTechnology", () => {
     const rt = createDashboardRuntime("/profile");
-    expect(rt.getEl("#tabBtnProfile").className).toBe("side-item active");
-    expect(rt.getEl("#tabBtnProfile").getAttribute("aria-current")).toBe("page");
+    expect(rt.getEl("#tabBtnChess").className).toBe("side-item active"); // /profile opens the chess view: no entry of its own
+    expect(rt.getEl("#tabBtnChess").getAttribute("aria-current")).toBe("page");
     expect(rt.getEl("#tabBtnOverview").getAttribute("aria-current")).toBe("false");
   });
 
@@ -71,7 +71,7 @@ describe("side menu", () => {
   it("shouldKeepTheLegacyPathsOpeningTheSameViews", () => {
     for (const [path, tab] of [["/chess", "chess"], ["/profile", "profile"], ["/languages", "languages"]] as const) {
       const rt = createDashboardRuntime(path);
-      const id = { chess: "#tabBtnChess", profile: "#tabBtnProfile", languages: "#tabBtnLang" }[tab];
+      const id = { chess: "#tabBtnChess", profile: "#tabBtnChess", languages: "#tabBtnLang" }[tab];
       expect(rt.getEl(id).className).toBe("side-item active");
     }
   });
