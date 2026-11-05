@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { evaluateChanges, salience, type WhatChangedDeltas } from "../src/domain/whatChanged.ts";
 import { createDashboardRuntime, fetchOnly } from "./helpers/dom.ts";
+import { ADMITTED, withAdmitted } from "./fixtures/calibration.ts";
 
 const ctx = { userId: "u1", baselineAt: "2026-09-20T00:00:00.000Z", until: "2026-09-27T00:00:00.000Z" };
 const clear = { diff: 40, lower: 10, upper: 60 }, wide = { diff: 40, lower: -16, upper: 72 };
@@ -128,8 +129,8 @@ describe("evaluation cards (P0)", () => {
     expect(rt.getEl("#changesHeader").innerHTML).not.toContain("10:37:59.169Z");
   });
 
-  it("shouldDisclaimFixedThresholdWhenEvaluationIsThresholdKind", () => {
-    expect(html()).toContain("límites de lo habitual calibrados con tu historial");
+  it("shouldNotClaimCalibratedLimitsWhenNoBandIsAdmitted", () => {
+    expect(html()).toContain("sin banda calibrada todavía; datos evaluados hasta");
   });
 
   it("shouldOrderAfirmadoBeforeIndicioBeforeSinIndicio", () => {
@@ -169,8 +170,26 @@ describe("A7: calibrated rules abstain on screen", () => {
     const of = (t: string) => cards.find((c) => c.includes(t))!;
     expect(of("Asimetría por color")).toContain("con intervalo de confianza 95%");
     expect(of("Asimetría por color")).not.toContain("calibrados");
-    expect(of("Salto de ELO")).toContain("calibrados con tu historial");
-    expect(of("Mayor XP diario")).toContain("calibrados con tu historial");
+    // the shipped artefact admits no edge: neither calibrated rule may claim to be calibrated
+    for (const t of ["Salto de ELO", "Mayor XP diario"]) {
+      expect(of(t)).toContain("sin banda calibrada todavía; datos evaluados hasta 2026-11-05");
+      expect(of(t)).not.toContain("calibrados con tu historial");
+    }
+  });
+  it("shouldClaimCalibrationOnlyWhenTheEdgeOfTheDirectionIsAdmitted", () => {
+    const withBands = (over: any, cal: any) => {
+      const p = { ...payload(over) } as any;
+      p.evaluations = evaluateChanges(deltas(over), ctx, cal).evaluations;
+      return createDashboardRuntime("/changes").sandbox.renderEvaluations(p) as string;
+    };
+    const eloCard = (h: string) => h.split(/(?=<(?:div|details) class="card)/).find((c) => c.includes("Salto de ELO"))!;
+    const up = withAdmitted({ upper95: { 10: 74 } }); // only the rise is calibrated
+    expect(eloCard(withBands({ chess: { ratingDelta: 30, ratingGames: 10 } }, up))).toContain("calibrados con tu historial (hasta ");
+    expect(eloCard(withBands({ chess: { ratingDelta: -30, ratingGames: 10 } }, up))).toContain("sin banda calibrada todavía");
+    expect(eloCard(withBands({ chess: { ratingDelta: -30, ratingGames: 10 } }, withAdmitted({ lower95: { 10: -62 } })))).toContain("calibrados con tu historial");
+    const xp = (h: string) => h.split(/(?=<(?:div|details) class="card)/).find((c) => c.includes("Mayor XP diario"))!;
+    expect(xp(withBands({}, ADMITTED))).toContain("calibrados con tu historial"); // XP window of 7 days has upper95 admitted
+    expect(xp(withBands({ languages: { intervalDays: 14 } }, ADMITTED))).toContain("sin banda calibrada todavía");
   });
   it("shouldNeverQuoteTheRetiredFixedThresholds", () => {
     const h = html({ chess: { ratingDelta: 30 }, languages: { dailyXpRate: 65, historicalDailyXpRate: 50, xpGained: 100 } });

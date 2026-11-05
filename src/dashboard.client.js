@@ -2276,7 +2276,13 @@ function renderEvaluationCard(e, state, finding, win){
    + (state === 'INDICIO' ? '<div style="font-size:13px;font-weight:600;color:#c8d7ea;margin-bottom:4px">' + esc(EVAL_STATE_MSG[state]) + '</div>' : '')
    + '<ul class="muted" style="font-size:12px;margin:0;padding-left:18px">' + (e.reasons || []).map(r => '<li>' + esc(evalReasonText(e, r)) + '</li>').join('') + '</ul>';
  }
- const basis = e.kind === 'statistical' ? 'con intervalo de confianza 95%' : (e.criteria && e.criteria.calibratedThrough ? 'límites de lo habitual calibrados con tu historial (hasta ' + e.criteria.calibratedThrough + ')' : 'umbral fijo, sin intervalo de confianza');
+ // A7: "calibrated" only if the edge that decides this evaluation is admitted (ELO: the one of the direction of the change; XP: upper95).
+ // calibratedThrough is how far the artefact's data go, not proof that a band exists.
+ const kc = e.criteria || {}, em = e.metrics || {};
+ const edgeAdmitted = e.id === 'CHESS_RATING_JUMP' ? kc[(em.ratingDelta != null && em.ratingDelta < 0 ? 'lower95' : 'upper95') + 'Admitted'] === 1 : kc.upper95Admitted === 1;
+ const basis = e.kind === 'statistical' ? 'con intervalo de confianza 95%'
+  : kc.calibratedThrough ? (edgeAdmitted ? 'límites de lo habitual calibrados con tu historial (hasta ' + kc.calibratedThrough + ')' : 'sin banda calibrada todavía; datos evaluados hasta ' + kc.calibratedThrough)
+  : 'umbral fijo, sin intervalo de confianza';
  const foot = '<div class="muted" style="font-size:11px;margin-top:6px">Ventana: ' + esc(win) + ' · ' + basis + '</div>';
  const scope = '<span class="pill pill-scope">' + esc(meta.scope) + '</span>';
  if(state === 'INSUFICIENTE' || state === 'SIN INDICIO'){
