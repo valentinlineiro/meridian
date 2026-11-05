@@ -455,7 +455,7 @@ function renderLanguagesView(langData, analyticsData, xpData, activeDetail){
  // 1. HeroCard (Orientación 3s) - populate course selector
  const elSelect=q('#langCourseSelect');
  if(elSelect){
-  elSelect.innerHTML=courses.map(c=>'<option value="'+esc(c.courseId)+'">'+(c.learningLanguage?flag(c.learningLanguage)+' ':'')+esc(c.title||c.courseId)+' ('+xpText(c.xp)+' XP)</option>').join('');
+  elSelect.innerHTML=courses.map(c=>'<option value="'+esc(c.courseId)+'">'+(c.learningLanguage?flag(c.learningLanguage)+' ':'')+esc(c.title||c.courseId)+(c.fromLanguage&&c.learningLanguage?' · '+esc(c.fromLanguage.toUpperCase())+' → '+esc(c.learningLanguage.toUpperCase()):'')+' ('+xpText(c.xp)+' XP)</option>').join('');
   elSelect.value=selectedCourseId||'';
  }
  const elFlag=q('#langCourseFlag');
@@ -498,6 +498,13 @@ function renderLanguagesView(langData, analyticsData, xpData, activeDetail){
 
  const elAccountXp=q('#langAccountXp')||q('#langHeroXp');
  if(elAccountXp) elAccountXp.textContent=langs.totalXp!=null? Number(langs.totalXp).toLocaleString('es-ES')+' XP' : '—';
+ // The account total can exceed what the listed courses add up to (XP the source keeps outside this catalogue): say so instead of letting two figures disagree silently.
+ const elXpGap=q('#langXpGapNote');
+ if(elXpGap){
+  const known=courses.length&&courses.every(c=>c.xp!=null);
+  const gap=known&&langs.totalXp!=null? Number(langs.totalXp)-courses.reduce((a,c)=>a+c.xp,0) : 0;
+  elXpGap.textContent=gap>0? 'El total de la cuenta supera en '+gap.toLocaleString('es-ES')+' XP la suma de los '+courses.length+' cursos del catálogo: esa parte no está asignada a ninguno de ellos.' : '';
+ }
  const elAccountStreak=q('#langAccountStreak')||q('#langHeroStreak');
  if(elAccountStreak) elAccountStreak.textContent=langs.streak!=null? '🔥 '+Number(langs.streak).toLocaleString('es-ES')+' días':'—';
  const activeDays=summaries.filter(s=>s.gainedXp>0).length;
