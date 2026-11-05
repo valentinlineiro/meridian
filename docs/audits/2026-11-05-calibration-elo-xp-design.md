@@ -168,7 +168,8 @@ aleatoria, sin fronteras rígidas) ni un nulo modelado (un modelo temporal ajust
 
 Criterio de admisión (d), como **diagnóstico**, no como obligación universal de reproducir la ACF en cada lag: el procedimiento de nulo debe conservar adecuadamente la dependencia relevante, y eso se comprueba sobre lo que
 importa, la distribución del estadístico que se calibra (cuantiles estables entre variantes razonables del procedimiento y diagnósticos de dependencia sin discrepancias claras). Los números de la ACF de arriba son el
-diagnóstico que hoy falla para este procedimiento, no el criterio de aceptación de otros. Se mantienen los demás criterios (mínimo de 26 semanas ≈ 2026-12-24 como condición necesaria, no suficiente; semiancho ≤ 20 %; sensibilidad ≤ 20 % entre tamaños de
+diagnóstico que hoy falla para este procedimiento, no el criterio de aceptación de otros. La comparación con un error típico aproximado (≈ 0,09) tampoco caracteriza por sí sola la adecuación del nulo al estadístico:
+las discrepancias se valoran con su incertidumbre y su efecto sobre los cuantiles. Si la adecuación no puede justificarse, no se admite la calibración. Se mantienen los demás criterios (mínimo de 26 semanas ≈ 2026-12-24 como condición necesaria, no suficiente; semiancho ≤ 20 %; sensibilidad ≤ 20 % entre tamaños de
 bloque). Qué podría estudiarse en otra revisión, sin implementarlo ni decidirlo aquí: más histórico, un bootstrap estacionario o un nulo modelado, cada uno sujeto al diagnóstico (d) y a los demás criterios.
 
 Hoy las evaluaciones de XP muestran el efecto sin afirmarlo: 7 días ×1,47; 14 días ×1,27; 28 días ×1,40, con «Sin referencia de variación habitual todavía». La regla actual emite 7 y 28 días. Desaparece el mínimo

@@ -68,7 +68,11 @@ def null_window(k, B=20000, blocks=1, flip=False):
     out = []
     for _ in range(B):
         g = d = 0
+        tries = 0
         while g < k:
+            tries += 1
+            if tries > 10000:  # sin progreso: ningún bloque cabe en lo que falta
+                raise RuntimeError(f"null_window: no se alcanza k={k} (g={g}, blocks={blocks}); ¿hay intervalos de 1 partida?")
             i = random.randrange(len(src) - blocks + 1); seg = src[i:i + blocks]
             sg = random.choice((-1, 1)) if flip else 1
             for r in seg:
