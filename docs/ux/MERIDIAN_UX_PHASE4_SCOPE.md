@@ -15,11 +15,24 @@ Corregir lo que la evidencia demuestra; no afirmar certezas donde no hay observa
 sin migraciones, sin contratos de evaluación (`whatChanged`, `trajectory`): las métricas que se necesitan (`diffCiLower`,
 `diffCiUpper`, `status`, `reasons`, `criteria`) ya viajan en cada evaluación.
 
-## Limitación documentada
+## Validación en producción (2026-11-05)
 
-**La representación visual de Idiomas en producción no se ha verificado** (la pantalla está tras Cloudflare Access y no hubo
-sesión). Solo hay evidencia SQL y reproducción local. Cobertura: tests sobre el curso seleccionado por defecto, la línea de
-sincronización y la etiqueta de racha. No se afirma validación visual en producción.
+Al redactar este alcance no había sesión en producción y solo existía evidencia SQL y reproducción local (el acceso es el
+`/login` propio de Meridian, con cookie de sesión; no Cloudflare Access, como decía una versión anterior de este texto).
+Tras el despliegue de la PR #100 y de la PR #101 (`91e3cdc`), con una sesión abierta por el propietario y **solo lecturas**,
+se comprobó en producción, a ancho de escritorio:
+
+- Portada: «Duolingo · 🔥 1117 días de racha» sin `CUENTA`; Games con «Sin registro desde 2026-11-03» y tarjeta en «Tu semana»;
+  cabecera «Actualizado» oculta fuera de Ajedrez; `CHESS_CH` no aparece.
+- Idiomas: curso por defecto Russian EN, línea de sincronización sin id crudo, 13 cursos distinguidos por idioma de origen y
+  destino, nota «El total de la cuenta supera en 260.607 XP la suma de los 13 cursos del catálogo…», título «Tus cursos»
+  separado de su contador, sin desbordamiento horizontal.
+- Ajedrez, Trayectoria y Qué cambió: «Diferencia detectable: sí (+5,5 pp · IC95 [+0,9; +10,2] pp)» y «Patrón persistente: no
+  demostrado» (Trayectoria: SIN INDICIO con el resumen de diferencia detectable).
+
+**No comprobado:** el ancho móvil en producción (390 px solo se midió con datos demo locales), Safari y Chrome móvil reales, y
+las comprobaciones de la portada en producción no incluyeron capturas de móvil. La nota del XP total no se atribuye a ningún
+curso concreto: es una diferencia observada, no una causa verificada.
 
 ## Cambios
 
@@ -42,4 +55,5 @@ Neon, producción, merge.
 
 ## Verificación
 
-`npm test`, `npm run typecheck`, Playwright en escritorio (1440×900) y móvil (390×844) con datos demo locales.
+`npm test`, `npm run typecheck`, Playwright en escritorio (1440×900) y móvil (390×844) con datos demo locales; después, lectura
+de producción como se describe arriba.
