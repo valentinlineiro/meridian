@@ -314,7 +314,7 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
       <div class="card hero-card" id="langCourseHero" style="margin-bottom:12px">
         <div id="langHeroCard">
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-            <div>
+            <div style="min-width:0;max-width:100%">
               <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.05em">Curso seleccionado</div>
               <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
                 <span id="langCourseFlag" style="font-size:18px"></span>
