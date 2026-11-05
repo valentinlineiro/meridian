@@ -86,15 +86,15 @@ describe("profile tab", () => {
   it("shouldHeadlineFourPlainLanguageFiguresWithTheirDenominators", async () => {
     const { rt } = await openProfile();
     const k = html(rt, "#profileKpis");
-    expect(k).toContain("<b>9.7</b><small>por 100 jugadas · 388 de 4000</small>");
+    expect(k).toContain("<b>9,7</b><small>por 100 jugadas · 388 de 4000</small>");
     expect(k).toContain("<b>1,0</b><small>peones por jugada · 103 cp</small>");
-    expect(k).toContain("<b>80%</b><small>24 de 30 derrotas sin desconexión · 10 por desconexión aparte</small>");
-    expect(k).toContain("<b>78%</b><small>62 de 80 · 12 perdidas</small>");
+    expect(k).toContain("<b>80 %</b><small>24 de 30 derrotas sin desconexión · 10 por desconexión aparte</small>");
+    expect(k).toContain("<b>78 %</b><small>62 de 80 · 12 perdidas</small>");
   });
 
   it("shouldNameTheWorstPhaseInAFixedRuleSentence", async () => {
     const { rt } = await openProfile();
-    expect(text(rt, "#profileVerdict")).toBe("Mayor tasa observada de errores graves: medio juego (11.3 por 100 jugadas; final: 4.3). Hay un momento decisivo en 80% de tus derrotas sin desconexión (24 de 30), con mediana en tu jugada 12.");
+    expect(text(rt, "#profileVerdict")).toBe("Mayor tasa observada de errores graves: medio juego (11,3 por 100 jugadas; final: 4,3). Hay un momento decisivo en 80 % de tus derrotas sin desconexión (24 de 30), con mediana en tu jugada 12.");
   });
 
   it("shouldDrawPhaseAndColourBarsWithRateAndCount", async () => {
@@ -108,10 +108,10 @@ describe("profile tab", () => {
   it("shouldDrawTheTrendByBlocksAndMarkThePartialOne", async () => {
     const { rt } = await openProfile();
     const t = html(rt, "#profileTrend");
-    expect(t).toContain('title="Partidas 1–50: 10.0 por 100 jugadas (200 de 2000 jugadas)"');
-    expect(t).toContain('title="Partidas 51–100: 9.4 por 100 jugadas (188 de 2000 jugadas) · bloque incompleto"');
-    expect(t).toContain("Primeras partidas · 10.0");
-    expect(t).toContain("Últimas · 9.4 (incompleto)");
+    expect(t).toContain('title="Partidas 1–50: 10,0 por 100 jugadas (200 de 2000 jugadas)"');
+    expect(t).toContain('title="Partidas 51–100: 9,4 por 100 jugadas (188 de 2000 jugadas) · bloque incompleto"');
+    expect(t).toContain("Primeras partidas · 10,0");
+    expect(t).toContain("Últimas · 9,4 (incompleto)");
   });
 
   it("shouldExplainWhenThereAreNotEnoughBlocksForATrend", async () => {
@@ -160,7 +160,7 @@ describe("profile tab", () => {
     const { rt } = await openProfile();
     const c = html(rt, "#profileConversion");
     expect(c).toContain("Con ventaja de más de 3 peones");
-    expect(c).toContain("Ganadas 78% (62)");
+    expect(c).toContain("Ganadas 78 % (62)");
     expect(c).toContain("Tablas 6");
     expect(c).toContain("Con desventaja de más de 3 peones");
   });
@@ -201,7 +201,7 @@ describe("profile tab", () => {
 
   it("shouldSayUpFrontThatMostGamesAreAgainstBotsAndWhatIsLeftOut", async () => {
     const { rt } = await openProfile();
-    expect(text(rt, "#profileContext")).toContain("98% contra bots");
+    expect(text(rt, "#profileContext")).toContain("98 % contra bots");
     const note = text(rt, "#profileNote");
     expect(note).toContain("3 partidas sin analizar");
     expect(note).toContain("1 no se pudieron evaluar");
@@ -239,7 +239,7 @@ describe("profile tab", () => {
   it("shouldLoadTheProfileWhenThePageIsOpenedDirectlyOnIt", async () => {
     const rt = createDashboardRuntime("/profile", undefined, async (url: string) => ({ ok: true, status: 200, json: async () => (url.startsWith("/api/stats/profile") ? PROFILE : emptyAccountPayload(url)) }));
     await settle();
-    expect(html(rt, "#profileKpis")).toContain("9.7");
+    expect(html(rt, "#profileKpis")).toContain("9,7");
   });
 
   it("shouldShowAnErrorLineWhenTheProfileCannotBeLoaded", async () => {

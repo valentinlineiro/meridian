@@ -231,7 +231,7 @@ function accountStaleNote(l){
 }
 const fmt=n=>n==null?'—':String(n);
 // P8: one way to write a percentage with a decimal: Spanish comma and a space before the sign ("64,7 %"), as the colour and result components already do.
-const dec1=v=>Number(v).toFixed(1).replace('.',','), pc1=v=>dec1(v)+' %';
+const dec1=v=>Number(v).toFixed(1).replace('.',','), pc1=v=>dec1(v)+' %', pc0=v=>Math.round(v)+' %';
 const pct=(a,b)=>b? pc1(a/b*100):'—';
 
 function kpi(label,val,sub){return '<div class="kpi"><label>'+label+'</label><b>'+val+'</b><small>'+(sub||'')+'</small></div>'}
@@ -251,8 +251,8 @@ function donut(w,l,d){
   return '<circle r="16" cx="36" cy="36" fill="transparent" stroke="'+s.c+'" stroke-width="8" stroke-dasharray="'+dash+' '+(100-parseFloat(dash))+'" stroke-dashoffset="'+off2+'" transform="rotate(-90 36 36)"/>';
  }).join('');
  const legend=segs.map(s=>'<span><i class="dot" style="background:'+s.c+'"></i>'+s.k+' '+s.v+' · '+pc1(s.v/total*100)+'</span>').join('');
- const score=((w+0.5*d)/total*100).toFixed(1);
- return '<div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap"><svg width="96" height="96" viewBox="0 0 72 72"><circle r="16" cx="36" cy="36" fill="transparent" stroke="#1e2e44" stroke-width="8"/>'+circles+'</svg><div><div style="font-size:24px;font-weight:800">'+score+'% <span class="muted" style="font-weight:400;font-size:13px">score</span></div><div class="legend">'+legend+'</div></div></div>';
+ const score=dec1((w+0.5*d)/total*100);
+ return '<div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap"><svg width="96" height="96" viewBox="0 0 72 72"><circle r="16" cx="36" cy="36" fill="transparent" stroke="#1e2e44" stroke-width="8"/>'+circles+'</svg><div><div style="font-size:24px;font-weight:800">'+score+' % <span class="muted" style="font-weight:400;font-size:13px">score</span></div><div class="legend">'+legend+'</div></div></div>';
 }
 
 function sparkline(points){
@@ -1557,7 +1557,7 @@ async function loadChessDashboard(){
    const pctDiscon = s.losses ? (discon / s.losses * 100).toFixed(0) : 0;
    const lp = [];
    if(mates) lp.push(mates + ' mates');
-   if(discon) lp.push(discon + ' desconexiones (' + pctDiscon + '%)');
+   if(discon) lp.push(discon + ' desconexiones (' + pctDiscon + ' %)');
    for(const [k, v] of Object.entries(ec)){
     if(k !== 'checkmate' && k !== 'disconnection' && k !== 'unknown' && v && v.loss > 0){
      const label = k === 'resignation' ? 'rendiciones' : (k === 'timeout' ? 'por tiempo' : k);
@@ -1566,7 +1566,7 @@ async function loadChessDashboard(){
    }
    if(lp.length && q('#lossContext')) q('#lossContext').textContent = 'Derrotas: ' + lp.join(' · ');
    const decided = s.wins + s.losses + s.draws, played = s.losses - discon;
-   if(q('#lossRateNote')) q('#lossRateNote').textContent = discon && decided ? 'Sin contar desconexiones: ' + played + ' derrotas de ' + decided + ' partidas (' + (played / decided * 100).toFixed(0) + '%)' : '';
+   if(q('#lossRateNote')) q('#lossRateNote').textContent = discon && decided ? 'Sin contar desconexiones: ' + played + ' derrotas de ' + decided + ' partidas (' + (played / decided * 100).toFixed(0) + ' %)' : '';
 
    const dp = [];
    if(ec.stalemate?.draw) dp.push(ec.stalemate.draw + ' ahogados');
@@ -1622,7 +1622,7 @@ async function loadChessDashboard(){
    const ok=th&&!th.error&&th.totals;
    q('#threatsCard').style.display=ok?'block':'none';
    if(ok){
-    const pc=t=>(t.rate*100).toFixed(0)+'%', frac=t=>t.neutralized+' de '+t.faced+' ('+pc(t)+')';
+    const pc=t=>pc0(t.rate*100), frac=t=>t.neutralized+' de '+t.faced+' ('+pc(t)+')';
     q('#threatsMain').textContent=!th.analysed?'Todavía no hay partidas analizadas':!th.totals.faced?'Sin amenazas de mate en 1 en las partidas analizadas':'Neutralizadas '+frac(th.totals)+' · te mataron '+th.totals.missed+' · el rival no las jugó '+th.totals.unpunished;
     const names={opening:'Apertura',middlegame:'Medio juego',endgame:'Final'};
     q('#threatsPhases').textContent=th.totals.faced?Object.keys(names).map(k=>names[k]+' '+(th.byPhase[k].faced?frac(th.byPhase[k]):'sin amenazas')).join(' · '):'';
@@ -1647,7 +1647,7 @@ async function loadChessDashboard(){
   if(!e){ q('#elo').innerHTML='<div class="muted">'+NA+'</div>'; q('#eloNote').textContent=''; }
   else{
   const known=e.count, total=s.games;
-  q('#elo').innerHTML='<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:baseline"><span style="font-size:22px;font-weight:700">'+known+' <span class="muted" style="font-size:13px;font-weight:400">con ELO</span></span><span class="muted">'+(total? (known/total*100).toFixed(1):'0')+'% de '+total.toLocaleString('es-ES')+' · media '+(e.average?.toFixed(0)??'—')+' · '+fmt(e.min)+' – '+fmt(e.max)+'</span></div><div class="hist">'+histBuckets(e.buckets,known)+'</div>';
+  q('#elo').innerHTML='<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:baseline"><span style="font-size:22px;font-weight:700">'+known+' <span class="muted" style="font-size:13px;font-weight:400">con ELO</span></span><span class="muted">'+(total? dec1(known/total*100):'0')+' % de '+total.toLocaleString('es-ES')+' · media '+(e.average?.toFixed(0)??'—')+' · '+fmt(e.min)+' – '+fmt(e.max)+'</span></div><div class="hist">'+histBuckets(e.buckets,known)+'</div>';
   q('#eloNote').textContent=e.note || (known+' / '+total+' partidas con ELO rival conocido — la mayoría son bots sin ELO');
   const eloSummaryMeta=q('#eloSummaryMeta');
   if(eloSummaryMeta && total){
@@ -1726,8 +1726,8 @@ function trajectoryCopy(f){
 function profileCut(){ try{ return localStorage.getItem(PROFILE_CUT_KEY)||''; }catch(e){ return ''; } }
 function applyProfileSince(){ const v=q('#profileSinceInput').value.trim(); try{ if(v) localStorage.setItem(PROFILE_CUT_KEY,v); else localStorage.removeItem(PROFILE_CUT_KEY); }catch(e){} fetchProfile(); }
 function clearProfileSince(){ q('#profileSinceInput').value=''; try{ localStorage.removeItem(PROFILE_CUT_KEY); }catch(e){} fetchProfile(); }
-const profPer100=(r)=>r==null?'—':r.toFixed(1);
-const profPct=(a,b)=>b?Math.round(100*a/b)+'%':'—';
+const profPer100=(r)=>r==null?'—':dec1(r);
+const profPct=(a,b)=>b?pc0(100*a/b):'—';
 const profPawns=(cp)=>cp==null?'—':(cp/100).toFixed(1).replace('.',',');
 const PROFILE_MIN_AFTER=50;
 const OPENINGS_SHOWN=8, REVIEW_SHOWN=5; // P4: rows shown before "ver más"
@@ -1766,7 +1766,7 @@ function profCompare(b,a){
 function paintProfile(b){
  const a=b.all;
  const empty=!b.analysed;
- q('#profileContext').textContent=empty?'Calculado con Stockfish sobre tus partidas guardadas.':'Calculado con Stockfish sobre '+b.analysed+' partidas'+(b.bots&&b.bots.share!=null?' ('+Math.round(100*b.bots.share)+'% contra bots; no describe cómo juegas contra personas)':'')+'. Son cifras descriptivas, no una nota de nivel.';
+ q('#profileContext').textContent=empty?'Calculado con Stockfish sobre tus partidas guardadas.':'Calculado con Stockfish sobre '+b.analysed+' partidas'+(b.bots&&b.bots.share!=null?' ('+Math.round(100*b.bots.share)+' % contra bots; no describe cómo juegas contra personas)':'')+'. Son cifras descriptivas, no una nota de nivel.';
  if(empty){
   q('#profileKpis').innerHTML='<div class="empty" style="grid-column:1/-1">Todavía no hay partidas analizadas</div>';
   q('#profileVerdict').textContent='';

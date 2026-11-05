@@ -55,13 +55,13 @@ const text = (rt: any, sel: string): string => rt.getEl(sel).textContent;
 describe("chess tab: results card", () => {
   it("shouldBreakDownLossesAndDrawsByHowTheGamesEnded", async () => {
     const rt = await openChess();
-    expect(text(rt, "#lossContext")).toBe("Derrotas: 4 mates · 2 desconexiones (10%) · 3 rendiciones");
+    expect(text(rt, "#lossContext")).toBe("Derrotas: 4 mates · 2 desconexiones (10 %) · 3 rendiciones");
     expect(text(rt, "#drawContext")).toBe("Tablas: 1 ahogados · 2 repetición · 1 material · 1 50 jugadas");
   });
 
   it("shouldStateTheLossRateWithoutDisconnectionsAndItsDenominatorWhenSomeGamesEndedThatWay", async () => {
     const rt = await openChess();
-    expect(text(rt, "#lossRateNote")).toBe("Sin contar desconexiones: 18 derrotas de 100 partidas (18%)"); // 20 losses - 2 disconnections, same 100 games
+    expect(text(rt, "#lossRateNote")).toBe("Sin contar desconexiones: 18 derrotas de 100 partidas (18 %)"); // 20 losses - 2 disconnections, same 100 games
   });
 
   it("shouldNotAddALossRateNoteWhenNoLossWasADisconnection", async () => {
@@ -118,6 +118,23 @@ describe("chess tab: openings and phases", () => {
     const rt = await openChess();
     expect(rt.getEl("#phasesBody").innerHTML).toContain("Final");
     expect(text(rt, "#phasesMeta")).toBe("Mediana: 42 plies · Hidratadas: 10 partidas");
+  });
+});
+
+describe("chess tab: one notation for percentages (P8)", () => {
+  const stripTags = (h: string) => h.replace(/<[^>]*>/g, " ");
+  const OLD = /\d\.\d+ ?%|\d%/; // a decimal point, or a sign glued to the number
+  it("shouldWriteTheDonutScoreWithACommaAndASpace", async () => {
+    const rt = await openChess();
+    const t = stripTags(rt.getEl("#res").innerHTML);
+    expect(t).toMatch(/\d+,\d \%/);
+    expect(t).not.toMatch(OLD);
+  });
+  it("shouldWriteTheOpponentEloSharesWithACommaAndASpace", async () => {
+    const rt = await openChess();
+    const t = stripTags(rt.getEl("#elo").innerHTML);
+    expect(t).toMatch(/40,0 % de 100/);
+    expect(t).not.toMatch(OLD);
   });
 });
 
