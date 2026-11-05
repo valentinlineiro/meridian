@@ -130,6 +130,19 @@ describe("profile tab", () => {
     expect(d).toContain("Aparte: <b>10</b> derrotas por desconexión (6 con un momento decisivo registrado)");
   });
 
+  it("shouldShowFiveGamesPerReviewListAndKeepTheRestOneTapAway", async () => {
+    const mk = (n: number) => Array.from({ length: n }, (_, i) => ({ ...row(`g${i}`, 500 - i), opponent: `Rival ${i}` }));
+    const { rt } = await openProfile({ ...PROFILE, review: { worst: mk(20), best: mk(20) } });
+    for (const sel of ["#profileWorst", "#profileBest"]) {
+      const h = html(rt, sel);
+      expect((h.split('<details class="more-rows"')[0]!.match(/class="prof-game"/g) ?? []).length).toBe(5);
+      expect((h.split('<details class="more-rows"')[1]!.match(/class="prof-game"/g) ?? []).length).toBe(15);
+      expect(h).toContain("Ver 15 partidas más");
+    }
+    const few = await openProfile({ ...PROFILE, review: { worst: mk(4), best: mk(0) } });
+    expect(html(few.rt, "#profileWorst")).not.toContain("more-rows");
+  });
+
   it("shouldNotRenderZeroOfZeroWhenEveryLossWasADisconnection", async () => {
     const all = sec({ decisive: { lossGames: 10, withDecisive: 6, medianMove: 5, byPhase: { opening: 6, middlegame: 0, endgame: 0 },
       competitive: { lossGames: 0, withDecisive: 0, medianMove: null, byPhase: { opening: 0, middlegame: 0, endgame: 0 } },

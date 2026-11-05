@@ -1383,15 +1383,21 @@ function discLine(g){
  const c=g.competitive;
  return '<div class="muted" style="margin-top:4px;display:flex;gap:10px;flex-wrap:wrap"><span>Sin desconexiones: Win '+pctCi(c.winRate,c.winRateCi)+' en '+c.decided+' decididas</span><span>· '+g.disconnections+' derrota'+(g.disconnections===1?'':'s')+' por desconexión'+(g.losses?' ('+Math.round(g.disconnections/g.losses*100)+'% de las derrotas)':'')+'</span></div>';
 }
-function renderCompare(groups, totalGames){
+// P4: a long list shows its first rows and keeps the rest one tap away (native <details>: no state, nothing is dropped, keyboard and screen-reader friendly).
+function moreRows(rows, n, noun){
+ if(!n||rows.length<=n) return rows.join('');
+ return rows.slice(0,n).join('')+'<details class="more-rows" style="margin-top:6px"><summary style="cursor:pointer;color:#8ea0b8;font-size:13px;padding:6px 0">Ver '+(rows.length-n)+' '+noun+' más</summary>'+rows.slice(n).join('')+'</details>';
+}
+function renderCompare(groups, totalGames, cap, noun){
  // groups: [{key,games,wins,losses,draws,winRate,scoreRate}]
  const segLabels={noisy_neural:'Noisy Neural',neural:'Neural',blended:'Blended',stockfish:'Stockfish',pvp:'PvP',bot:'Bots',white:'Blancas',black:'Negras'};
- return groups.map(g=>{
+ const out=groups.map(g=>{
   const dec=g.decided||0, w=dec?Math.round(g.wins/dec*100):0, l=dec?Math.round(g.losses/dec*100):0, d=dec?100-w-l:0; // bars are shares of decided games; unknowns are reported apart
   const pctGames=totalGames? (g.games/totalGames*100).toFixed(1):'0';
   const label=g.label||g.name||segLabels[g.key]||g.key;
   return '<div class="row"><div style="flex:1"><div style="display:flex;justify-content:space-between;align-items:baseline"><b>'+esc(label)+'</b><span class="muted">'+g.games+' · '+pctGames+'%</span></div><div class="bar" style="margin-top:6px;display:flex"><i class="bar-win" style="width:'+w+'%"></i><i class="bar-loss" style="width:'+l+'%"></i><i class="bar-draw" style="width:'+d+'%"></i></div><div class="muted" style="margin-top:4px;display:flex;gap:10px;flex-wrap:wrap"><span>Win '+pctCi(g.winRate,g.winRateCi)+'</span><span>Score '+(g.scoreRate!=null?(g.scoreRate*100).toFixed(1)+'%':'—')+'</span>'+'<span>· barra sobre '+dec+' decididas'+(g.unknown?' · '+g.unknown+' sin resultado':'')+'</span>'+'</div>'+discLine(g)+'</div></div>';
- }).join('') || '<div class="muted">Sin datos</div>';
+ });
+ return moreRows(out,cap,noun||'filas') || '<div class="muted">Sin datos</div>';
 }
 
 let chip={type:'',result:'',color:''};
@@ -1589,8 +1595,8 @@ async function loadChessDashboard(){
   // openings
   if(op&&!op.error&&q('#openingsCard')){
    var opTotal=s.games||1;
-   q('#openingsWhite').innerHTML=renderCompare(op.white||[],opTotal);
-   q('#openingsBlack').innerHTML=renderCompare(op.black||[],opTotal);
+   q('#openingsWhite').innerHTML=renderCompare(op.white||[],opTotal,OPENINGS_SHOWN,'aperturas');
+   q('#openingsBlack').innerHTML=renderCompare(op.black||[],opTotal,OPENINGS_SHOWN,'aperturas');
    populateOpeningFilter(op);
    if(op.population&&q('#openingsPop')) q('#openingsPop').textContent='Hidratadas: '+op.population.hydrated+' / '+op.population.totalMatches+' partidas'+(op.unclassified>0?' · '+op.unclassified+' sin clasificar':'');
   }
@@ -1719,6 +1725,7 @@ const profPer100=(r)=>r==null?'—':r.toFixed(1);
 const profPct=(a,b)=>b?Math.round(100*a/b)+'%':'—';
 const profPawns=(cp)=>cp==null?'—':(cp/100).toFixed(1).replace('.',',');
 const PROFILE_MIN_AFTER=50;
+const OPENINGS_SHOWN=8, REVIEW_SHOWN=5; // P4: rows shown before "ver más"
 const PROF_PHASES=[['opening','Apertura'],['middlegame','Medio juego'],['endgame','Final']];
 function profBar(label,rate,max,detail,cls){ const w=max>0&&rate!=null?Math.max(2,Math.round(100*rate/max)):0; return '<div class="prof-bar"><span>'+esc(label)+'</span><div class="bar"><i class="'+(cls||'bar-err')+'" style="width:'+w+'%"></i></div><b>'+profPer100(rate)+'</b><span class="muted">'+esc(detail||'')+'</span></div>'; }
 function profKpi(label,value,sub){ return '<div class="kpi"><label>'+esc(label)+'</label><b>'+esc(value)+'</b><small>'+esc(sub)+'</small></div>'; }
@@ -1777,8 +1784,8 @@ function paintProfile(b){
   q('#profileDecisive').innerHTML=d.lossGames?decBars+(dd&&dd.lossGames?'<div class="muted" style="margin-top:8px">Aparte: <b>'+dd.lossGames+'</b> derrotas por desconexión ('+dd.withDecisive+' con un momento decisivo registrado). No se cuentan arriba: la partida terminó donde se cortó la conexión, no donde se perdió.</div>':''):'<div class="muted">Sin derrotas analizadas.</div>';
   const conv=(label,x)=>{ const w=profPct(x.win,x.games), pc=(n)=>x.games?Math.round(100*n/x.games):0; return '<div style="margin:8px 0"><div style="display:flex;justify-content:space-between"><b>'+esc(label)+'</b><span class="muted">'+x.games+' partidas</span></div><div class="bar" style="display:flex;margin:6px 0 4px"><i class="bar-win" style="width:'+pc(x.win)+'%"></i><i class="bar-draw" style="width:'+pc(x.draw)+'%"></i><i class="bar-loss" style="width:'+pc(x.loss)+'%"></i></div><div class="legend"><span><i class="dot bar-win"></i>Ganadas '+w+' ('+x.win+')</span><span><i class="dot bar-draw"></i>Tablas '+x.draw+'</span><span><i class="dot bar-loss"></i>Perdidas '+x.loss+'</span></div></div>'; };
   q('#profileConversion').innerHTML=conv('Con ventaja de más de 3 peones',c.advantage)+conv('Con desventaja de más de 3 peones',c.disadvantage);
-  q('#profileWorst').innerHTML=(b.review.worst||[]).map(profGameRow).join('');
-  q('#profileBest').innerHTML=(b.review.best||[]).map(profGameRow).join('');
+  q('#profileWorst').innerHTML=moreRows((b.review.worst||[]).map(profGameRow),REVIEW_SHOWN,'partidas');
+  q('#profileBest').innerHTML=moreRows((b.review.best||[]).map(profGameRow),REVIEW_SHOWN,'partidas');
   q('#profileCut').innerHTML=b.before&&b.after?profCompare(b.before,b.after):'';
  }
  const cut=profileCut();

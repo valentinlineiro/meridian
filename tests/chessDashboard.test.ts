@@ -147,6 +147,30 @@ describe("chess tab: phases separate the owner's disconnections (P3)", () => {
   });
 });
 
+describe("chess tab: long lists show their first rows (P4)", () => {
+  const groups = (n: number) => Array.from({ length: n }, (_, i) => group({ key: `o${i}`, label: `Apertura ${i}`, games: 10 + i }));
+  const visible = (h: string) => (h.split('<details class="more-rows"')[0]!.match(/class="row"/g) ?? []).length;
+  const hidden = (h: string) => ((h.split('<details class="more-rows"')[1] ?? "").match(/class="row"/g) ?? []).length;
+  it("shouldShowTheFirstRowsAndKeepTheRestOneTapAwayWithoutDroppingAny", async () => {
+    const rt = await openChess();
+    const h = rt.sandbox.renderCompare(groups(43), 1000, 8, "aperturas") as string;
+    expect(visible(h)).toBe(8);
+    expect(hidden(h)).toBe(35);
+    expect(h).toContain("Ver 35 aperturas más");
+    expect(h).toContain("Apertura 42"); // the last one is in the page, inside the fold
+  });
+  it("shouldNotAddAFoldToAShortList", async () => {
+    const rt = await openChess();
+    for (const n of [3, 8]) expect(rt.sandbox.renderCompare(groups(n), 100, 8, "aperturas")).not.toContain("more-rows");
+  });
+  it("shouldStayUncappedWhereNoCapIsAsked", async () => {
+    const rt = await openChess();
+    const h = rt.sandbox.renderCompare(groups(20), 100) as string;
+    expect(h).not.toContain("more-rows");
+    expect(visible(h)).toBe(20);
+  });
+});
+
 describe("chess tab: unclassified and mates", () => {
   it("shouldSayHowManyGamesHaveNoOpeningFamilyYet", async () => {
     const rt = await openChess({ "/api/stats/openings": { white: [], black: [], unclassified: 7, population: { hydrated: 5, totalMatches: 100 } } });
