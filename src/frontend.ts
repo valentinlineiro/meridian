@@ -225,7 +225,7 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
  <div class="card" id="threatsCard" style="display:none"><h2>Amenazas de mate</h2><div id="threatsMain"></div><div class="muted" id="threatsPhases" style="margin-top:8px"></div><div class="muted" id="threatsTrend" style="margin-top:4px"></div><div class="muted" id="threatsNote" style="margin-top:8px"></div><button class="btn btn-g" id="threatsMissedBtn" onclick="toggleMissedThreats()" style="margin-top:8px;display:none"></button></div>
  <div class="grid2">
   <div class="card" id="openingsCard"><h2>Repertorio de aperturas</h2><div id="openingsTabs" style="display:flex;gap:6px;margin-bottom:12px"><button class="btn btn-p" id="tabBtnBlancas" onclick="showOpeningTab('white')">Blancas</button><button class="btn btn-g" id="tabBtnNegras" onclick="showOpeningTab('black')">Negras</button></div><div id="openingsWhite"></div><div id="openingsBlack" style="display:none"></div><div class="muted" id="openingsPop" style="margin-top:8px"></div></div>
-  <div class="card" id="phasesCard"><h2>Fases de partida</h2><div id="phasesBody"></div><div class="muted" id="phasesMeta" style="margin-top:8px"></div></div>
+  <div class="card" id="phasesCard"><h2>Fases de partida</h2><div class="muted" style="margin-bottom:8px">La fase es aquella en la que terminó la partida, no cómo juegas esa fase. Una desconexión corta la partida donde estuviera: por eso se muestran aparte.</div><div id="phasesBody"></div><div class="muted" id="phasesMeta" style="margin-top:8px"></div></div>
  </div>
  </details>
 

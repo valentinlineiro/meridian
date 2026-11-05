@@ -59,7 +59,10 @@ const sec = (o: any = {}) => ({
   games: 100, moves: 4000, serious: 388, ratePer100: 9.7, acpl: 102.5,
   byPhase: { opening: { moves: 1000, serious: 85, ratePer100: 8.5 }, middlegame: { moves: 2400, serious: 271, ratePer100: 11.3 }, endgame: { moves: 600, serious: 26, ratePer100: 4.3 } },
   byColor: { white: { games: 50, moves: 2000, serious: 184, ratePer100: 9.2 }, black: { games: 50, moves: 2000, serious: 204, ratePer100: 10.2 } },
-  decisive: { lossGames: 40, withDecisive: 30, medianMove: 10, byPhase: { opening: 15, middlegame: 14, endgame: 1 } },
+  decisive: { lossGames: 40, withDecisive: 30, medianMove: 10, byPhase: { opening: 15, middlegame: 14, endgame: 1 },
+    // P3: 10 of the 40 losses are disconnections (6 with a decisive moment); the competitive figures leave them out
+    competitive: { lossGames: 30, withDecisive: 24, medianMove: 12, byPhase: { opening: 12, middlegame: 11, endgame: 1 } },
+    disconnection: { lossGames: 10, withDecisive: 6, byPhase: { opening: 3, middlegame: 3, endgame: 0 } } },
   conversion: { advantage: { games: 80, win: 62, draw: 6, loss: 12 }, disadvantage: { games: 20, win: 10, draw: 2, loss: 8 }, thrown: 12 },
   ...o,
 });
@@ -85,13 +88,13 @@ describe("profile tab", () => {
     const k = html(rt, "#profileKpis");
     expect(k).toContain("<b>9.7</b><small>por 100 jugadas · 388 de 4000</small>");
     expect(k).toContain("<b>1,0</b><small>peones por jugada · 103 cp</small>");
-    expect(k).toContain("<b>75%</b><small>30 de 40 derrotas</small>");
+    expect(k).toContain("<b>80%</b><small>24 de 30 derrotas sin desconexión · 10 por desconexión aparte</small>");
     expect(k).toContain("<b>78%</b><small>62 de 80 · 12 perdidas</small>");
   });
 
   it("shouldNameTheWorstPhaseInAFixedRuleSentence", async () => {
     const { rt } = await openProfile();
-    expect(text(rt, "#profileVerdict")).toBe("Mayor tasa observada de errores graves: medio juego (11.3 por 100 jugadas; final: 4.3). Hay un momento decisivo en 75% de tus derrotas (30 de 40), con mediana en tu jugada 10.");
+    expect(text(rt, "#profileVerdict")).toBe("Mayor tasa observada de errores graves: medio juego (11.3 por 100 jugadas; final: 4.3). Hay un momento decisivo en 80% de tus derrotas sin desconexión (24 de 30), con mediana en tu jugada 12.");
   });
 
   it("shouldDrawPhaseAndColourBarsWithRateAndCount", async () => {
@@ -119,10 +122,25 @@ describe("profile tab", () => {
   it("shouldRenderDecisiveMomentsSharesByPhase", async () => {
     const { rt } = await openProfile();
     const d = html(rt, "#profileDecisive");
-    expect(d).toContain("<b>30 de 40</b> derrotas tienen un momento decisivo");
-    expect(d).toContain("antes de tu jugada 10");
+    expect(d).toContain("<b>24 de 30</b> derrotas sin desconexión tienen un momento decisivo");
+    expect(d).toContain("antes de tu jugada 12");
     expect(d).toContain("50%");
-    expect(d).toContain("47%");
+    expect(d).toContain("46%");
+    // the disconnections are reported apart, not dropped and not mixed into the shares above
+    expect(d).toContain("Aparte: <b>10</b> derrotas por desconexión (6 con un momento decisivo registrado)");
+  });
+
+  it("shouldNotRenderZeroOfZeroWhenEveryLossWasADisconnection", async () => {
+    const all = sec({ decisive: { lossGames: 10, withDecisive: 6, medianMove: 5, byPhase: { opening: 6, middlegame: 0, endgame: 0 },
+      competitive: { lossGames: 0, withDecisive: 0, medianMove: null, byPhase: { opening: 0, middlegame: 0, endgame: 0 } },
+      disconnection: { lossGames: 10, withDecisive: 6, byPhase: { opening: 6, middlegame: 0, endgame: 0 } } } });
+    const { rt } = await openProfile({ ...PROFILE, all });
+    const d = html(rt, "#profileDecisive");
+    expect(d).not.toContain("0 de 0");
+    expect(d).toContain("Ninguna derrota fue una partida competitiva");
+    expect(d).toContain("Aparte: <b>10</b> derrotas por desconexión (6 con un momento decisivo registrado)"); // the disconnections stay visible
+    expect(html(rt, "#profileKpis")).not.toContain("0 de 0");
+    expect(text(rt, "#profileVerdict")).not.toContain("0 de 0");
   });
 
   it("shouldRenderConversionWithDrawsApartAndNoUnexplainedThreshold", async () => {

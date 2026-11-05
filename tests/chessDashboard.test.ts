@@ -121,6 +121,32 @@ describe("chess tab: openings and phases", () => {
   });
 });
 
+describe("chess tab: phases separate the owner's disconnections (P3)", () => {
+  const comp = (o: any = {}) => ({ games: 115, wins: 52, losses: 61, draws: 2, unknown: 0, decided: 115, winRate: 0.452, winRateCi: { lower: 0.36, upper: 0.55 }, scoreRate: 0.46, ...o });
+  const phase = (o: any = {}) => ({ key: "opening", label: "Apertura", games: 169, wins: 52, losses: 115, draws: 2, unknown: 0, decided: 169, winRate: 0.308, winRateCi: { lower: 0.24, upper: 0.38 }, scoreRate: 0.31, disconnections: 54, competitive: comp(), ...o });
+  it("shouldKeepTheRowAndAddTheWinRateWithoutDisconnectionsAndTheirCount", async () => {
+    const rt = await openChess();
+    const h = rt.sandbox.renderCompare([phase()], 1683) as string;
+    expect(h).toContain("Win 30.8%");                                        // every game still there, as before
+    expect(h).toContain("Sin desconexiones: Win 45.2%");                     // the same rate without them ...
+    expect(h).toContain("en 115 decididas");
+    expect(h).toContain("54 derrotas por desconexión (47% de las derrotas)"); // ... and how many they are
+  });
+  it("shouldExplainThatThePhaseIsWhereTheGameEnded", async () => {
+    const { DASHBOARD_HTML } = await import("../src/frontend.ts");
+    expect(DASHBOARD_HTML).toContain("La fase es aquella en la que terminó la partida, no cómo juegas esa fase");
+  });
+  it("shouldSaySoWhenAPhaseHasNoDisconnections", async () => {
+    const rt = await openChess();
+    expect(rt.sandbox.renderCompare([phase({ disconnections: 0 })], 100)).toContain("Sin desconexiones en esta fase");
+  });
+  it("shouldLeaveOtherComparisonsUntouched", async () => {
+    const rt = await openChess();
+    const h = rt.sandbox.renderCompare([{ ...phase(), disconnections: undefined, competitive: undefined, key: "white" }], 100) as string;
+    expect(h).not.toContain("desconexi");
+  });
+});
+
 describe("chess tab: unclassified and mates", () => {
   it("shouldSayHowManyGamesHaveNoOpeningFamilyYet", async () => {
     const rt = await openChess({ "/api/stats/openings": { white: [], black: [], unclassified: 7, population: { hydrated: 5, totalMatches: 100 } } });

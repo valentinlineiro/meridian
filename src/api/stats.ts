@@ -38,6 +38,9 @@ export interface PhaseStat {
   winRate: number | null;
   winRateCi: { lower: number; upper: number } | null;
   scoreRate: number | null;
+  // P3: losses by the owner's disconnection, and the same summary without them (the fields above still count every game).
+  disconnections: number;
+  competitive: { games: number; wins: number; losses: number; draws: number; unknown: number; decided: number; winRate: number | null; winRateCi: { lower: number; upper: number } | null; scoreRate: number | null };
 }
 
 async function allMatches(db: D1Database, userId: string | null) {
@@ -68,6 +71,9 @@ function summarizeBy<T extends { result: unknown; outcome: unknown }>(rows: T[],
   for (const r of rows) { const k = key(r); (groups.get(k) ?? groups.set(k, []).get(k)!).push(r); }
   return [...groups.entries()].map(([k, v]) => ({ k, rows: v, ...summarize(v as any) }));
 }
+
+// The owner lost because the connection dropped (end_condition 'disconnection' + a loss, as in the results card). An opponent's disconnection that the owner won is not one.
+const isDisconnectionLoss = (r: { end_condition?: unknown; result?: unknown; outcome?: unknown }) => r.end_condition === "disconnection" && resultOf(r as any) === "loss";
 
 const num = (v: unknown) => (typeof v === "number" ? v : v == null ? null : Number(v));
 
@@ -395,7 +401,7 @@ export async function handleStatsPhases(db: D1Database, url: URL): Promise<Respo
   const population = await getMatchPopulation(db, userId);
 
   const q = `
-    SELECT md.phase_key, m.result, m.outcome
+    SELECT md.phase_key, m.result, m.outcome, md.end_condition
     FROM matches m
     JOIN match_details md ON m.match_id = md.match_id
     WHERE md.phase_key IS NOT NULL
@@ -420,7 +426,10 @@ export async function handleStatsPhases(db: D1Database, url: URL): Promise<Respo
   const phases: PhaseStat[] = phaseRows
     .map(({ k, rows: _rows, ...stat }) => {
       const key = k as PhaseKey;
-      return { key, label: PHASE_META[key]?.label ?? key, ...stat };
+      // P3: a game that ends by the owner's disconnection says where it ended, not how the owner plays that phase. Nothing is removed:
+      // the totals above are unchanged, `competitive` is the same summary without those losses, and `disconnections` counts them.
+      const disc = _rows.filter(isDisconnectionLoss);
+      return { key, label: PHASE_META[key]?.label ?? key, ...stat, disconnections: disc.length, competitive: summarize(_rows.filter((r: any) => !isDisconnectionLoss(r)) as any) };
     })
     .sort((a, b) => {
       const ai = CANONICAL_PHASES.indexOf(a.key);
