@@ -243,7 +243,7 @@ Una regla no está obligada a producir una conclusión; sí a no producir una qu
 | 2 | ELO con k ≤ 20 como rango de escala; k > 20 sin calibración | Aprobado |
 | 3 | Admisión por estabilidad de cada borde, semiancho ≤ 20 % con bootstrap dependiente; sin «≥ 200 intervalos» | Aprobado |
 | 4 | ELO: nulo sin deriva, asimétrico, bloques de 3 (referencia provisional); suficiencia por dirección | Aprobado |
-| 5 | ELO: condición de vecindad k − 5, k, k + 5 (extremos de la rejilla no admitidos), por dirección y nivel Aprobado (rev. 4). Hoy ningún borde se admite; los resultados cercanos al 20 % no son evidencia fuerte por sí solos |
+| 5 | ELO: condición de vecindad k − 5, k, k + 5 (extremos de la rejilla no admitidos), por dirección y nivel | Aprobado (rev. 4). Hoy ningún borde se admite; los resultados cercanos al 20 % no son evidencia fuerte por sí solos |
 | 6 | XP: contraste unilateral; 26 semanas necesarias, no suficientes | Aprobado |
 | 7 | XP: máximo entre bloques de 7 y 14 días | **Retirada**: el remuestreo no conserva la dependencia (rev. 4) |
 | 8 | XP: criterio (d) como diagnóstico de dependencia sobre la distribución del estadístico, no como requisito universal; el fallo demostrado es el de este remuestreo, no el de todo método; hoy XP sin calibración | Reformulado en la rev. 5 |
