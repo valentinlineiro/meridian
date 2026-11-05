@@ -31,7 +31,7 @@ Evaluation {
 | `kind` | Reglas actuales | Descartes |
 |---|---|---|
 | `statistical` | `CHESS_COLOR_ASYMMETRY`, `CHESS_COLOR_ASYMMETRY_LONGITUDINAL` | **Sí**: comparan proporciones con n, umbral e IC |
-| `threshold` | `CHESS_RATING_JUMP`, `LANG_XP_ACCELERATION` (`LANG_FOCUS_SHIFT_LONGITUDINAL` queda fuera, §3.1) | **Sí, sin incertidumbre**: cumplen o no un umbral determinista; no hay IC y no se inventa |
+| `threshold` | `CHESS_RATING_JUMP`, `LANG_XP_ACCELERATION` (`LANG_FOCUS_SHIFT_LONGITUDINAL` queda fuera, §3.1) | **Sí**: la decisión final compara un efecto con límites. Hasta A7 los límites eran fijos y sin incertidumbre; **desde A7 (§15) los de `CHESS_RATING_JUMP` y `LANG_XP_ACCELERATION` son bandas empíricas con incertidumbre estadística en sus bordes** (estimada al calibrar, no en cada evaluación). El `kind` no cambia, y no hay IC de la diferencia ni se inventa |
 | `event` | `LANG_ACTIVE_COURSE_SWITCH`, `STREAK_MILESTONE`, `STREAK_BROKEN` | **No**: el evento ocurrió o no; no ocurrir no es una señal descartada |
 
 ## 3. Motivos de no emisión (enumerado cerrado)
@@ -54,6 +54,8 @@ Reglas:
 4. `effect_below_threshold` **no** afirma ausencia de efecto: el IC puede contener el umbral. Meridian no ofrece un resultado "no hay efecto" (eso exigiría equivalencia estadística; fuera de alcance).
 
 ### 3.1 Qué condición cae en qué motivo
+
+> **A7 (§15) sustituye los criterios de efecto de `CHESS_RATING_JUMP` (|Δ ELO| ≥ 25) y de `LANG_XP_ACCELERATION` (XP ≥ 200, ritmo ≥ 1,3 ×) de las filas siguientes.** Quedan como histórico del contrato congelado y **no son vigentes tras la implementación de A7**; la fuente es §15. Las demás condiciones de esas filas (ELO observado, anclas, intervalo ≥ 3 días, tasa histórica definida) siguen vigentes.
 
 Tres fallos distintos, que no se mezclan:
 
@@ -122,7 +124,7 @@ Se derivan **solo de la evaluación transportada** (`status`, `reasons` y `metri
 | ID | Pregunta | Propuesta |
 |---|---|---|
 | **D1** | ¿Dos estados o tres? | ✅ **Aprobada.** Dos estados; "inconcluso" se deriva solo de `status` + `reasons` + `metrics` transportados (§4). |
-| **D2** | ¿El enumerado de §3 es completo? | ✅ **Aprobada.** Seis motivos con las definiciones de §3.1; `LANG_FOCUS_SHIFT_LONGITUDINAL` fuera, pendiente de contrato propio. |
+| **D2** | ¿El enumerado de §3 es completo? | ✅ **Aprobada.** Siete motivos (A7 añade `calibration_unavailable`, que solo aplica a `CHESS_RATING_JUMP` y `LANG_XP_ACCELERATION`) con las definiciones de §3.1; `LANG_FOCUS_SHIFT_LONGITUDINAL` fuera, pendiente de contrato propio. |
 | **D3** | ¿Todos los fallos o solo el primero? | ✅ **Aprobada.** Todos (regla 1 de §3). Amplía la explicación; por sí sola no cambia el conjunto de hallazgos emitidos (los cambios vienen de las enmiendas, §8). *No confundir con el «invariante de oro» de §8, que antes se llamaba también «D3».* |
 | **D4** | ¿Qué `kind` generan evaluación? | ✅ **Aprobada.** `statistical` y `threshold`; `event` no. Los `threshold` no son homogéneos: §3.1 muestra que XP-aceleración y salto de ELO caben en el enumerado; foco de idioma no. |
 | **D5** | Formato del `evidenceId` | ⚠️ **Retirada de este contrato:** se decide en el contrato de salida estructurada. |
@@ -627,5 +629,5 @@ A diferencia de A2, **`findings` deja de ser idéntico**: `CHESS_RATING_JUMP` y 
 4. Dirección y nivel independientes: admitir un borde no admite los demás.
 5. Artefacto: `--check` falla si el JSON no coincide con el script; el dominio no recalcula.
 6. Golden: `findings` de las demás reglas byte a byte; ELO/XP sin hallazgos con el artefacto inicial.
-7. Datos ausentes (A2, A5): la regla 1 de §3 sigue vigente y se registran **todos** los motivos que fallan. `calibration_unavailable` solo se añade cuando los datos necesarios para clasificar existen: si falta un dato (`data_unavailable`) o la ventana es corta (`span_too_short`), no se intenta clasificar la calibración y esos motivos van solos. Nunca 0. Un test cubre cada combinación (`span_too_short` + historia suficiente; ventana suficiente + historia insuficiente).
+7. Datos ausentes (A2, A5): la regla 1 de §3 sigue vigente y se registran **todos** los motivos que fallan. `calibration_unavailable` solo se añade cuando los datos necesarios para clasificar existen: si falta un dato (`data_unavailable`) o la ventana es corta (`span_too_short`), no se añade `calibration_unavailable` y `calibration_unavailable` no se añade. Los demás motivos se registran conforme a la regla general (todos los que realmente fallen, incluidas sus combinaciones). Nunca 0. Un test cubre cada combinación (`span_too_short` + historia suficiente; ventana suficiente + historia insuficiente).
 8. UI: ningún texto cita 25 puntos, 1,3 × ni «aprendizaje»; muestra «Sin referencia de variación habitual todavía».
