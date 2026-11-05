@@ -1,6 +1,6 @@
 # Calibración de los umbrales de ELO y XP — diseño del método
 
-Fecha: 2026-11-05 (rev. 4, tras tres revisiones) · Estado: **propuesta para revisión final. No implementa nada, no cambia código ni contratos vigentes, no toca producción.**
+Fecha: 2026-11-05 (rev. 5, tras cuatro revisiones) · Estado: **propuesta para revisión final. No implementa nada, no cambia código ni contratos vigentes, no toca producción.**
 Origen: hallazgo P4 de `2026-11-05-product-quality-audit.md`. Secuencia: (1) este documento, (2) revisión final del método, (3) enmienda del contrato, (4) implementación y pruebas en otra PR.
 
 Cifras reproducibles con `calibration-elo-xp/exploration.py` (semilla fija, ≈ 45 s; la entrada son lecturas de solo lectura de D1 y no se versiona). Se recalcularon el 2026-11-05
@@ -10,6 +10,10 @@ y difieren algo de las de la auditoría, que usaba pares de 7 días entre anclas
 se retira «≥ 200 intervalos».
 
 **Cambios de la rev. 3:** el nulo de ELO sin invertir signos retira la deriva observada (−0,33 puntos por partida) y conserva solo la asimetría; se midió la sensibilidad de XP al tamaño de bloque.
+
+**Cambios de la rev. 5 (breve, solo redacción; no se calcula nada nuevo):** (a) XP: se distingue lo **demostrado** (este remuestreo por bloques no conserva la dependencia) de lo **no demostrado** (que ningún método pueda
+calibrar XP); el criterio (d) pasa de «reproducir la ACF en todos los lags» a un diagnóstico sobre la distribución del estadístico; (b) ELO: los porcentajes próximos al 20 % no son evidencia fuerte por sí solos;
+(c) se explicita el coste de las decisiones (§8) y que no hay umbral de reserva.
 
 **Cambios de la rev. 4:** (a) ELO: se calcula k = 15, la condición de vecindad se define con k − 5, k y k + 5, y su aplicación es un resultado del script, con 400 réplicas de bootstrap; (b) XP: se miden
 también bloques de 21 y 28 días y se comprueba si el remuestreo **conserva la dependencia** entre bloques. **No la conserva en ningún tamaño**, así que se retira el procedimiento «máximo entre 7 y 14 días» y
@@ -120,6 +124,9 @@ Resultado hoy (incertidumbre / sensibilidad entre nulos; ✓ si cumple):
 dependen del ruido de Monte Carlo; con 150 réplicas (rev. 3) algunos porcentajes cambiaban hasta 15 puntos entre ejecuciones; con 400 y semilla fija son reproducibles, pero ese error no desaparece, y es la razón
 de la condición de vecindad.
 
+**Cómo leer los porcentajes cercanos al corte.** Un 20,1 % o un 20,2 % frente a un límite de 20 % no es evidencia fuerte de insuficiencia, ni lo sería un 19,9 % de suficiencia: están dentro del error de Monte Carlo y de la
+incertidumbre del propio bootstrap. Se mantiene el criterio sin rebajarlo para obtener un resultado positivo; la decisión descansa en la condición de vecindad, no en una décima concreta.
+
 Proyección orientativa (la incertidumbre baja como 1/√n; 62 intervalos hoy, ≈ 1,5 más por día): los bordes superiores (≈ 20 %) podrían cumplir en semanas; los inferiores (≈ 35–40 %) piden ≈ 3 veces los intervalos
 (≈ 190), es decir, ≈ febrero de 2027. La suficiencia no depende de un contador: si la incertidumbre no baja, el hito se mueve.
 
@@ -153,9 +160,16 @@ incertidumbre de cada cuantil (semiancho del IC95, la serie remuestreada por blo
 (error típico ≈ 0,09). **Ningún tamaño reproduce la dependencia observada a 14 y 21 días**: la pierde al cruzar las fronteras entre bloques, justo donde debía conservarla. Con los datos actuales, el máximo
 entre bloques de 7 y 14 días de la rev. 3 **no demuestra** ser conservador, y bloques más largos (6 y 4 bloques) no se pueden estimar con estabilidad.
 
-**Conclusión: XP queda sin calibración.** No se adopta otra convención para salvarlo. Nuevo criterio de admisión (d): el remuestreo debe reproducir la autocorrelación observada en los lags 1–21 dentro de ≈ 2
-errores típicos; hoy ningún tamaño lo hace. Se mantienen los demás criterios (mínimo de 26 semanas ≈ 2026-12-24 como condición necesaria, no suficiente; semiancho ≤ 20 %; sensibilidad ≤ 20 % entre tamaños de
-bloque). Qué haría falta, sin decidirlo aquí: más histórico (más bloques largos) o un nulo que modele la dependencia en lugar de remuestrearla por bloques, y ambas cosas son decisiones para otra revisión.
+**Conclusión: XP queda sin calibración.** No se adopta otra convención para salvarlo.
+
+**Qué está demostrado y qué no.** Demostrado: la implementación evaluada (`sim_series()`: bloques no solapados elegidos de forma independiente) rompe parte de la dependencia en las fronteras y no conserva la distribución
+del estadístico de forma estable (los cuantiles cambian demasiado con el tamaño de bloque). **No demostrado:** que ningún otro nulo pueda calibrar XP. No se han probado un bootstrap estacionario (bloques de longitud
+aleatoria, sin fronteras rígidas) ni un nulo modelado (un modelo temporal ajustado que simule series sin aceleración). Con 133 días tampoco se asume que alguno lo consiga.
+
+Criterio de admisión (d), como **diagnóstico**, no como obligación universal de reproducir la ACF en cada lag: el procedimiento de nulo debe conservar adecuadamente la dependencia relevante, y eso se comprueba sobre lo que
+importa, la distribución del estadístico que se calibra (cuantiles estables entre variantes razonables del procedimiento y diagnósticos de dependencia sin discrepancias claras). Los números de la ACF de arriba son el
+diagnóstico que hoy falla para este procedimiento, no el criterio de aceptación de otros. Se mantienen los demás criterios (mínimo de 26 semanas ≈ 2026-12-24 como condición necesaria, no suficiente; semiancho ≤ 20 %; sensibilidad ≤ 20 % entre tamaños de
+bloque). Qué podría estudiarse en otra revisión, sin implementarlo ni decidirlo aquí: más histórico, un bootstrap estacionario o un nulo modelado, cada uno sujeto al diagnóstico (d) y a los demás criterios.
 
 Hoy las evaluaciones de XP muestran el efecto sin afirmarlo: 7 días ×1,47; 14 días ×1,27; 28 días ×1,40, con «Sin referencia de variación habitual todavía». La regla actual emite 7 y 28 días. Desaparece el mínimo
 de 200 XP (la banda ya penaliza las ventanas con pocos días); el histórico mínimo h sigue siendo ≥ 28 días; las ventanas de 3 a 6 días también quedan sin calibración.
@@ -197,6 +211,18 @@ Cada recalibración puede cambiar una etiqueta de ayer: es correcto, la referenc
 
 Fuera de alcance: reglas de «caída» de XP o de ELO, STREAK, color, Games (ya calibrado), el filtro de confirmación.
 
+**Coste de estas decisiones.** Si ELO y XP pasan a `calibration_unavailable`, los resultados actuales dejan de emitir afirmaciones:
+
+| Regla | Efecto observado | Interpretación |
+|---|---|---|
+| Salto de ELO | Según partidas | Sin referencia de variación habitual |
+| Mayor XP diario, 7 días | ×1,47 | Sin referencia de variación habitual |
+| Mayor XP diario, 14 días | ×1,27 | Sin referencia de variación habitual |
+| Mayor XP diario, 28 días | ×1,40 | Sin referencia de variación habitual |
+
+Es una pérdida temporal de funcionalidad a cambio de honestidad. **No se conservan los umbrales antiguos (25 puntos de ELO, ×1,3 de XP) como reserva**: reintroducirían las afirmaciones arbitrarias que se eliminan.
+Una regla no está obligada a producir una conclusión; sí a no producir una que los datos no sostienen.
+
 ## 9. Limitaciones
 
 - **Un usuario, 42 días densos de ELO y 133 de XP.** No es una calibración poblacional ni permite estimar **tasas reales de falsas alarmas**: solo las que implica el modelo nulo. Las cifras orientan el método; no son umbrales.
@@ -216,9 +242,9 @@ Fuera de alcance: reglas de «caída» de XP o de ELO, STREAK, color, Games (ya 
 | 2 | ELO con k ≤ 20 como rango de escala; k > 20 sin calibración | Aprobado |
 | 3 | Admisión por estabilidad de cada borde, semiancho ≤ 20 % con bootstrap dependiente; sin «≥ 200 intervalos» | Aprobado |
 | 4 | ELO: nulo sin deriva, asimétrico, bloques de 3 (referencia provisional); suficiencia por dirección | Aprobado |
-| 5 | ELO: condición de vecindad k − 5, k, k + 5 (extremos de la rejilla no admitidos), por dirección y nivel | Corregida y evaluada en la rev. 4; pendiente de revisión. Hoy ningún borde se admite |
+| 5 | ELO: condición de vecindad k − 5, k, k + 5 (extremos de la rejilla no admitidos), por dirección y nivel Aprobado (rev. 4). Hoy ningún borde se admite; los resultados cercanos al 20 % no son evidencia fuerte por sí solos |
 | 6 | XP: contraste unilateral; 26 semanas necesarias, no suficientes | Aprobado |
 | 7 | XP: máximo entre bloques de 7 y 14 días | **Retirada**: el remuestreo no conserva la dependencia (rev. 4) |
-| 8 | XP: criterio (d), el remuestreo debe reproducir la autocorrelación observada; hoy XP sin calibración | Propuesta nueva |
+| 8 | XP: criterio (d) como diagnóstico de dependencia sobre la distribución del estadístico, no como requisito universal; el fallo demostrado es el de este remuestreo, no el de todo método; hoy XP sin calibración | Reformulado en la rev. 5 |
 | 9 | `calibration_unavailable` con «Sin referencia de variación habitual todavía»; INSUFICIENTE solo con efecto distinto de cero | Aprobado |
 | 10 | Sin filtro de confirmación | Aprobado |
