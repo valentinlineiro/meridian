@@ -1,11 +1,14 @@
 # Calibración de los umbrales de ELO y XP — diseño del método
 
-Fecha: 2026-11-05 · Estado: **propuesta para revisión. No implementa nada, no cambia código ni contratos vigentes, no toca producción.**
-Origen: hallazgo P4 de `2026-11-05-product-quality-audit.md`. Secuencia acordada: (1) este documento, (2) revisión y aprobación del método,
-(3) enmienda del contrato, (4) implementación y pruebas en otra PR.
+Fecha: 2026-11-05 (rev. 2, tras la revisión) · Estado: **propuesta para revisión final. No implementa nada, no cambia código ni contratos vigentes, no toca producción.**
+Origen: hallazgo P4 de `2026-11-05-product-quality-audit.md`. Secuencia: (1) este documento, (2) revisión final del método, (3) enmienda del contrato, (4) implementación y pruebas en otra PR.
 
-Cifras reproducibles con `calibration-elo-xp/exploration.py` (semilla fija; la entrada son lecturas de solo lectura de D1 y no se versiona).
-Se recalcularon el 2026-11-05 y difieren algo de las de la auditoría, que usaba pares de 7 días entre anclas consecutivas.
+Cifras reproducibles con `calibration-elo-xp/exploration.py` (semilla fija, ≈ 45 s; la entrada son lecturas de solo lectura de D1 y no se versiona). Se recalcularon el 2026-11-05
+y difieren algo de las de la auditoría, que usaba pares de 7 días entre anclas consecutivas.
+
+**Cambios de la rev. 2** (revisión de la rev. 1): niveles unilaterales para XP y bilaterales para ELO; el remuestreo de ELO ahora respeta k exacto (la rev. 1 podía pasarse de k y normalizaba
+mal); la incertidumbre de las bandas se estima con dependencia temporal; la suficiencia depende de la estabilidad de cada borde, no de un contador, y esto **reduce** lo que ELO admite hoy
+(§4); se retira el criterio de «≥ 200 intervalos».
 
 ## 1. Qué está mal hoy
 
@@ -14,57 +17,68 @@ Se recalcularon el 2026-11-05 y difieren algo de las de la auditoría, que usaba
 | `CHESS_RATING_JUMP` | \|Δ ELO\| ≥ 25 puntos | «Salto de ELO» | 25 es una constante sin relación con el ruido del ELO de este usuario |
 | `LANG_XP_ACCELERATION` | cociente ≥ 1,3, ≥ 3 días, ≥ 200 XP | «Mayor XP diario» | 1,3 tampoco sale de los datos; 200 XP es un tercio de un día medio (627 XP) y nunca limita |
 
-Lo que dicen los datos:
+- **ELO.** 64 anclas (el último ELO de cada sincronización, que es el que la regla puede usar) en 36 días distintos, con un hueco de 225 días: los datos densos son 63 anclas en **42 días**,
+  62 intervalos, 253 partidas (≈ 6 al día). El cambio entre anclas escala con la raíz del número de partidas k: **Δ/√k tiene desviación típica 11,0 puntos**. Con 10 partidas el rango habitual
+  al 95 % es ≈ ±70; 25 puntos son ≈ 0,7 σ√10, un tercio del semiancho de esa banda. En ventanas reales de 7 días el \|Δ\| mediano es 35 y 25 o más ocurre en el 63 %.
+- **XP.** 133 días contiguos desde 2026-06-25 (mucho menos que la racha de 1.117 días). Media 627, mediana 576, CV 0,47; autocorrelación 0,51 a un día y 0,18 a siete. Bajo «sin cambio»
+  (bloques de 7 días), un cociente ≥ 1,3 aparece en el 20 % de las ventanas de 3 días, 15 % de 7, 12 % de 14 y 7 % de 28. En los datos reales, en el 45–53 %, incluida la deriva real.
 
-- **ELO.** 64 anclas (el ELO que la regla puede usar: último dato de cada sincronización) en 36 días distintos, pero con un hueco de 225 días:
-  los datos densos son 63 anclas en **42 días**, 62 intervalos, 253 partidas (≈ 6 al día). El cambio entre anclas consecutivas escala con la raíz del
-  número de partidas: **Δ/√k tiene desviación típica 11,0 puntos** (IC95 bootstrap [9,1; 12,8]). Con 10 partidas el rango habitual al 95 % es ≈ ±70 puntos;
-  25 puntos son ≈ 0,7 σ√10, un tercio del semiancho de esa banda. En ventanas reales de 7 días, el \|Δ\| mediano es 35 y 25 o más ocurre en el 63 % de ellas.
-- **XP.** 133 días contiguos (desde 2026-06-25; el histórico de XP es mucho más corto que la racha de 1.117 días). Media 627, mediana 576, CV 0,47;
-  autocorrelación 0,51 a un día y 0,18 a siete. Bajo «sin cambio» (remuestreo de bloques de 7 días), un cociente ≥ 1,3 aparece en el 21 % de las ventanas de
-  3 días, 15 % de 7, 12 % de 14 y 7 % de 28. En los datos reales ocurre en el 45–53 %, incluida la deriva real.
-
-Consecuencia: las dos reglas emiten alertas que no distinguen un cambio de la variación habitual. El problema no es el valor 25 ni el 1,3: es que
-**ningún número fijo puede ser correcto** porque el ruido depende de cuántas partidas o días hay en la ventana.
+Ningún número fijo puede ser correcto: el ruido depende de cuántas partidas o días hay en la ventana.
 
 ## 2. Principios
 
-De Games (`NoiseBands`, `linkedin-games-p1-interpretation-design-2026-11-04.md`), se reutiliza el método, no el código:
+De Games (`NoiseBands`, `linkedin-games-p1-interpretation-design-2026-11-04.md`) se reutiliza el método, no el código: (1) el límite sale de la distribución del estadístico bajo «sin cambio real» en la
+propia serie, por cola; (2) se genera fuera del Worker y se versiona como artefacto revisable por PR, con `--check` que regenera y falla si difiere, y con `calibratedThrough`; (3) sin calibración suficiente
+no se afirma nada y se dice por qué; (4) lo que es convención se marca como convención.
 
-1. El límite sale de la distribución del estadístico bajo «sin cambio real» **en la propia serie**, por cola.
-2. Se genera fuera del Worker y se versiona como artefacto revisable por PR; con `--check` que regenera y falla si el fichero difiere; lleva `calibratedThrough`.
-3. Sin calibración suficiente no se afirma nada y se dice por qué.
-4. Lo que es convención se marca como convención.
+No se reutiliza el remuestreo diario de series densas (el ELO es irregular y su ruido depende de las partidas), ni los horizontes de 112 días, ni el filtro de confirmación (decidido: fuera; si se
+quisiera, se estudia por separado con evidencia de que mejora algo).
 
-No se reutiliza: el remuestreo diario de series densas (el ELO es irregular y su ruido depende de las partidas, no de los días), los horizontes de 112 días ni el
-filtro de confirmación a `t − 7` (las ventanas de «Qué cambió» son arbitrarias; ver pregunta 6).
+**ELO y XP son independientes**: estadístico, ruido, ventanas y criterio de suficiencia propios.
 
-**ELO y XP son independientes**: estadístico, ruido, ventanas y criterio de suficiencia propios; ni se comparten ni se agregan.
+## 3. Estados y niveles
 
-## 3. Estados
+Los niveles tienen el mismo significado nominal en las dos reglas: **la probabilidad, bajo «sin cambio», de que el estadístico supere el límite de «relevante» es 5 %, y el de «excepcional», 1 %.** Para
+conseguirlo, los cuantiles dependen de la dirección del contraste:
 
-Para cada regla, el efecto observado se compara con dos bandas bajo «sin cambio»:
+| | ELO (cambio en cualquier sentido, bilateral) | XP (solo aceleración, unilateral) |
+|---|---|---|
+| Relevante (5 %) | fuera de la banda central del 95 % (2,5 % por cola) | por encima del cuantil 95 % |
+| Excepcional (1 %) | fuera de la banda central del 99 % (0,5 % por cola) | por encima del cuantil 99 % |
 
 | Estado | Definición | Estado epistémico en pantalla |
 |---|---|---|
-| Variación habitual | dentro de la banda del 95 % | SIN INDICIO |
-| Cambio relevante | fuera de la banda del 95 % | AFIRMADO |
-| Cambio excepcional | fuera de la banda del 99 % | AFIRMADO + etiqueta «excepcional» |
-| Sin calibración | no hay datos suficientes para conocer la variación habitual | INSUFICIENTE: se muestra el efecto observado sin afirmarlo |
+| Variación habitual | dentro del límite de «relevante» | SIN INDICIO |
+| Cambio relevante | fuera de ese límite | AFIRMADO |
+| Cambio excepcional | fuera del límite de «excepcional» | AFIRMADO + etiqueta «excepcional» |
+| Sin calibración | no se puede conocer la variación habitual con estabilidad suficiente | INSUFICIENTE **solo si el efecto observado es distinto de cero**; texto «Sin referencia de variación habitual todavía», con el efecto y la partida/día que corresponda |
 
-95 % y 99 % son convenciones. Interpretación: con una evaluación semanal, un 5 % por cola doble son ≈ 2,6 falsos «relevantes» al año por métrica y un 1 %, ≈ 0,5
-«excepcionales». Es el coste que se asume, y se dice así en pantalla, no «p-valor».
+Coste esperado: con una evaluación semanal e independiente, el modelo nulo implica ≈ 2,6 alertas «relevantes» al año por métrica y ≈ 0,5 «excepcionales». Es un **número esperado bajo el modelo**,
+no una tasa de falsas alarmas observada; las ventanas solapadas agrupan las alertas. La interfaz no dice «p-valor» ni «error», dice «fuera de lo habitual».
 
 ## 4. ELO
 
-**Estadístico.** Δ = ELO de la última ancla de la ventana − ELO de la última ancla anterior a `since` (como hoy). Nuevo: **k = partidas jugadas entre esas dos anclas**.
-La banda depende de k, no de los días.
+**Estadístico.** Δ = ELO de la última ancla de la ventana − ELO de la última ancla anterior a `since` (como hoy). Nuevo: **k = partidas jugadas entre esas dos anclas**; la banda depende de k, no de los días.
 
-**Banda.** Para los k validados, `Δ ∈ [q_lo·σ√k, q_hi·σ√k]`, con σ estimada de los intervalos entre anclas consecutivas (Δᵢ/√kᵢ) y los cuantiles `q`
-de un nulo «sin deriva»: concatenar intervalos con signo aleatorio hasta alcanzar k. Con los datos de hoy: k = 5 → ±46; k = 10 → ±70; k = 20 → ±97 (95 %);
-al 99 %, ≈ 1,4 veces más.
+**Modelo.** `Δ/√k` con escala σ estimada de los intervalos entre anclas consecutivas, y cuantiles de un nulo «sin deriva» construido remuestreando intervalos **hasta k exactamente** (los de más partidas
+de las que faltan se descartan; los de 1 partida siempre caben; la rev. 1 podía sumar más de k y normalizaba con k, lo que estrechaba la banda).
 
-**Dónde deja de valer √k (hallazgo de este estudio).** Sobre pares de anclas del periodo denso (solapados, así que el tamaño real es menor que el indicado):
+**Hipótesis y su sensibilidad.** El nulo supone intercambiabilidad de los intervalos y, si se invierten signos, simetría. Los datos las matizan:
+
+| | k = 5 | k = 10 | k = 20 |
+|---|---|---|---|
+| Banda 95 %, signos invertidos | ±44 | ±70 | ±98 |
+| Banda 95 %, bloques de 3 intervalos consecutivos (dependencia) | ±48 | ±66 | ±88 |
+| Banda 95 %, sin invertir signos (asimétrica) | [−44; +41] | [−77; +67] | [−103; +95] |
+| Banda 99 %, signos invertidos | ±54 | ±100 | ±129…134 |
+| Banda 99 %, bloques de 3 | ±53 | ±80 | ±114 |
+| Banda 99 %, sin invertir signos | [−55; +45] | [−109; +78] | [−139; +121] |
+
+Asimetría de Δ/√k = −0,51 (cola de bajadas más larga; con 62 datos es 1,6 errores típicos, indicio, no prueba). Autocorrelación entre intervalos: −0,06 en Δ/√k (−0,15 en Δ sin normalizar). **Consecuencia:**
+la inversión de signos no se usa para fijar los límites (impone una simetría que los datos no tienen); se usa como sensibilidad. Los límites se calculan sin invertir signos, **por cola**, como en Games, y
+la dependencia se evalúa con bloques.
+
+**Dónde deja de valer √k.** Sobre pares de anclas del periodo denso (solapados: el tamaño efectivo es menor que el indicado):
 
 | k (partidas) | pares | sd(Δ) | sd(Δ)/√k |
 |---|---|---|---|
@@ -75,90 +89,110 @@ al 99 %, ≈ 1,4 veces más.
 | 41–80 | 460 | 63,4 | 8,2 |
 | > 80 | 843 | 67,2 | 5,9 |
 
-El ELO no es un paseo aleatorio puro: hay reversión (autocorrelación de los incrementos −0,15) y la escala por √k solo se sostiene hasta ≈ 20 partidas. Extrapolarla
-a ventanas largas daría bandas demasiado anchas y no se emitiría nunca; no extrapolarla exige datos de ventanas largas, que hoy son ≈ 6 ventanas independientes de 40
-partidas (253 / 40). Por tanto:
+La escala por √k solo se sostiene hasta ≈ 20 partidas (reversión). Más allá no se extrapola: **k > 20 → `calibration_unavailable`**. A 6 partidas al día, las ventanas de 7 días (≈ 42 partidas) y de
+30 días quedan sin calibración, no se fabrica una conclusión para completar la ventana. Es una propiedad del conocimiento disponible, no un defecto de presentación.
 
-- **k ≤ k_val** (hoy 20): se calibra. A 6 partidas al día, son ≈ 3 días.
-- **k > k_val**: `calibration_unavailable`. Las ventanas de 7 y 30 días de «Qué cambió» quedan **sin calibración** para el ELO hoy. No se sustituye por el 25.
+**Suficiencia: estabilidad de cada borde, con dependencia.** Una banda (un borde de un nivel, para un k) se admite cuando se cumplen las dos condiciones siguientes. Los números son convenciones
+iniciales:
 
-**Suficiencia (criterio derivado, no un número):** se admite una banda cuando la incertidumbre de la propia banda es pequeña, medida con bootstrap de los intervalos.
-Hoy σ tiene anchura relativa del IC95 del 33 % (semiancho 16,5 %) con 62 intervalos. Convención propuesta: semiancho ≤ 20 % (se cumple desde ≈ 48 intervalos). La banda del 99 %
-exige además que cada cola tenga al menos una observación esperada: ≥ 200 intervalos (hoy 62). Para ventanas largas: ≥ 40 ventanas independientes del mismo k para el 95 %
-(≈ 1.600 partidas para k = 40).
+1. **Incertidumbre del borde:** semiancho relativo del IC95 ≤ 20 %, por bootstrap de **bloques móviles de intervalos consecutivos** sobre el origen, rehaciendo toda la banda cada vez. Los 62 intervalos no
+   se tratan como 62 observaciones independientes.
+2. **Sensibilidad al nulo:** el borde no cambia más del 20 % entre los tres nulos de la tabla (signos, bloques, sin invertir).
+
+Resultado hoy (semiancho relativo del IC95 del borde superior):
+
+| k | borde 95 % | borde 99 % | admite 95 % | admite 99 % |
+|---|---|---|---|---|
+| 5 | +43 ± 17 % | +54 ± 15 % | sí | sí (sensibilidad 18 %) |
+| 10 | +70 ± 24 % | +99 ± 23 % | no | no (además, sensibilidad 24 %) |
+| 20 | +96 ± 21 % | +132 ± 26 % | no (por poco) | no |
+
+σ sola sale mejor (semiancho 15–18 % con bloques de 1 a 8), pero el borde de la banda es lo que se compara y tiene más incertidumbre. **Esto corrige mi propuesta anterior:** aunque √k vale hasta
+k = 20, con 62 intervalos solo se admite hoy **k ≤ 5 (≈ 1 día de partidas)**. Las bandas de k = 6–20 se irán admitiendo solas: la incertidumbre baja como 1/√n; pasar de 24 % a 20 % pide ≈ 1,4 veces los
+intervalos (≈ 90, a 1,5 intervalos al día, ≈ finales de noviembre), y de 26 % a 20 %, ≈ 1,7 veces (≈ diciembre). Es una proyección, y la sensibilidad al nulo del 99 % tardará más.
+
+La suficiencia **no depende de un contador** de intervalos. La regla de «≥ 200 intervalos para el 99 %» se retira. Para ventanas de k > 20 sí hará falta, además de la estabilidad, comprobar que el
+ruido sigue una ley conocida con ventanas independientes del mismo k, y hoy hay ≈ 6 de 40 partidas; ese análisis queda fuera hasta tener cientos de partidas más.
 
 ## 5. XP
 
-**Estadístico.** Cociente r = media diaria de XP en los días con registro de la ventana / media diaria histórica (días con registro hasta `since`), como hoy. Se
-conserva porque se entiende («×1,4 tu ritmo»). La banda depende de la longitud de la ventana w (días con registro) y de la del histórico h.
+**Estadístico.** Cociente r = media diaria de XP en los días con registro de la ventana / media diaria histórica (días con registro hasta `since`), como hoy; se entiende («×1,4 tu ritmo»). La banda
+depende de la longitud de la ventana w y de la del histórico h.
 
-**Banda.** Nulo por remuestreo de bloques de 7 días de la propia serie (conserva la dependencia corta; la autocorrelación a 7 días es 0,18 y el día de la semana apenas
-pesa: medias por día entre 595 y 663). Con h = 100 días, al 95 % / 99 %:
+**Banda.** Nulo por remuestreo de bloques de 7 días de la propia serie (la autocorrelación a 7 días es 0,18; el día de la semana apenas pesa, medias por día entre 595 y 663). **Contraste unilateral**
+(solo aceleración), con h = 100 días:
 
-| w | 95 % | 99 % |
-|---|---|---|
-| 3 d | [0,42; 1,83] | [0,37; 2,04] |
-| 7 d | [0,52; 1,63] | [0,41; 1,84] |
-| 14 d | [0,60; 1,53] | [0,52; 1,71] |
-| 28 d | [0,68; 1,41] | [0,61; 1,56] |
+| w | cuantil 95 % (relevante) | cuantil 99 % (excepcional) | incertidumbre 95 % / 99 % |
+|---|---|---|---|
+| 3 d | 1,66 | 1,94 | — |
+| 7 d | 1,51 | 1,75 | ±10 % / ±15 % |
+| 14 d | 1,43 | 1,63 | ±8 % / ±11 % |
+| 28 d | 1,34 | 1,49 | ±7 % / ±10 % |
 
-Hoy: 7 días → ×1,47 (dentro de la banda), 14 → ×1,27, 28 → ×1,40 (justo dentro). La regla actual emitiría 7 y 28 días como «Mayor XP diario». Con este método, ninguno se afirma.
-El umbral solo se aplica al lado alto en la regla de «aceleración»; el bajo queda para una futura regla de «caída» (fuera de alcance, ver 8).
+La incertidumbre es el semiancho relativo del IC95 del cuantil cuando la serie de origen se remuestrea por semanas (19 bloques). La rev. 1 usaba la banda central 95 % (límite superior 1,41 a 28 días), que
+correspondía a una cola del 2,5 %; el contraste unilateral del 5 % da 1,34.
 
-**Suficiencia.** Un bootstrap de bloques necesita bloques suficientes: la serie tiene 19 semanas completas. Convención propuesta: ≥ 26 semanas (≈ 2026-12-24 al ritmo actual) para
-admitir la calibración; antes, `calibration_unavailable`. El histórico mínimo h también se acota (≥ 28 días, como en la exploración). Los 200 XP mínimos actuales desaparecen:
-no limitan, y la banda ya penaliza las ventanas con pocos días.
+Hoy: 7 días ×1,47 → habitual (< 1,51); 14 días ×1,27 → habitual; **28 días ×1,40 → relevante (> 1,34), pero dentro de la incertidumbre del propio borde (1,34 ± 0,09)**: es un caso límite, no un hallazgo
+firme. La regla actual emite 7 y 28 días.
 
-## 6. Contrato (a enmendar después de aprobar el método)
+**Suficiencia.** Dos condiciones: (a) **mínimo de 26 semanas** de histórico (≈ 2026-12-24) para *evaluar* la suficiencia; no es una garantía de calibración; (b) estabilidad de cada borde: semiancho relativo del IC95 ≤ 20 % por
+bootstrap de bloques semanales y, antes de implementar, sensibilidad al tamaño de bloque (7 frente a 14 días; no medida todavía). Con las 19 semanas actuales (b) ya se cumpliría (7–15 %), pero (a) no, así que
+**hoy XP está sin calibración**. El 99 % se evalúa con los mismos criterios, por separado. El histórico mínimo h (≥ 28 días) y el mínimo de 200 XP: este último desaparece (la banda ya penaliza las
+ventanas con pocos días).
+
+## 6. Contrato (a enmendar tras aprobar el método)
 
 Orientativo; la forma exacta se fija en la enmienda.
 
-- **Razones** (`REASONS`): se añade `calibration_unavailable` (la serie no permite conocer la variación habitual: pocas partidas, k fuera de lo validado, histórico corto). `effect_below_threshold`
+- **Razones** (`REASONS`): se añade `calibration_unavailable` (la serie no permite conocer la variación habitual con estabilidad suficiente: k fuera de lo validado, borde inestable, histórico corto). `effect_below_threshold`
   pasa a significar «dentro de la variación habitual». `data_unavailable`, `span_too_short` e `insufficient_sample` no cambian.
-- **Saliencia:** `calibration_unavailable` cuenta como INSUFICIENTE (el efecto está observado, no se puede afirmar); es pregunta abierta si solo cuando el efecto no es cero (pregunta 5).
-- **Evaluación:** `kind: "statistical"`; `status: "emitted"` si está fuera de la banda del 95 %; `metrics` conserva el efecto observado y añade `bandLower`, `bandUpper`, `level`
-  (`relevant` | `exceptional`) y, en ELO, `games` (k); `criteria` lleva la banda y su `calibratedThrough` (la fecha viaja en el artefacto y se muestra). Sin la banda no hay afirmación.
+- **Saliencia:** `calibration_unavailable` cuenta como INSUFICIENTE solo si el efecto observado es distinto de cero; con efecto cero, SIN INDICIO. Nunca produce una afirmación.
+- **Evaluación:** `status: "emitted"` si supera el límite de «relevante»; `metrics` conserva el efecto observado y añade `bandLower`/`bandUpper` (XP, solo `bandUpper`), `level` (`relevant` | `exceptional`) y en ELO
+  `games` (k); `criteria` lleva los límites, la incertidumbre de cada borde y `calibratedThrough`. Sin banda admitida no hay afirmación, y se muestra el efecto con el número de partidas o días.
 - **Datos ausentes (sin cambios de principio):** sin ancla de partida o sin ancla en la ventana → `data_unavailable` (A2); sin días con registro → `data_unavailable`; nunca 0.
-- **Artefacto:** `calibration-elo-xp.json` junto al dominio, generado por un script reproducible (`--check`), copiado tal cual, nunca recalculado en el Worker, con
-  `calibratedThrough`, nº de intervalos/semanas, `kVal` y las condiciones de suficiencia que se cumplen.
+- **Artefacto:** `calibration-elo-xp.json` junto al dominio, generado por un script reproducible (`--check`), copiado tal cual, nunca recalculado en el Worker, con `calibratedThrough`, intervalos/semanas usados,
+  `kVal` y, **por borde**, su incertidumbre y si está admitido.
 
 ## 7. Cómo evoluciona
 
-Recalibrar es un PR que reemplaza el artefacto, sin tocar el dominio. Disparadores propuestos: cada 28 días o cuando se supere un hito de datos. Hitos proyectados **al ritmo actual (proyección, no certeza):**
+Recalibrar es un PR que reemplaza el artefacto, sin tocar el dominio, cada 28 días o cuando un borde cruce un criterio. Hitos (proyecciones al ritmo actual, no certezas):
 
 | Hito | Cuándo |
 |---|---|
-| XP admite calibración (≥ 26 semanas) | ≈ 2026-12-24 |
-| ELO banda del 99 % (≥ 200 intervalos) | ≈ febrero 2027 |
-| ELO ventanas de 7 días (≈ 40 ventanas independientes de 40 partidas) | ≈ mediados de 2027 |
+| ELO admite k = 6–20 al 95 % | ≈ finales de noviembre – diciembre 2026 |
+| XP supera el mínimo de 26 semanas y empieza a evaluarse | ≈ 2026-12-24 |
+| ELO admite el 99 % para k > 5 | depende de la sensibilidad al nulo; no se proyecta |
+| ELO con ventanas k > 20 (7 días) | requiere un estudio aparte; no se proyecta |
 
-Cada recalibración puede cambiar una etiqueta de ayer. Eso es correcto: más datos significan una referencia mejor. Se muestra siempre la fecha de calibración, y las evaluaciones no se
-guardan: se calculan al leer.
+Cada recalibración puede cambiar una etiqueta de ayer: es correcto, la referencia mejora. Se muestra siempre la fecha de calibración; las evaluaciones no se guardan, se calculan al leer.
 
 ## 8. Validación propuesta para la implementación
 
-- Serie estacionaria sintética con los σ y la dependencia del estudio: tasa de «relevante» ≈ 5 % y de «excepcional» ≈ 1 % por evaluación, con tolerancia fija.
-- Tendencia inyectada (p. ej. +40 puntos de ELO en k = 10; ×1,6 de XP en 14 días): se detecta con la potencia declarada.
-- El dominio usa **exactamente** los valores del artefacto (prueba que los compara); sin calibración, ninguna afirmación.
+- Serie sintética estacionaria con los σ, asimetría y dependencia del estudio: frecuencia de «relevante» ≈ 5 % y de «excepcional» ≈ 1 % por evaluación (ELO bilateral, XP unilateral), con tolerancia fija.
+- Tendencia inyectada (p. ej. +40 puntos de ELO con k = 5; ×1,6 de XP en 14 días): se detecta con la potencia declarada.
+- El remuestreo de ELO produce exactamente k (prueba).
+- El dominio usa **exactamente** los valores del artefacto; sin banda admitida, ninguna afirmación.
 - Contra datos reales (lectura): distribución de estados por ventana, sin asignar tasas de falsa alarma.
 
-Fuera de alcance: reglas de «caída» de XP o de ELO, STREAK, color, Games (ya calibrado), y el filtro de confirmación.
+Fuera de alcance: reglas de «caída» de XP o de ELO, STREAK, color, Games (ya calibrado), el filtro de confirmación.
 
-## 9. Limitaciones (importantes)
+## 9. Limitaciones
 
-- **Un usuario, 42 días densos de ELO y 133 de XP.** No es una calibración poblacional ni permite estimar **tasas de falsas alarmas reales**: solo las que implica el modelo nulo
-  (estacionariedad, incrementos simétricos, bloques independientes). Las cifras de este documento orientan el método; no son umbrales.
-- σ de ELO depende del nivel de rating y del rival (bots de distinto ELO); si cambian, la banda queda vieja hasta la siguiente calibración.
-- Los pares de anclas de §4 se solapan: el tamaño efectivo es menor que el indicado. Las diferencias entre escalas de k son orientativas, no contrastes.
-- XP: el nulo asume que el pasado de 133 días representa el ritmo habitual; un cambio de régimen legítimo (p. ej. nuevo curso) se verá como cambio, que es lo que queremos mostrar, pero
-  no se explica.
-- Las anclas de ELO son las de la regla actual (último dato de cada sincronización). Si una sincronización llega tarde, k incluye partidas que no están en la ventana visible.
+- **Un usuario, 42 días densos de ELO y 133 de XP.** No es una calibración poblacional ni permite estimar **tasas reales de falsas alarmas**: solo las que implica el modelo nulo. Las cifras orientan el método; no son umbrales.
+- La incertidumbre de los bordes se estima con 62 intervalos y bloques de 3: es una estimación, y los bloques elegidos no se prueban frente a otros tamaños salvo en σ (1, 3, 5, 8).
+- El nulo de ELO supone que los intervalos son intercambiables; hay reversión y asimetría. Se usa la forma menos restrictiva disponible, con sensibilidad, no una prueba de la hipótesis.
+- σ del ELO depende del nivel de rating y del rival (bots de distinto ELO); si cambian, la banda queda vieja hasta la siguiente calibración.
+- Los pares de anclas de §4 se solapan; las diferencias entre escalas de k son orientativas, no contrastes.
+- XP: el nulo asume que 133 días representan el ritmo habitual; un cambio de régimen legítimo (p. ej. nuevo curso) se verá como cambio, sin explicarlo.
+- Las anclas de ELO son las de la regla actual (último dato de cada sincronización); si una sincronización llega tarde, k puede incluir partidas que no están en la ventana visible.
 
-## 10. Decisiones que pido en la revisión
+## 10. Decisiones tomadas en la revisión de la rev. 1
 
-1. ¿Niveles 95 % / 99 % (y su lectura como coste anual) o prefieres otros?
-2. ¿Admitir k ≤ 20 para ELO ahora, aun sabiendo que las ventanas de 7 y 30 días quedan «sin calibración» durante meses, o esperar a tener cobertura completa?
-3. ¿Criterios de suficiencia: semiancho ≤ 20 %, ≥ 200 intervalos para el 99 %, ≥ 26 semanas de XP?
-4. ¿`calibration_unavailable` muestra el efecto observado con el texto «sin referencia de variación habitual todavía»?
-5. ¿INSUFICIENTE siempre o solo con efecto distinto de cero?
-6. ¿Se mantiene fuera el filtro de confirmación de Games (publicar solo si coincide la semana anterior)?
+| # | Decisión |
+|---|---|
+| 1 | Niveles 95 % y 99 %, como convenciones interpretables; ELO bilateral, XP unilateral con cuantiles 95 y 99 (§3). El coste anual es un número esperado bajo el modelo. |
+| 2 | ELO con k ≤ 20 como rango de escala; las ventanas con k > 20 son «sin calibración». Admisión real por estabilidad (hoy k ≤ 5, §4). |
+| 3 | Semiancho ≤ 20 % con bootstrap dependiente; sin «≥ 200 intervalos»; XP: 26 semanas habilitan evaluar la suficiencia, no la garantizan. |
+| 4 | Texto «Sin referencia de variación habitual todavía», con el efecto medido y las partidas/días. Nunca una afirmación estadística. |
+| 5 | INSUFICIENTE solo con efecto distinto de cero. |
+| 6 | Sin filtro de confirmación. |
