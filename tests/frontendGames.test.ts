@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { DASHBOARD_HTML } from "../src/frontend.ts";
 import { createDashboardRuntime, fetchOnly } from "./helpers/dom.ts";
 
 const reply = (body: unknown, ok = true, status = 200) => ({ ok, status, json: async () => body });
@@ -38,6 +39,27 @@ const ok = (games: Record<string, unknown>, day: unknown = { games: {} }) => (ur
   url.includes("/summary") ? reply(summary(games)) : reply({ ok: true, day });
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
+describe("games tab: a stale manual log is not a zero streak", () => {
+  const stale = (games: Record<string, unknown>) => (url: string) =>
+    url.includes("/summary") ? reply({ ok: true, summary: { ...summary(games).summary, playStreak: { current: 0, max: 122 } } }) : reply({ ok: true, day: { games: {} } });
+
+  it("shouldSayNoRecordSinceInsteadOfZeroDaysWhenTheLogIsStale", async () => {
+    const { rt } = setup(stale({ zip: game({ beatStreak: { current: 0, max: 8 } }) }));
+    await rt.sandbox.fetchGames();
+    const lines = rt.getEl("#gamesList").children[0]!.children.slice(1).map((c) => c.textContent);
+    expect(lines).toContain("Racha ganando a la media: sin registro desde 2026-11-03 (máx 8)");
+    const cells = (rt.getEl("#gamesRows").children[0] as any).children.map((c: any) => c.textContent);
+    expect(cells).toContain("sin registro desde 2026-11-03");
+    expect(cells).not.toContain("0 días");
+  });
+
+  it("shouldKeepAnObservedZeroWhenTheLogIsCurrent", async () => {
+    const { rt } = setup(ok({ zip: game({ beatStreak: { current: 0, max: 8 } }) }));
+    await rt.sandbox.fetchGames();
+    expect(rt.getEl("#gamesList").children[0]!.children.slice(1).map((c) => c.textContent)).toContain("Racha ganando a la media: 0 días (máx 8)");
+  });
+});
+
 describe("games tab", () => {
   it("shouldLoadTheSummaryOnBootWhenThePageIsOpenedDirectlyOnGames", async () => {
     const { rt, calls } = setup(ok({ zip: game() }));
@@ -60,7 +82,7 @@ describe("games tab", () => {
     expect(cards.map((c) => c.children[0]!.textContent).sort()).toEqual(["Tango", "Zip"]);
     const lines = cards[0]!.children.slice(1).map((c) => c.textContent);
     for (const l of ["Eficiencia (28 días): ×1,13 · n=28 (-13 % vs periodo previo (n=28/27))", "Gana a la media: 65 % · n=28", "Tiempo típico: 0:52 (P25–P75 0:43–1:04) · n=30", "Mejor marca: 0:32 (2026-09-30)", "Racha ganando a la media: 1 día (máx 8)"]) expect(lines).toContain(l);
-    expect(rt.getEl("#gamesDistWin").style.width).toMatch(/^\d/); // 65 % and 84 % of 57 results each
+    expect(DASHBOARD_HTML).not.toContain("gamesHeroDist"); // no pooled "beats the average" across games: the per-game rates are the answer
     expect(rt.getEl("#gamesHeroStreak").textContent).toBe("48 días seguidos");
     expect(rt.getEl("#gamesHeroMeta").textContent).toBe("Racha máxima 122 días");
     expect(rt.getEl("#gamesHeroDays").textContent).toBe("170 días registrados · 2026-05-17 → 2026-11-03");

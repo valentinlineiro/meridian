@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import vm from "node:vm";
 import { DASHBOARD_HTML } from "../src/frontend.ts";
 import { createDashboardRuntime, fetchOnly, parseCanonicalRoute as parseRoute } from "./helpers/dom.ts";
 
@@ -92,6 +93,7 @@ describe("Frontend What Changed Navigation & Visual Engine", () => {
 
   it("shouldRenderDeltaCardsAndFindingsWhenActivityExistsInInterval", () => {
     const rt = createDashboardRuntime("/changes");
+    vm.runInContext('lastLangsData = { courses: [{ courseId: "DUOLINGO_EN_ES", title: "Spanish EN" }, { courseId: "DUOLINGO_XC_ES", title: "Spanish XC" }] }', rt.sandbox);
     const activePayload = {
       userId: "1000001",
       interval: {
@@ -159,7 +161,7 @@ describe("Frontend What Changed Navigation & Visual Engine", () => {
     expect(activityHtml).toContain("450");
     expect(activityHtml).toContain("6");
     expect(activityHtml).toContain("35 min");
-    expect(activityHtml).toContain("DUOLINGO_EN_ES → DUOLINGO_XC_ES");
+    expect(activityHtml).toContain("Spanish EN → Spanish XC");
     // streak
     expect(activityHtml).toContain("52");
     expect(activityHtml).toContain("45");
@@ -216,5 +218,22 @@ describe("Frontend What Changed Navigation & Visual Engine", () => {
     expect(rt.getEl("#changesHeader").innerHTML).toContain("Últimos 7 días");
     expect(rt.getEl("#changesHeader").innerHTML).toContain("Últimos 30 días");
     expect(rt.getEl("#changesHeader").innerHTML).toContain("Desde última visita");
+  });
+});
+
+describe("what changed: the active course is a catalogue course", () => {
+  const payload = (cur: string) => ({ interval: { since: "2026-10-01T00:00:00.000Z", until: "2026-10-08T00:00:00.000Z" },
+    chess: { gamesCount: 1, intervalWinRate: 50, historicalDelta: 0 },
+    languages: { xpGained: 5, sessionsCount: 1, totalSessionMinutes: 3, baselineCourseId: cur, currentCourseId: cur, courseChanged: false },
+    streak: { baselineStreak: 1, currentStreak: 1, streakDelta: 0, status: "active" }, findings: [], evaluations: [] });
+
+  it("shouldNotShowARawCourseIdOutsideTheCatalogue", () => {
+    const rt = createDashboardRuntime("/changes");
+    vm.runInContext('lastLangsData = { courses: [{ courseId: "RU_EN", title: "Russian EN" }] }', rt.sandbox);
+    rt.sandbox.renderWhatChanged(payload("CHESS_CH"));
+    expect(rt.getEl("#changesActivity").innerHTML).not.toContain("CHESS_CH");
+    expect(rt.getEl("#changesActivity").innerHTML).not.toContain("Curso activo");
+    rt.sandbox.renderWhatChanged(payload("RU_EN"));
+    expect(rt.getEl("#changesActivity").innerHTML).toContain("Russian EN");
   });
 });

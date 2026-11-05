@@ -104,16 +104,6 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
     <div id="overviewGamesStreak" style="font-size:24px;font-weight:800;line-height:1.2">—</div>
     <div id="overviewGamesMeta" class="muted" style="font-size:11px;margin-top:2px"></div>
    </div>
-   <div style="margin-top:10px">
-    <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:12px;margin-bottom:4px">
-     <span class="muted" id="overviewGamesWrLabel">Ganas a la media global</span>
-     <span id="overviewGamesWrMeta" class="muted" style="font-size:11px">—</span>
-    </div>
-    <div class="distribution-bar" id="overviewGamesDist">
-     <i class="bar-win" id="overviewGamesDistWin" style="width:0%"></i>
-     <i class="bar-loss" id="overviewGamesDistLoss" style="width:0%"></i>
-    </div>
-   </div>
    <div style="margin-top:12px;padding-top:10px;border-top:1px solid #1e2e44;display:flex;justify-content:space-between;align-items:center">
     <span class="muted" style="font-size:12px">Registro <span class="pill pill-scope">MANUAL</span></span>
     <span id="overviewGamesHistorical" class="muted" style="font-size:12px">—</span>
@@ -328,7 +318,7 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
               <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.05em">Curso seleccionado</div>
               <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
                 <span id="langCourseFlag" style="font-size:18px"></span>
-                <select id="langCourseSelect" onchange="selectCourse(this.value)" style="background:#0d1b2a;color:#c8d7ea;border:1px solid #1e2e44;border-radius:6px;padding:4px 8px;font-size:16px;font-weight:700"></select>
+                <select id="langCourseSelect" onchange="selectCourse(this.value)" style="flex:1 1 0;min-width:0;max-width:100%;text-overflow:ellipsis;background:#0d1b2a;color:#c8d7ea;border:1px solid #1e2e44;border-radius:6px;padding:4px 8px;font-size:16px;font-weight:700"></select>
               </div>
               <div id="langActiveHeroMeta" class="muted" style="font-size:12px;margin-top:2px">—</div>
             </div>
@@ -519,13 +509,6 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
        <button class="btn btn-p" type="button" onclick="openGamesEntry()">Registrar resultado</button>
        <span id="gamesHeroDays" class="muted" style="font-size:12px">—</span>
       </div>
-     </div>
-     <div style="margin-top:14px">
-      <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:12px;margin-bottom:6px">
-       <span id="gamesHeroWrLabel" style="font-weight:600"></span>
-       <span id="gamesHeroDistMeta" class="muted" style="font-size:11px">—</span>
-      </div>
-      <div class="distribution-bar" id="gamesHeroDist"><i id="gamesDistWin" class="bar-win" style="width:0%"></i><i id="gamesDistLoss" class="bar-loss" style="width:0%"></i></div>
      </div>
      <div style="margin-top:14px"><div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Hoy · toca un juego para registrarlo</div><div id="gamesToday" class="chips"></div></div>
     </div>
