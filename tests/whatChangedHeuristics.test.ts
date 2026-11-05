@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { evaluateSignificantChanges, type WhatChangedDeltas, type FindingContext } from "../src/domain/whatChanged.ts";
+import { evaluateSignificantChanges, evaluateChanges, type WhatChangedDeltas, type FindingContext } from "../src/domain/whatChanged.ts";
+import { ADMITTED } from "./fixtures/calibration.ts";
 
 describe("What Changed Domain Heuristics", () => {
   const baseContext: FindingContext = {
@@ -49,23 +50,23 @@ describe("What Changed Domain Heuristics", () => {
     expect(findings).toEqual([]);
   });
 
-  it("shouldEmitChessRatingJumpFindingWhenEloDeltaExceedsThreshold", () => {
+  it("shouldEmitChessRatingJumpFindingWhenEloDeltaIsOutsideTheAdmittedBand", () => {
     const deltas: WhatChangedDeltas = {
       ...emptyDeltas,
       chess: {
         ...emptyDeltas.chess,
-        gamesCount: 8,
+        gamesCount: 10,
         decidedCount: 8,
-        ratingDelta: 35,
+        ratingDelta: 80,
         baselineRating: 800,
-        currentRating: 835,
+        currentRating: 880,
       },
     };
-    const findings = evaluateSignificantChanges(deltas, baseContext);
+    const findings = evaluateChanges(deltas, baseContext, ADMITTED).findings; // A7: only with an admitted band
     const finding = findings.find((f) => f.id === "CHESS_RATING_JUMP");
     expect(finding).toBeDefined();
     expect(finding?.category).toBe("chess");
-    expect(finding?.claim).toContain("+35");
+    expect(finding?.claim).toContain("+80");
     expect(finding?.baselineAt).toBe(baseContext.baselineAt);
     expect(finding?.until).toBe(baseContext.until);
   });
@@ -106,17 +107,18 @@ describe("What Changed Domain Heuristics", () => {
     expect(finding?.claim).toContain("DUOLINGO_XB_EN");
   });
 
-  it("shouldEmitXpAccelerationFindingWhenIntervalDailyRateExceedsBaselineByThirtyPercent", () => {
+  it("shouldEmitXpAccelerationFindingWhenTheRateRatioIsAboveTheAdmittedQuantile", () => {
     const deltas: WhatChangedDeltas = {
       ...emptyDeltas,
       languages: {
         ...emptyDeltas.languages,
+        intervalDays: 7,
         xpGained: 500,
         dailyXpRate: 100,
         historicalDailyXpRate: 50,
       },
     };
-    const findings = evaluateSignificantChanges(deltas, baseContext);
+    const findings = evaluateChanges(deltas, baseContext, ADMITTED).findings; // A7: only with an admitted band
     const finding = findings.find((f) => f.id === "LANG_XP_ACCELERATION");
     expect(finding).toBeDefined();
     expect(finding?.category).toBe("languages");

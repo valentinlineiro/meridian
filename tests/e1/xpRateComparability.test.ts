@@ -44,7 +44,8 @@ describe("A5: the XP rate compares whole UTC days with whole UTC days", () => {
       const { r, ev } = await lang(a, since, until);
       expect(r.languages.xpGained).toBe(600);
       expect(ev.metrics.ratio).toBeCloseTo(1.5, 5);
-      expect(ev.status).toBe("emitted");
+      expect(ev.status).toBe("not_emitted"); // A7: no admitted band for a 4-day window, so the state is the same abstention at every edge hour
+      expect(ev.reasons).toEqual(["calibration_unavailable"]);
       expect(ev.metrics.intervalDays).toBe(4);
     }
   });

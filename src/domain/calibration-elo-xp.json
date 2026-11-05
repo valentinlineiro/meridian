@@ -1,0 +1,102 @@
+{
+  "calibratedThrough": "2026-11-05",
+  "design": "docs/audits/2026-11-05-calibration-elo-xp-design.md (rev. 5)",
+  "elo": {
+    "kVal": [
+      5,
+      10,
+      15,
+      20
+    ],
+    "kMax": 20,
+    "edges": {
+      "upper95": {
+        "5": {
+          "bound": 49,
+          "uncertainty": 0.202
+        },
+        "10": {
+          "bound": 74,
+          "uncertainty": 0.18
+        },
+        "15": {
+          "bound": 92,
+          "uncertainty": 0.201
+        },
+        "20": {
+          "bound": 107,
+          "uncertainty": 0.215
+        }
+      },
+      "upper99": {
+        "5": {
+          "bound": 50,
+          "uncertainty": 0.172
+        },
+        "10": {
+          "bound": 83,
+          "uncertainty": 0.162
+        },
+        "15": {
+          "bound": 111,
+          "uncertainty": 0.182
+        },
+        "20": {
+          "bound": 131,
+          "uncertainty": 0.196
+        }
+      },
+      "lower95": {
+        "5": {
+          "bound": -48,
+          "uncertainty": 0.305
+        },
+        "10": {
+          "bound": -62,
+          "uncertainty": 0.362
+        },
+        "15": {
+          "bound": -68,
+          "uncertainty": 0.36
+        },
+        "20": {
+          "bound": -76,
+          "uncertainty": 0.393
+        }
+      },
+      "lower99": {
+        "5": {
+          "bound": -54,
+          "uncertainty": 0.365
+        },
+        "10": {
+          "bound": -70,
+          "uncertainty": 0.43
+        },
+        "15": {
+          "bound": -91,
+          "uncertainty": 0.424
+        },
+        "20": {
+          "bound": -99,
+          "uncertainty": 0.406
+        }
+      }
+    },
+    "admitted": {
+      "upper95": [],
+      "upper99": [],
+      "lower95": [],
+      "lower99": []
+    }
+  },
+  "xp": {
+    "windows": [
+      7,
+      14,
+      28
+    ],
+    "admitted": {},
+    "note": "sin calibración: el remuestreo por bloques no conserva la dependencia (diseño §5)"
+  }
+}

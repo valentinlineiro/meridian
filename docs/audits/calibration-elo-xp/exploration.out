@@ -1,0 +1,73 @@
+ELO: anclas=64 días distintos=36 huecos>7d=1 intervalos usados=62 partidas=253
+  Δ/√partidas: sd=11.0  mediana|·|=9.2  media=-0.06
+  simetría: media=-0.06 asimetría=-0.51  autocorrelación lag 1=-0.06
+  IC95 de σ con bloques de 1: [9.1, 12.7]  semiancho relativo 16%
+  IC95 de σ con bloques de 3: [9.1, 13.0]  semiancho relativo 18%
+  IC95 de σ con bloques de 5: [9.0, 12.3]  semiancho relativo 15%
+  IC95 de σ con bloques de 8: [8.9, 12.1]  semiancho relativo 15%
+  deriva observada: -0.33 puntos por partida (-84 en 253 partidas); se retira en las variantes sin signos invertidos
+  nulo con k exacto; Δ al 95 % / 99 % bilateral por cola. El de referencia es C: residuos sin deriva, sin invertir signos, bloques consecutivos
+  k= 5 A signos, iid                                    95 % [-44, +44]  99 % [-54, +54]
+  k= 5 B sin signos, iid                                95 % [-42, +43]  99 % [-54, +47]
+  k= 5 C sin signos, bloques de 3 (nulo de referencia)  95 % [-48, +48]  99 % [-54, +50]
+  k= 5 D signos, bloques de 3                           95 % [-48, +48]  99 % [-53, +53]
+  k=10 A signos, iid                                    95 % [-71, +70]  99 % [-99, +98]
+  k=10 B sin signos, iid                                95 % [-71, +71]  99 % [-103, +82]
+  k=10 C sin signos, bloques de 3 (nulo de referencia)  95 % [-62, +74]  99 % [-70, +83]
+  k=10 D signos, bloques de 3                           95 % [-65, +65]  99 % [-79, +80]
+  k=15 A signos, iid                                    95 % [-86, +86]  99 % [-115, +119]
+  k=15 B sin signos, iid                                95 % [-87, +88]  99 % [-121, +107]
+  k=15 C sin signos, bloques de 3 (nulo de referencia)  95 % [-68, +92]  99 % [-91, +111]
+  k=15 D signos, bloques de 3                           95 % [-81, +81]  99 % [-103, +103]
+  k=20 A signos, iid                                    95 % [-98, +99]  99 % [-136, +134]
+  k=20 B sin signos, iid                                95 % [-96, +101]  99 % [-134, +126]
+  k=20 C sin signos, bloques de 3 (nulo de referencia)  95 % [-74, +104]  99 % [-98, +132]
+  k=20 D signos, bloques de 3                           95 % [-87, +88]  99 % [-112, +114]
+  incertidumbre de los bordes de la referencia C (bootstrap de bloques de 3 sobre el origen, 400 réplicas), semiancho relativo del IC95
+  k= 5: 95 % sup +49 ±20.2%  inf -48 ±30.5% | 99 % sup +50 ±17.2%  inf -54 ±36.5%
+  k=10: 95 % sup +74 ±18.0%  inf -62 ±36.2% | 99 % sup +83 ±16.2%  inf -70 ±43.0%
+  k=15: 95 % sup +92 ±20.1%  inf -68 ±36.0% | 99 % sup +111 ±18.2%  inf -91 ±42.4%
+  k=20: 95 % sup +107 ±21.5%  inf -76 ±39.3% | 99 % sup +131 ±19.6%  inf -99 ±40.6%
+  sensibilidad entre nulos A-D (rango / media del borde) y admisión (incertidumbre ≤ 20 % y sensibilidad ≤ 20 % en k-5, k y k+5)
+  95 % sup: k=5: inc 20.2% sens 11.7% ✗ | k=10: inc 18.0% sens 13.3% ✓ | k=15: inc 20.1% sens 12.7% ✗ | k=20: inc 21.5% sens 16.0% ✗  → admitido: ninguno
+  99 % sup: k=5: inc 17.2% sens 14.4% ✓ | k=10: inc 16.2% sens 21.0% ✗ | k=15: inc 18.2% sens 14.5% ✓ | k=20: inc 19.6% sens 15.8% ✓  → admitido: ninguno
+  95 % inf: k=5: inc 30.5% sens 13.1% ✗ | k=10: inc 36.2% sens 13.9% ✗ | k=15: inc 36.0% sens 23.6% ✗ | k=20: inc 39.3% sens 26.6% ✗  → admitido: ninguno
+  99 % inf: k=5: inc 36.5% sens 2.5% ✗ | k=10: inc 43.0% sens 37.7% ✗ | k=15: inc 42.4% sens 27.9% ✗ | k=20: inc 40.6% sens 31.3% ✗  → admitido: ninguno
+  referencia: ventanas reales (ancla ≤ since → última ancla de la ventana), |Δ| p50/p90 y % ≥ 25
+  w= 7d n=43 (solapadas) p50=35 p90=85  ≥25: 63%
+  w=14d n=43 (solapadas) p50=55 p90=112  ≥25: 81%
+  w=28d n=43 (solapadas) p50=26 p90=65  ≥25: 53%
+
+XP: días=133 contiguos=True media=627 mediana=576 CV=0.47 mín=29 máx=1737
+  autocorrelación lag 1/7: +0.51 / +0.18
+  cociente (media diaria de la ventana / media diaria histórica), nulo por bloques de 7 días, histórico de 100 días; contraste UNILATERAL (solo aceleración)
+  nominal: P(r > cuantil 95 %) = 5 %,  P(r > cuantil 99 %) = 1 %
+  w= 3d: cuantil 95 % 1.66  cuantil 99 % 1.94  P(≥1,3)=20.6%
+  w= 7d: cuantil 95 % 1.52  cuantil 99 % 1.75  P(≥1,3)=15.4%
+  w=14d: cuantil 95 % 1.43  cuantil 99 % 1.64  P(≥1,3)=12.0%
+  w=28d: cuantil 95 % 1.34  cuantil 99 % 1.51  P(≥1,3)=7.4%
+  sensibilidad al tamaño de bloque: cuantiles 95 % / 99 % del nulo (h=100) con bloques de 3, 7, 14 días (nº de bloques de la serie: 3d→44, 7d→19, 14d→9)
+  w= 7d   3d: 1.41 / 1.61    7d: 1.51 / 1.74   14d: 1.69 / 1.91   21d: 1.64 / 1.85   28d: 1.87 / 1.93
+  w=14d   3d: 1.31 / 1.45    7d: 1.43 / 1.62   14d: 1.47 / 1.66   21d: 1.48 / 1.68   28d: 1.53 / 1.61
+  w=28d   3d: 1.23 / 1.35    7d: 1.34 / 1.50   14d: 1.39 / 1.57   21d: 1.51 / 1.71   28d: 1.51 / 1.59
+  incertidumbre del cuantil: la serie de origen se remuestrea por bloques del mismo tamaño que el nulo; semiancho relativo del IC95
+  w= 7d   7d: 95 % 1.52 ±9%  99 % 1.75 ±12%   14d: 95 % 1.69 ±17%  99 % 1.92 ±20%   21d: 95 % 1.64 ±17%  99 % 1.85 ±19%   28d: 95 % 1.87 ±19%  99 % 1.93 ±19%
+  w=14d   7d: 95 % 1.42 ±8%  99 % 1.63 ±13%   14d: 95 % 1.48 ±11%  99 % 1.64 ±14%   21d: 95 % 1.48 ±11%  99 % 1.67 ±15%   28d: 95 % 1.53 ±12%  99 % 1.61 ±13%
+  w=28d   7d: 95 % 1.34 ±7%  99 % 1.50 ±11%   14d: 95 % 1.39 ±11%  99 % 1.57 ±14%   21d: 95 % 1.51 ±16%  99 % 1.70 ±20%   28d: 95 % 1.52 ±19%  99 % 1.59 ±18%
+  ¿el remuestreo conserva la dependencia? autocorrelación media de las series remuestreadas frente a la observada
+  observada      l1:+0.51  l3:+0.41  l7:+0.18  l14:+0.31  l21:+0.17  l28:+0.09
+  bloques de  3 d l1:+0.27  l3:-0.01  l7:-0.02  l14:-0.02  l21:-0.01  l28:-0.01
+  bloques de  7 d l1:+0.42  l3:+0.20  l7:-0.02  l14:-0.02  l21:-0.02  l28:-0.02
+  bloques de 14 d l1:+0.46  l3:+0.20  l7:+0.01  l14:-0.01  l21:-0.04  l28:-0.01
+  bloques de 21 d l1:+0.45  l3:+0.29  l7:+0.09  l14:+0.06  l21:+0.03  l28:-0.07
+  bloques de 28 d l1:+0.44  l3:+0.31  l7:+0.14  l14:+0.03  l21:-0.04  l28:+0.06
+  autocorrelación del XP diario a lag 1: +0.51, 3: +0.41, 7: +0.18, 14: +0.31, 21: +0.17, 28: +0.09  (error típico ≈ 0.09): la dependencia no se agota a los 7 días
+  referencia: ventanas reales históricas con ≥ 28 días previos, % con cociente ≥ 1,3 (incluye deriva real)
+  w= 3d n=103 ≥1,3: 45%
+  w= 7d n=99 ≥1,3: 47%
+  w=14d n=92 ≥1,3: 45%
+  w=28d n=78 ≥1,3: 53%
+  estado actual (últimos w días frente a los anteriores)
+  w= 7d: cociente=1.47
+  w=14d: cociente=1.27
+  w=28d: cociente=1.40

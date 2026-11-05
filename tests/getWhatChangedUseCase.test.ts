@@ -130,8 +130,8 @@ describe("Get What Changed Use Case", () => {
 
     // Findings
     const jump = res.findings.find((f) => f.id === "CHESS_RATING_JUMP");
-    expect(jump).toBeDefined();
-    expect(jump?.claim).toContain("+30");
+    expect(jump).toBeUndefined(); // A7: +30 in 10 games has no admitted band, so it is observed (below) but not affirmed
+    expect(res.evaluations.find((x) => x.id === "CHESS_RATING_JUMP")).toMatchObject({ status: "not_emitted", reasons: ["calibration_unavailable"], metrics: { ratingDelta: 30, gamesCount: 10 } });
   });
 
   // Amendment A2 (docs/contracts/2026-10-06-discarded-signals-contract.md §9): no rating observed in the window is not "delta 0".
@@ -163,9 +163,9 @@ describe("Get What Changed Use Case", () => {
   it("shouldKeepEvaluatingTheJumpWhenARatingIsObservedInInterval", async () => {
     const small = await getWhatChangedUseCase(createMockPort({ getChessInterval: async () => ({ ...emptyInterval, gamesCount: 1, latestRating: 810 }) }), window);
     expect(small.chess.ratingDelta).toBe(10);
-    expect(small.evaluations.find((x) => x.id === "CHESS_RATING_JUMP")).toMatchObject({ status: "not_emitted", reasons: ["effect_below_threshold"] });
+    expect(small.evaluations.find((x) => x.id === "CHESS_RATING_JUMP")).toMatchObject({ status: "not_emitted", reasons: ["calibration_unavailable"] }); // A7: the observed effect is kept, the usual variation is unknown
     const big = await getWhatChangedUseCase(createMockPort({ getChessInterval: async () => ({ ...emptyInterval, gamesCount: 1, latestRating: 830 }) }), window);
-    expect(big.findings.some((f) => f.id === "CHESS_RATING_JUMP")).toBe(true);
+    expect(big.findings.some((f) => f.id === "CHESS_RATING_JUMP")).toBe(false); // A7: no fixed threshold as a fallback
   });
 
 
