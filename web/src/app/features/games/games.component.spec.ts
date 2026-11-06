@@ -547,7 +547,12 @@ describe('Games', () => {
       const i = el.querySelector<HTMLInputElement>('#' + id)!; i.value = v; i.dispatchEvent(new Event(ev)); await tick();
     };
     const dayLines = () => [...el.querySelectorAll('#lgDay li')].map((li) => li.textContent);
-    const key = async (k: string, shiftKey = false) => { document.dispatchEvent(new KeyboardEvent('keydown', { key: k, shiftKey, bubbles: true, cancelable: true })); await tick(); };
+    /** Dispatches a keydown on the document; resolves true when a handler cancelled it (preventDefault). */
+    const key = async (k: string, shiftKey = false) => {
+      const prevented = !document.dispatchEvent(new KeyboardEvent('keydown', { key: k, shiftKey, bubbles: true, cancelable: true }));
+      await tick();
+      return prevented;
+    };
     /** Opens from the hero button and answers the day request. */
     const openEntry = async (day: Body = { ok: true, day: { games: {} } }) => {
       await open({ zip: game() });
@@ -737,31 +742,34 @@ describe('Games', () => {
 
     describe('focus trap', () => {
       const controls = () => [...el.querySelectorAll<HTMLElement>('#lgModal button:not([disabled]), #lgModal select, #lgModal input')];
-      /** Index of the focused control after one Tab (-1 = the last control). */
+      /**
+       * Index of the focused control after one Tab (-1 = the last control) and whether the Tab was cancelled. jsdom never
+       * moves focus on Tab, so `prevented` is what proves the browser will not move it a second time (legacy asserted it too).
+       */
       const trap = async (active: number | null, shift: boolean) => {
         const f = controls();
         if (active === null) el.querySelector<HTMLElement>('#gamesEntryOpen')!.focus(); else f[active === -1 ? f.length - 1 : active].focus();
-        await key('Tab', shift);
+        const prevented = await key('Tab', shift);
         const i = f.indexOf(document.activeElement as HTMLElement);
-        return i === f.length - 1 ? -1 : i;
+        return { focused: i === f.length - 1 ? -1 : i, prevented };
       };
       beforeEach(async () => { await openEntry(); });
 
       it('shouldWrapToTheFirstControlWhenTabbingFromTheLast', async () => {
-        expect(await trap(-1, false)).toBe(0);
+        expect(await trap(-1, false)).toEqual({ focused: 0, prevented: true });
       });
 
       it('shouldWrapToTheLastControlWhenShiftTabbingFromTheFirst', async () => {
-        expect(await trap(0, true)).toBe(-1);
+        expect(await trap(0, true)).toEqual({ focused: -1, prevented: true });
       });
 
       it('shouldMoveToTheNextControlWhenTabbingInTheMiddle', async () => {
-        expect(await trap(0, false)).toBe(1);
+        expect(await trap(0, false)).toEqual({ focused: 1, prevented: true }); // legacy trapGamesFocus cancels every Tab inside the dialog
       });
 
       it('shouldEnterTheDialogWhenFocusIsOutsideIt', async () => {
-        expect(await trap(null, false)).toBe(0);
-        expect(await trap(null, true)).toBe(-1);
+        expect(await trap(null, false)).toEqual({ focused: 0, prevented: true });
+        expect(await trap(null, true)).toEqual({ focused: -1, prevented: true });
       });
     });
   });
