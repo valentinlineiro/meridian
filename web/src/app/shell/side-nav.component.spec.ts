@@ -39,6 +39,14 @@ describe('SideNav', () => {
     expect(el.querySelector('form[method="post"][action="/logout"] button[type="submit"]')?.textContent).toBe('Salir');
   });
 
+  // tests/frontendWhatChanged.test.ts: shouldIncludeWhatChangedButtonInDashboardTabsWhenRendered + shouldActivateChangesTabWhenShowTabIsInvokedWithChanges
+  it('shouldMarkQueCambioActiveWhenTheRouteIsChanges', async () => {
+    const el = await render('/changes');
+    expect(item(el, 'Qué cambió').getAttribute('href')).toBe('/changes');
+    expect(item(el, 'Qué cambió').classList).toContain('active');
+    expect(item(el, 'Hoy').classList).not.toContain('active');
+  });
+
   it('shouldDisableSyncButtonWhileSyncing', async () => {
     const el = await render('/overview');
     const button = el.querySelector<HTMLButtonElement>('#syncBtn')!;
