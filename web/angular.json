@@ -16,7 +16,8 @@
             "browser": "src/main.ts",
             "tsConfig": "tsconfig.app.json",
             "outputPath": "dist",
-            "baseHref": "/next/"
+            "baseHref": "/next/",
+            "styles": ["src/styles.css"]
           },
           "configurations": {
             "production": {
@@ -24,7 +25,8 @@
                 { "type": "initial", "maximumWarning": "500kB", "maximumError": "1MB" },
                 { "type": "anyComponentStyle", "maximumWarning": "4kB", "maximumError": "8kB" }
               ],
-              "outputHashing": "all"
+              "outputHashing": "all",
+              "optimization": { "scripts": true, "styles": { "minify": true, "inlineCritical": false }, "fonts": true }
             },
             "development": { "optimization": false, "extractLicenses": false, "sourceMap": true }
           },
