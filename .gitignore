@@ -8,3 +8,5 @@ wrangler.production.jsonc
 __pycache__/
 web/dist/
 web/.angular/
+test-results/
+playwright-report/
