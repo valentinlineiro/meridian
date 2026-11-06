@@ -561,10 +561,14 @@ describe('Chess', () => {
       await t.open(chessApi({ '/api/matches': { rows: [{ match_id: 'm1', ply_count: 2, opponent_name: 'Bot 8', result: 'win' }], total: 1 } }));
       t.el().querySelector<HTMLElement>('#mb tr.gamerow')!.click();
       await t.tick();
-      const r = t.pending().find((x) => x.request.url === '/api/me/matches/m1/game')!;
-      r.flush({ ok: true, userColor: 'white', opponent: 'Bot 8', startFen: '8/8/8/8/8/8/8/8 w - - 0 1', plies: [] });
+      const asked = t.pending().filter((x) => x.request.url === '/api/me/matches/m1/game');
+      expect(asked).toHaveLength(1); // one viewer, one request
+      asked[0].flush({ ok: true, userColor: 'white', opponent: 'Bot 8', startFen: '8/8/8/8/8/8/8/8 w - - 0 1', plies: [] });
       await t.tick();
+      t.http.verify();
       expect(t.text('gTitle')).toBe('vs Bot 8 · blancas');
+      expect(document.querySelectorAll('[role=dialog]')).toHaveLength(1);
+      expect(document.querySelectorAll('#gameModal')).toHaveLength(1);
     });
   });
 
