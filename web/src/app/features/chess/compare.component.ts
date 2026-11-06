@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { pc1, pctCi } from '../../core/format';
-import { dec1, Group, pc0 } from './chess.model';
+import { dec1, Group, list, NA, pc0, safe } from './chess.model';
 
 const SEG_LABELS: Record<string, string> = { noisy_neural: 'Noisy Neural', neural: 'Neural', blended: 'Blended', stockfish: 'Stockfish', pvp: 'PvP', bot: 'Bots', white: 'Blancas', black: 'Negras' };
 
@@ -32,7 +32,9 @@ function row(g: Group, total: number) {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @let rs = rows();
-    @if (!rs.length) {
+    @if (rs === null) {
+      <div class="muted">{{ na }}</div>
+    } @else if (!rs.length) {
       <div class="muted">Sin datos</div>
     } @else {
       @for (r of rs.slice(0, shown()); track $index) { <ng-container *ngTemplateOutlet="rowTpl; context: { $implicit: r }" /> }
@@ -60,6 +62,8 @@ export class Compare {
   readonly total = input.required<number>();
   readonly cap = input<number | null>(null);
   readonly noun = input('filas');
-  protected readonly rows = computed(() => this.groups().map((g) => row(g, this.total())));
+  protected readonly na = NA;
+  // not a list, or rows it cannot read: "No disponible", never a thrown template
+  protected readonly rows = computed(() => safe(() => list<Group>(this.groups())?.map((g) => row(g, this.total())) ?? null, null));
   protected readonly shown = computed(() => this.cap() ?? Infinity);
 }

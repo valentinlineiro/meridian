@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { Compare } from './compare.component';
-import { Mates, Openings as OpeningStats, pc0, Phases, Tally, Threats } from './chess.model';
+import { Group, list, Mates, Openings as OpeningStats, pc0, Phases, safe, Tally, Threats } from './chess.model';
 import { MatchesService } from './matches.service';
 
 const OPENINGS_SHOWN = 8;
@@ -72,8 +72,10 @@ export class Openings {
     const op = this.openings();
     if (op === undefined) return undefined;
     if (!op || op.error) return null;
+    const white = list<Group>(op.white ?? []), black = list<Group>(op.black ?? []);
+    if (!white || !black) return null;
     return {
-      white: op.white ?? [], black: op.black ?? [],
+      white, black,
       pop: op.population ? `Hidratadas: ${op.population.hydrated} / ${op.population.totalMatches} partidas` + ((op.unclassified ?? 0) > 0 ? ` · ${op.unclassified} sin clasificar` : '') : '',
     };
   });
@@ -87,8 +89,10 @@ export class Openings {
   // Shown only when there is something to show: how the games won or lost by checkmate ended.
   protected readonly mates = computed(() => {
     const mt = this.matesStats();
-    if (!mt || mt.error || !((mt.given ?? []).length || (mt.received ?? []).length || (mt.unclassified ?? 0) > 0)) return null;
-    return { given: mt.given ?? [], received: mt.received ?? [], note: (mt.unclassified ?? 0) > 0 ? `${mt.unclassified} mates sin clasificar` : '' };
+    const given = list<{ label: string; games: number }>(mt?.given ?? []), received = list<{ label: string; games: number }>(mt?.received ?? []);
+    if (!mt || mt.error || !given || !received || !(given.length || received.length || (mt.unclassified ?? 0) > 0)) return null;
+    return { given, received, note: (mt.unclassified ?? 0) > 0 ? `${mt.unclassified} mates sin clasificar` : '' };
   });
-  protected readonly threats = computed(() => threats(this.threatStats()));
+  // a threats body it cannot read hides the card, as an absent one does
+  protected readonly threats = computed(() => safe(() => threats(this.threatStats()), null));
 }

@@ -13,7 +13,9 @@ export class ChessBoard {
   readonly fen = input.required<string>();
   readonly flip = input(false);
   protected readonly squares = computed(() => {
-    const rows = this.fen().split(' ')[0].split('/').map((r) => [...r].flatMap((ch) => /\d/.test(ch) ? Array<string>(+ch).fill('') : [GLYPH[ch] || '']));
+    // a position it cannot read is an empty board, never a thrown template
+    const fen = this.fen();
+    const rows = (typeof fen === 'string' ? fen : '8/8/8/8/8/8/8/8').split(' ')[0].split('/').map((r) => [...r].flatMap((ch) => /\d/.test(ch) ? Array<string>(+ch).fill('') : [GLYPH[ch] || '']));
     if (this.flip()) { rows.reverse(); rows.forEach((r) => r.reverse()); }
     return rows.flatMap((r, y) => r.map((g, x) => ({ g, dk: (x + y) % 2 === 1 })));
   });

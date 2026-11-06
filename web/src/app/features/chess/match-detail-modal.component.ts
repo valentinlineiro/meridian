@@ -57,7 +57,8 @@ export class MatchDetailModal {
   private readonly res = rxResource<Game | { error: string }, string | undefined>({
     params: () => this.m.openId() ?? undefined,
     stream: ({ params: id }) => this.api.get<Game>(`/api/me/matches/${encodeURIComponent(id)}/game`).pipe(
-      map((b): Game | { error: string } => { if (!b?.ok) throw { error: b }; return Array.isArray(b.plies) ? b : { error: MISSING }; }),
+      map((b): Game | { error: string } => { if (!b?.ok) throw { error: b }; // every ply must carry its position: a game the viewer cannot paint is reported, not half-drawn
+        return Array.isArray(b.plies) && typeof b.startFen === 'string' && b.plies.every((p) => typeof p?.fen === 'string' && typeof p.san === 'string') ? b : { error: MISSING }; }),
       catchError((e) => of({ error: e?.error?.code === 'ILLEGAL_GAME' ? ILLEGAL : MISSING })),
     ),
   });

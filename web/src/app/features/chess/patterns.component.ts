@@ -3,7 +3,7 @@ import { rxResource } from '@angular/core/rxjs-interop';
 import { catchError, map, of } from 'rxjs';
 import { ApiClient } from '../../core/api-client';
 import { colorConclusion } from '../../core/format';
-import { ColorStats, dec1, NA, scaleDelta } from './chess.model';
+import { ColorStats, dec1, Group, list, NA, scaleDelta } from './chess.model';
 import { Profile } from './engine-profile.component';
 import { MatchesService } from './matches.service';
 
@@ -53,9 +53,10 @@ export class Patterns {
   readonly engine = output<void>();
 
   private readonly delta = computed(() => {
-    const c = this.colorStats(), g = c?.groups ?? [];
+    const c = this.colorStats(), g = list<Group>(c?.groups ?? []);
+    if (!g) return { known: false, d: null, unreadable: true };
     const wh = g.find((x) => x.key === 'white'), bl = g.find((x) => x.key === 'black');
-    return wh && bl && wh.winRate != null && bl.winRate != null ? { known: true, d: scaleDelta(c!.difference, 100) } : { known: false, d: null };
+    return wh && bl && wh.winRate != null && bl.winRate != null ? { known: true, d: scaleDelta(c!.difference, 100), unreadable: false } : { known: false, d: null, unreadable: false };
   });
   // The persistence verdict lives in the trajectory evaluation; it is asked only when there is an interval to qualify.
   private readonly persistence = rxResource<Evaluation | null, true | undefined>({
@@ -70,7 +71,8 @@ export class Patterns {
     const c = this.colorStats();
     if (c === undefined) return '—';
     if (c === null) return NA; // a failed request is not "not enough data"
-    const { known, d } = this.delta();
+    const { known, d, unreadable } = this.delta();
+    if (unreadable) return NA;
     if (!known) return 'Sin datos de color suficientes';
     const first = colorConclusion(d?.diff, d?.lower, d?.upper, { known: false });
     if (!first || !d) return '';

@@ -37,6 +37,10 @@ export interface ChessData {
 }
 
 export const NA = 'No disponible';
+/** A list as the API promised it, or null: a malformed body degrades its own card instead of throwing into the template. */
+export const list = <T>(v: T[] | null | undefined | unknown): T[] | null => Array.isArray(v) ? v as T[] : null;
+/** Runs a view builder; a body it cannot read gives `fallback` (that card's unavailable or absent state). */
+export const safe = <T, F>(build: () => T, fallback: F): T | F => { try { return build(); } catch (e) { console.error(e); return fallback; } };
 export const es = (n: number) => n.toLocaleString('es-ES');
 export const dec1 = (v: number) => v.toFixed(1).replace('.', ',');
 export const pc0 = (v: number) => Math.round(v) + ' %';

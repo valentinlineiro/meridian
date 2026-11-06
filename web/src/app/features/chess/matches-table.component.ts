@@ -117,7 +117,7 @@ export class MatchesTable {
   protected readonly openingGroups = computed(() => {
     const op = this.openings();
     return ([['Blancas', op?.white], ['Negras', op?.black]] as const)
-      .map(([label, items]) => ({ label, items: (items ?? []).map((i) => ({ key: i.key, label: i.label || i.name || i.key })) }))
+      .map(([label, items]) => ({ label, items: (Array.isArray(items) ? items : []).map((i) => ({ key: i.key, label: i.label || i.name || i.key })) }))
       .filter((g) => g.items.length);
   });
   protected readonly subtitle = computed(() => !this.m.compact() ? 'Todas las partidas (50 por página)'

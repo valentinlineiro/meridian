@@ -35,7 +35,7 @@ export class MatchesService {
   private readonly request = signal<Params>({ limit: 10, offset: 0 });
   private readonly page_ = rxResource<MatchPage, Params>({ params: () => this.request(), stream: ({ params }) => this.api.get<MatchPage>('/api/matches', params) });
   private readonly body = computed(() => this.page_.hasValue() ? this.page_.value() : null);
-  readonly rows = computed<MatchRow[]>(() => { const r = this.body()?.rows; return Array.isArray(r) ? r : []; });
+  readonly rows = computed<MatchRow[]>(() => { const r = this.body()?.rows; return Array.isArray(r) ? r.filter((m) => m && typeof m === 'object') : []; });
   readonly total = computed(() => this.body()?.total || 0);
   readonly loaded = computed(() => this.page_.status() === 'resolved');
   readonly failed = computed(() => this.page_.status() === 'error');

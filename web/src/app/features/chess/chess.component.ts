@@ -15,7 +15,7 @@ import { Openings as OpeningsBlock } from './openings.component';
 import { Patterns } from './patterns.component';
 import { EngineProfile, Profile, PROFILE_CUT_KEY } from './engine-profile.component';
 import {
-  ChessData, ColorStats, es, fmt, Mates, NA, OpponentElo, Openings, Opponents, Phases, Recent, Results, scaleDelta, signedInt, streakWord,
+  ChessData, ColorStats, es, fmt, Group, list, Mates, NA, OpponentElo, Openings, Opponents, Phases, Recent, Results, scaleDelta, signedInt, streakWord,
   Summary, Threats, Timeline,
 } from './chess.model';
 
@@ -35,7 +35,7 @@ function hero(d: ChessData | null, failed: boolean) {
   // An unknown timeline (failed request) is not "a single observation": the summary still knows the first ELO.
   const single = d.t ? (d.t.snapshots?.length ?? 0) <= 1 : false;
   const n = s.currentStreak;
-  const bots = d.o?.macro?.find((m) => m.key === 'bot');
+  const bots = list<{ key: string; games: number }>(d.o?.macro)?.find((m) => m.key === 'bot');
   const c = counts(s);
   const sum = c ? c.w + c.l + c.d : 0;
   const wP = sum ? Number((c!.w / sum * 100).toFixed(1)) : 0, lP = sum ? Number((c!.l / sum * 100).toFixed(1)) : 0;
@@ -68,13 +68,14 @@ function form(r: Recent | null | undefined) {
 }
 
 function colDiff(c: ColorStats | null) {
-  const g = c?.groups ?? [], wh = g.find((x) => x.key === 'white'), bl = g.find((x) => x.key === 'black');
+  const g = list<Group>(c?.groups) ?? [], wh = g.find((x) => x.key === 'white'), bl = g.find((x) => x.key === 'black');
   if (!(wh && bl && wh.winRate != null && bl.winRate != null)) return '';
   return `Blancas ${pc1(wh.winRate * 100)} · Negras ${pc1(bl.winRate * 100)} → ${fmtDelta(scaleDelta(c!.difference, 100))}`;
 }
 
 function oppMacro(o: Opponents | null) {
-  const b = o?.macro?.find((m) => m.key === 'bot'), p = o?.macro?.find((m) => m.key === 'pvp');
+  const macro = list<NonNullable<Opponents['macro']>[number]>(o?.macro) ?? [];
+  const b = macro.find((m) => m.key === 'bot'), p = macro.find((m) => m.key === 'pvp');
   return b && p ? `Bots: ${es(b.games)} (${pctCi(b.winRate, b.winRateCi)}) · PvP: ${es(p.games)} (${pctCi(p.winRate, p.winRateCi)})` : '';
 }
 
@@ -146,10 +147,10 @@ function view(d: ChessData) {
     streakNow: s.currentStreak ? `Racha actual: ${s.currentStreak} ${streakWord(s.currentStreak, s.currentStreakKind)}` : '',
     streakBest: 'Mejor racha: ' + (s.longestWin != null ? s.longestWin + 'W' : '—') + (s.longestLoss ? ` · Peor: ${s.longestLoss}L` : ''),
     total: s.games || 1,
-    col: d.c ? d.c.groups ?? [] : null,
+    col: d.c ? list<Group>(d.c.groups ?? []) : null,
     colDiff: colDiff(d.c),
     oppMacro: oppMacro(d.o),
-    opp: d.o ? d.o.segments || d.o.groups || [] : null,
+    opp: d.o ? list<Group>(d.o.segments || d.o.groups || []) : null,
     evo: evolution(d.t),
     counts: counts(s),
     res: results(s, d.r),

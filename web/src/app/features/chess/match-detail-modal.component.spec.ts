@@ -162,6 +162,13 @@ describe('MatchDetailModal', () => {
     expect(m2.cancelled).toBe(true);
   });
 
+  it('shouldSayTheGameCannotBeShownWhenAPlyHasNoFen', async () => {
+    await open('m1', { ...GAME, plies: [{ san: 'e4' }, ...GAME.plies.slice(1)] });
+    expect(text('gTitle')).toBe('Partida');
+    expect(text('gErr')).toBe('No hay partida completa guardada para esta partida.');
+    expect(el.querySelector('#gBody')).toBeNull();
+  });
+
   it('shouldSayWhyTheGameCannotBeShown', async () => {
     await open('m1', 404);
     expect(text('gTitle')).toBe('Partida');
@@ -185,6 +192,12 @@ describe('m-chess-board', () => {
   it('shouldPlaceEveryPieceAndExpandEmptySquares', async () => {
     const b = await render(START);
     expect(b).toBe('♜♞♝♛♚♝♞♜♟♟♟♟♟♟♟♟♙♙♙♙♙♙♙♙♖♘♗♕♔♗♘♖');
+  });
+  it('shouldDrawAnEmptyBoardWhenTheFenIsNotAString', async () => {
+    const f = TestBed.createComponent(ChessBoard);
+    f.componentRef.setInput('fen', undefined as unknown as string);
+    await f.whenStable();
+    expect((f.nativeElement as HTMLElement).querySelectorAll('.sq')).toHaveLength(64);
   });
   it('shouldMirrorTheBoardWhenFlipped', async () => {
     expect(await render('k7/8/8/8/8/8/8/7K w - - 0 1', true)).toBe('♔♚');

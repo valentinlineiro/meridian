@@ -441,6 +441,55 @@ describe('Chess', () => {
     });
   });
 
+  describe('a malformed section degrades alone', () => {
+    const siblingsRender = () => {
+      expect(t.text('kpis')).toContain('Partidas');
+      expect(t.text('colDiff')).toContain('Blancas 70,0 %');
+      expect(t.text('phasesMeta')).toBe('Mediana: 42 plies · Hidratadas: 10 partidas');
+    };
+
+    it('shouldHideTheThreatsCardWhenAPhaseIsMissing', async () => {
+      const { endgame: _gone, ...byPhase } = THREATS.byPhase;
+      await t.open(chessApi({ '/api/stats/threats': { ...THREATS, byPhase } }));
+      expect(t.el().querySelector('#threatsCard')).toBeNull();
+      siblingsRender();
+    });
+
+    it('shouldHideTheMatesCardWhenItsListsAreNotLists', async () => {
+      await t.open(chessApi({ '/api/stats/mates': { given: 'x', received: 7, unclassified: 2 } }));
+      expect(t.el().querySelector('#matesCard')).toBeNull();
+      siblingsRender();
+    });
+
+    it('shouldSayNoDisponibleWhenTheOpeningsAreNotLists', async () => {
+      await t.open(chessApi({ '/api/stats/openings': { white: 'x', black: { a: 1 }, unclassified: 0, population: { hydrated: 5, totalMatches: 100 } } }));
+      expect(t.text('openingsWhite')).toBe('No disponible');
+      expect(t.text('openingsBlack')).toBe('No disponible');
+      siblingsRender();
+    });
+
+    it('shouldSayNoDisponibleWhenAComparisonIsNotAList', async () => {
+      const api = chessApi({ '/api/stats/phases': { phases: 'x', medianPlies: 42, population: { hydrated: 10 } }, '/api/stats/opponents': { macro: [], segments: { a: 1 } } });
+      await t.open(api);
+      expect(t.text('phasesBody')).toBe('No disponible');
+      expect(t.text('opp')).toBe('No disponible');
+      siblingsRender();
+    });
+
+    it('shouldSayNoDisponibleInPatternsWhenTheColourGroupsAreNotAList', async () => {
+      await t.open(chessApi({ '/api/stats/color': { groups: 'x', difference: null } }));
+      expect(t.text('chessPatternColorConclusion')).toBe('No disponible');
+      expect(t.text('col')).toBe('No disponible');
+      expect(t.text('kpis')).toContain('Partidas');
+    });
+
+    it('shouldSkipMatchRowsThatAreNotObjects', async () => {
+      await t.open(chessApi({ '/api/matches': { rows: [null, 'x', { match_id: 'm1', opponent_name: 'Bot 8', result: 'win' }], total: 3 } }));
+      expect(t.el().querySelectorAll('#mb tr')).toHaveLength(1);
+      expect(t.text('mb')).toContain('Bot 8');
+    });
+  });
+
   describe('patterns', () => {
     it('shouldSayWhetherTheColourDifferenceIsDetectableAndPersistent', async () => {
       await t.harness.navigateByUrl('/chess');
