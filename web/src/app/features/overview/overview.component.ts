@@ -101,7 +101,9 @@ function chessCard(stats: ChessSummary | null, syncedAt: string | null) {
 
 // A manual log has no "broken streak": with no record for 2+ days the run is 0 because nothing was recorded.
 function gamesCard(g: GamesSummary | null) {
-  if (!g || !g.games || !Object.keys(g.games).length) return { label: 'Racha actual', value: '—', small: false, meta: 'Sin partidas registradas aún', historical: '0 días registrados' };
+  // a failed request is unknown, not an empty log (legacy rendered it as "0 días registrados")
+  if (!g) return { label: 'Racha actual', value: '—', small: false, meta: '', historical: '—' };
+  if (!g.games || !Object.keys(g.games).length) return { label: 'Racha actual', value: '—', small: false, meta: 'Sin partidas registradas aún', historical: '0 días registrados' };
   const cur = g.playStreak?.current ?? 0, max = g.playStreak?.max ?? 0;
   const maxTxt = max > 0 ? 'Racha máxima ' + gdays(max) : '';
   const historical = g.days ? gdays(g.days) + ' registrados' : '—';

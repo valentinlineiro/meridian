@@ -140,8 +140,17 @@ describe('Overview', () => {
     const el = await open({ ...fullApi(), '/api/languages/xp': FAIL, '/api/matches': FAIL, '/api/me/linkedin-games/summary': FAIL });
     for (const id of ['overviewLangWeekSummary', 'overviewChessWeekSummary', 'overviewGamesWeekSummary']) expect(text(el, id)).toBe('No disponible');
     for (const id of ['overviewLangWeek', 'overviewChessWeek', 'overviewGamesWeek']) expect(el.querySelector('#' + id)!.children).toHaveLength(0);
+    // a failed summary is not an empty log: no "Sin partidas registradas aún", no "0 días registrados"
+    expect(text(el, 'overviewGamesStreak')).toBe('—');
+    expect(text(el, 'overviewGamesMeta')).toBe('');
+    expect(text(el, 'overviewGamesHistorical')).toBe('—');
+  });
+
+  it('shouldShowTheEmptyLogCopyWhenTheGamesSummaryHasNoGames', async () => {
+    const el = await open({ ...fullApi(), '/api/me/linkedin-games/summary': { summary: { days: 0, games: {}, playStreak: { current: 0, max: 0 } } } });
     expect(text(el, 'overviewGamesStreak')).toBe('—');
     expect(text(el, 'overviewGamesMeta')).toBe('Sin partidas registradas aún');
+    expect(text(el, 'overviewGamesHistorical')).toBe('0 días registrados');
   });
 
   it('shouldReadEachStatsRouteWhenTheBundleFails', async () => {
