@@ -36,7 +36,7 @@
   </nav>
   <section class="kpis" id="kpis">
     @if (failed()) {
-      <div class="err-box" role="alert"><span>No se pudieron cargar las estadísticas de ajedrez.</span> <button class="btn btn-p" type="button" (click)="data.reload()">Reintentar</button></div>
+      <div class="err-box" role="alert"><span>No se pudieron cargar las estadísticas de ajedrez.</span>&ngsp;<button class="btn btn-p" type="button" (click)="data.reload()">Reintentar</button></div>
     } @else if (x) {
       @for (k of x.kpis; track k.label) { <m-kpi [label]="k.label" [value]="k.value" [sub]="k.sub" /> }
     }
@@ -71,6 +71,10 @@
     <div class="muted" id="streak" style="margin-top:10px">@if (x) {@if (x.streakNow) {<b>{{ x.streakNow }}</b> · }{{ x.streakBest }}}</div>
   </div>
 
+  <div class="card" id="chessPatternsCard" style="margin-top:12px">
+    <app-patterns [games]="x ? d()!.s.games ?? 0 : undefined" [colorStats]="x ? d()!.c : undefined" [profile]="profile()" (color)="filterColor($event, allMatches)" (engine)="jump(engineDetails)" />
+  </div>
+
   <details class="cgroup" id="cg-comp" open #cgComp><summary>Comparativa por color y oponente</summary>
     <div class="grid2">
       <div class="card" id="colCard"><h2>Rendimiento por color</h2><div id="colDiff" class="muted" style="margin-bottom:8px">{{ x?.colDiff }}</div>
@@ -81,6 +85,7 @@
   </details>
 
   <details class="cgroup" id="cg-open" [open]="!phone" #cgOpen><summary>Repertorio de aperturas &amp; fases</summary>
+    <app-openings [openings]="x ? d()!.op : undefined" [phases]="x ? d()!.ph : undefined" [matesStats]="x ? d()!.mt : undefined" [threatStats]="x ? d()!.th : undefined" [total]="x?.total ?? 1" />
   </details>
 
   <details class="cgroup" id="cg-evo" [open]="!phone" #cgEvo><summary>Evolución &amp; detalle</summary>
@@ -102,6 +107,11 @@
         <div class="muted" id="eloNote" style="margin-top:6px">{{ x?.elo?.note }}</div>
       </div>
     </details>
+  </details>
+
+  <details class="cgroup" id="chessEngineProfileDetails" open #engineDetails>
+    <summary style="cursor:pointer;font-weight:600;font-size:13px;color:#8ea0b8;padding:10px 0">Perfil de juego y análisis de motor (Stockfish) ▾</summary>
+    <div id="chessEngineProfileContent"><app-engine-profile [profile]="profile()" [cut]="cut()" (cutChange)="setCut($event)" /></div>
   </details>
 
   <div class="card" style="margin-top:14px" id="allMatchesCard" #allMatches>

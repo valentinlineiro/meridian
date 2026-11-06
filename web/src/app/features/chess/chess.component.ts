@@ -11,6 +11,9 @@ import { Compare } from './compare.component';
 import { MatchesService } from './matches.service';
 import { MatchesTable } from './matches-table.component';
 import { MatchDetailModal } from './match-detail-modal.component';
+import { Openings as OpeningsBlock } from './openings.component';
+import { Patterns } from './patterns.component';
+import { EngineProfile, Profile, PROFILE_CUT_KEY } from './engine-profile.component';
 import {
   ChessData, ColorStats, es, fmt, Mates, NA, OpponentElo, Openings, Opponents, Phases, Recent, Results, scaleDelta, signedInt, streakWord,
   Summary, Threats, Timeline,
@@ -19,6 +22,9 @@ import {
 // Port of loadChessDashboard/renderChessView (src/dashboard.client.js:1004–1100, 1447–1625).
 const orNull = <T>(o: Observable<T>) => o.pipe(catchError(() => of(null)));
 const WR_LABEL = '% de victorias (historial completo, todos los rivales)';
+// The experiment cut lives in this browser only; storage may be blocked (then it lasts as long as the view).
+const readCut = () => { try { return localStorage.getItem(PROFILE_CUT_KEY) || ''; } catch { return ''; } };
+const saveCut = (v: string) => { try { if (v) localStorage.setItem(PROFILE_CUT_KEY, v); else localStorage.removeItem(PROFILE_CUT_KEY); } catch { /* storage blocked */ } };
 const counts = (s: Summary) => s.wins != null && s.losses != null && s.draws != null ? { w: s.wins, l: s.losses, d: s.draws } : null;
 
 function hero(d: ChessData | null, failed: boolean) {
@@ -153,7 +159,7 @@ function view(d: ChessData) {
 
 @Component({
   selector: 'app-chess',
-  imports: [Kpi, Donut, Sparkline, Compare, MatchesTable, MatchDetailModal],
+  imports: [Kpi, Donut, Sparkline, Compare, MatchesTable, MatchDetailModal, OpeningsBlock, Patterns, EngineProfile],
   providers: [MatchesService],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './chess.component.html',
@@ -188,6 +194,17 @@ export class Chess {
   });
   protected readonly form = computed(() => form(this.recent()));
 
+  // Engine profile: asked with the saved cut; a new cut cancels the request for the previous one.
+  protected readonly cut = signal(readCut());
+  private readonly profileRes = rxResource<Profile | null, string>({
+    params: () => this.cut(),
+    stream: ({ params: since }) => orNull(this.api.get<Profile>('/api/stats/profile', since ? { since } : undefined)),
+  });
+  /** undefined = loading, null = failed. */
+  protected readonly profile = computed(() => this.profileRes.isLoading() || !this.profileRes.hasValue() ? undefined : this.profileRes.value());
+
+  private readonly matches = inject(MatchesService);
+
   // On phones only the first block starts open: the page is a list of blocks to expand.
   protected readonly phone = typeof matchMedia === 'function' && matchMedia('(max-width:760px)').matches;
 
@@ -197,6 +214,17 @@ export class Chess {
   }
 
   protected setRecent(n: number): void { this.recentN.set(n); }
+
+  protected setCut(v: string): void {
+    saveCut(v);
+    this.cut.set(v);
+  }
+
+  /** Evidence one tap away: filter the matches by colour and scroll to them. */
+  protected filterColor(value: string, card: HTMLElement): void {
+    this.matches.setFilter('color', value);
+    card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 
   /** Page index: open the block (if collapsed) and scroll to it. Buttons, not #anchors: the URL belongs to the router. */
   protected jump(el: HTMLElement): void {
