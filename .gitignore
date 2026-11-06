@@ -6,3 +6,7 @@ wrangler.production.jsonc
 .playwright-mcp/
 
 __pycache__/
+web/dist/
+web/.angular/
+test-results/
+playwright-report/

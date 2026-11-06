@@ -3,20 +3,28 @@
   "version": "0.2.1",
   "private": true,
   "type": "module",
+  "workspaces": [
+    "web"
+  ],
   "scripts": {
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
+    "dev": "npm run web:build && wrangler dev",
+    "deploy": "npm run web:build && wrangler deploy",
     "test": "vitest run",
+    "test:e2e": "node scripts/e2e-setup.mjs && playwright test",
     "migrate:local": "wrangler d1 migrations apply meridian --local",
     "migrate:remote": "wrangler d1 migrations apply meridian --remote",
     "types": "wrangler types",
     "typecheck": "tsc --noEmit",
-    "demo:seed": "node --experimental-strip-types demo/seed.ts"
+    "demo:seed": "node --experimental-strip-types demo/seed.ts",
+    "web:build": "npm run build -w web",
+    "web:test": "npm run test -w web",
+    "web:dev": "npm run dev -w web"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20240925.0",
+    "@playwright/test": "^1.65.0",
     "@types/node": "^26.6.2",
-    "typescript": "^5.6.0",
+    "typescript": "~6.0",
     "vitest": "^2.1.0",
     "wrangler": "^3.90.0"
   },

@@ -43,6 +43,12 @@ describe("buildProductionConfig", () => {
     expect(() => buildProductionConfig(base(), env({ SYNC_REPO: repo }))).toThrow(/SYNC_REPO/);
   });
 
+  it("shouldKeepTheAssetsBindingWhenTheTrackedConfigHasIt", () => {
+    const tracked = JSON.parse(readFileSync(new URL("../wrangler.jsonc", import.meta.url).pathname, "utf8"));
+    const cfg = buildProductionConfig(tracked, env()) as any;
+    expect(cfg.assets).toEqual({ directory: "./web/dist/browser", binding: "ASSETS", run_worker_first: true });
+  });
+
   it("shouldAcceptTheTrackedWranglerConfigAsItsBase", () => {
     const tracked = JSON.parse(readFileSync(new URL("../wrangler.jsonc", import.meta.url).pathname, "utf8"));
     expect(() => buildProductionConfig(tracked, env())).not.toThrow();

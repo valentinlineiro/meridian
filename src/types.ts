@@ -1,5 +1,6 @@
 export interface Env {
   DB: D1Database;
+  ASSETS: Fetcher; // Workers Assets: the Angular bundle (web/dist/browser), served at the root
   IMPORT_TOKEN?: string;
   // Owner login (read policy). All three must be set or every user-read request is denied.
   ADMIN_EMAIL?: string;         // the only identity allowed

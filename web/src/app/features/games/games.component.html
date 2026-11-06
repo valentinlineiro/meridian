@@ -1,0 +1,53 @@
+<section id="gamesTab">
+  @let h = hero();
+  <div class="hero-card" id="gamesHero">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px">
+      <div>
+        <div id="gamesHeroStreakLabel" class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.05em">{{ h.label }}</div>
+        <div style="display:flex;align-items:baseline;gap:8px;margin-top:2px"><span id="gamesHeroStreak" style="font-size:28px;font-weight:800;line-height:1">{{ h.streak }}</span></div>
+        <div id="gamesHeroMeta" class="muted" style="font-size:12px;margin-top:4px">{{ h.meta }}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+        <button class="btn btn-p" type="button" id="gamesEntryOpen" (click)="entry.open()">Registrar resultado</button>
+        <span id="gamesHeroDays" class="muted" style="font-size:12px">{{ h.days }}</span>
+      </div>
+    </div>
+    <div style="margin-top:14px"><div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Hoy · toca un juego para registrarlo</div>
+      <div id="gamesToday" class="chips">@for (c of chips(); track c.k) {<button type="button" [class]="'pill ' + (c.done ? 'pill-win' : 'pill-scope')" [attr.data-game]="c.k" (click)="entry.open(c.k)">{{ c.text }}</button>}</div>
+    </div>
+  </div>
+  <div id="gamesNote" class="muted" role="status">{{ note() }}</div>
+  <div class="cindex" id="gamesRange" role="group" aria-label="Periodo de análisis"><span class="muted" style="align-self:center">Periodo</span>@for (r of ranges; track r.k) {<button type="button" class="btn btn-g" [id]="'gr-' + r.k" [attr.aria-pressed]="range() === r.k" (click)="range.set(r.k)">{{ r.l }}</button>}</div>
+  <details class="cgroup" id="cg-games-cmp" open><summary>Comparativa</summary>
+    <app-games-table [summary]="summary() ?? undefined" [range]="range()" />
+    <p class="muted">n = observaciones con media global usadas (eficiencia y % que gana a la media) o con tiempo (mediana y n final). Δ eficiencia = cambio relativo frente al periodo anterior equivalente, con n actual/anterior; «—» si no es comparable.</p>
+  </details>
+  <details class="cgroup" id="cg-games-traj" open><summary>Trayectoria</summary>
+    @let t = traj();
+    <label class="muted" for="gamesTrajGame">Juego</label> <select id="gamesTrajGame" (change)="trajPick.set($any($event.target).value)">@for (o of t?.options; track o.k) {<option [value]="o.k" [selected]="o.k === t?.game">{{ o.l }}</option>}</select>
+    <div id="gamesChart" class="card">@if (t?.view; as v) {<app-games-chart [buckets]="v.buckets" />} @else if (t && t.view === null) {<div class="muted">No disponible</div>}</div>
+    <p class="muted" id="gamesChartNote">{{ t?.view?.note }}</p>
+    <details class="gdata" id="gamesDataDetails"><summary>Ver los datos del gráfico (tabla)</summary>
+      <div class="tblwrap"><table class="gtable" id="gamesDataTable" aria-describedby="gamesDataCaption"><caption id="gamesDataCaption" class="sr-only">{{ t?.view?.caption }}</caption><thead><tr><th scope="col">Periodo</th><th scope="col">Eficiencia (mediana)</th><th scope="col">Gana a la media</th><th scope="col">n</th></tr></thead>
+        <tbody id="gamesDataRows">@for (r of t?.view?.rows; track $index) {<tr><th scope="row">{{ r[0] }}</th><td class="num">{{ r[1] }}</td><td class="num">{{ r[2] }}</td><td class="num">{{ r[3] }}</td></tr>}</tbody></table></div>
+    </details>
+  </details>
+  <details class="cgroup" id="cg-games" open><summary>Por juego</summary><p class="muted" id="gamesInterpNote">La etiqueta compara con el ruido propio de cada juego (límites calibrados con datos reales) y solo se publica si se repite dos semanas seguidas. «Estable» significa «sin cambio detectable», no «sin cambio». Las flechas de la tabla solo existen en el periodo de 28 días.</p>
+    <div id="gamesList" class="grid2">
+      @for (c of cards(); track c.k) {
+        @if ('na' in c) {
+          <section class="card gcard"><h3>{{ c.name }}</h3><p class="muted">No disponible</p></section>
+        } @else {
+          <section class="card gcard" [class.det]="c.det">
+            <h3>{{ c.name }}<span [class]="c.badgeClass" style="margin-left:8px">{{ c.badge }}</span></h3>
+            @for (t of c.interp; track $index) {<p [class]="$first ? 'ginterp' : 'muted'">{{ t }}</p>}
+            @for (t of c.lines; track $index) {<p>{{ t }}</p>}
+            <div>@if (c.spark) {<svg class="spark" viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true"><polyline [attr.points]="c.spark" fill="none" stroke="#7aa7e6" stroke-width="1.5" vector-effect="non-scaling-stroke" /></svg>}</div>
+            <p class="muted">Línea: mediana móvil de 28 días (suavizada).</p>
+          </section>
+        }
+      }
+    </div>
+  </details>
+</section>
+<app-games-entry-modal #entry (saved)="data.reload()" />

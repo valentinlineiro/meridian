@@ -35,4 +35,37 @@ Pilot: `slices/daily-goal` (the user's own daily XP goal).
 
 Older code still uses the horizontal layout (`api/`, `application/`, `db/`, `ports/`, `infrastructure/`) and some handlers contain handler-local SQL. It is not migrated proactively: when a feature changes it, the touched behaviour moves into a slice. Known debt: the provider-account query exists in `src/db/users.ts` and in `slices/daily-goal` until sync is migrated and identity gets its own slice.
 
+## Frontend (`web/`)
+
+The dashboard is an Angular app (`web/`, built by `npm run web:build` to `web/dist/browser`). The Worker serves it through the
+Workers Assets binding `ASSETS` (`run_worker_first: true`), after the access policy in `src/api/router.ts`: every extension-less
+non-API path (and `/index.html`) gets `index.html` with a CSP that allows no inline script; a path with an extension is a bundle
+file, and a missing one is a 404 (no SPA fallback for files). `/login` and `/logout` stay server-rendered. `/next/*` (the
+migration prefix) answers 301 to the same path at the root.
+
+```text
+web/src/app/
+  core/       ApiClient (10 s timeout, BROWSER_LOCATION), 401 interceptor -> /login?next=, sync, stats bundle, format, legacy URLs
+  shared/     presentational pieces (kpi, donut, sparkline, evaluation cards)
+  shell/      header + side nav (the only place that links every view)
+  features/   one folder per view: overview, chess (+ /profile), languages, games, changes, trajectory, settings
+```
+
+- `features/*` may import `core/*` and `shared/*`, never another feature. Checked when this section was written
+  (`grep` for `../<feature>/` and `features/` imports under `features/`): no violations. Specs import `app.routes` to drive
+  the real router; that is test wiring, not a feature dependency. This rule is not yet enforced by
+  `scripts/check_architecture_boundaries.py`.
+- Each view tolerates a malformed or failed response on its own: a card says "No disponible" (or a dash), never a zero.
+- Product wording rules and the layout rules of the global stylesheet are guarded from the root suite
+  (`tests/webCopyInvariants.test.ts`); behaviour is tested in `web/` (`npm run web:test`).
+
+### Decision: Angular, through a strangler (2026-11)
+
+The legacy dashboard was one inline script (`src/dashboard.client.js`, ~2,400 lines) plus HTML in `src/frontend.ts`. It needed
+`script-src 'unsafe-inline'` and was tested by running the script in a `vm` sandbox against string HTML. We moved to Angular for
+typed components, real DOM tests and a CSP without inline scripts. The move was a strangler: the app was served under `/next/`
+next to the legacy page, one view per task with its legacy tests ported, and the cutover deleted the old page only after every
+view was ported. The cost is a framework and a build step (`npm run web:build`) that every deploy, CI job and hand-deployed
+wrangler config (the `assets` block) must include.
+
 See `ENGINEERING_CONSTITUTION.md` for the general engineering rules (testing, naming, error mapping).
