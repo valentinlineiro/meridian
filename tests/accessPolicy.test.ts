@@ -16,8 +16,9 @@ const cookieFor = async (claims = { sub: ADMIN, exp: nowSec() + 600 }, c = codec
 let d1: D1Database;
 beforeAll(() => { d1 = createSqliteD1(["0004_users.sql", "0010_login_failures.sql"]).d1; });
 
+const ASSETS = { fetch: async () => new Response("<app-root></app-root>", { headers: { "content-type": "text/html" } }) }; // the Angular bundle
 const env = (over: Partial<Env> = {}): Env =>
-  ({ DB: d1, IMPORT_TOKEN: "secret", SESSION_SECRET: SECRET, ADMIN_EMAIL: ADMIN, ADMIN_PASSWORD_HASH: "x", ...over }) as unknown as Env;
+  ({ DB: d1, ASSETS, IMPORT_TOKEN: "secret", SESSION_SECRET: SECRET, ADMIN_EMAIL: ADMIN, ADMIN_PASSWORD_HASH: "x", ...over }) as unknown as Env;
 const call = (method: string, path: string, headers: Record<string, string> = {}, e = env()) =>
   worker.fetch(new Request(BASE + path, { method, headers, redirect: "manual", body: ["GET", "HEAD"].includes(method) ? undefined : "{}" }), e);
 
@@ -49,6 +50,7 @@ describe("access policy (table-driven over the audit matrix)", () => {
       const res = await call("GET", path, { cookie: await cookieFor() });
       expect(res.status).not.toBe(401);
       expect(res.status).not.toBe(303);
+      if (!path.startsWith("/api/")) expect([200, 302]).toContain(res.status); // the page itself (or /linkedin-games -> /games)
     });
   });
 

@@ -29,8 +29,6 @@ import { InvalidCredentialsError, TooManyAttemptsError } from "../application/er
 import { SESSION_COOKIE, SESSION_TTL_SECONDS, isSameOrigin, loginPage, redirect, safeNext, sessionCookie } from "./login.ts";
 import { createD1TrajectoryAdapter } from "../infrastructure/d1/d1TrajectoryAdapter.ts";
 import { getTrajectoryUseCase } from "../application/getTrajectoryUseCase.ts";
-import { DASHBOARD_HTML, RAW_HTML } from "../frontend.ts";
-import { SETTINGS_HTML } from "../settingsPage.ts";
 
 type AppEnv = { Bindings: Env; Variables: { email: string | null; container: Container } };
 export const app = new Hono<AppEnv>();
@@ -262,8 +260,19 @@ app.get("/api/trajectory", async (c) => {
   }
 });
 
-// The dashboard keeps inline scripts and handlers, so script-src needs 'unsafe-inline': this CSP does not stop injected markup
-// from running (escaping does), it stops it from loading anything external or sending data off-origin.
+app.get("/linkedin-games", () => new Response(null, { status: 302, headers: { location: "/games" } })); // old path of /games
+
+// /next was the Angular app's prefix during the migration: old links and bookmarks land on the same page at the root.
+const fromNext = (c: Context<AppEnv>) => {
+  const url = new URL(c.req.url);
+  return new Response(null, { status: 301, headers: { location: (url.pathname.slice("/next".length) || "/") + url.search } });
+};
+app.get("/next", fromNext);
+app.get("/next/*", fromNext);
+
+// The frontend is the Angular app (web/, built to web/dist/browser = the ASSETS binding), served at the root after the
+// access policy above. Extension-less paths (and /index.html) are client routes -> the index, whose router sends unknown
+// ones to /overview; a path with an extension is a file and a missing one stays 404. The bundle has no inline scripts.
 const HTML_HEADERS = {
   "content-type": "text/html; charset=utf-8",
   "cache-control": "no-store",
@@ -271,54 +280,21 @@ const HTML_HEADERS = {
   "x-frame-options": "DENY",
   "referrer-policy": "same-origin",
   "content-security-policy":
-    "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
-} as const;
-const dashboard = () => new Response(DASHBOARD_HTML, { headers: HTML_HEADERS });
-app.get("/", dashboard);
-app.get("/index.html", dashboard);
-app.get("/overview", dashboard);
-app.get("/overview/", dashboard);
-app.get("/chess", dashboard);
-app.get("/chess/", dashboard);
-app.get("/languages", dashboard);
-app.get("/languages/", dashboard);
-app.get("/languages/*", dashboard);
-app.get("/changes", dashboard);
-app.get("/trajectory", dashboard);
-app.get("/profile", dashboard);
-app.get("/games", dashboard);
-app.get("/games/", dashboard);
-app.get("/raw", () => new Response(RAW_HTML, { headers: HTML_HEADERS }));
-app.get("/settings", () => new Response(SETTINGS_HTML, { headers: HTML_HEADERS }));
-app.get("/linkedin-games", () => new Response(null, { status: 302, headers: { location: "/games" } })); // the page now lives in the dashboard
-
-// The Angular frontend (web/, built to web/dist/browser = the ASSETS binding) lives under /next during the migration.
-// Assets sit at the binding's root, so /next is stripped. Paths without an extension are client routes -> index ("/");
-// a missing file stays 404. The bundle has no inline scripts, so its CSP drops script 'unsafe-inline'.
-const NEXT_HTML_HEADERS = {
-  ...HTML_HEADERS,
-  "content-security-policy":
     "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; form-action 'self'; base-uri 'self'; frame-ancestors 'none'",
-};
-const nextFrontend = async (c: Context<AppEnv>) => {
-  const rest = c.req.path.slice("/next".length) || "/";
+} as const;
+app.get("*", async (c) => {
+  if (!isHtmlPath(c.req.path)) return c.notFound(); // an unknown /api/* route stays a JSON 404
   const url = new URL(c.req.url);
-  if (!/\.[^/]*$/.test(rest)) {
+  if (url.pathname === "/index.html" || !/\.[^/]*$/.test(url.pathname)) {
     url.pathname = "/";
     const index = await c.env.ASSETS.fetch(new Request(url)); // no conditional headers: the index is no-store
-    return index.ok ? new Response(index.body, { headers: NEXT_HTML_HEADERS }) : index;
+    return index.ok ? new Response(index.body, { headers: HTML_HEADERS }) : index;
   }
-  url.pathname = rest;
   const asset = await c.env.ASSETS.fetch(new Request(url, c.req.raw));
   const file = new Response(asset.body, asset); // copy: fetched headers are immutable
   file.headers.set("x-content-type-options", "nosniff");
-  // html_handling redirects (e.g. /index.html -> /) are relative to the assets root: keep them under /next.
-  const location = file.headers.get("location");
-  if (location?.startsWith("/")) file.headers.set("location", "/next" + location);
   return file;
-};
-app.get("/next", nextFrontend);
-app.get("/next/*", nextFrontend);
+});
 
 // exported so composition wrappers (src/dev.ts, tests) keep identical error/404 behaviour
 export const onFailure = (e: Error) => {
