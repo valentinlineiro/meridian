@@ -176,6 +176,9 @@ export const defaultTrajGame = (s: Summary): string => Object.keys(s.games).sort
 export function trajectory(s: Summary, game: string, range: Range) {
   const b = s.games[game].trajectory[range], weekly = range === '90' || range === 'all';
   if (!Array.isArray(b)) throw new Error('trajectory is not a list');
+  // A wrong-typed value would reach the SVG as NaN: the whole chart degrades instead (the caller's safe()).
+  const num = (v: unknown, nullable: boolean) => (nullable && v == null) || Number.isFinite(v);
+  if (!b.every((p) => num(p?.n, false) && num(p.eff, true) && num(p.beat, true))) throw new TypeError('trajectory bucket is not numeric');
   return {
     buckets: b,
     caption: 'Datos de la trayectoria de ' + gameName(game) + ', ' + RANGE_NAMES[range] + ': un valor por ' + (weekly ? 'semana' : 'día') + '.',

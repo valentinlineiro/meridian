@@ -460,6 +460,21 @@ describe('Games', () => {
       expect(text('gamesChart')).toContain('Sin observaciones con media');
     });
 
+    it.each([
+      ['eff', { start: '2026-11-01', n: 2, eff: 'x', beat: 0.5 }],
+      ['beat', { start: '2026-11-01', n: 2, eff: 1.1, beat: 'x' }],
+      ['n', { start: '2026-11-01', n: 'x', eff: 1.1, beat: 0.5 }],
+    ])('shouldShowTheChartAsUnavailableInsteadOfDrawingNaNWhenABucket%sIsNotANumber', async (_, bad) => {
+      const t = [traj[0], bad];
+      await open({ zip: game({ trajectory: { '7': t, '28': t, '90': t, all: t } }), tango: game() });
+      expect(text('gamesChart')).toBe('No disponible');
+      expect(el.querySelector('#gamesChart svg')).toBeNull();
+      expect([...el.querySelectorAll('#gamesChart *')].some((n) => [...n.attributes].some((a) => a.value.includes('NaN')))).toBe(false);
+      expect(cellsOf()).toHaveLength(2);
+      expect(cardsOf()).toHaveLength(2);
+      expect(linesOf(cardsOf()[0])).toContain('Mejor marca: 0:32 (2026-09-30)');
+    });
+
     it('shouldShowTheTrajectoryAsUnavailableWhenItIsMalformedWhileTheTableStillRenders', async () => {
       await open({ zip: game({ trajectory: { '28': 'x' } }) });
       expect(text('gamesChart')).toBe('No disponible');
