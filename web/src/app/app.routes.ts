@@ -1,7 +1,12 @@
-import { Routes } from '@angular/router';
+import { Routes, UrlMatcher, UrlSegment } from '@angular/router';
 import { legacyUrlGuard } from './core/legacy-url';
 
 // Route params must not contain dots: the Worker's SPA fallback treats a dot in the last segment as a file.
+
+/** /languages and /languages/:courseId are ONE route, so choosing a course reuses the view (no reload of the catalogue). */
+const languages: UrlMatcher = (segs) =>
+  segs[0]?.path === 'languages' && segs.length <= 2 ? { consumed: segs, posParams: (segs[1] ? { courseId: segs[1] } : {}) as Record<string, UrlSegment> } : null;
+
 export const routes: Routes = [
   { path: '**', canMatch: [legacyUrlGuard], children: [] }, // legacy #/x and ?course= URLs, first navigation only
   { path: '', pathMatch: 'full', redirectTo: 'overview' },
@@ -9,8 +14,7 @@ export const routes: Routes = [
   { path: 'changes', title: 'Qué cambió · Meridian', loadComponent: () => import('./features/changes/changes.component').then((m) => m.Changes) },
   { path: 'trajectory', title: 'Trayectoria · Meridian', loadComponent: () => import('./features/trajectory/trajectory.component').then((m) => m.Trajectory) },
   { path: 'chess', title: 'Ajedrez · Meridian', loadComponent: () => import('./features/chess/chess.component').then((m) => m.Chess) },
-  { path: 'languages', title: 'Idiomas · Meridian', loadComponent: () => import('./features/languages/languages.component').then((m) => m.Languages) },
-  { path: 'languages/:courseId', title: 'Idiomas · Meridian', loadComponent: () => import('./features/languages/languages.component').then((m) => m.Languages) },
+  { matcher: languages, title: 'Idiomas · Meridian', loadComponent: () => import('./features/languages/languages.component').then((m) => m.Languages) },
   { path: 'games', title: 'LinkedIn Games · Meridian', loadComponent: () => import('./features/games/games.component').then((m) => m.Games) },
   { path: 'profile', title: 'Perfil · Meridian', loadComponent: () => import('./features/profile/profile.component').then((m) => m.Profile) },
   { path: 'settings', title: 'Configuración · Meridian', loadComponent: () => import('./features/settings/settings.component').then((m) => m.Settings) },

@@ -19,6 +19,6 @@ describe('App routes', () => {
     const harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/languages/DUOLINGO_ES');
     expect(TestBed.inject(Router).url).toBe('/languages/DUOLINGO_ES');
-    expect(harness.routeNativeElement?.querySelector('h2')?.textContent).toBe('Idiomas');
+    expect(harness.routeNativeElement?.querySelector('#langTab')).not.toBeNull();
   });
 });
