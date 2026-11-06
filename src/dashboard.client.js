@@ -158,7 +158,7 @@ const NA='No disponible';
 // P7: "90/90" says nothing when every day has XP; what matters is how far back the record goes (the streak is far longer than the XP history).
 const activeDaysText=(active,total,firstSec)=>active+' de '+total+' días con XP'+(firstSec&&isFinite(new Date(firstSec*1000))?' (registro desde '+new Date(firstSec*1000).toISOString().slice(0,10)+')':'');
 const xpText=v=>v==null?'—':Number(v).toLocaleString('es-ES');
-const pc=v=>v==null?'—':Math.round(v)+'%';
+const pc=v=>v==null?'—':pc0(v);
 const SYNC_KEY='meridian.syncRun';
 const syncStore={
  get(){ try{ return Number(localStorage.getItem(SYNC_KEY))||null; }catch(e){ return null; } },
