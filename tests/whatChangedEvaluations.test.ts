@@ -20,10 +20,16 @@ const evalWith = (id: string, o: Over = {}) => evaluateChanges(deltas(o), ctx, A
 
 // Amendment A3 rewrites the wording of one finding (XP observed, not "learning pace"); the legacy fixture stays verbatim and
 // only that title/claim is mapped, so every other field of every finding is still compared byte for byte.
-const amendedWording = (fs: any[]) => fs.map((f) => f.id !== "LANG_XP_ACCELERATION" ? f : {
+// A8 (§16): numbers in claim/evidence use the decimal comma; only that notation is mapped, never a value.
+const comma = (t: string) => t.replace(/(\d)\.(\d)/g, "$1,$2");
+const amendedWording = (fs: any[]) => fs.map((f) => f.id === "CHESS_COLOR_ASYMMETRY" ? {
+  ...f,
+  claim: comma(f.claim),
+  evidence: comma(f.evidence).replace(/(\d)%/g, "$1 %"),
+} : f.id !== "LANG_XP_ACCELERATION" ? f : {
   ...f,
   title: "Mayor XP diario",
-  claim: f.claim.replace(/^Aceleración en tu ritmo de aprendizaje: creció (.+)x sobre tu media histórica\.$/, "Tu XP por día con registro en el periodo fue $1x el de tu histórico."),
+  claim: f.claim.replace(/^Aceleración en tu ritmo de aprendizaje: creció (.+)x sobre tu media histórica\.$/, "Tu XP por día con registro en el periodo fue $1x el de tu histórico.").replace(/(\d)\.(\d)x/, "$1,$2x"),
   // A5 (§13.5/C5): the wording names the metric exactly: XP per day WITH A RECORD. The fixtures have one observed day.
   evidence: f.evidence.replace(/^(\d+) XP\/día en el intervalo vs (\d+) XP\/día histórico \(\+(\d+) XP\)\.$/, "$1 XP/día con registro en el intervalo vs $2 XP/día con registro histórico (+$3 XP en 1 día con registro)."),
 });
