@@ -4,6 +4,7 @@ import { catchError, forkJoin, Observable, of } from 'rxjs';
 import { ApiClient } from '../../core/api-client';
 import { safe } from '../../core/guard';
 import { GamesChart } from './games-chart.component';
+import { GamesEntryModal } from './games-entry-modal.component';
 import { GamesTable } from './games-table.component';
 import { cardOrder, Day, defaultTrajGame, GAME_NAMES, gameCard, gameName, gamesHero, localToday, Range, RANGES, Summary, trajectory } from './games.model';
 
@@ -14,7 +15,7 @@ const HERO_IDLE = { label: 'LinkedIn Games · racha actual', streak: '—', meta
 
 @Component({
   selector: 'app-games',
-  imports: [GamesChart, GamesTable],
+  imports: [GamesChart, GamesEntryModal, GamesTable],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './games.component.html',
 })

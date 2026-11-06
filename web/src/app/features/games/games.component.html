@@ -8,12 +8,12 @@
         <div id="gamesHeroMeta" class="muted" style="font-size:12px;margin-top:4px">{{ h.meta }}</div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
-        <button class="btn btn-p" type="button" id="gamesEntryOpen">Registrar resultado</button>
+        <button class="btn btn-p" type="button" id="gamesEntryOpen" (click)="entry.open()">Registrar resultado</button>
         <span id="gamesHeroDays" class="muted" style="font-size:12px">{{ h.days }}</span>
       </div>
     </div>
     <div style="margin-top:14px"><div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Hoy · toca un juego para registrarlo</div>
-      <div id="gamesToday" class="chips">@for (c of chips(); track c.k) {<button type="button" [class]="'pill ' + (c.done ? 'pill-win' : 'pill-scope')" [attr.data-game]="c.k">{{ c.text }}</button>}</div>
+      <div id="gamesToday" class="chips">@for (c of chips(); track c.k) {<button type="button" [class]="'pill ' + (c.done ? 'pill-win' : 'pill-scope')" [attr.data-game]="c.k" (click)="entry.open(c.k)">{{ c.text }}</button>}</div>
     </div>
   </div>
   <div id="gamesNote" class="muted" role="status">{{ note() }}</div>
@@ -50,3 +50,4 @@
     </div>
   </details>
 </section>
+<app-games-entry-modal #entry (saved)="data.reload()" />
