@@ -79,6 +79,8 @@ jobs:
           code() { curl -s -o /dev/null -w "%{http_code}" --max-time 20 "$PROD_URL$1"; }
           [ "$(code /login)" = 200 ]          || { echo "::error::/login is not 200 after deploy"; exit 1; }
           [ "$(code /)" = 303 ]               || { echo "::error::/ is not 303 after deploy"; exit 1; }
+          [ "$(code /chess)" = 303 ]          || { echo "::error::/chess is not 303 after deploy"; exit 1; }
+          # /next/* now 301s to the root, but only after the session gate: without a session it is a login redirect too
           [ "$(code /next/)" = 303 ]          || { echo "::error::/next/ is not 303 after deploy"; exit 1; }
           [ "$(code /api/stats/lang)" = 401 ] || { echo "::error::protected API is not closed after deploy"; exit 1; }
           echo "smoke ok; to go back: npx wrangler rollback <version-id>"
