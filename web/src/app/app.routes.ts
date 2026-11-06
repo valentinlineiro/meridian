@@ -1,7 +1,9 @@
 import { Routes } from '@angular/router';
+import { legacyUrlGuard } from './core/legacy-url';
 
 // Route params must not contain dots: the Worker's SPA fallback treats a dot in the last segment as a file.
 export const routes: Routes = [
+  { path: '**', canMatch: [legacyUrlGuard], children: [] }, // legacy #/x and ?course= URLs, first navigation only
   { path: '', pathMatch: 'full', redirectTo: 'overview' },
   { path: 'overview', title: 'Hoy · Meridian', loadComponent: () => import('./features/overview/overview.component').then((m) => m.Overview) },
   { path: 'changes', title: 'Qué cambió · Meridian', loadComponent: () => import('./features/changes/changes.component').then((m) => m.Changes) },

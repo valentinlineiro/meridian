@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, timeout } from 'rxjs';
 
 /** The browser location (read for the login `next`, assigned to leave the app, reloaded after a sync). Replaced in specs. */
-export const BROWSER_LOCATION = new InjectionToken<Pick<Location, 'pathname' | 'search' | 'href' | 'reload'>>('BROWSER_LOCATION', {
+export const BROWSER_LOCATION = new InjectionToken<Pick<Location, 'pathname' | 'search' | 'href' | 'reload'> & Partial<Pick<Location, 'hash'>>>('BROWSER_LOCATION', {
   factory: () => inject(DOCUMENT).location,
 });
 

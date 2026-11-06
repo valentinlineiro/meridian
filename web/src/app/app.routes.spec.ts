@@ -6,7 +6,7 @@ import { routes } from './app.routes';
 describe('App routes', () => {
   beforeEach(() => TestBed.configureTestingModule({ providers: [provideRouter(routes)] }));
 
-  it.each(['/', '/nope', '/languages/X/extra'])('shouldNavigateToOverviewWhenPathIsUnknown %s', async (url) => {
+  it.each(['/', '/nope', '/a/b'])('shouldNavigateToOverviewWhenPathIsUnknown %s', async (url) => {
     const harness = await RouterTestingHarness.create();
     await harness.navigateByUrl(url);
     expect(TestBed.inject(Router).url).toBe('/overview');
