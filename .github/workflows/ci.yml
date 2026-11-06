@@ -18,3 +18,5 @@ jobs:
       - run: python3 scripts/check_architecture_boundaries.py
       - run: npm test
       - run: npm run web:test
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e

@@ -10,7 +10,7 @@
     "dev": "npm run web:build && wrangler dev",
     "deploy": "npm run web:build && wrangler deploy",
     "test": "vitest run",
-    "test:e2e": "playwright test",
+    "test:e2e": "node scripts/e2e-setup.mjs && playwright test",
     "migrate:local": "wrangler d1 migrations apply meridian --local",
     "migrate:remote": "wrangler d1 migrations apply meridian --remote",
     "types": "wrangler types",
