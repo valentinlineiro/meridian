@@ -237,16 +237,15 @@ describe("chess tab: streak and matches subtitle", () => {
   });
 });
 
-describe("chess tab: recent form colour split", () => {
+describe("chess tab: recent form", () => {
   const form = (white: number, black: number) => callDashboard(`renderForm(${JSON.stringify({
     ...group({ limit: 20 }), before: group({ games: 40 }), delta: null,
     colorGroups: [group({ key: "white", games: white }), group({ key: "black", games: black })],
   })})`).els["#form"]!.innerHTML as string;
 
-  it("shouldShowTheColourSplitOnlyWhenBothColoursHaveGames", () => {
-    expect(form(8, 12)).toContain("♔ Blancas");
-    expect(form(0, 20)).not.toContain("♔ Blancas");
-    expect(form(20, 0)).not.toContain("♚ Negras");
+  it("shouldNotRepeatTheColourSplitThatComparativaAlreadyShows", () => {
+    expect(form(8, 12)).not.toContain("Blancas");
+    expect(form(8, 12)).toContain("Anteriores · 40");
   });
 });
 
