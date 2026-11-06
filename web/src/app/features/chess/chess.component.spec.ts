@@ -9,6 +9,7 @@ import { Chess } from './chess.component';
 import { Compare } from './compare.component';
 import { MatchesService } from './matches.service';
 import { EngineProfile, Profile } from './engine-profile.component';
+import { routes } from '../../app.routes';
 
 // Ports of tests/chessDashboard, chessDashboardThreats, chessDashboardEngine (chess tab), frontendErrorIsNotZero and
 // frontendEmptyAndErrorStates (chess cases), frontendNetwork (chess), frontendWinRateCi, frontendDeltas (colour/form),
@@ -62,7 +63,7 @@ class Elsewhere {}
 export const setupChess = async () => {
   localStorage.clear();
   TestBed.configureTestingModule({
-    providers: [provideRouter([{ path: 'chess', component: Chess }, { path: ':other', component: Elsewhere }]), provideHttpClient(), provideHttpClientTesting()],
+    providers: [provideRouter([{ path: 'chess', component: Chess }, routes.find((r) => r.path === 'profile')!, { path: ':other', component: Elsewhere }]), provideHttpClient(), provideHttpClientTesting()],
   });
   const http = TestBed.inject(HttpTestingController);
   const harness = await RouterTestingHarness.create();
@@ -591,6 +592,28 @@ describe('Chess', () => {
       expect(t.pending().find((x) => x.request.url === '/api/stats/profile')!.request.urlWithParams).toBe('/api/stats/profile');
     });
 
+    it('shouldSendOneRequestPerCutAndNeverPaintAnOlderOneThatArrivesLate', async () => {
+      await t.open(chessApi({ '/api/stats/profile': PROFILE }));
+      const input = t.el().querySelector<HTMLInputElement>('#profileSinceInput')!;
+      const apply = t.el().querySelector<HTMLButtonElement>('#profileSinceApply')!;
+      input.value = 'a';
+      apply.click();
+      await t.tick();
+      const first = t.http.match((r) => r.url === '/api/stats/profile');
+      expect(first.map((r) => r.request.urlWithParams)).toEqual(['/api/stats/profile?since=a']);
+      input.value = 'b';
+      apply.click();
+      await t.tick();
+      expect(first[0].cancelled).toBe(true); // the older cut's request is dropped, so it can never paint
+      const second = t.http.match((r) => r.url === '/api/stats/profile');
+      expect(second.map((r) => r.request.urlWithParams)).toEqual(['/api/stats/profile?since=b']);
+      second[0].flush({ ...PROFILE, since: { matchId: 'b', playedAt: 5 }, before: sec({ games: 60 }), after: sec({ games: 70 }) });
+      await t.tick();
+      t.http.verify();
+      expect(t.text('profileCut')).toContain('Partidas6070');
+      expect(input.value).toBe('b');
+    });
+
     it('shouldSurviveLocalStorageBeingUnavailable', async () => {
       const get = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('blocked'); });
       const set = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('blocked'); });
@@ -618,6 +641,47 @@ describe('Chess', () => {
       expect(t.text('gTitle')).toBe('vs Bot 8 · blancas');
       expect(document.querySelectorAll('[role=dialog]')).toHaveLength(1);
       expect(document.querySelectorAll('#gameModal')).toHaveLength(1);
+    });
+  });
+
+  // Legacy showTab('profile') (src/dashboard.client.js:71–135): /profile is the chess view with the engine section open and scrolled to.
+  describe('/profile route', () => {
+    let scrolled: string[];
+    beforeEach(() => { scrolled = []; Element.prototype.scrollIntoView = function (this: Element) { scrolled.push(this.id); }; });
+
+    it('shouldOpenTheChessViewWithTheEngineSectionOpenAndScrolledToWhenTheRouteIsProfile', async () => {
+      await t.harness.navigateByUrl('/profile');
+      const asked = t.http.match((r) => r.url === '/api/stats/profile');
+      expect(asked).toHaveLength(1); // asked once, like /chess
+      asked[0].flush(PROFILE);
+      await t.tick();
+      expect(scrolled).toEqual([]); // not before the cards above it hold their data: they would push it out of view
+      await t.answer(chessApi());
+      t.http.verify();
+      expect(t.el().querySelector('#chessTab')).not.toBeNull();
+      expect(t.el().querySelector('#profileTab')).toBeNull(); // one panel only
+      expect(t.el().querySelector<HTMLDetailsElement>('#chessEngineProfileDetails')!.open).toBe(true);
+      expect(scrolled).toEqual(['chessEngineProfileDetails']);
+    });
+
+    it('shouldNotScrollToTheEngineSectionWhenTheRouteIsChess', async () => {
+      await t.open();
+      expect(scrolled).toEqual([]);
+    });
+
+    it('shouldKeepTheChessUpdateDateInTheHeaderOnProfileAndClearItWhenLeaving', async () => {
+      const stats = TestBed.inject(StatsService);
+      await t.harness.navigateByUrl('/profile');
+      await t.answer(chessApi());
+      expect(stats.chessUpdated()).toBe('Ajedrez · actualizado 2026-10-08');
+      await t.harness.navigateByUrl('/elsewhere');
+      expect(stats.chessUpdated()).toBe('');
+    });
+
+    it('shouldAskForTheProfileWithTheSavedCutWhenOpenedDirectlyOnProfile', async () => {
+      localStorage.setItem('profile_since', 'cut');
+      await t.harness.navigateByUrl('/profile');
+      expect(t.pending().find((r) => r.request.url === '/api/stats/profile')!.request.urlWithParams).toBe('/api/stats/profile?since=cut');
     });
   });
 
@@ -885,6 +949,41 @@ describe('EngineProfile', () => {
     expect(text('profileNote')).toBe('');
     await render({ analysed: 5 }); // a body this panel cannot read is not a profile
     expect(text('profileKpis')).toBe('No se pudo cargar el perfil');
+  });
+
+  // A wrong-typed field degrades its own section to "No disponible" (a KPI to "—"); the siblings render, nothing reads NaN.
+  const bad = 'x' as unknown as number;
+  const all = (o: object) => ({ ...PROFILE, all: sec(o) });
+  const withCut = (o: object) => ({ ...PROFILE, since: { matchId: 'cut', playedAt: 5 }, before: sec(o), after: sec({ games: 70 }) });
+  const SECTIONS = ['profileContext', 'profileVerdict', 'profileCut', 'profilePhases', 'profileColors', 'profileTrend', 'profileDecisive', 'profileConversion', 'profileWorst', 'profileBest'];
+  it.each<[string, object, string[], number[]]>([
+    ['context', { ...PROFILE, bots: { share: bad } }, ['profileContext'], []],
+    ['first KPI', all({ ratePer100: bad }), [], [0]],
+    ['second KPI', all({ acpl: bad }), [], [1]],
+    ['verdict (and the decisive card that shares the count)', all({ decisive: { ...sec().decisive, competitive: { ...sec().decisive.competitive, withDecisive: bad } } }), ['profileVerdict', 'profileDecisive'], [2]],
+    ['phase and colour bars', all({ byColor: { white: { moves: 2000, serious: 184, ratePer100: bad }, black: sec().byColor.black } }), ['profilePhases', 'profileColors'], []],
+    ['trend', { ...PROFILE, blocks: [PROFILE.blocks[0], { ...PROFILE.blocks[1], ratePer100: bad }] }, ['profileTrend'], []],
+    ['decisive moments', all({ decisive: { ...sec().decisive, competitive: { ...sec().decisive.competitive, byPhase: { opening: bad, middlegame: 11, endgame: 1 } } } }), ['profileDecisive'], []],
+    ['conversion', all({ conversion: { ...sec().conversion, disadvantage: { games: 20, win: bad, draw: 2, loss: 8 } } }), ['profileConversion'], []],
+    ['worst games', { ...PROFILE, review: { worst: [row('w', bad)], best: PROFILE.review.best } }, ['profileWorst'], []],
+    ['best games', { ...PROFILE, review: { worst: PROFILE.review.worst, best: 'nope' } }, ['profileBest'], []],
+    ['before/after comparison', withCut({ ratePer100: bad }), ['profileCut'], []],
+  ])('shouldDegradeOnlyThe %s when its field is unreadable', async (_, body, na, kpisNa) => {
+    await render(body, 'cut');
+    for (const id of SECTIONS) {
+      if (na.includes(id)) expect(text(id)).toBe('No disponible');
+      else expect(text(id)).not.toBe('No disponible');
+    }
+    const kpis = [...el.querySelectorAll('#profileKpis m-kpi')].map((k) => k.querySelector('b')!.textContent);
+    expect(kpis).toHaveLength(4);
+    kpis.forEach((v, i) => kpisNa.includes(i) ? expect(v).toBe('—') : expect(v).not.toBe('—'));
+    expect(el.textContent).not.toContain('NaN');
+    for (const i of el.querySelectorAll<HTMLElement>('i[style]')) expect(i.getAttribute('style')).not.toMatch(/NaN|-\d/);
+  });
+
+  it('shouldNotRenderNaNCentipawnsWhenTheAverageLossIsMissing', async () => {
+    await render(all({ acpl: null }));
+    expect(el.querySelectorAll('#profileKpis m-kpi small')[1].textContent).toBe('peones por jugada · — cp');
   });
 
   it('shouldEmitTheTrimmedCutOnApplyAndAnEmptyOneOnClear', async () => {

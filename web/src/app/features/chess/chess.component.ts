@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, linkedSignal, signal } from '@angular/core';
+import { afterNextRender, ChangeDetectionStrategy, Component, computed, DestroyRef, effect, ElementRef, inject, Injector, linkedSignal, signal, viewChild } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { catchError, forkJoin, map, Observable, of } from 'rxjs';
 import { ApiClient } from '../../core/api-client';
@@ -212,7 +213,19 @@ export class Chess {
   constructor() {
     effect(() => this.stats.chessUpdated.set(this.v()?.syncMeta ?? ''));
     inject(DestroyRef).onDestroy(() => this.stats.chessUpdated.set(''));
+    // /profile (legacy showTab('profile')): open the engine section and scroll to it, once the cards above it hold
+    // their data (scrolled earlier, the cards growing above push the section out of view on phones).
+    if (inject(ActivatedRoute).snapshot.data['engineSection']) {
+      const injector = inject(Injector);
+      const once = effect(() => {
+        if (this.data.isLoading() || this.profile() === undefined) return;
+        once.destroy();
+        afterNextRender(() => this.jump(this.engineDetails().nativeElement), { injector });
+      });
+    }
   }
+
+  private readonly engineDetails = viewChild.required<ElementRef<HTMLDetailsElement>>('engineDetails');
 
   protected setRecent(n: number): void { this.recentN.set(n); }
 

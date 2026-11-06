@@ -19,7 +19,7 @@
 <div class="card" id="profileCutCard"><h2>Antes y después de un corte</h2><div class="muted" style="margin-bottom:8px">Para un experimento: compara las partidas anteriores a una partida con las posteriores. Pega el id de la última partida de antes (lo ves en la URL del visor).</div>
   <div class="filters"><input id="profileSinceInput" type="text" aria-label="Id de la partida de corte" placeholder="id de la partida de corte" style="width:100%;max-width:340px" [value]="cut()" #since><button class="btn btn-p" id="profileSinceApply" type="button" (click)="apply(since.value)">Aplicar</button><button class="btn btn-g" id="profileSinceClear" type="button" (click)="since.value = ''; apply('')">Quitar</button></div>
   <div class="muted" id="profileSinceNote">{{ x?.sinceNote }}</div>
-  <div id="profileCut">@if (a?.cut; as c) {
+  <div id="profileCut">@if (a?.cut?.na) {<div class="muted">No disponible</div>} @else if (a?.cut?.v; as c) {
     <div class="prof-cmp"><span class="h"></span><span class="h">Antes</span><span class="h">Después</span><span class="h">Cambio</span>
       @for (r of c.rows; track r.label) {<span>{{ r.label }}</span><b>{{ r.x }}</b><b>{{ r.y }}</b><span>@if (r.d; as d) {<span [class]="d.cls">{{ d.t }}</span>}</span>}
     </div>
@@ -28,18 +28,19 @@
 </div>
 <div class="grid2">
   <div class="card" id="profileQualityCard"><h2>Dónde cometes errores graves</h2><div class="muted" style="margin-bottom:8px">Por cada 100 jugadas tuyas. Menos es mejor.</div>
-    <div id="profilePhases">@for (b of a?.phases ?? []; track b.label) {<ng-container *ngTemplateOutlet="barTpl; context: { $implicit: b }" />}</div>
+    @let q = a?.quality;
+    <div id="profilePhases">@if (q?.na) {<div class="muted">No disponible</div>} @else {@for (b of q?.v?.phases ?? []; track b.label) {<ng-container *ngTemplateOutlet="barTpl; context: { $implicit: b }" />}}</div>
     <h3 style="margin:12px 0 6px">Por color</h3>
-    <div id="profileColors">@for (b of a?.colors ?? []; track b.label) {<ng-container *ngTemplateOutlet="barTpl; context: { $implicit: b }" />}</div></div>
+    <div id="profileColors">@if (q?.na) {<div class="muted">No disponible</div>} @else {@for (b of q?.v?.colors ?? []; track b.label) {<ng-container *ngTemplateOutlet="barTpl; context: { $implicit: b }" />}}</div></div>
   <div class="card" id="profileTrendCard"><h2>Cómo evoluciona</h2><div class="muted" style="margin-bottom:8px">Evolución descriptiva: errores graves por 100 jugadas en bloques de 50 partidas seguidas, de las más antiguas a las más recientes. Cada bloque mezcla rivales y colores distintos, así que no demuestra mejora ni empeoramiento; pasa el cursor por una columna para ver sus partidas y jugadas.</div>
-    <div id="profileTrend">@if (a) {@if (a.trend; as t) {
+    <div id="profileTrend">@if (a) {@if (a.trend.na) {<div class="muted">No disponible</div>} @else if (a.trend.v; as t) {
       <div class="prof-cols" role="img" aria-label="Errores graves por 100 jugadas en cada bloque de 50 partidas">@for (c of t.cols; track $index) {<i [class.partial]="c.partial" [style.height.%]="c.h" [title]="c.title"></i>}</div>
       <div class="prof-cols-ax muted"><span>{{ t.first }}</span><span>{{ t.last }}</span></div>
     } @else {<div class="muted">Hacen falta al menos dos bloques de 50 partidas para ver una evolución.</div>}}</div></div>
 </div>
 <div class="grid2">
   <div class="card" id="profileDecisiveCard"><h2>Cuándo se te escapan las derrotas</h2><div class="muted" style="margin-bottom:8px">Momento decisivo: la primera jugada tuya que convierte una posición jugable en una perdida.</div>
-    <div id="profileDecisive">@if (a) {@if (a.decisive; as d) {
+    <div id="profileDecisive">@if (a) {@if (a.decisive.na) {<div class="muted">No disponible</div>} @else if (a.decisive.v; as d) {
       @if (d.competitive; as c) {
         <div style="margin-bottom:6px"><b>{{ c.head }}</b>{{ c.tail }}</div>
         @for (b of c.bars; track b.label) {<div class="prof-bar"><span>{{ b.label }}</span><div class="bar"><i class="bar-hot" [style.width.%]="b.w"></i></div><b>{{ b.pct }}</b><span class="muted">{{ b.n }}</span></div>}
@@ -47,23 +48,25 @@
       @if (d.apart; as p) {<div class="muted" style="margin-top:8px">Aparte: <b>{{ p.n }}</b> derrotas por desconexión ({{ p.with }} con un momento decisivo registrado). No se cuentan arriba: la partida terminó donde se cortó la conexión, no donde se perdió.</div>}
     } @else {<div class="muted">Sin derrotas analizadas.</div>}}</div></div>
   <div class="card" id="profileConversionCard"><h2>Ventajas y remontadas</h2><div class="muted" style="margin-bottom:8px">Ventaja sostenida: el motor te daba más de 3 peones durante 3 jugadas seguidas.</div>
-    <div id="profileConversion">@for (c of a?.conversion ?? []; track c.label) {
+    <div id="profileConversion">@if (a?.conversion?.na) {<div class="muted">No disponible</div>} @else {@for (c of a?.conversion?.v ?? []; track c.label) {
       <div style="margin:8px 0"><div style="display:flex;justify-content:space-between"><b>{{ c.label }}</b><span class="muted">{{ c.games }} partidas</span></div>
         <div class="bar" style="display:flex;margin:6px 0 4px"><i class="bar-win" [style.width.%]="c.w"></i><i class="bar-draw" [style.width.%]="c.d"></i><i class="bar-loss" [style.width.%]="c.l"></i></div>
         <div class="legend"><span><i class="dot bar-win"></i>{{ c.won }}</span><span><i class="dot bar-draw"></i>{{ c.draw }}</span><span><i class="dot bar-loss"></i>{{ c.lost }}</span></div></div>
-    }</div></div>
+    }}</div></div>
 </div>
 <div class="card" id="profileReviewCard"><h2>Qué partidas revisar</h2><div class="muted">Partidas con al menos 20 jugadas tuyas, ordenadas por pérdida media por jugada (los errores graves se muestran como información adicional, no como criterio de orden). Pulsa una para abrirla en el visor.</div>
-  <h3 style="margin:12px 0 4px">Las que más te costaron</h3><div id="profileWorst"><ng-container *ngTemplateOutlet="listTpl; context: { $implicit: a?.worst ?? [] }" /></div>
-  <h3 style="margin:12px 0 4px">Las mejor jugadas</h3><div id="profileBest"><ng-container *ngTemplateOutlet="listTpl; context: { $implicit: a?.best ?? [] }" /></div></div>
+  <h3 style="margin:12px 0 4px">Las que más te costaron</h3><div id="profileWorst"><ng-container *ngTemplateOutlet="listTpl; context: { $implicit: a?.worst }" /></div>
+  <h3 style="margin:12px 0 4px">Las mejor jugadas</h3><div id="profileBest"><ng-container *ngTemplateOutlet="listTpl; context: { $implicit: a?.best }" /></div></div>
 <div class="muted" id="profileNote" style="margin-top:8px">{{ failed() ? '' : x?.note }}</div>
 
 <ng-template #barTpl let-b><div class="prof-bar"><span>{{ b.label }}</span><div class="bar"><i class="bar-err" [style.width.%]="b.w"></i></div><b>{{ b.rate }}</b><span class="muted">{{ b.detail }}</span></div></ng-template>
 <ng-template #gameTpl let-r><a href="#" class="prof-game" [attr.data-g]="r.id" (click)="open($event, r.id)"><b>{{ r.opp }}</b>&ngsp;<span [class]="r.cls">{{ r.res }}</span>&ngsp;<span class="muted">{{ r.when }}</span><br><span class="muted">{{ r.what }}</span></a></ng-template>
 <ng-template #listTpl let-rows>
-  @for (r of rows.slice(0, reviewShown); track r.id) {<ng-container *ngTemplateOutlet="gameTpl; context: { $implicit: r }" />}
-  @if (rows.length > reviewShown) {
-    <details class="more-rows" style="margin-top:6px"><summary style="cursor:pointer;color:#8ea0b8;font-size:13px;padding:6px 0">Ver {{ rows.length - reviewShown }} partidas más</summary>
-      @for (r of rows.slice(reviewShown); track r.id) {<ng-container *ngTemplateOutlet="gameTpl; context: { $implicit: r }" />}</details>
-  }
+  @let rs = rows?.v ?? [];
+  @if (rows?.na) {<div class="muted">No disponible</div>} @else {
+  @for (r of rs.slice(0, reviewShown); track r.id) {<ng-container *ngTemplateOutlet="gameTpl; context: { $implicit: r }" />}
+  @if (rs.length > reviewShown) {
+    <details class="more-rows" style="margin-top:6px"><summary style="cursor:pointer;color:#8ea0b8;font-size:13px;padding:6px 0">Ver {{ rs.length - reviewShown }} partidas más</summary>
+      @for (r of rs.slice(reviewShown); track r.id) {<ng-container *ngTemplateOutlet="gameTpl; context: { $implicit: r }" />}</details>
+  }}
 </ng-template>

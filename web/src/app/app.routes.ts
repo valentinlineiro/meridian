@@ -16,7 +16,8 @@ export const routes: Routes = [
   { path: 'chess', title: 'Ajedrez · Meridian', loadComponent: () => import('./features/chess/chess.component').then((m) => m.Chess) },
   { matcher: languages, title: 'Idiomas · Meridian', loadComponent: () => import('./features/languages/languages.component').then((m) => m.Languages) },
   { path: 'games', title: 'LinkedIn Games · Meridian', loadComponent: () => import('./features/games/games.component').then((m) => m.Games) },
-  { path: 'profile', title: 'Perfil · Meridian', loadComponent: () => import('./features/profile/profile.component').then((m) => m.Profile) },
+  // Legacy /profile opens the chess view with its engine section open and scrolled to (it has no view of its own).
+  { path: 'profile', title: 'Perfil · Meridian', data: { engineSection: true }, loadComponent: () => import('./features/chess/chess.component').then((m) => m.Chess) },
   { path: 'settings', title: 'Configuración · Meridian', loadComponent: () => import('./features/settings/settings.component').then((m) => m.Settings) },
   { path: '**', redirectTo: 'overview' },
 ];

@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { filter } from 'rxjs';
@@ -28,7 +28,8 @@ const LABELS: Record<string, string> = {
       @for (group of groups; track group.label) {
         <div class="side-group">{{ group.label }}</div>
         @for (item of group.items; track item.path) {
-          <a class="side-item" [routerLink]="'/' + item.path" routerLinkActive="active" ariaCurrentWhenActive="page">{{ item.label }}</a>
+          @let on = item.path === (section() === 'profile' ? 'chess' : section());
+          <a class="side-item" [routerLink]="'/' + item.path" [class.active]="on" [attr.aria-current]="on ? 'page' : null">{{ item.label }}</a>
         }
       }
       <div class="side-group">Cuenta</div>
@@ -45,13 +46,15 @@ export class SideNav {
   protected readonly sync = inject(SyncService);
   protected readonly groups = GROUPS;
   protected readonly open = signal(false);
-  protected readonly current = signal('Hoy');
+  /** First path segment; /profile has no entry of its own: it marks Ajedrez, as on the legacy page. */
+  protected readonly section = signal('');
+  protected readonly current = computed(() => LABELS[this.section()] ?? 'Hoy');
 
   constructor() {
     const router = inject(Router);
     router.events.pipe(filter((e) => e instanceof NavigationEnd), takeUntilDestroyed()).subscribe(() => {
       this.open.set(false);
-      this.current.set(LABELS[router.url.split(/[/?#]/)[1] ?? ''] ?? 'Hoy');
+      this.section.set(router.url.split(/[/?#]/)[1] ?? '');
     });
   }
 }

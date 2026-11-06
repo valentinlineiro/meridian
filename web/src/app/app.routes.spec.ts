@@ -21,4 +21,13 @@ describe('App routes', () => {
     expect(TestBed.inject(Router).url).toBe('/languages/DUOLINGO_ES');
     expect(harness.routeNativeElement?.querySelector('#langTab')).not.toBeNull();
   });
+
+  // tests/dashboardRoutes shouldServeDashboardWhenRequestingTabPath /profile (client side): the path stays, the chess view opens.
+  it('shouldKeepTheProfilePathAndOpenTheChessView', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/profile');
+    expect(TestBed.inject(Router).url).toBe('/profile');
+    expect(harness.routeNativeElement?.querySelector('#chessTab')).not.toBeNull();
+    expect(harness.routeNativeElement?.querySelector('#chessEngineProfileDetails')).not.toBeNull();
+  });
 });

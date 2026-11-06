@@ -47,6 +47,18 @@ describe('SideNav', () => {
     expect(item(el, 'Hoy').classList).not.toContain('active');
   });
 
+  // tests/navigation.test.ts shouldMarkTheCurrentViewForAssistiveTechnology + shouldKeepTheLegacyPathsOpeningTheSameViews,
+  // uxPhase2 shouldPreserveProfileRouteNavigation…, uxPhase4 shouldKeepTheProfileRouteOpeningTheChessView…: /profile has no entry of its own.
+  it('shouldMarkAjedrezActiveWhenTheRouteIsProfile', async () => {
+    const el = await render('/profile');
+    expect(item(el, 'Ajedrez').classList).toContain('active');
+    expect(item(el, 'Ajedrez').getAttribute('aria-current')).toBe('page');
+    expect(item(el, 'Hoy').classList).not.toContain('active');
+    expect(item(el, 'Hoy').getAttribute('aria-current')).toBeNull();
+    expect(el.querySelectorAll('.side-item.active')).toHaveLength(1);
+    expect(el.querySelector('.side-toggle')?.textContent).toContain('Ajedrez');
+  });
+
   it('shouldDisableSyncButtonWhileSyncing', async () => {
     const el = await render('/overview');
     const button = el.querySelector<HTMLButtonElement>('#syncBtn')!;
