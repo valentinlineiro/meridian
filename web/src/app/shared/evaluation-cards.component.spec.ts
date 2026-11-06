@@ -214,6 +214,12 @@ describe('evaluation cards: a malformed evaluation degrades alone', () => {
     expect(cards(el).length).toBe(3);
   });
 
+  it('shouldNeverPrintUndefinedAsTheTitleOfAnEvaluationWithoutId', () => {
+    const el = render({ findings: [], evaluations: [{ kind: 'statistical', status: 'not_emitted', reasons: ['effect_below_threshold'], metrics: {}, criteria: {} }] });
+    expect(el.querySelector('h3')!.textContent).toBe('Evaluación'); // same name as its "No disponible" card
+    expect(txt(el)).not.toContain('undefined');
+  });
+
   it('shouldNameAnUnknownEvaluationByItsIdWithAnEmptyScope', () => {
     const el = render({ findings: [], evaluations: [{ id: 'NEW_RULE', kind: 'statistical', status: 'not_emitted', reasons: ['effect_below_threshold'], metrics: {}, criteria: {} }] });
     expect(el.querySelector('h3')!.textContent).toBe('NEW_RULE');

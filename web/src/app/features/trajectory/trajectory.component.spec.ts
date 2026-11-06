@@ -272,4 +272,12 @@ describe('Trajectory', () => {
       expect(findings().querySelectorAll('.card').length).toBe(1);
     });
   });
+
+  it('shouldCancelTheRequestWhenTheViewIsLeftBeforeItAnswers', async () => {
+    fixture = TestBed.createComponent(Trajectory);
+    await tick();
+    const r = http.expectOne('/api/trajectory');
+    fixture.destroy();
+    expect(r.cancelled).toBe(true); // a late answer has nothing left to paint into
+  });
 });

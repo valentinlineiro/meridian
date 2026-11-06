@@ -124,7 +124,7 @@ export interface EvalCard {
 export type EvalCardView = EvalCard | { na: true; title: string };
 
 export function evaluationCard(e: Evaluation, state: EvalStateName, finding: EvalFinding | null | undefined, win: string): EvalCard {
-  const meta = META[e.id] || { title: String(e.id), scope: '' };
+  const meta = META[e.id] || { title: String(e.id ?? 'Evaluación'), scope: '' };
   const m = e.metrics || {}, k = e.criteria || {}, rs = reasonsOf(e);
   const cv = colorView(e, state, rs);
   if (m['startedAt'] && m['endedAt']) win = String(m['startedAt']).slice(0, 10) + ' → ' + String(m['endedAt']).slice(0, 10); // the evaluation's own window wins
