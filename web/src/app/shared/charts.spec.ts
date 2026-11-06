@@ -65,13 +65,35 @@ describe('m-sparkline', () => {
     expect(el.textContent).toContain('La evolución aparecerá cuando haya más días de datos.');
   });
 
-  // Faithful to legacy, including its y scale (H-pad*14 is negative, so the line runs below the box): see task-4 report.
   it('shouldDrawTheLineAndTheRangeWhenThereAreSeveralPoints', async () => {
     const el = await render(Sparkline, { points: [{ date: '2026-11-01', elo: 900 }, { date: '2026-11-02', elo: 920 }, { date: '2026-11-03', elo: 910 }] });
     const [area, line] = [...el.querySelectorAll('path')];
-    expect(line.getAttribute('d')).toBe('M10.0 80.0 L260.0 130.0 L510.0 105.0');
-    expect(area.getAttribute('d')).toBe('M10.0 80.0 L260.0 130.0 L510.0 105.0 L510.0 80 L10.0 80 Z');
+    expect(line.getAttribute('d')).toBe('M10.0 80.0 L260.0 10.0 L510.0 45.0');
+    expect(area.getAttribute('d')).toBe('M10.0 80.0 L260.0 10.0 L510.0 45.0 L510.0 80 L10.0 80 Z');
     expect([...el.querySelectorAll('text')].map((t) => t.textContent)).toEqual(['920', '900']);
     expect(el.querySelector('.muted')!.textContent).toBe('2026-11-012026-11-03');
+  });
+
+  it('shouldKeepAllLineCoordinatesWithinVisibleArea', async () => {
+    const el = await render(Sparkline, {
+      points: [
+        { date: '2026-11-01', elo: 750 },
+        { date: '2026-11-02', elo: 1200 },
+        { date: '2026-11-03', elo: 800 },
+        { date: '2026-11-04', elo: 1100 },
+      ],
+    });
+    const line = el.querySelector('path:nth-of-type(2)')!;
+    const d = line.getAttribute('d')!;
+    const coords = d.split(/[ML]/).filter(Boolean).map((pt) => {
+      const [x, y] = pt.trim().split(' ').map(Number);
+      return { x, y };
+    });
+    for (const { x, y } of coords) {
+      expect(x).toBeGreaterThanOrEqual(10);
+      expect(x).toBeLessThanOrEqual(510);
+      expect(y).toBeGreaterThanOrEqual(10);
+      expect(y).toBeLessThanOrEqual(80);
+    }
   });
 });

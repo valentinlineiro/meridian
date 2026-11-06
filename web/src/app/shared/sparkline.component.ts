@@ -46,8 +46,7 @@ export class Sparkline {
     const elos = ps.map((p) => p.elo);
     const min = Math.min(...elos), max = Math.max(...elos);
     const span = Math.max(5, max - min);
-    // ponytail: legacy scale kept verbatim; H - PAD * 14 is negative, so the line falls below the box (reported in task 4).
-    const y = (v: number) => H - PAD - (v - min) / span * (H - PAD * 14);
+    const y = (v: number) => H - PAD - ((v - min) / span) * (H - PAD * 2);
     const line = ps.map((p, i) => (i ? 'L' : 'M') + xs[i].toFixed(1) + ' ' + y(p.elo).toFixed(1)).join(' ');
     const area = `${line} L${xs[xs.length - 1].toFixed(1)} ${H - PAD} L${xs[0].toFixed(1)} ${H - PAD} Z`;
     return { line, area, min, max };
