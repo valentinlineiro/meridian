@@ -104,6 +104,7 @@
   </details>
 
   <div class="card" style="margin-top:14px" id="allMatchesCard" #allMatches>
+    <app-matches-table [openings]="d()?.op ?? null" />
   </div>
 
   <details class="methodology-disclosure" id="chessMethodology" style="margin-top:16px;margin-bottom:16px">
