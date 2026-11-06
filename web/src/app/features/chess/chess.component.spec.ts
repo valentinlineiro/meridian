@@ -338,6 +338,18 @@ describe('Chess', () => {
     });
   });
 
+  describe('game viewer', () => {
+    it('shouldOpenTheGameOfAClickedRowInTheViewer', async () => {
+      await t.open(chessApi({ '/api/matches': { rows: [{ match_id: 'm1', ply_count: 2, opponent_name: 'Bot 8', result: 'win' }], total: 1 } }));
+      t.el().querySelector<HTMLElement>('#mb tr.gamerow')!.click();
+      await t.tick();
+      const r = t.pending().find((x) => x.request.url === '/api/me/matches/m1/game')!;
+      r.flush({ ok: true, userColor: 'white', opponent: 'Bot 8', startFen: '8/8/8/8/8/8/8/8 w - - 0 1', plies: [] });
+      await t.tick();
+      expect(t.text('gTitle')).toBe('vs Bot 8 · blancas');
+    });
+  });
+
   describe('page index', () => {
     it('shouldOpenAndScrollToEachBlockWhenItsIndexButtonIsPressed', async () => {
       await t.open();

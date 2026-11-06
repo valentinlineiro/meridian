@@ -10,6 +10,7 @@ import { EloPoint, Sparkline } from '../../shared/sparkline.component';
 import { Compare } from './compare.component';
 import { MatchesService } from './matches.service';
 import { MatchesTable } from './matches-table.component';
+import { MatchDetailModal } from './match-detail-modal.component';
 import {
   ChessData, ColorStats, es, fmt, Mates, NA, OpponentElo, Openings, Opponents, Phases, Recent, Results, scaleDelta, signedInt, streakWord,
   Summary, Threats, Timeline,
@@ -152,7 +153,7 @@ function view(d: ChessData) {
 
 @Component({
   selector: 'app-chess',
-  imports: [Kpi, Donut, Sparkline, Compare, MatchesTable],
+  imports: [Kpi, Donut, Sparkline, Compare, MatchesTable, MatchDetailModal],
   providers: [MatchesService],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './chess.component.html',
