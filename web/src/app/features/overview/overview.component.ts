@@ -2,8 +2,9 @@ import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/c
 import { rxResource } from '@angular/core/rxjs-interop';
 import { NgTemplateOutlet } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { catchError, forkJoin, map, Observable, of, share, switchMap, throwError, TimeoutError } from 'rxjs';
+import { catchError, forkJoin, map, Observable, of, switchMap } from 'rxjs';
 import { ApiClient } from '../../core/api-client';
+import { StatsService } from '../../core/stats.service';
 import { relDate, shortDate } from '../../core/format';
 
 // Port of loadOverviewDashboard/renderOverview (src/dashboard.client.js:783–1003, 1108–1142).
@@ -178,26 +179,19 @@ function view(d: OverviewData) {
 })
 export class Overview {
   private readonly api = inject(ApiClient);
+  private readonly stats = inject(StatsService);
 
   // Each request fails on its own into null ("No disponible"); the resource is cancelled with the view, so a late answer is dropped.
   protected readonly data = rxResource<OverviewData, unknown>({ stream: () => this.load() });
   protected readonly v = computed(() => { const d = this.data.value(); return d ? view(d) : null; });
 
   private load(): Observable<OverviewData> {
-    // One bundle serves summary and timeline; if it fails each falls back to its own route, unless it timed out
-    // (the backend is slow: more reads would not help).
-    const bundle = this.api.get<{ summary?: ChessSummary; timeline?: Timeline }>('/api/stats/bundle').pipe(
-      map((b) => { if (!b?.summary) throw new Error('bundle'); return { b, timedOut: false }; }),
-      catchError((e) => of({ b: null, timedOut: e instanceof TimeoutError })),
-      share(),
-    );
-    const stat = <T>(key: 'summary' | 'timeline', route: string): Observable<T | null> => orNull(bundle.pipe(switchMap(({ b, timedOut }) =>
-      b ? of((b[key] ?? null) as T | null) : timedOut ? throwError(() => new Error('timeout')) : this.api.get<T>(route))));
+    const stat = this.stats.session();
     return forkJoin({
       langs: orNull(this.api.get<Langs>('/api/languages')),
       xp: orNull(this.api.get<{ summaries?: XpDay[] }>('/api/languages/xp', { days: 30 })),
-      stats: stat<ChessSummary>('summary', '/api/stats/summary'),
-      timeline: stat<Timeline>('timeline', '/api/stats/timeline'),
+      stats: orNull(stat<ChessSummary>('summary', '/api/stats/summary')),
+      timeline: orNull(stat<Timeline>('timeline', '/api/stats/timeline')),
       matches: orNull(this.api.get<{ rows?: Match[] }>('/api/matches', { limit: 100 })),
       games: orNull(this.api.get<{ summary?: GamesSummary }>('/api/me/linkedin-games/summary', { today: new Date().toLocaleDateString('sv-SE') })),
     }).pipe(switchMap((r) => {
