@@ -23,7 +23,7 @@ Observation (JSON snapshot) ──► POST /api/snapshot (bearer token)
    Cloudflare D1  (snapshots · matches · courses · xp_summaries · user_state · …)
         │
         ▼
- Application use cases ──► Hono delivery layer ──► dashboard / JSON API (owner session)
+ Application use cases ──► Hono delivery layer ──► Angular dashboard (web/) / JSON API (owner session)
 ```
 
 ```text
@@ -35,7 +35,8 @@ src/
   analytics/       pure statistics over normalized rows
   normalization/   source payload → internal model (never null→0 on ratings)
   ingestion/       stable stringify + SHA-256, schema observation
-  api/             HTTP delivery: router, access policy, thin handlers
+  api/             HTTP delivery: router, access policy, thin handlers; serves web/dist/browser
+web/               Angular dashboard (npm run web:build / web:test); see docs/ARCHITECTURE.md
 migrations/        D1 schema
 demo/              invented dataset + seed script
 ```
@@ -89,7 +90,9 @@ Contracts for the language module are in `docs/contracts/` (written in Spanish).
 
 ```bash
 npm install
+npm run web:build   # the Angular bundle the Worker serves
 npm test
+npm run web:test
 npm run typecheck
 python3 scripts/check_architecture_boundaries.py
 ```
@@ -98,6 +101,7 @@ python3 scripts/check_architecture_boundaries.py
 
 ```bash
 npx wrangler d1 migrations apply meridian --local
+npm run web:build
 npx wrangler dev src/dev.ts --port 8787 --var IMPORT_TOKEN:dev-token
 npm run demo:seed          # 60 invented matches + two language observations
 ```

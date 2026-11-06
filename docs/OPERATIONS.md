@@ -9,7 +9,7 @@ Para volver a operar el Worker tras meses sin tocarlo. Solo describe lo comproba
 
 | Qué | Dónde |
 |---|---|
-| Config privada del Worker | `wrangler.private.jsonc` (**sin versionar**, listada en `.git/info/exclude`). Se recrea copiando `wrangler.jsonc` y poniendo el `database_id` de `npx wrangler d1 info meridian`. Debe conservar `rules` (`Text` para `**/*.client.js` y `**/*.client.css`: el script y los estilos del dashboard): `--config` no se combina con `wrangler.jsonc`, y sin la regla el Worker no arranca (el build o el arranque lo rechazan). También debe conservar el bloque `assets` (`./web/dist/browser`, binding `ASSETS`, `run_worker_first: true`): sin él `/next` no tiene frontend. `npm run web:build` antes de `wrangler deploy`. |
+| Config privada del Worker | `wrangler.private.jsonc` (**sin versionar**, listada en `.git/info/exclude`). Se recrea copiando `wrangler.jsonc` y poniendo el `database_id` de `npx wrangler d1 info meridian`. Debe llevar el bloque `assets` (`./web/dist/browser`, binding `ASSETS`, `run_worker_first: true`): `--config` no se combina con `wrangler.jsonc`, y sin él el Worker no tiene frontend (toda página da error). La regla `rules` `Text` (`**/*.client.js`, `**/*.client.css`) del dashboard antiguo ya no hace falta: se puede quitar. `npm run web:build` antes de `wrangler deploy` (el deploy sube lo que haya en `web/dist/browser`). |
 | Config pública | `wrangler.jsonc` (id de D1 ficticio `0000…`) |
 | Destino de "Sincronizar" | variables `SYNC_REPO` (`owner/repo`), `SYNC_WORKFLOW` y `SYNC_REF` en `wrangler.private.jsonc`. Sin las tres, `/api/me/sync` responde 503 `SYNC_NOT_CONFIGURED` |
 | Todos los comandos de wrangler | llevan `--config wrangler.private.jsonc` |
@@ -29,7 +29,7 @@ Alta/rotación: `npx wrangler secret put NOMBRE --config wrangler.private.jsonc`
 ## 2. Rutina de cambios
 
 ```bash
-npx tsc --noEmit && npx vitest run && python3 scripts/check_architecture_boundaries.py   # desde un clon de meridian
+npm run web:build && npx tsc --noEmit && npx vitest run && npm run web:test && python3 scripts/check_architecture_boundaries.py   # desde un clon de meridian
 # si hay migraciones nuevas (aditivas: antes del deploy)
 yes | npx wrangler d1 migrations apply meridian --remote --config wrangler.private.jsonc
 npx wrangler deploy --config wrangler.private.jsonc
@@ -43,7 +43,7 @@ npx wrangler deploy --config wrangler.private.jsonc
 
 ### Despliegue desde GitHub Actions (`.github/workflows/deploy.yml`)
 
-Hace lo mismo que la rutina anterior, pero en CI: typecheck, guarda y tests; genera `wrangler.production.jsonc` (nunca despliega con el `wrangler.jsonc` de ejemplo); se niega a desplegar si hay migraciones pendientes (**no las aplica**, siguen siendo a mano y antes del deploy); despliega y comprueba `/login` 200, `/` 303 y la API cerrada (401). Si el smoke falla, el run queda en rojo: `npx wrangler rollback <version-id> --config wrangler.private.jsonc`.
+Hace lo mismo que la rutina anterior, pero en CI: typecheck, guarda y tests; genera `wrangler.production.jsonc` (nunca despliega con el `wrangler.jsonc` de ejemplo); se niega a desplegar si hay migraciones pendientes (**no las aplica**, siguen siendo a mano y antes del deploy); despliega y comprueba `/login` 200, `/`, `/chess` y `/next/` 303 (sin sesión) y la API cerrada (401). Si el smoke falla, el run queda en rojo: `npx wrangler rollback <version-id> --config wrangler.private.jsonc`.
 
 - Secretos del repo: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `D1_DATABASE_ID`.
 - Variables del repo: `SYNC_REPO`, `SYNC_WORKFLOW`, `SYNC_REF` (sin ellas, un deploy apagaría Sincronizar: el workflow se niega) y `PROD_URL`.
@@ -109,7 +109,7 @@ Comprobaciones de salud de datos (SELECT): huérfanos `matches`↔`snapshots`↔
 - La ingesta no es transaccional, pero escribe el snapshot (el que lleva el checksum UNIQUE) **al final**: si falla algo antes, el reintento idéntico no se toma por duplicado y vuelve a aplicar el estado derivado, que es idempotente. Tras un fallo parcial pueden quedar `matches.snapshot_id` / `match_snapshots` apuntando a un snapshot que no llegó a existir y `schema_observations.occurrence_count` inflado: ningún código los lee, no son una garantía de consistencia.
 - `course_sections.last_seen_at` no avanza con snapshots deduplicados.
 - El Worker no registra los motivos de fallo de `Sincronizar` (solo la respuesta HTTP).
-- El dashboard y `/raw` llevan CSP (con `script-src 'unsafe-inline'`: 21 handlers inline), `no-store`, `nosniff` y `X-Frame-Options`; las respuestas JSON de la API siguen sin `Cache-Control` ni `nosniff`.
+- Las páginas de la app Angular llevan CSP sin scripts inline (`script-src 'self'`; `style-src` conserva `'unsafe-inline'` por los `style=` de las plantillas), `no-store`, `nosniff` y `X-Frame-Options`; los ficheros del bundle llevan `nosniff`. `/raw` ya no existe (cae en la app, que lleva a `/overview`); `/next/*` redirige 301 a la misma ruta en la raíz.
 - La cuenta de Duolingo tiene como curso activo uno de ajedrez (`CHESS_CH` el 2026-10-05): el sweep no lo recorre y la restauración vuelve a él. Es lo esperado al leer el log.
 - `wrangler` instalado es 3.114 (hay 4.x disponible); no se ha actualizado.
 

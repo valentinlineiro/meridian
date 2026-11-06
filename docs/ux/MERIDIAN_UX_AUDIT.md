@@ -7,6 +7,8 @@
 
 > **Nota de alcance y estado de validación.** La versión inicial de esta auditoría se basó en código, contratos y datasets documentados. Las hipótesis de diseño visual, jerarquía, densidad y navegación fueron **validadas en pantalla con datos de prueba y capturas en escritorio y móvil** el 2026-11-04 (véase el informe complementario [MERIDIAN_UX_VISUAL_VALIDATION.md](./MERIDIAN_UX_VISUAL_VALIDATION.md) y las capturas en `docs/ux/screenshots/`). Las propuestas que recibieron matices o refutaciones en la experiencia real (como la preservación de la entrada manual rápida de Games o evitar la fragmentación en URLs rígidas) se encuentran reflejadas en las secciones correspondientes. Las propuestas de las secciones 5–10 proporcionan el marco conceptual aprobado para el roadmap incremental.
 
+> **Nota (2026-11-06).** Las referencias de «Evidencia» (`src/frontend.ts`, `src/dashboard.client.js`, `src/dashboard.client.css`) apuntan al dashboard antiguo, sustituido por la app Angular de `web/` y borrado en el commit «feat(web)!: Angular replaces the legacy dashboard»; se leen en el historial de git anterior a ese commit. El enlace «Datos técnicos» (`/raw`) ya no existe.
+
 ---
 
 ## 0. Resumen para decidir en dos minutos
