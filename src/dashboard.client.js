@@ -1026,7 +1026,7 @@ function renderChessView(stats, matches){
  const elHeroElo=q('#chessHeroElo');
  if(elHeroElo) elHeroElo.textContent=elo!=null? elo : '—';
  const elHeroEloSub=q('#chessHeroEloSub');
- if(elHeroEloSub) elHeroEloSub.textContent=elo!=null? ('ELO'+(isSingleObs ? ' · sin histórico comparable' : (delta!=null? ' · '+(delta>0?'+':'')+delta+' vs primer snapshot':''))) : 'ELO';
+ if(elHeroEloSub) elHeroEloSub.textContent=elo!=null? ('ELO'+(isSingleObs ? ' · sin histórico comparable' : (delta!=null? ' · '+(delta>0?'+':'')+String(delta).replace('-','−')+' vs primer snapshot':''))) : 'ELO';
  
  const elHeroMeta=q('#chessHeroMeta');
  if(elHeroMeta){
@@ -1508,7 +1508,7 @@ async function loadChessDashboard(){
   else {
    const elos=points.map(p=>p.elo); const mx=Math.max(...elos), mn=Math.min(...elos);
    const dlt=elos[elos.length-1]-elos[0];
-   q('#evoNote').textContent= points.length+' días con ELO leído · lecturas entre '+mn+' y '+mx+' · '+(dlt>0?'+':'')+dlt+' desde la primera lectura';
+   q('#evoNote').textContent= points.length+' días con ELO leído · lecturas entre '+mn+' y '+mx+' · '+(dlt>0?'+':'')+String(dlt).replace('-','−')+' desde la primera lectura';
   }
 
   // results
@@ -2192,7 +2192,7 @@ const EVAL_META = {
 // The criteria come from the evaluation itself (e.criteria): the rule's own thresholds, never copied here.
 function evalReasonText(e, r){
  const id = e.id, m = e.metrics || {}, k = e.criteria || {};
- const f = (v, d) => v == null ? '—' : Number(v).toFixed(d == null ? 1 : d).replace('.', ',');
+ const f = (v, d) => v == null ? '—' : Number(v).toFixed(d == null ? 1 : d).replace('.', ',').replace('-', '−');
  const need = (v, unit) => v == null ? 'no se alcanza el criterio' : 'el criterio exige al menos ' + String(v).replace('.', ',') + unit;
  if(id === 'CHESS_COLOR_ASYMMETRY'){
   if(r === 'insufficient_sample') return f(m.decidedCount, 0) + ' partidas decididas observadas; ' + need(k.minDecided, '') + '.';
@@ -2223,7 +2223,7 @@ function evalReasonText(e, r){
  return {insufficient_sample:'Muestra insuficiente.', effect_below_threshold:'El efecto observado no alcanza el criterio.', interval_includes_zero:'El intervalo de confianza incluye 0.', persistence_not_met:'El efecto no se mantiene en ambas mitades del historial.', span_too_short:'La ventana es demasiado corta.', data_unavailable:'Faltan datos necesarios.'}[r] || r;
 }
 function evalObserved(id, m){
- const f = (v, d) => Number(v).toFixed(d == null ? 1 : d).replace('.', ',');
+ const f = (v, d) => Number(v).toFixed(d == null ? 1 : d).replace('.', ',').replace('-', '−');
  if(id === 'CHESS_COLOR_ASYMMETRY' && m.whiteWinRate != null && m.blackWinRate != null) return 'Blancas ' + f(m.whiteWinRate) + ' % · Negras ' + f(m.blackWinRate) + ' % (' + m.decidedCount + ' partidas decididas)';
  if(id === 'CHESS_COLOR_ASYMMETRY_LONGITUDINAL' && m.whiteWinRate != null && m.blackWinRate != null) return 'Blancas ' + f(m.whiteWinRate) + ' % · Negras ' + f(m.blackWinRate) + ' % (' + m.whiteDecided + ' y ' + m.blackDecided + ' decididas' + (m.totalDays != null ? ', ' + m.totalDays + ' días' : '') + ')';
  if(id === 'CHESS_RATING_JUMP' && m.baselineRating != null && m.currentRating != null) return 'ELO leído en snapshots: ' + m.baselineRating + ' → ' + m.currentRating + ' (' + m.gamesCount + ' partidas en la ventana)';

@@ -57,7 +57,7 @@ describe("evaluation cards (P0)", () => {
   });
 
   it("shouldShowIntervalReasonWhenIntervalIncludesZero", () => {
-    expect(html({ chess: { colorDelta: wide } })).toContain("[-16, 72] pp incluye 0");
+    expect(html({ chess: { colorDelta: wide } })).toContain("[−16, 72] pp incluye 0");
   });
 
   it("shouldMarkInsuficienteWhenDataIsUnavailable", () => {
@@ -159,7 +159,7 @@ describe("A7: calibrated rules abstain on screen", () => {
   it("shouldShowInsuficienteWithTheObservedEffectWhenTheUsualVariationIsUnknown", () => {
     const h = elo({ ratingDelta: -40, ratingGames: 10, gamesCount: 30 });
     expect(h).toContain("INSUFICIENTE");
-    expect(h).toContain("Cambio de ELO observado: -40 puntos en 10 partidas entre las dos lecturas. Sin referencia de variación habitual todavía.");
+    expect(h).toContain("Cambio de ELO observado: −40 puntos en 10 partidas entre las dos lecturas. Sin referencia de variación habitual todavía.");
     expect(h).not.toContain("SIN INDICIO");
   });
   it("shouldShowSinIndicioWhenThereIsNoEffect", () => {
