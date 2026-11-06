@@ -115,7 +115,8 @@ describe("what changed / trajectory: absent values are not zero", () => {
     const rt = createDashboardRuntime("/trajectory", undefined, fetchOnly(["/api/trajectory"], ok(body)));
     await settle();
     expect(rt.getEl("#trajectoryFindings").innerHTML).toContain("— blancas");
-    expect(rt.getEl("#trajectoryFindings").innerHTML).not.toContain("0% blancas");
+    expect(rt.getEl("#trajectoryFindings").innerHTML).not.toContain("0 % blancas");
+    expect(rt.getEl("#trajectoryFindings").innerHTML).toContain("40 % negras");
   });
 });
 
