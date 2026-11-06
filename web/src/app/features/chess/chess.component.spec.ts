@@ -120,6 +120,18 @@ describe('Chess', () => {
     });
   });
 
+  describe('layout (tests/ux-viewport.test.ts)', () => {
+    it('shouldOrderSectionsLogicallyAndKeepTheOpponentEloCollapsed', async () => {
+      await t.open();
+      const ids = ['kpis', 'formCard', 'cg-comp', 'colCard', 'oppCard', 'cg-evo', 'evoCard', 'resCard', 'eloDetails', 'mb'];
+      const els = ids.map((id) => t.el().querySelector('#' + id)!);
+      expect(els.every(Boolean)).toBe(true);
+      for (let i = 1; i < els.length; i++) expect(els[i - 1].compareDocumentPosition(els[i]) & Node.DOCUMENT_POSITION_FOLLOWING, ids[i]).toBeTruthy();
+      expect((t.el().querySelector('#eloDetails') as HTMLDetailsElement).open).toBe(false);
+      expect(t.el().querySelector('#kpiSub, .kpi-sub')).toBeNull();
+    });
+  });
+
   describe('hero', () => {
     it('shouldSayTheEloChangeIsAgainstTheFirstSnapshot', async () => {
       await t.open();
@@ -181,6 +193,13 @@ describe('Chess', () => {
   });
 
   describe('kpis, streak and form', () => {
+    it('shouldLabelTheWindowWithTheGamesObservedNotTheRequestedLimit', async () => { // tests/epistemicWording.test.ts
+      const rec = { ...(chessApi()['/api/stats/recent'] as object), limit: 50, games: 12, wins: 6, losses: 6, draws: 0, decided: 12 };
+      await t.open(chessApi({ '/api/stats/recent': rec }));
+      expect(t.text('form')).toContain('Últimas 12');
+      expect(t.text('form')).not.toContain('Últimas 50');
+    });
+
     it('shouldNotRepeatEloAndWinRateInTheKpis', async () => {
       await t.open();
       const kpis = [...t.el().querySelectorAll('#kpis m-kpi')].map((k) => k.textContent);
@@ -205,6 +224,7 @@ describe('Chess', () => {
       expect(form).toContain('55,0 % score · 25W 20L 5D');
       expect(form).toContain('+2,5 pp · IC95 [−23,0; +25,4] · sin evidencia suficiente vs anteriores');
       expect(form).toContain('Anteriores · 50');
+      expect(form).not.toMatch(/score vs anteriores|vs\s+hist/); // the delta is against the earlier games, and only for the win rate
       expect(form).toContain('50,0 % [40–70] WR');
       expect(t.el().querySelector('#b50')!.className).toBe('btn btn-p');
     });
@@ -810,6 +830,12 @@ describe('EngineProfile', () => {
     TestBed.configureTestingModule({ providers: [MatchesService, provideHttpClient(), provideHttpClientTesting()] });
     fixture = TestBed.createComponent(EngineProfile);
     el = fixture.nativeElement;
+  });
+
+  it('shouldSayTheReviewListIsOrderedByAverageLossPerMoveNotBySeriousErrors', async () => { // tests/uxPhase4.test.ts
+    await render(PROFILE);
+    expect(text('profileReviewCard')).toContain('ordenadas por pérdida media por jugada');
+    expect(text('profileReviewCard')).toContain('información adicional, no como criterio de orden');
   });
 
   it('shouldHeadlineFourPlainLanguageFiguresWithTheirDenominators', async () => {

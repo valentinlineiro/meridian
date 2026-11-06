@@ -39,6 +39,14 @@ describe('SideNav', () => {
     expect(el.querySelector('form[method="post"][action="/logout"] button[type="submit"]')?.textContent).toBe('Salir');
   });
 
+  it('shouldClarifySyncScopeAccessiblyAndKeepTheExportOutOfTheMenu', async () => { // tests/uxPhase0.test.ts
+    const el = await render('/overview');
+    const btn = el.querySelector('button[aria-describedby="syncScopeHint"]')!;
+    expect(btn.getAttribute('title')).toMatch(/Duolingo[\s\S]*manual/);
+    expect(el.querySelector('#syncScopeHint')!.textContent).toMatch(/Duolingo[\s\S]*manual/);
+    expect(el.querySelector('a[href="/api/export/matches.csv"]')).toBeNull();
+  });
+
   // tests/frontendWhatChanged.test.ts: shouldIncludeWhatChangedButtonInDashboardTabsWhenRendered + shouldActivateChangesTabWhenShowTabIsInvokedWithChanges
   it('shouldMarkQueCambioActiveWhenTheRouteIsChanges', async () => {
     const el = await render('/changes');

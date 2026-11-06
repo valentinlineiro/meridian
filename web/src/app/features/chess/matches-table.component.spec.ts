@@ -209,4 +209,74 @@ describe('MatchesTable', () => {
     expect(params(await answer())).toEqual({ limit: '50', offset: '0' });
     expect(svc.missedOnly()).toBe(false);
   });
+
+  // Residual cases of tests/matchesTable.test.ts (legacy script) not covered above.
+  it('shouldKeepNextDisabledWhenExpandingAListThatFitsInOnePage', async () => {
+    await answer({ rows: [row()], total: 25 });
+    await click('#btnAllMatches');
+    await answer({ rows: [row()], total: 25 });
+    expect(el.querySelector<HTMLButtonElement>('#next')!.disabled).toBe(true);
+    expect(el.querySelector<HTMLButtonElement>('#prev')!.disabled).toBe(true);
+  });
+
+  it('shouldSendTheQueryToTheServerFromTheFirstPageWhenTyping', async () => {
+    await answer();
+    await click('#btnAllMatches');
+    await answer({ rows: [row()], total: 120 });
+    await click('#next');
+    await answer({ rows: [row()], total: 120 });
+    vi.useFakeTimers();
+    const q = el.querySelector<HTMLInputElement>('#q')!;
+    q.value = 'magnus';
+    q.dispatchEvent(new Event('input'));
+    vi.advanceTimersByTime(300);
+    TestBed.tick();
+    expect(params(pending()[0])).toEqual({ limit: '50', offset: '0', q: 'magnus' });
+  });
+
+  it('shouldShowEveryRowTheServerReturnsWithoutFilteringOnTheClient', async () => {
+    await answer();
+    await click('#btnAllMatches');
+    await answer();
+    vi.useFakeTimers();
+    const q = el.querySelector<HTMLInputElement>('#q')!;
+    q.value = 'zzz-matches-nobody-loaded';
+    q.dispatchEvent(new Event('input'));
+    vi.advanceTimersByTime(300);
+    vi.useRealTimers();
+    TestBed.tick();
+    await answer({ rows: [row({ opponent_name: 'rival1' }), row({ match_id: 'm2', opponent_name: 'rival2' })], total: 2 });
+    expect(el.querySelector('#mb')!.textContent).toContain('rival1');
+    expect(el.querySelector('#mb')!.textContent).toContain('rival2');
+  });
+
+  it('shouldFilterByOpponentTypeWhenTheRivalOptionIsNotASegment', async () => {
+    await answer();
+    await click('#btnAllMatches');
+    await answer();
+    const opp = el.querySelector<HTMLSelectElement>('#fOpp')!;
+    opp.value = 'bot';
+    opp.dispatchEvent(new Event('change'));
+    await tick();
+    expect(params(await answer())).toEqual({ limit: '50', offset: '0', opponentType: 'bot' });
+  });
+
+  it('shouldClearEveryFilterWithASingleRequest', async () => {
+    await answer();
+    await click('#btnAllMatches');
+    await answer();
+    await click('[data-chip="result:win"]'); await answer();
+    await click('[data-chip="color:black"]'); await answer();
+    await click('#matchFilters .btn-g');
+    const reqs = pending(); // match() hands the requests over: read them once
+    expect(reqs).toHaveLength(1);
+    expect(params(reqs[0])).toEqual({ limit: '50', offset: '0' });
+  });
+
+  it('shouldShowPlainMateWhenTheKindIsUnknownAndTheFullDateOnHover', async () => {
+    const played = 1790000000;
+    await answer({ rows: [row({ mate_type_label: null, played_at: played })], total: 1 });
+    expect(el.querySelector('#mb td[data-l="Fin"]')!.textContent!.trim()).toBe('Mate');
+    expect(el.querySelector('#mb td[data-l="Fecha"]')!.getAttribute('title')).toBe(new Date(played * 1000).toLocaleString('es-ES'));
+  });
 });

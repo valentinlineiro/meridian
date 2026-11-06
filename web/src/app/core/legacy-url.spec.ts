@@ -14,6 +14,16 @@ describe('legacyRedirect', () => {
     ['/', '#/unknown/route', '', '/overview'],
     ['/DUOLINGO_ES', '', '', '/languages/DUOLINGO_ES'],
     ['/languages/A B', '#', '', '/languages/A%20B'],
+    // the rest of tests/canonicalRouting.test.ts (legacy parseCanonicalRoute)
+    ['/', '#', '', '/overview'],
+    ['/', '#/overview', '', '/overview'],
+    ['/', '#overview', '', '/overview'],
+    ['/', '#/languages', '', '/languages'],
+    ['/', '#languages', '', '/languages'],
+    ['/', '#languages/DUOLINGO_XA_ES', '', '/languages/DUOLINGO_XA_ES'],
+    ['/', '#/languages/DUOLINGO_XB_EN', '', '/languages/DUOLINGO_XB_EN'],
+    ['/', '#chess', '', '/chess'],
+    ['/', '#/games', '', '/games'],
   ])('shouldRedirectHashRouteToCanonicalPath %s %s %s', (path, hash, search, expected) => {
     expect(legacyRedirect(path, hash, search)).toBe(expected);
   });

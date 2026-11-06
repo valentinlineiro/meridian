@@ -532,4 +532,71 @@ describe('Languages', () => {
       expect(text('langSectionsList')).toContain(`Section ID: ${HOSTILE} · Tipo: ${HOSTILE}`);
     });
   });
+
+  // Residual cases of tests/accountStaleNote, pruneLanguagesAnalytics and languagesBehaviour (legacy script).
+  describe('legacy residuals', () => {
+    it('shouldKeepSecondaryAnalyticsBehindProgressiveDisclosure', async () => { // tests/uxPhase1.test.ts
+      await open();
+      const details = q('details#langAnalyticsDetails')!;
+      for (const id of ['langObservedChangesCard', 'langXpTimeline', 'langIntensityCard', 'langWeeklyCard', 'langConcentrationCard', 'langComparabilityCard'])
+        expect(details.querySelector('#' + id), id).not.toBeNull();
+      for (const id of ['langLimitsCard', 'langCourseHero', 'langAccountCard', 'langWeekCard', 'langCoursesList']) {
+        expect(q('#' + id), id).not.toBeNull();
+        expect(details.querySelector('#' + id), id).toBeNull();
+      }
+    });
+
+    it('shouldLabelTheCefrCardAsCurricularUnitsNotProficiency', async () => { // tests/uxPhase0.test.ts
+      await open();
+      q('#langCoursesList details[open] button')!.click();
+      await tick();
+      expect(text('langCefrCard')).toContain('Unidades curriculares por nivel CEFR');
+      expect(text('langCefrCard')).toMatch(/no constituye evaluación ni certificación/i);
+    });
+
+    it('shouldTellCoursesWithTheSameTitleApartInTheSelector', async () => { // tests/uxPhase4.test.ts
+      const ru = [course('RU_EN', 'Russian', 159280, 'en', 'ru'), course('RU_ES', 'Russian', 36335, 'es', 'ru')];
+      await open('/languages', langApi({ '/api/languages': { ...langsBody(), currentCourseId: 'RU_EN', courses: ru }, '/api/languages/courses/RU_EN': { course: ru[0], sections: [] } }));
+      const labels = [...el().querySelectorAll('#langCourseSelect option')].map((o) => o.textContent!);
+      expect(labels.some((l) => l.includes('Russian · EN → RU (159.280 XP)'))).toBe(true);
+      expect(labels.some((l) => l.includes('Russian · ES → RU (36.335 XP)'))).toBe(true);
+    });
+
+    it('shouldKeepTheGoalReadOnlyWithALinkToSettings', async () => { // tests/settingsPage.test.ts
+      await open();
+      expect(q('#langGoalRow input')).toBeNull();
+      expect(q('#langGoalRow a')!.getAttribute('href')).toBe('/settings');
+      expect(text('langGoalToday')).toContain('/ 100 XP');
+    });
+
+    it('shouldSayXpAndStreakWereNeverObservedWhenNoObservationExists', async () => {
+      await open('/languages', langApi({ '/api/languages': { ...langsBody(), totalXpObservedAt: null, streakObservedAt: null } }));
+      expect(text('langSyncMeta')).toContain(' · XP y racha: sin observar');
+    });
+
+    it('shouldStaySilentWhenXpAndStreakWereObservedInTheLastSnapshot', async () => {
+      await open();
+      expect(text('langSyncMeta')).not.toMatch(/observados el|sin observar/);
+    });
+
+    it('shouldNotShowTheConcentrationIndicesNorXpPerMinute', async () => {
+      const a = analyticsBody() as ReturnType<typeof analyticsBody> & Record<string, unknown>;
+      Object.assign(a.historicalConcentration, { hhi: 0.3552, effectiveCourseCount: 2.82, top3SharePercentage: 90 });
+      Object.assign(a.intensity.global, { xpPerMinute: 28 });
+      Object.assign(a.intensity.dailyDistribution, { xpPerMinuteMedian: 29 });
+      await open('/languages', langApi({ '/api/languages/analytics': a }));
+      expect(text('langConcentrationBody')).not.toMatch(/HHI|Cursos efectivos|Cuota Top 3|0[.,]3552|2[.,]82/);
+      expect(text('langIntensityBody')).not.toMatch(/XP \/ minuto|29[.,]0/);
+      expect(text('langIntensityBody')).toMatch(/No representan eficiencia cognitiva ni velocidad de aprendizaje/);
+    });
+
+    it.each([[{ totalUnits: 4 }], [{}]])('shouldShowSectionsWithoutUnitCountsAsZeroNotAsNaN %j', async (units) => {
+      await open('/languages', langApi({ '/api/languages/courses/XB_EN': { course: XB, sections: [{ sectionIndex: 1, sectionId: 's1', type: 'learning', cefrLevel: 'A1', ...units }] } }));
+      expect(text('langCoursesList')).not.toContain('NaN');
+      q('#langCoursesList details[open] button')!.click();
+      await tick();
+      expect(text('langSectionsList')).toContain(`0 / ${'totalUnits' in units ? 4 : 0} unidades`);
+      expect(el().innerHTML).not.toContain('NaN');
+    });
+  });
 });

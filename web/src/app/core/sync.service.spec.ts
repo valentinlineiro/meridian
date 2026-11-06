@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { HttpTestingController, provideHttpClientTesting, TestRequest } from '@angular/common/http/testing';
 import { BROWSER_LOCATION } from './api-client';
 import { SyncService } from './sync.service';
 
@@ -80,5 +80,122 @@ describe('SyncService', () => {
     expect(sync.busy()).toBe(false);
     expect(localStorage.getItem('meridian.syncRun')).toBeNull();
     expect(sync.note()).toBe('No se pudo consultar el estado de la sincronización.');
+  });
+
+  // Ported from tests/syncUi.test.ts (legacy doSync/trackSync/resumeSync): the rest of the state machine.
+  describe('the rest of the legacy sync state machine', () => {
+    type Script = (r: TestRequest) => void;
+    const post = (runId = 7): Script => (r) => r.request.method === 'POST' && r.flush({ ok: true, runId });
+    const fail = (status: number) => (r: TestRequest) => r.flush({}, { status, statusText: 'x' });
+    /** Answers every pending request with the script, then lets the service's timers run, until it is idle. */
+    async function drive(sync: SyncService, script: Script): Promise<number> {
+      const http = TestBed.inject(HttpTestingController);
+      let polls = 0;
+      for (let i = 0; i < 3000; i++) {
+        await vi.advanceTimersByTimeAsync(0);
+        const pending = http.match(() => true).filter((r) => !r.cancelled);
+        for (const r of pending) {
+          if (r.request.url === '/api/me/sync/status') polls++;
+          script(r);
+        }
+        if (!pending.length && !sync.busy()) break;
+        await vi.advanceTimersByTimeAsync(1000); // under the 10 s request timeout
+      }
+      return polls;
+    }
+    const run = (statusReply: (n: number) => Script): Script => {
+      let n = 0;
+      return (r) => (r.request.method === 'POST' ? post()(r) : statusReply(++n)(r));
+    };
+    const ok = (body: object): Script => (r) => r.flush(body);
+
+    it('shouldNotReloadThePageWhenTheSyncFails', async () => {
+      const sync = TestBed.inject(SyncService);
+      sync.start();
+      await drive(sync, run(() => ok({ status: 'completed', conclusion: 'failure' })));
+      await vi.advanceTimersByTimeAsync(5000);
+      expect(location.reload).not.toHaveBeenCalled();
+      expect(sync.lastSyncLabel()).toBe('Sincronizar');
+      expect(localStorage.getItem('meridian.syncRun')).toBeNull();
+    });
+
+    it('shouldDoNothingOnLoadWhenNoRunIsStored', () => {
+      const sync = TestBed.inject(SyncService);
+      expect(sync.busy()).toBe(false);
+      TestBed.inject(HttpTestingController).verify();
+    });
+
+    it('shouldNeverShowInternalErrorDetailsWhenTheServerRejectsTheRequest', async () => {
+      const sync = TestBed.inject(SyncService);
+      sync.start();
+      await drive(sync, (r) => r.flush({ ok: false, error: 'GITHUB_ACTIONS_TOKEN not set' }, { status: 500, statusText: 'x' }));
+      expect(sync.note()).toBe('Sincronización fallida. Inténtalo de nuevo.');
+    });
+
+    it('shouldNotTreatALongRunAsAFailure', async () => {
+      const sync = TestBed.inject(SyncService);
+      const notes: string[] = [];
+      sync.start();
+      await drive(sync, run((n) => (r) => { notes.push(sync.note()); ok({ status: n < 30 ? 'in_progress' : 'completed', conclusion: 'success' })(r); }));
+      expect(notes).toContain('Sigue en marcha. Puedes salir de esta página; la sincronización continuará.');
+      expect(notes.some((t) => /fallida/.test(t))).toBe(false);
+      expect(sync.lastSyncLabel()).toBe('✓ Sincronizado');
+    });
+
+    it('shouldKeepTrackingWhenAStatusReadFailsOnceAndThenAnswers', async () => {
+      const sync = TestBed.inject(SyncService);
+      sync.start();
+      await drive(sync, run((n) => (n === 1 ? fail(503) : ok({ status: 'completed', conclusion: 'success' }))));
+      expect(sync.lastSyncLabel()).toBe('✓ Sincronizado');
+      expect(sync.note()).toBe('Sincronización completada.');
+      expect(localStorage.getItem('meridian.syncRun')).toBeNull(); // cleared because it finished
+    });
+
+    it('shouldStopAfterThreeFailuresInARowButKeepTheRunIdToResume', async () => {
+      const sync = TestBed.inject(SyncService);
+      sync.start();
+      const polls = await drive(sync, run(() => fail(503)));
+      expect(polls).toBe(3);
+      expect(sync.lastSyncLabel()).toBe('Sincronizar');
+      expect(sync.note()).toContain('Puede seguir en marcha');
+      expect(sync.note()).not.toMatch(/fallida/);
+      expect(localStorage.getItem('meridian.syncRun')).toBe('7');
+    });
+
+    it('shouldGiveUpPollingAfterThreeStatusRequestsThatNeverAnswer', async () => { // tests/frontendNetwork.test.ts
+      const sync = TestBed.inject(SyncService);
+      sync.start();
+      const polls = await drive(sync, (r) => { if (r.request.method === 'POST') post()(r); }); // status reads are left to time out
+      expect(polls).toBe(3);
+      expect(sync.busy()).toBe(false);
+      expect(sync.note()).toContain('Puede seguir en marcha');
+      expect(localStorage.getItem('meridian.syncRun')).toBe('7');
+    });
+
+    it('shouldCountOnlyConsecutiveFailures', async () => {
+      const sync = TestBed.inject(SyncService);
+      sync.start();
+      await drive(sync, run((n) => (n % 3 === 0 ? ok({ status: 'in_progress' }) : n > 9 ? ok({ status: 'completed', conclusion: 'success' }) : fail(503))));
+      expect(sync.lastSyncLabel()).toBe('✓ Sincronizado');
+    });
+
+    it('shouldStopPollingAfterFifteenMinutesWithoutCallingItAFailureOrDroppingTheRun', async () => {
+      const sync = TestBed.inject(SyncService);
+      sync.start();
+      const polls = await drive(sync, run(() => ok({ status: 'in_progress' })));
+      expect(polls).toBeGreaterThan(20);
+      expect(polls).toBeLessThan(200);
+      expect(sync.busy()).toBe(false);
+      expect(sync.lastSyncLabel()).toBe('Sincronizar');
+      expect(sync.note()).toContain('Sigue en marcha; puedes salir');
+      expect(localStorage.getItem('meridian.syncRun')).toBe('7');
+    });
+
+    it.each([401, 403, 429])('shouldKeepTheRunIdWhenTheStatusReadAnswers%i', async (status) => {
+      const sync = TestBed.inject(SyncService);
+      sync.start();
+      await drive(sync, run(() => fail(status)));
+      expect(localStorage.getItem('meridian.syncRun')).toBe('7');
+    });
   });
 });

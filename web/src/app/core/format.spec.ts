@@ -7,6 +7,8 @@ describe('format', () => {
     expect(fmtDelta({ diff: 2.5, lower: -23, upper: 25.4 })).toBe('+2,5 pp · IC95 [−23,0; +25,4] · sin evidencia suficiente');
   });
   it('shouldShowDashWhenThereIsNoDelta', () => expect(fmtDelta(null)).toBe('—'));
+  it('shouldNeverClaimNoDifference', () => expect(fmtDelta({ diff: 0, lower: -5, upper: 5 })).not.toMatch(/sin diferencia/i)); // tests/frontendDeltas
+  it('shouldWriteIntervalsLikeTheColourConclusionDoes', () => expect(fmtDelta({ diff: 5.6, lower: 1.04, upper: 10.3 })).toBe('+5,6 pp · IC95 [+1,0; +10,3]'));
   it('shouldNotPrintSignedZeroForTheDiff', () => {
     expect(fmtDelta({ diff: -0.04, lower: -0.3, upper: 0.2 })).toMatch(/^0,0 pp · IC95 \[−0,3; \+0,2\]/);
   });
