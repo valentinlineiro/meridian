@@ -6,12 +6,10 @@ import { catchError, forkJoin, map, Observable, of, switchMap } from 'rxjs';
 import { ApiClient } from '../../core/api-client';
 import { StatsService } from '../../core/stats.service';
 import { relDate, shortDate } from '../../core/format';
+import { CourseDetail, courseProgress, es, flag, lastSevenDays, Langs, resolveSelectedCourseId, toDay, XpDay } from '../../core/courses';
 
 // Port of loadOverviewDashboard/renderOverview (src/dashboard.client.js:783–1003, 1108–1142).
 
-interface Course { courseId: string; title?: string | null; xp?: number | null; fromLanguage?: string | null; learningLanguage?: string | null }
-interface Langs { totalXp?: number | null; streak?: number | null; currentCourseId?: string | null; updatedAt?: string | null; courses?: Course[] }
-interface XpDay { date: string | number; gainedXp?: number | null; numSessions?: number | null }
 interface ChessSummary { games?: number | null; wins?: number | null; losses?: number | null; draws?: number | null; winRate?: number | null; currentElo?: number | null; latestElo?: number | null }
 interface Timeline { snapshots?: { createdAt?: string | null }[] }
 interface Match { played_at?: number | null; first_seen_at?: string | null }
@@ -19,7 +17,6 @@ interface GamesSummary {
   days?: number | null; to?: string | null; playStreak?: { current?: number | null; max?: number | null } | null;
   games?: Record<string, { trajectory?: Record<string, { start: string; n?: number | null }[]> }>;
 }
-interface CourseDetail { sections?: { completedUnits?: number | null; totalUnits?: number | null }[]; completedUnits?: number | null; totalUnits?: number | null }
 
 /** What the page read. null = that request failed ("No disponible"), never an empty or zero value. */
 interface OverviewData {
@@ -34,43 +31,21 @@ interface OverviewData {
 }
 
 const NA = 'No disponible';
-const SELECTED_COURSE_KEY = 'longitudinal_selected_course';
-const FLAGS: Record<string, string> = { es: '🇪🇸', fr: '🇫🇷', en: '🇬🇧', ja: '🇯🇵', zh: '🇨🇳', it: '🇮🇹', de: '🇩🇪', ru: '🇷🇺', pt: '🇵🇹', ko: '🇰🇷', ar: '🇸🇦', hi: '🇮🇳' };
-const es = (n: number) => n.toLocaleString('es-ES');
 const gdays = (n: number) => n + (n === 1 ? ' día' : ' días');
 const orNull = <T>(o: Observable<T>) => o.pipe(catchError(() => of(null)));
 
-/** URL choice does not apply on the overview: saved selection if still in the catalogue, else the most-XP course (courses[0]). */
-// ponytail: duplicated in Languages (Task 6) if it needs it; move to core then.
-const resolveSelectedCourseId = (courses: Course[]): string | null => {
-  if (!courses.length) return null;
-  let stored: string | null = null;
-  try { stored = localStorage.getItem(SELECTED_COURSE_KEY); } catch { /* storage blocked: fall through */ }
-  return stored && courses.some((c) => c.courseId === stored) ? stored : courses[0].courseId;
-};
-
 interface Cell { date: string; letter: string; color: string; label: string; title: string }
-const lastSevenDays = () => {
-  const now = new Date();
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 6 + i));
-    return { date: d.toISOString().slice(0, 10), letter: 'DLMXJVS'[d.getUTCDay()] };
-  });
-};
-const toDay = (v: string | number) => typeof v === 'string' ? v.slice(0, 10) : new Date(v > 1e11 ? v : v * 1000).toISOString().slice(0, 10);
 
 function langCard(langs: Langs | null, selected: string | null, detail: CourseDetail | null) {
   if (!langs) return { flag: '', name: '—', pair: '', source: '', units: '—', progress: 0, catalog: '—' };
   const cs = langs.courses ?? [];
   const active = cs.find((c) => c.courseId === selected);
   const src = langs.currentCourseId ? cs.find((c) => c.courseId === langs.currentCourseId) : null;
-  let completed = 0, total = 0;
-  if (detail?.sections) for (const s of detail.sections) { completed += s.completedUnits || 0; total += s.totalUnits || 0; }
-  else if (detail?.totalUnits != null) { completed = detail.completedUnits || 0; total = detail.totalUnits || 0; }
+  const { completed, total } = courseProgress(detail);
   const pct = total > 0 ? (completed / total * 100).toFixed(1) : null;
   const catalogXp = langs.totalXp ?? (cs.length && cs.every((c) => c.xp != null) ? cs.reduce((a, c) => a + c.xp!, 0) : null);
   return {
-    flag: active?.learningLanguage ? (FLAGS[active.learningLanguage.toLowerCase()] ?? '🌐') + ' ' : '',
+    flag: active?.learningLanguage ? flag(active.learningLanguage) + ' ' : '',
     name: active ? active.title || active.courseId : selected || 'Ninguno',
     pair: active?.fromLanguage && active.learningLanguage ? `(${active.fromLanguage.toUpperCase()} → ${active.learningLanguage.toUpperCase()})` : '',
     // a course outside the Idiomas catalogue (Duolingo's own chess course, CHESS_CH) is not shown: its raw id says nothing here
@@ -195,6 +170,7 @@ export class Overview {
       matches: orNull(this.api.get<{ rows?: Match[] }>('/api/matches', { limit: 100 })),
       games: orNull(this.api.get<{ summary?: GamesSummary }>('/api/me/linkedin-games/summary', { today: new Date().toLocaleDateString('sv-SE') })),
     }).pipe(switchMap((r) => {
+      // the URL choice does not apply on the overview: saved selection, else the most-XP course
       const selectedCourseId = r.langs?.courses?.length ? resolveSelectedCourseId(r.langs.courses) : null;
       const detail = selectedCourseId ? orNull(this.api.get<CourseDetail>('/api/languages/courses/' + encodeURIComponent(selectedCourseId))) : of(null);
       const snaps = r.timeline?.snapshots;
