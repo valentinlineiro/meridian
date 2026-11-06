@@ -402,4 +402,139 @@ describe('Games', () => {
       expect(el.textContent).not.toMatch(/regresión/i);
     });
   });
+
+  describe('games trajectory chart', () => {
+    const titles = () => [...el.querySelectorAll('#gamesChart svg title')].map((t) => t.textContent!);
+    const chooseGame = async (k: string) => {
+      const sel = el.querySelector<HTMLSelectElement>('#gamesTrajGame')!;
+      sel.value = k; sel.dispatchEvent(new Event('change')); await tick();
+    };
+
+    it('shouldDrawBothSeriesWithTheSampleSizeBarsOnTheSameAxis', async () => {
+      await open({ zip: game() });
+      const svg = el.querySelector('#gamesChart svg')!;
+      expect(svg.querySelectorAll('circle[fill="#7aa7e6"]').length).toBeGreaterThan(0); // efficiency
+      expect(svg.querySelectorAll('circle[fill="#2ea043"]').length).toBeGreaterThan(0); // beats the average
+      expect(svg.querySelectorAll('rect')).toHaveLength(2); // bars only where n > 0
+      expect(titles()).toContain('2026-11-01 · n=2 · ×1,1');
+      expect(svg.textContent).toContain('100 %'); // beat strip axis
+      expect(svg.getAttribute('aria-label')).toContain('Los mismos datos están en la tabla siguiente.');
+    });
+
+    it('shouldLeaveAVisibleGapInsteadOfDrawingAPointForABucketWithoutObservations', async () => {
+      await open({ zip: game() });
+      const svg = el.querySelector('#gamesChart svg')!;
+      expect(svg.querySelectorAll('circle')).toHaveLength(4); // 2 buckets with data × 2 series
+      expect(titles().some((t) => t.startsWith('2026-10-31 ·'))).toBe(false); // neither point nor bar
+      expect(svg.querySelectorAll('polyline')).toHaveLength(0); // the gap splits the line: isolated points stay points
+    });
+
+    it('shouldDrawTheRawValuesWithoutSmoothing', async () => {
+      const t = [{ start: 'a', n: 1, eff: 1.5, beat: 1 }, { start: 'b', n: 1, eff: 3, beat: 0 }, { start: 'c', n: 1, eff: 2, beat: 1 }];
+      await open({ zip: game({ trajectory: { '7': t, '28': t, '90': t, all: t } }) });
+      for (const v of ['a · n=1 · ×1,5', 'b · n=1 · ×3', 'c · n=1 · ×2']) expect(titles()).toContain(v);
+      expect(el.querySelectorAll('#gamesChart polyline')).toHaveLength(2);
+      expect(el.querySelector('#gamesChart polyline')!.getAttribute('points')).toBe('34.0,55.0 173.0,10.0 312.0,40.0');
+    });
+
+    it('shouldChartOneGameAtATimeAndOfferNoAggregate', async () => {
+      await open({ zip: game({ n: 170 }), tango: game({ trajectory: { '7': [], '28': [{ start: '2026-11-01', n: 1, eff: 1.1, beat: 1 }], '90': [], all: [] } }) });
+      expect([...el.querySelectorAll('#gamesTrajGame option')].map((o) => o.textContent)).toEqual(['Zip', 'Tango']);
+      expect(el.querySelector<HTMLSelectElement>('#gamesTrajGame')!.value).toBe('zip'); // the game with the most observations
+      await chooseGame('tango');
+      expect(titles().some((t) => t.startsWith('2026-11-01 · n=1'))).toBe(true);
+      expect(el.querySelector<HTMLSelectElement>('#gamesTrajGame')!.value).toBe('tango');
+      http.verify(); // switching game asks nothing
+    });
+
+    it('shouldExplainWhatTheChartShowsAndNameTheBucketSize', async () => {
+      await open({ zip: game() });
+      expect(text('gamesChartNote')).toMatch(/Un punto por día, valor sin suavizar/);
+      await setRange('90');
+      expect(text('gamesChartNote')).toMatch(/Un punto por semana \(lunes\), valor sin suavizar/);
+    });
+
+    it('shouldSayThereAreNoObservationsWhenNoBucketHasData', async () => {
+      const t = [{ start: '2026-11-01', n: 0, eff: null, beat: null }];
+      await open({ zip: game({ trajectory: { '7': t, '28': t, '90': t, all: t } }) });
+      expect(text('gamesChart')).toContain('Sin observaciones con media');
+    });
+
+    it('shouldShowTheTrajectoryAsUnavailableWhenItIsMalformedWhileTheTableStillRenders', async () => {
+      await open({ zip: game({ trajectory: { '28': 'x' } }) });
+      expect(text('gamesChart')).toBe('No disponible');
+      expect(el.querySelectorAll('#gamesDataRows tr')).toHaveLength(0);
+      expect(cellsOf()).toHaveLength(1);
+      expect(el.querySelector('#gamesChart svg')).toBeNull();
+    });
+  });
+
+  describe('games trajectory data table', () => {
+    const dataRows = () => [...el.querySelectorAll('#gamesDataRows tr')].map((tr) => [...tr.children].map((c) => c.textContent));
+    const chooseGame = async (k: string) => {
+      const sel = el.querySelector<HTMLSelectElement>('#gamesTrajGame')!;
+      sel.value = k; sel.dispatchEvent(new Event('change')); await tick();
+    };
+
+    it('shouldListOneRowPerBucketWithPeriodEfficiencyBeatRateAndN', async () => {
+      await open({ zip: game() });
+      expect(dataRows()).toEqual([
+        ['2026-10-30', '×1,2', '100 %', '1'],
+        ['2026-10-31', '—', '—', '0'], // the gap stays a row, with n = 0
+        ['2026-11-01', '×1,1', '50 %', '2'],
+      ]);
+      expect(el.querySelector('#gamesDataRows th')!.getAttribute('scope')).toBe('row');
+    });
+
+    it('shouldCarryTheSameValuesAsTheDrawnSeries', async () => {
+      const t = [{ start: '2026-10-20', n: 3, eff: 1.234, beat: 2 / 3 }, { start: '2026-10-21', n: 0, eff: null, beat: null }, { start: '2026-10-22', n: 5, eff: 2.5, beat: 0.8 }];
+      await open({ zip: game({ trajectory: { '7': t, '28': t, '90': t, all: t } }) });
+      const tl = [...el.querySelectorAll('#gamesChart svg title')].map((x) => x.textContent!), rows = dataRows();
+      t.forEach((b, i) => {
+        const [, eff, beat, n] = rows[i];
+        expect(n).toBe(String(b.n));
+        if (b.n === 0) {
+          expect([eff, beat]).toEqual(['—', '—']);
+          expect(tl.some((x) => x.startsWith(b.start + ' ·'))).toBe(false);
+        } else {
+          expect(tl).toContain(`${b.start} · n=${b.n} · ${eff}`);
+          expect(tl).toContain(`${b.start} · n=${b.n} · ${beat}`);
+        }
+      });
+      expect(rows.map((r) => r[0])).toEqual(t.map((b) => b.start));
+    });
+
+    it('shouldLabelWeeklyBucketsAsWeeksAndFollowThePeriodAndTheGame', async () => {
+      const wk = [{ start: '2026-10-26', n: 4, eff: 2, beat: 0.75 }];
+      await open({ zip: game({ n: 170 }), tango: game({ trajectory: { '7': traj, '28': traj, '90': wk, all: wk } }) });
+      await chooseGame('tango');
+      await setRange('90');
+      expect(dataRows()).toEqual([['Semana del 2026-10-26', '×2', '75 %', '4']]);
+      expect(text('gamesDataCaption')).toBe('Datos de la trayectoria de Tango, 90 días: un valor por semana.');
+      await setRange('7');
+      expect(text('gamesDataCaption')).toMatch(/un valor por día\.$/);
+      expect(dataRows()).toHaveLength(3);
+    });
+
+    it('shouldClearTheTableWhenThereIsNoData', async () => {
+      await open({ zip: game() });
+      expect(dataRows()).toHaveLength(3);
+      (fixture.componentInstance as any).data.reload();
+      await tick();
+      await answer({ ok: true, summary: { days: 0, from: null, to: null, playStreak: { current: 0, max: 0 }, games: {} } });
+      expect(dataRows()).toHaveLength(0);
+      expect(text('gamesChart')).toBe('');
+      expect(text('gamesChartNote')).toBe('');
+    });
+
+    it('shouldOfferTheTableInsideADetailsWithAccessibleStructureAndPointTheChartToIt', async () => {
+      await open({ zip: game() });
+      const block = el.querySelector('details.gdata')!;
+      expect(block.querySelector('summary')!.textContent).toBe('Ver los datos del gráfico (tabla)');
+      expect(block.querySelector('caption#gamesDataCaption.sr-only')).not.toBeNull();
+      expect(block.querySelector('table')!.getAttribute('aria-describedby')).toBe('gamesDataCaption');
+      expect(block.querySelectorAll('thead th[scope="col"]')).toHaveLength(4);
+      expect(el.querySelector('#gamesChart svg')!.getAttribute('aria-label')).toContain('Los mismos datos están en la tabla siguiente.');
+    });
+  });
 });

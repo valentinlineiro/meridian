@@ -3,8 +3,9 @@ import { rxResource } from '@angular/core/rxjs-interop';
 import { catchError, forkJoin, Observable, of } from 'rxjs';
 import { ApiClient } from '../../core/api-client';
 import { safe } from '../../core/guard';
+import { GamesChart } from './games-chart.component';
 import { GamesTable } from './games-table.component';
-import { cardOrder, Day, GAME_NAMES, gameCard, gameName, gamesHero, localToday, Range, RANGES, Summary } from './games.model';
+import { cardOrder, Day, defaultTrajGame, GAME_NAMES, gameCard, gameName, gamesHero, localToday, Range, RANGES, Summary, trajectory } from './games.model';
 
 // Port of the LinkedIn Games tab (src/frontend.ts:489–520, src/dashboard.client.js:1787–1971).
 const orNull = <T>(o: Observable<T>) => o.pipe(catchError(() => of(null)));
@@ -13,7 +14,7 @@ const HERO_IDLE = { label: 'LinkedIn Games · racha actual', streak: '—', meta
 
 @Component({
   selector: 'app-games',
-  imports: [GamesTable],
+  imports: [GamesChart, GamesTable],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './games.component.html',
 })
@@ -22,6 +23,8 @@ export class Games {
 
   protected readonly ranges = RANGES;
   protected readonly range = signal<Range>('28');
+  /** The game the user picked for the chart; one that is not in the summary falls back to the most observed. */
+  protected readonly trajPick = signal<string | null>(null);
 
   // Summary and today's record, each failing on its own; reload() (after a save) cancels a request still in flight.
   protected readonly data = rxResource({
@@ -60,5 +63,13 @@ export class Games {
     const s = this.summary(), range = this.range();
     if (!s) return [];
     return safe(() => cardOrder(s), [] as string[]).map((k) => safe(() => gameCard(k, s.games[k], s, range), { k, name: gameName(k), na: true as const }));
+  });
+  /** undefined: nothing to draw (loading, failed, no games); null: the trajectory could not be read. */
+  protected readonly traj = computed(() => {
+    const s = this.summary(), range = this.range(), pick = this.trajPick();
+    if (!s || !Object.keys(s.games).length) return undefined;
+    const keys = Object.keys(s.games);
+    const game = pick && keys.includes(pick) ? pick : safe(() => defaultTrajGame(s), keys[0]);
+    return { game, options: keys.map((k) => ({ k, l: gameName(k) })), view: safe(() => trajectory(s, game, range), null) };
   });
 }

@@ -23,7 +23,14 @@
     <p class="muted">n = observaciones con media global usadas (eficiencia y % que gana a la media) o con tiempo (mediana y n final). Δ eficiencia = cambio relativo frente al periodo anterior equivalente, con n actual/anterior; «—» si no es comparable.</p>
   </details>
   <details class="cgroup" id="cg-games-traj" open><summary>Trayectoria</summary>
-    <label class="muted" for="gamesTrajGame">Juego</label> <select id="gamesTrajGame"></select>
+    @let t = traj();
+    <label class="muted" for="gamesTrajGame">Juego</label> <select id="gamesTrajGame" (change)="trajPick.set($any($event.target).value)">@for (o of t?.options; track o.k) {<option [value]="o.k" [selected]="o.k === t?.game">{{ o.l }}</option>}</select>
+    <div id="gamesChart" class="card">@if (t?.view; as v) {<app-games-chart [buckets]="v.buckets" />} @else if (t && t.view === null) {<div class="muted">No disponible</div>}</div>
+    <p class="muted" id="gamesChartNote">{{ t?.view?.note }}</p>
+    <details class="gdata" id="gamesDataDetails"><summary>Ver los datos del gráfico (tabla)</summary>
+      <div class="tblwrap"><table class="gtable" id="gamesDataTable" aria-describedby="gamesDataCaption"><caption id="gamesDataCaption" class="sr-only">{{ t?.view?.caption }}</caption><thead><tr><th scope="col">Periodo</th><th scope="col">Eficiencia (mediana)</th><th scope="col">Gana a la media</th><th scope="col">n</th></tr></thead>
+        <tbody id="gamesDataRows">@for (r of t?.view?.rows; track $index) {<tr><th scope="row">{{ r[0] }}</th><td class="num">{{ r[1] }}</td><td class="num">{{ r[2] }}</td><td class="num">{{ r[3] }}</td></tr>}</tbody></table></div>
+    </details>
   </details>
   <details class="cgroup" id="cg-games" open><summary>Por juego</summary><p class="muted" id="gamesInterpNote">La etiqueta compara con el ruido propio de cada juego (límites calibrados con datos reales) y solo se publica si se repite dos semanas seguidas. «Estable» significa «sin cambio detectable», no «sin cambio». Las flechas de la tabla solo existen en el periodo de 28 días.</p>
     <div id="gamesList" class="grid2">
