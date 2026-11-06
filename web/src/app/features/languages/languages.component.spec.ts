@@ -224,6 +224,7 @@ describe('Languages', () => {
       expect(text('langXpGapNote')).toBe('El total de la cuenta supera en 282.500 XP la suma de los 2 cursos del catálogo: esa parte no está asignada a ninguno de ellos.');
       expect(text('langLimitsCard')).toContain('Lo que estos datos no pueden decir');
       expect(text('langMethodology')).toContain('ΔtotalUnits = 0');
+      expect(q('#langTab')!.classList).not.toContain('tab-panel'); // the global CSS hides a .tab-panel that is not .active
     });
 
     it('shouldSayWhenXpAndStreakWereObservedOnAnotherDay', async () => {

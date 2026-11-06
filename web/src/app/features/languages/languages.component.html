@@ -1,6 +1,6 @@
 <!-- Port of src/frontend.ts <section id="langTab"> (lines 289–471). Until the data answers, the legacy placeholders ("—") show; never 0. -->
 @let s = state();
-<section id="langTab" class="tab-panel">
+<section id="langTab">
   @if (s?.kind === 'empty') {
     <div id="langEmpty" class="empty">Sin datos de Languages — sincroniza con la extensión.</div>
   } @else if (s?.kind === 'failed') {
