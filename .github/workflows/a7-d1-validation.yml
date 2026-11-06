@@ -1,0 +1,211 @@
+name: A7 isolated D1 validation
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/a7-d1-validation.yml"
+      - "tests/a7-d1-validation-worker.mjs"
+      - "scripts/a7-p1-production-audit.mjs"
+      - "scripts/a7-worker-call.sh"
+      - "src/db/storeCompactXpEvents.ts"
+      - "migrations/0017_a7_compact_xp_events.sql"
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-d1:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'experiments/a7-d1-validation'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      D1_DATABASE_ID: ${{ secrets.D1_DATABASE_ID }}
+      WORKER_NAME: meridian-a7-validation-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Checkout A7 implementation under test
+        uses: actions/checkout@v4
+        with:
+          repository: valentinlineiro/meridian
+          ref: feat/a7-compact-xp-events
+          path: implementation
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      - name: Provision disposable D1
+        shell: bash
+        run: |
+          set -euo pipefail
+          for v in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID; do
+            [ -n "${!v}" ] || { echo "::error::Missing required repository secret $v"; exit 1; }
+          done
+          response=$(curl --fail-with-body --silent --show-error \
+            -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database" \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            -H "Content-Type: application/json" \
+            --data "{\"name\":\"meridian-a7-validation-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}\",\"primary_location_hint\":\"WNAM\"}")
+          echo "$response" > /tmp/a7-d1-create.json
+          echo "$response" | jq -e '.success == true' >/dev/null
+          db_id=$(echo "$response" | jq -r '.result.uuid')
+          [ -n "$db_id" ] && [ "$db_id" != "null" ]
+          echo "A7_TEST_D1_ID=$db_id" >> "$GITHUB_ENV"
+          cat > wrangler.a7-validation.jsonc <<EOF
+          {
+            "name": "$WORKER_NAME",
+            "main": "tests/a7-d1-validation-worker.mjs",
+            "compatibility_date": "2026-10-13",
+            "account_id": "$CLOUDFLARE_ACCOUNT_ID",
+            "workers_dev": true,
+            "d1_databases": [
+              {
+                "binding": "DB",
+                "database_name": "meridian-a7-validation-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}",
+                "database_id": "$db_id"
+
+            ]
+          }
+          EOF
+          echo "Created disposable D1: $db_id"
+
+      - name: Deploy temporary validation Worker
+        id: deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx wrangler deploy --config wrangler.a7-validation.jsonc 2>&1 | tee /tmp/a7-deploy.log
+          url=$(grep -Eo 'https://[^[:space:]]+\.workers\.dev' /tmp/a7-deploy.log | tail -1 | sed 's/[[:punct:]]*$//')
+          [ -n "$url" ] || { echo "::error::Could not find temporary Worker URL"; exit 1; }
+          echo "worker_url=$url" >> "$GITHUB_OUTPUT"
+          # Some accounts keep workers.dev disabled for newly created scripts. Enable
+          # the route for this disposable Worker only; cleanup deletes the script.
+          subdomain=""
+          for attempt in 1 2 3 4 5; do
+            subdomain=$(curl --fail-with-body --silent --show-error \
+              -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$WORKER_NAME/subdomain" \
+              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              -H "Content-Type: application/json" \
+              --data '{"enabled":true,"previews_enabled":true}')
+            if echo "$subdomain" | jq -e '.success == true and .result.enabled == true' >/dev/null; then break; fi
+            sleep 2
+          done
+          echo "$subdomain" | jq '{success,result,errors}'
+          echo "$subdomain" | jq -e '.success == true and .result.enabled == true' >/dev/null
+          sleep 3
+          echo "Temporary Worker deployed at $url"
+
+      - name: Wait for temporary Worker route
+        env:
+          WORKER_URL: ${{ steps.deploy.outputs.worker_url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash scripts/a7-worker-call.sh "$WORKER_URL/" /tmp/a7-health.json >/dev/null
+
+      - name: Validate D1 atomicity and tuple ordering
+        run: |
+          set -euo pipefail
+          bash scripts/a7-worker-call.sh "${{ steps.deploy.outputs.worker_url }}/setup" /tmp/a7-setup.json | tee /tmp/a7-setup.json
+          bash scripts/a7-worker-call.sh "${{ steps.deploy.outputs.worker_url }}/semantics" /tmp/a7-semantics.json | tee /tmp/a7-semantics.json
+          jq -e '.atomicityRollbackPass == true and .tuplePass == true' /tmp/a7-semantics.json >/dev/null
+
+      - name: Measure D1 reads and Worker parsing cost
+        run: |
+          set -euo pipefail
+          for n in 1 42 294 850; do
+            echo "### D1 measurement: $n snapshots" >> "$GITHUB_STEP_SUMMARY"
+            bash scripts/a7-worker-call.sh "${{ steps.deploy.outputs.worker_url }}/measure?n=$n" "/tmp/a7-measure-$n.json" | tee "/tmp/a7-measure-$n.json"
+            jq -r '"- Rows read: " + (.rowsRead|tostring) + "\n- Rows written: " + (.rowsWritten|tostring) + "\n- Payload bytes parsed: " + (.payloadBytesParsed|tostring) + "\n- Worker wall time (ms): " + (.wallMs|tostring) + "\n- D1 reported SQL duration (ms): " + (.reportedSqlDurationMs|tostring)' "/tmp/a7-measure-$n.json" >> "$GITHUB_STEP_SUMMARY"
+          done
+
+          for k in 1 3 10 25; do
+            echo "### D1 repair chunk: $k snapshots" >> "$GITHUB_STEP_SUMMARY"
+            bash scripts/a7-worker-call.sh "${{ steps.deploy.outputs.worker_url }}/measure-chunk?k=$k" "/tmp/a7-chunk-$k.json" | tee "/tmp/a7-chunk-$k.json"
+            jq -r '"- Rows read: " + (.rowsRead|tostring) + "\n- Payload bytes parsed: " + (.payloadBytesParsed|tostring) + "\n- Worker wall time (ms): " + (.wallMs|tostring) + "\n- D1 SQL duration (ms): " + (.reportedSqlDurationMs|tostring)' "/tmp/a7-chunk-$k.json" >> "$GITHUB_STEP_SUMMARY"
+          done
+
+      - name: Validate full raw_json parity and corruption detection
+        run: |
+          set -euo pipefail
+          bash scripts/a7-worker-call.sh "${{ steps.deploy.outputs.worker_url }}/p1" /tmp/a7-p1.json | tee /tmp/a7-p1.json
+          jq -e '.pass == true and .cleanSeriesParityPass == true and .fullRawJsonParityDetectsCorruption == true' /tmp/a7-p1.json >/dev/null
+
+      - name: P1 parity audit against production raw_json (SELECT-only)
+        env:
+          D1_DATABASE_ID: ${{ secrets.D1_DATABASE_ID }}
+        run: |
+          set -euo pipefail
+          [ -n "$D1_DATABASE_ID" ] || { echo "::error::D1_DATABASE_ID secret is missing"; exit 1; }
+          echo "::add-mask::$D1_DATABASE_ID"
+          node scripts/a7-p1-production-audit.mjs | tee /tmp/a7-p1-production.json
+          jq -e '.pass == true and .productionRowsWritten == 0 and .reconstructionMismatches == 0 and .transitionMismatches == 0' /tmp/a7-p1-production.json >/dev/null
+
+      - name: Exercise repair liveness counterexample and watermark prototype
+        run: |
+          set -euo pipefail
+          bash scripts/a7-worker-call.sh "${{ steps.deploy.outputs.worker_url }}/liveness" /tmp/a7-liveness.json | tee /tmp/a7-liveness.json
+          jq -e '.fixedWatermarkPrototype.completed == 100' /tmp/a7-liveness.json >/dev/null
+          {
+            echo "## A7 liveness model"
+            jq -r '"- Current protocol completed: " + (.currentProtocol.completed|tostring) + "/100\n- Current protocol median attempts: " + (.currentProtocol.medianAttempts|tostring) + "\n- Fixed-watermark prototype completed: " + (.fixedWatermarkPrototype.completed|tostring) + "/100\n- Fixed-watermark median attempts: " + (.fixedWatermarkPrototype.medianAttempts|tostring) + "\n\n" + .note' /tmp/a7-liveness.json
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Validate D1-backed watermark repair under interleaving
+        run: |
+          set -euo pipefail
+          bash scripts/a7-worker-call.sh "${{ steps.deploy.outputs.worker_url }}/liveness-d1" /tmp/a7-liveness-d1.json | tee /tmp/a7-liveness-d1.json
+          jq -e '.pass == true' /tmp/a7-liveness-d1.json >/dev/null
+          {
+            echo "## D1-backed repair interleaving"
+            jq -r '"- Stale writers: " + (.staleWriterAttempts|tostring) + "\n- Single guarded winner: " + (.oneWinnerEventCount|tostring) + "\n- Old guard rejected after tail arrival: " + (.tailArrivalInvalidatesOldGuard|tostring) + "\n- Prefix published while tail remains dirty: " + (.prefixPublishedBeforeTail|tostring) + "\n- Final raw-state parity: " + (.finalParity|tostring) + "\n- Final head correct: " + (.finalHeadAtLatest|tostring) + "\n- Dirty marker cleared: " + (.dirtyCleared|tostring) + "\n\n" + .note' /tmp/a7-liveness-d1.json
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Validate actual A7 runtime module against D1
+        run: |
+          set -euo pipefail
+          bash scripts/a7-worker-call.sh "${{ steps.deploy.outputs.worker_url }}/runtime-scenario" /tmp/a7-runtime.json | tee /tmp/a7-runtime.json
+          jq -e '.pass == true and .ordered.pass == true and .concurrent.pass == true and .b1Conflict.pass == true and .b1ExtraWithoutExpectedEvents.pass == true and .ordered.dirtyCleared == true and .concurrent.snapshotsPreserved == true' /tmp/a7-runtime.json >/dev/null
+          {
+            echo "## Actual A7 runtime SQL on D1"
+            echo "- Ordered late-arrival repair parity: $(jq -r '.ordered.parity' /tmp/a7-runtime.json)"
+            echo "- Tail arrival after watermark: $(jq -r '.ordered.pass' /tmp/a7-runtime.json)"
+            echo "- Concurrent snapshots preserved: $(jq -r '.concurrent.snapshotsPreserved' /tmp/a7-runtime.json)"
+            echo "- Concurrent repair parity: $(jq -r '.concurrent.parity' /tmp/a7-runtime.json)"
+            echo "- Final dirty markers cleared: $(jq -r '.concurrent.dirtyCleared' /tmp/a7-runtime.json)"
+            echo "- B1 conflicting event detected and repaired: $(jq -r '.b1Conflict.pass' /tmp/a7-runtime.json)"
+            echo "- B1 extra event with zero expected events detected and repaired: $(jq -r '.b1ExtraWithoutExpectedEvents.pass' /tmp/a7-runtime.json)"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload measurements
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: a7-d1-validation-${{ github.run_id }}
+          path: /tmp/a7-*.json
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Delete temporary Worker and D1
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -n "${A7_TEST_D1_ID:-}" ]; then
+            worker_delete=$(curl --fail-with-body --silent --show-error -X DELETE \
+              "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$WORKER_NAME" \
+              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN")
+            echo "$worker_delete" > /tmp/a7-worker-delete.json
+            echo "$worker_delete" | jq -e '.success == true' >/dev/null
+            db_delete=$(curl --fail-with-body --silent --show-error -X DELETE \
+              "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$A7_TEST_D1_ID" \
+              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN")
+            echo "$db_delete" > /tmp/a7-d1-delete.json
+            echo "$db_delete" | jq -e '.success == true' >/dev/null
+            echo "Temporary Worker and D1 deletion confirmed."
+          fi
+          rm -f wrangler.a7-validation.jsonc
