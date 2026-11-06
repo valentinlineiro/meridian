@@ -147,7 +147,7 @@ describe("POST and GET /api/chess/matches/:id/detail", () => {
 
   it("shouldRouteThroughWorkerFetchHandlerForPostAndGet", async () => {
     const { db, d1 } = createTestDb();
-    const env: Env = { DB: d1, IMPORT_TOKEN: "secret" };
+    const env = { DB: d1, IMPORT_TOKEN: "secret" } as Env;
     const matchId = "routed-match-456";
     db.prepare(`
       INSERT INTO matches (match_id, user_id, snapshot_id, first_seen_at, last_seen_at, raw_json)
@@ -181,7 +181,7 @@ describe("POST and GET /api/chess/matches/:id/detail", () => {
 
   it("shouldAcceptRawDuolingoGetResponseShapeAndResolveUserIdFromMatchesTable", async () => {
     const { db, d1 } = createTestDb();
-    const env: Env = { DB: d1, IMPORT_TOKEN: "secret" };
+    const env = { DB: d1, IMPORT_TOKEN: "secret" } as Env;
     const matchId = "bot|1790000001|fixture-bot-001";
 
     // Insert match in matches table to provide user_id
@@ -228,7 +228,7 @@ describe("POST and GET /api/chess/matches/:id/detail", () => {
 
   it("shouldReturn403WhenPayloadUserDoesNotOwnTheMatch", async () => {
     const { db, d1 } = createTestDb();
-    const env: Env = { DB: d1, IMPORT_TOKEN: "secret" };
+    const env = { DB: d1, IMPORT_TOKEN: "secret" } as Env;
     const matchId = "owned-by-a";
     db.prepare(`
       INSERT INTO matches (match_id, user_id, snapshot_id, first_seen_at, last_seen_at, raw_json)
@@ -253,7 +253,7 @@ describe("POST and GET /api/chess/matches/:id/detail", () => {
 
   it("shouldReturn404WhenMatchDoesNotExist", async () => {
     const { d1 } = createTestDb();
-    const env: Env = { DB: d1, IMPORT_TOKEN: "secret" };
+    const env = { DB: d1, IMPORT_TOKEN: "secret" } as Env;
     const matchId = "ghost-match";
     const req = new Request(`http://localhost/api/chess/matches/${matchId}/detail`, {
       method: "POST",
@@ -272,7 +272,7 @@ describe("POST and GET /api/chess/matches/:id/detail", () => {
 describe("GET /api/chess/matches/pending-details", () => {
   it("shouldReturnEmptyItemsWhenDbHasNoMatches", async () => {
     const { d1 } = createTestDb();
-    const env: Env = { DB: d1, IMPORT_TOKEN: "secret" };
+    const env = { DB: d1, IMPORT_TOKEN: "secret" } as Env;
 
     const req = new Request("http://localhost/api/chess/matches/pending-details", { headers: { authorization: "Bearer secret" } });
     const res = await worker.fetch(req, env);
@@ -286,7 +286,7 @@ describe("GET /api/chess/matches/pending-details", () => {
 
   it("shouldReturnOnlyMatchesWithoutMatchDetailsOrderedByPlayedAtDesc", async () => {
     const { db, d1 } = createTestDb();
-    const env: Env = { DB: d1, IMPORT_TOKEN: "secret" };
+    const env = { DB: d1, IMPORT_TOKEN: "secret" } as Env;
 
     // Insert 3 matches
     db.prepare(`
@@ -318,7 +318,7 @@ describe("GET /api/chess/matches/pending-details", () => {
 
   it("shouldRespectLimitParameterAndSetNextTrueWhenMoreItemsExist", async () => {
     const { db, d1 } = createTestDb();
-    const env: Env = { DB: d1, IMPORT_TOKEN: "secret" };
+    const env = { DB: d1, IMPORT_TOKEN: "secret" } as Env;
 
     db.prepare(`
       INSERT INTO matches (match_id, user_id, snapshot_id, first_seen_at, last_seen_at, raw_json, played_at)
@@ -343,7 +343,7 @@ describe("GET /api/chess/matches/pending-details", () => {
 
   it("shouldDefaultTo50AndBoundMaxTo100WhenLimitIsInvalid", async () => {
     const { db, d1 } = createTestDb();
-    const env: Env = { DB: d1, IMPORT_TOKEN: "secret" };
+    const env = { DB: d1, IMPORT_TOKEN: "secret" } as Env;
 
     // Test invalid limits (0, negative, string) default to 50
     for (const invalid of ["0", "-5", "abc", "NaN"]) {
@@ -374,7 +374,7 @@ describe("GET /api/chess/matches/pending-details", () => {
 
   it("shouldNotModifyMatchesOrMatchDetailsWhenQueried", async () => {
     const { db, d1 } = createTestDb();
-    const env: Env = { DB: d1, IMPORT_TOKEN: "secret" };
+    const env = { DB: d1, IMPORT_TOKEN: "secret" } as Env;
 
     db.prepare(`
       INSERT INTO matches (match_id, user_id, snapshot_id, first_seen_at, last_seen_at, raw_json, played_at)

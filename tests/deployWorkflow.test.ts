@@ -46,6 +46,12 @@ describe("deploy workflow", () => {
     expect(wf.indexOf("scripts/makeProductionConfig.ts")).toBeLessThan(firstWrangler);
   });
 
+  it("shouldBuildTheAngularBundleBeforeTestsAndBeforeDeploying", () => {
+    expect(wf.indexOf("npm run web:build")).toBeLessThan(wf.indexOf("npm test"));
+    expect(deployJob.indexOf("npm run web:build")).toBeGreaterThan(-1);
+    expect(deployJob.indexOf("npm run web:build")).toBeLessThan(deployJob.indexOf("wrangler deploy"));
+  });
+
   it("shouldNeverApplyMigrationsButRefuseToDeployWhenOneIsPending", () => {
     expect(commands.filter((l) => l.includes("migrations apply"))).toEqual([]);
     expect(wf).toContain("migrations list");

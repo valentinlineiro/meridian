@@ -292,6 +292,34 @@ app.get("/raw", () => new Response(RAW_HTML, { headers: HTML_HEADERS }));
 app.get("/settings", () => new Response(SETTINGS_HTML, { headers: HTML_HEADERS }));
 app.get("/linkedin-games", () => new Response(null, { status: 302, headers: { location: "/games" } })); // the page now lives in the dashboard
 
+// The Angular frontend (web/, built to web/dist/browser = the ASSETS binding) lives under /next during the migration.
+// Assets sit at the binding's root, so /next is stripped. Paths without an extension are client routes -> index ("/");
+// a missing file stays 404. The bundle has no inline scripts, so its CSP drops script 'unsafe-inline'.
+const NEXT_HTML_HEADERS = {
+  ...HTML_HEADERS,
+  "content-security-policy":
+    "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; form-action 'self'; base-uri 'self'; frame-ancestors 'none'",
+};
+const nextFrontend = async (c: Context<AppEnv>) => {
+  const rest = c.req.path.slice("/next".length) || "/";
+  const url = new URL(c.req.url);
+  if (!/\.[^/]*$/.test(rest)) {
+    url.pathname = "/";
+    const index = await c.env.ASSETS.fetch(new Request(url)); // no conditional headers: the index is no-store
+    return index.ok ? new Response(index.body, { headers: NEXT_HTML_HEADERS }) : index;
+  }
+  url.pathname = rest;
+  const asset = await c.env.ASSETS.fetch(new Request(url, c.req.raw));
+  const file = new Response(asset.body, asset); // copy: fetched headers are immutable
+  file.headers.set("x-content-type-options", "nosniff");
+  // html_handling redirects (e.g. /index.html -> /) are relative to the assets root: keep them under /next.
+  const location = file.headers.get("location");
+  if (location?.startsWith("/")) file.headers.set("location", "/next" + location);
+  return file;
+};
+app.get("/next", nextFrontend);
+app.get("/next/*", nextFrontend);
+
 // exported so composition wrappers (src/dev.ts, tests) keep identical error/404 behaviour
 export const onFailure = (e: Error) => {
   const mapped = mapErrorToResponse(e);

@@ -6,6 +6,6 @@ export default defineConfig({
   test: {
     setupFiles: ["./tests/setup/scriptErrors.ts"],
     // .worktrees/ holds linked checkouts with their own test copies; never run them from here.
-    exclude: ["**/node_modules/**", "**/dist/**", "**/.worktrees/**"],
+    exclude: ["**/node_modules/**", "**/dist/**", "**/.worktrees/**", "web/**"], // web/ runs its own tests (npm run web:test)
   },
 });
