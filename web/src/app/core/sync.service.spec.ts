@@ -5,7 +5,7 @@ import { BROWSER_LOCATION } from './api-client';
 import { SyncService } from './sync.service';
 
 describe('SyncService', () => {
-  const location = { pathname: '/next/overview', search: '', href: '', reload: vi.fn() };
+  const location = { pathname: '/overview', search: '', href: '', reload: vi.fn() };
 
   beforeEach(() => {
     vi.useFakeTimers();

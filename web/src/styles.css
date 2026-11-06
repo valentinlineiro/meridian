@@ -14,7 +14,6 @@ main{max-width:1120px;margin:0 auto;padding:20px 16px 40px}
 .kpi label{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#8ea0b8}
 .kpi b{font-size:26px;display:block;margin-top:4px}
 .kpi small{color:#8ea0b8;font-size:12px}
-.kpi-sub{grid-column:1/-1;color:#8ea0b8;font-size:12px;margin-top:-4px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 @media(max-width:860px){.grid2{grid-template-columns:1fr}}
 .grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
@@ -56,8 +55,6 @@ main{max-width:1120px;margin:0 auto;padding:20px 16px 40px}
 .side-item{display:block;width:100%;text-align:left;background:none;border:0;border-left:3px solid transparent;border-radius:0 8px 8px 0;color:#c8d7ea;padding:8px 10px;font-size:14px;cursor:pointer}
 .side-item:hover{background:#16263c}.side-item.active{background:#1c2d42;border-left-color:#1f6feb;color:#fff;font-weight:600}
 @media(max-width:760px){.shell{display:block}.side{position:static;margin-bottom:12px}.side-toggle{display:flex;justify-content:space-between;width:100%;background:#1e2e44;color:#e6edf3;border:1px solid #2a3d56;border-radius:8px;padding:10px 12px;font-size:14px;font-weight:600;cursor:pointer}.side-menu{display:none;margin-top:6px;background:#131f33;border:1px solid #1e2e44;border-radius:8px;padding:8px 0}.side-menu.open{display:block}}
-.tab-panel{display:none}
-.tab-panel.active{display:block}
 .hero-card{background:#142236;border:1px solid #1e2e44;border-radius:12px;padding:20px;margin-bottom:16px}
 .activity-strip{display:flex;gap:8px;justify-content:space-between;margin:12px 0}
 .progress-bar{height:10px;background:#1e2e44;border-radius:999px;overflow:hidden}
@@ -129,7 +126,7 @@ a.side-item{text-decoration:none}a.side-item:hover{text-decoration:none}
 @media(max-width:760px){
  .btn,.side-toggle,select,.filters input,summary{min-height:44px}.btn{min-width:44px}
  .side-menu a,.side-menu button{min-height:44px;display:flex;align-items:center}
- a[href="/raw"],a[href="/settings"]{display:inline-block;padding:14px 8px}
+ a[href="/settings"]{display:inline-block;padding:14px 8px}
  .muted,.pill,.kpi label,.kpi small,.flabel,[style*="font-size:10px"],[style*="font-size:11px"]{font-size:12px!important}
  .muted{font-size:13px!important}
  .fgroup{gap:4px}.fgroup .btn{padding:8px 8px}.flabel{min-width:0;width:60px}

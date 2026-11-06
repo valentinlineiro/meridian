@@ -16,7 +16,7 @@
             "browser": "src/main.ts",
             "tsConfig": "tsconfig.app.json",
             "outputPath": "dist",
-            "baseHref": "/next/",
+            "baseHref": "/",
             "styles": ["src/styles.css"]
           },
           "configurations": {
