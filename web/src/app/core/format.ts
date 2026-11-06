@@ -39,3 +39,21 @@ export const formatMatchDate = (playedAt?: number | null, firstSeenAt?: string |
   }
   return firstSeenAt ? new Date(firstSeenAt).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : '—';
 };
+
+export interface ColorConclusion { detectable: boolean; rule: boolean; line1: string; line2: string }
+/**
+ * Port of colorConclusion (src/dashboard.client.js:1204), shared by Ajedrez, Trayectoria and Qué cambió: is a colour
+ * difference DETECTABLE (its 95% interval excludes 0) and does it meet the stricter rule? lo/hi in percentage points.
+ */
+export const colorConclusion = (diff: number | null | undefined, lo: number | null | undefined, hi: number | null | undefined,
+  rule?: { known?: boolean; met?: boolean; label?: string } | null): ColorConclusion | null => {
+  if (lo == null || hi == null) return null;
+  const n1 = (v: number) => Math.abs(v).toFixed(1).replace('.', ','), sg = (v: number) => (v > 0 ? '+' : v < 0 ? '−' : '') + n1(v);
+  const det = lo > 0 || hi < 0;
+  const ruleTxt = rule && rule.known === false ? 'sin evaluar' : rule?.met ? 'sí' : 'no demostrado';
+  return {
+    detectable: det, rule: rule?.met === true,
+    line1: `Diferencia detectable: ${det ? 'sí' : 'no'} (${diff != null ? sg(diff) + ' pp · ' : ''}IC95 [${sg(lo)}; ${sg(hi)}] pp, ${det ? 'excluye 0' : 'incluye 0'})`,
+    line2: `${rule?.label || 'Patrón persistente'}: ${ruleTxt}`,
+  };
+};

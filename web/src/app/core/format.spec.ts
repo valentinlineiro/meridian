@@ -1,4 +1,4 @@
-import { fmtDelta, formatMatchDate, pc1, pctCi, relDate, shortDate } from './format';
+import { colorConclusion, fmtDelta, formatMatchDate, pc1, pctCi, relDate, shortDate } from './format';
 import { esc } from './escape';
 
 describe('format', () => {
@@ -48,5 +48,22 @@ describe('format', () => {
   it('shouldEscapeHtmlInBuiltStrings', () => {
     expect(esc('<img src="x" onerror=a&b>')).toBe('&lt;img src=&quot;x&quot; onerror=a&amp;b&gt;');
     expect(esc(null)).toBe('');
+  });
+});
+
+// Ports of uxPhase4 "5. Color" / "10. Ajustes de revisión" colorConclusion cases.
+describe('colorConclusion', () => {
+  it('shouldSayNoWhenTheIntervalIncludesZero', () => {
+    expect(colorConclusion(3.4, -5, 12, { met: false })).toMatchObject({ detectable: false, line1: 'Diferencia detectable: no (+3,4 pp · IC95 [−5,0; +12,0] pp, incluye 0)' });
+    expect(colorConclusion(5.6, 0.9, 10.3, { met: false })).toMatchObject({ detectable: true, line2: 'Patrón persistente: no demostrado' });
+    expect(colorConclusion(5.6, 0.9, 10.3, { met: true })).toMatchObject({ line2: 'Patrón persistente: sí' });
+  });
+  it('shouldShowTheObservedDifferenceWithOneDecimalAndTheSameIntervalPrecision', () => {
+    expect(colorConclusion(5.575, 0.886, 10.266, { met: false })!.line1).toBe('Diferencia detectable: sí (+5,6 pp · IC95 [+0,9; +10,3] pp, excluye 0)');
+    expect(colorConclusion(-13.3, -35, 11, { met: false })!.line1).toBe('Diferencia detectable: no (−13,3 pp · IC95 [−35,0; +11,0] pp, incluye 0)');
+  });
+  it('shouldSaySinEvaluarWhenTheRuleIsUnknownAndNothingWithoutAnInterval', () => {
+    expect(colorConclusion(1, 0.5, 2, { known: false, label: 'X' })!.line2).toBe('X: sin evaluar');
+    expect(colorConclusion(1, null, 2)).toBeNull();
   });
 });
