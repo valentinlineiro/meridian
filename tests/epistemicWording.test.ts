@@ -13,7 +13,10 @@ describe("epistemic wording", () => {
       streak: { baselineStreak: null, currentStreak: null, streakDelta: null, status: "active", streakStarted: false, streakMilestone: null },
     }, { userId: "u", baselineAt: "a", until: "b" }).find((x) => x.id === "CHESS_COLOR_ASYMMETRY")!;
     expect(f.claim).not.toMatch(/significativ/i);
-    expect(f.claim).toBe("Mayor tasa de victorias con blancas: 50.0 pp de diferencia (IC95 [28, 66] pp, blancas − negras; excluye 0).");
+    // A8: decimal comma in the text a person reads (claim and evidence); a dot between digits would be the old notation
+    expect(f.claim + f.evidence).not.toMatch(/\d\.\d/);
+    expect(f.evidence).toBe("Blancas: 75,0 % · Negras: 25,0 % en 40 partidas decididas.");
+    expect(f.claim).toBe("Mayor tasa de victorias con blancas: 50,0 pp de diferencia (IC95 [28, 66] pp, blancas − negras; excluye 0).");
   });
 
   it("shouldNotFlagSmallSamplesWithAFixedGamesThreshold", () => {

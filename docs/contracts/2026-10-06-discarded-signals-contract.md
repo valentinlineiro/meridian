@@ -639,3 +639,25 @@ A diferencia de A2, **`findings` deja de ser idéntico**: `CHESS_RATING_JUMP` y 
 - **XP por longitud de ventana exacta** (7, 14, 28 días); la salida de `intervalDays` solo coincide si la ventana contiene días naturales completos.
 - **Saliencia:** el dominio clasifica `calibration_unavailable` con efecto ≠ 0 como *Inconcluso* (§4); la pantalla lo muestra INSUFICIENTE (no INDICIO), como fija §15.2.4. Efecto de XP = ratio − 1.
 - `Evaluation.criteria` admite también texto (`calibratedThrough`) y lleva, para el punto de la rejilla evaluado (k o ventana), el límite, la incertidumbre y si está admitido de **cada** borde (`upper95`, `upper95Uncertainty`, `upper95Admitted`, …). `parseCalibration` rechaza un artefacto fuera de las rejillas {5, 10, 15, 20} y {7, 14, 28}, con cuantiles no numéricos o con «excepcional» menos exigente que «relevante».
+
+## 16. Enmienda A8 (2026-11-06) — los números del texto de un hallazgo se escriben con coma decimal
+
+**Estado:** ✅ **APROBADA (2026-11-06) e implementada** (`src/domain/whatChanged.ts`, `es1`).
+
+### 16.1 Dato que la motiva
+
+La pantalla escribe el decimal con coma (P5: #111, #112), pero `claim` y `evidence` de dos hallazgos llegaban con punto y se pintan tal cual (`esc(f.claim)`): «50.0 pp de diferencia», «62.2% · 57.7%», «2.0x». Una misma cifra se leía con dos notaciones.
+
+### 16.2 Qué cambia
+
+Solo la notación numérica del texto, nunca un valor:
+1. `CHESS_COLOR_ASYMMETRY`: `claim` («50,0 pp de diferencia») y `evidence` («Blancas: 62,2 % · Negras: 57,7 % en N partidas decididas.», con espacio antes de `%`, como el resto de la UI).
+2. `LANG_XP_ACCELERATION`: `claim` («… fue 2,0x el de tu histórico.»). Hoy no se emite (A7); se corrige para que no reaparezca con otra notación.
+
+### 16.3 Qué no cambia
+
+`id`, `title`, `metrics` (números crudos), umbrales, condiciones de emisión, motivos, saliencia y el conjunto de hallazgos emitidos. El IC95 ya se escribía sin decimales y no cambia. No hay `claim`/`evidence` persistidos en D1 (se calculan al vuelo), así que no queda notación mixta.
+
+### 16.4 Golden
+
+`legacyWhatChanged` queda verbatim. El test mapea, para esos dos ids, solo la notación de `claim`/`evidence` (punto → coma entre dígitos y espacio antes de `%`), como en A3; el resto de campos de todos los hallazgos se sigue comparando byte a byte. Un test adicional falla si un `claim`/`evidence` emitido contiene `\d.\d`.

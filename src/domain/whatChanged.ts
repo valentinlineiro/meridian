@@ -125,6 +125,9 @@ export function evaluateSignificantChanges(deltas: WhatChangedDeltas, context: F
 }
 
 // One evaluation of every rule's conditions yields both the findings (exactly the emitted ones) and the evaluations.
+// A8: numbers in finding text use the decimal comma, as the whole UI does (the metrics keep the raw number).
+const es1 = (n: number): string => n.toFixed(1).replace(".", ",");
+
 export function evaluateChanges(
   deltas: WhatChangedDeltas,
   context: FindingContext,
@@ -193,8 +196,8 @@ export function evaluateChanges(
         id: "CHESS_COLOR_ASYMMETRY",
         category: "chess",
         title: "Asimetría por color",
-        claim: `Mayor tasa de victorias con ${better}: ${diff!.toFixed(1)} pp de diferencia (IC95 [${c.colorDelta!.lower.toFixed(0)}, ${c.colorDelta!.upper.toFixed(0)}] pp, blancas − negras; excluye 0).`,
-        evidence: `Blancas: ${white!.toFixed(1)}% · Negras: ${black!.toFixed(1)}% en ${c.decidedCount} partidas decididas.`,
+        claim: `Mayor tasa de victorias con ${better}: ${es1(diff!)} pp de diferencia (IC95 [${c.colorDelta!.lower.toFixed(0)}, ${c.colorDelta!.upper.toFixed(0)}] pp, blancas − negras; excluye 0).`,
+        evidence: `Blancas: ${es1(white!)} % · Negras: ${es1(black!)} % en ${c.decidedCount} partidas decididas.`,
         baselineAt: context.baselineAt,
         until: context.until,
         metrics: {
@@ -257,7 +260,7 @@ export function evaluateChanges(
       criteria: { ...CRITERIA.LANG_XP_ACCELERATION, ...edgeCriteria("xp", l.intervalDays, cal) },
     });
     if (emitted) {
-      const ratio = (l.dailyXpRate / l.historicalDailyXpRate).toFixed(1);
+      const ratio = es1(l.dailyXpRate / l.historicalDailyXpRate);
       findings.push({
         id: "LANG_XP_ACCELERATION",
         category: "languages",
