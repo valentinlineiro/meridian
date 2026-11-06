@@ -1280,39 +1280,12 @@ function renderChessPatterns(s, c, o, t){
  if(!card) return;
  const totalGames = (s && s.games) || 0;
 
+ // rates per colour and opponent live in «Comparativa»; here only the conclusion (said once)
  const wh = c && c.groups && c.groups.find(g=>g.key==='white');
  const bl = c && c.groups && c.groups.find(g=>g.key==='black');
- const colVal = q('#chessPatternColorVal');
- const colMeta = q('#chessPatternColorMeta');
- if(colVal && colMeta){
-  if(wh && bl && wh.winRate != null && bl.winRate != null){
-   const whDec = wh.decided || wh.games || 0;
-   const blDec = bl.decided || bl.games || 0;
-   colVal.textContent = 'Blancas ' + pctCi(wh.winRate, wh.winRateCi) + ' · Negras ' + pctCi(bl.winRate, bl.winRateCi);
-   // the difference and its interval are said once, by the conclusion line below (colorConclusion)
-   colMeta.textContent = 'n=' + (wh.games + bl.games) + ' (' + whDec + '/' + blDec + ' decididas)';
-   paintColorConclusion(c && c.difference ? scaleDelta(c.difference, 100) : null);
-  } else {
-   colVal.textContent = '—';
-   colMeta.textContent = 'Sin datos de color suficientes';
-  }
- }
-
- const b = o && o.macro && o.macro.find(m=>m.key==='bot');
- const p = o && o.macro && o.macro.find(m=>m.key==='pvp');
- const oppVal = q('#chessPatternOppVal');
- const oppMeta = q('#chessPatternOppMeta');
- if(oppVal && oppMeta){
-  if(b && p && b.games > 0){
-   const fWr = m => m.winRate != null ? (m.winRate * 100).toFixed(1).replace('.', ',') + ' %' + (m.winRateCi ? ' [' + Math.round(m.winRateCi.lower * 100) + '–' + Math.round(m.winRateCi.upper * 100) + ']' : '') : '—';
-   oppVal.textContent = 'Bots ' + fWr(b) + ' · PvP ' + fWr(p);
-   const pvpNote = p.games < 30 ? ' · PvP n=' + p.games + ' (muestra pequeña; incertidumbre visible)' : ' · PvP n=' + p.games;
-   oppMeta.textContent = 'Bots n=' + b.games + pvpNote;
-  } else {
-   oppVal.textContent = '—';
-   oppMeta.textContent = 'Sin partidas suficientes contra bots/PvP';
-  }
- }
+ const hasColor = wh && bl && wh.winRate != null && bl.winRate != null;
+ if(hasColor) paintColorConclusion(c && c.difference ? scaleDelta(c.difference, 100) : null);
+ else { const el = q('#chessPatternColorConclusion'); if(el) el.textContent = 'Sin datos de color suficientes'; }
 
  updateChessEngineCoverage(lastProfileData, totalGames);
  updateChessPatternSuggested(lastProfileData);
@@ -1328,16 +1301,6 @@ function renderForm(r){
   +'<div style="border-left:1px solid #1e2e44;padding-left:8px"><div class="muted" style="font-size:11px;letter-spacing:.04em;text-transform:uppercase">Anteriores · '+hr.games+'</div><div style="font-weight:700">'+pctCi(hr.winRate,hr.winRateCi)+' WR</div><div class="muted">'+pctR(hr.scoreRate)+' score · '+hr.wins+'W '+hr.losses+'L '+hr.draws+'D</div></div>'
   +'</div>';
 
- if(r.colorGroups && r.colorGroups.length){
-  const cg=r.colorGroups;
-  const wh=cg.find(g=>g.key==='white'), bl=cg.find(g=>g.key==='black');
-  if(wh && bl && wh.games > 0 && bl.games > 0){
-   q('#form').innerHTML+='<div class="muted" style="margin-top:10px;display:flex;gap:12px;flex-wrap:wrap">'
-    +'<span>♔ Blancas '+pctR(wh.winRate)+' ('+wh.games+')</span>'
-    +'<span>♚ Negras '+pctR(bl.winRate)+' ('+bl.games+')</span>'
-    +'</div>';
-  }
- }
 }
 
 function pillResult(r){

@@ -14,7 +14,7 @@ describe("Fase 2 - Análisis (Patrones, cobertura y evidencia navegable)", () =>
     it("shouldContainChessPatternsCardAndEngineProfileDetailsInsideChessTab", () => {
       expect(DASHBOARD_HTML).toContain('id="chessPatternsCard"');
       expect(DASHBOARD_HTML).toContain('id="chessPatternColorCard"');
-      expect(DASHBOARD_HTML).toContain('id="chessPatternOppCard"');
+      expect(DASHBOARD_HTML).not.toContain('id="chessPatternOppCard"');
       expect(DASHBOARD_HTML).toContain('id="chessPatternEngineCard"');
       expect(DASHBOARD_HTML).toContain('id="chessEngineProfileDetails"');
 
@@ -29,7 +29,7 @@ describe("Fase 2 - Análisis (Patrones, cobertura y evidencia navegable)", () =>
       expect(chessSection).toContain('id="profileReviewCard"');
     });
 
-    it("shouldRenderColorAndOpponentSynthesisWithWilsonCIsAndExplicitSampleSizes", () => {
+    it("shouldRenderOnlyTheColourConclusionInPatternsBecauseComparativaHoldsTheRates", () => {
       const rt = createDashboardRuntime("/chess");
       const summary = { games: 60, winRate: 0.65, scoreRate: 0.68 };
       const color = {
@@ -51,24 +51,9 @@ describe("Fase 2 - Análisis (Patrones, cobertura y evidencia navegable)", () =>
 
       run(rt, `renderChessPatterns(${JSON.stringify(summary)}, ${JSON.stringify(color)}, ${JSON.stringify(opponents)}, ${JSON.stringify(timeline)})`);
 
-      const colVal = text(rt, "#chessPatternColorVal");
-      const colMeta = text(rt, "#chessPatternColorMeta");
-      // Individual Wilson CIs must be visible in colVal
-      expect(colVal).toContain("Blancas 68,0 % [48–83]");
-      expect(colVal).toContain("Negras 62,0 % [45–77]");
-      // Sample size in colMeta; the difference and its CI are said once, by the conclusion line (Fase 4)
-      expect(colMeta).toContain("n=60");
-      expect(colMeta).toContain("25/35 decididas");
-      expect(colMeta).not.toContain("Dif:");
+      // rates per colour and opponent live in «Comparativa»; Patrones only says the conclusion
+      expect(DASHBOARD_HTML).not.toContain('id="chessPatternColorVal"');
       expect(text(rt, "#chessPatternColorConclusion")).toContain("Diferencia detectable: no (+6,0 pp · IC95 [−18,0; +30,0] pp, incluye 0)");
-
-      const oppVal = text(rt, "#chessPatternOppVal");
-      const oppMeta = text(rt, "#chessPatternOppMeta");
-      expect(oppVal).toContain("Bots 66,0 %");
-      expect(oppVal).toContain("PvP 55,0 %");
-      expect(oppMeta).toContain("Bots n=51");
-      expect(oppMeta).toContain("PvP n=9");
-      expect(oppMeta).toContain("muestra pequeña; incertidumbre visible");
     });
 
     it("shouldFormatStockfishCoverageWithExplicitDenominatorAndNeverBorrowDateFromEloSnapshot", () => {

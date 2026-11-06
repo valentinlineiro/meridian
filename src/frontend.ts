@@ -181,24 +181,13 @@ export const DASHBOARD_HTML = `<!doctype html><html lang="es"><head><meta charse
    <h2 style="margin:0">Patrones observados &amp; cobertura de análisis</h2>
    <span class="muted" style="font-size:11px">Intervalos Wilson al 95 % · Muestras explícitas (n)</span>
   </div>
-  <div class="grid3" id="chessPatternsGrid" style="margin-top:10px">
+  <div class="grid2" id="chessPatternsGrid" style="margin-top:10px">
    <div class="card" id="chessPatternColorCard" style="margin:0;background:#0d1522;border:1px solid #1e2e44">
-    <div style="font-weight:600;font-size:13px;color:#8ea0b8;margin-bottom:4px">Rendimiento por color</div>
-    <div id="chessPatternColorVal" style="font-size:16px;font-weight:700">—</div>
-    <div id="chessPatternColorMeta" class="muted" style="font-size:11px;margin:4px 0 8px">—</div>
-    <div id="chessPatternColorConclusion" style="font-size:11px;margin:0 0 8px"></div>
+    <div style="font-weight:600;font-size:13px;color:#8ea0b8;margin-bottom:4px">Diferencia entre colores</div>
+    <div id="chessPatternColorConclusion" style="font-size:12px;margin:4px 0 8px">—</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap">
      <button class="btn btn-g" style="font-size:11px;padding:3px 8px" onclick="filterMatchesAndScroll('color','white')">Blancas</button>
      <button class="btn btn-g" style="font-size:11px;padding:3px 8px" onclick="filterMatchesAndScroll('color','black')">Negras</button>
-    </div>
-   </div>
-   <div class="card" id="chessPatternOppCard" style="margin:0;background:#0d1522;border:1px solid #1e2e44">
-    <div style="font-weight:600;font-size:13px;color:#8ea0b8;margin-bottom:4px">Oponente (Bots vs PvP)</div>
-    <div id="chessPatternOppVal" style="font-size:16px;font-weight:700">—</div>
-    <div id="chessPatternOppMeta" class="muted" style="font-size:11px;margin:4px 0 8px">—</div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap">
-     <button class="btn btn-g" style="font-size:11px;padding:3px 8px" onclick="filterMatchesAndScroll('type','bot')">Bots</button>
-     <button class="btn btn-g" style="font-size:11px;padding:3px 8px" onclick="filterMatchesAndScroll('type','pvp')">PvP</button>
     </div>
    </div>
    <div class="card" id="chessPatternEngineCard" style="margin:0;background:#0d1522;border:1px solid #1e2e44">
