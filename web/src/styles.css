@@ -173,3 +173,5 @@ a.side-item{text-decoration:none}a.side-item:hover{text-decoration:none}
  .lgcard select,.lgcard input{min-height:44px}
  .chips button.pill{min-height:40px;padding:6px 14px}
 }
+.goal-field{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px}
+.goal-field input{width:130px;background:#0d1b2a;color:#c8d7ea;border:1px solid #1e2e44;border-radius:6px;padding:6px 8px;font-size:14px}

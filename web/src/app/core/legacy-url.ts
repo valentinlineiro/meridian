@@ -2,7 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { CanMatchFn, Router, UrlSegment } from '@angular/router';
 import { BROWSER_LOCATION } from './api-client';
 
-const TABS = ['overview', 'games', 'chess', 'changes', 'profile', 'trajectory'];
+const TABS = ['overview', 'games', 'chess', 'changes', 'profile', 'trajectory', 'settings'];
 
 /**
  * Canonical app path for a legacy URL (`#/x`, `#x`, `?course=`, bare `DUOLINGO_*` segment), or null when it is already

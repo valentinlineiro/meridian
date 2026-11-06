@@ -23,7 +23,7 @@ describe('legacyRedirect', () => {
     expect(legacyRedirect('/', '', '?course=X')).toBe('/overview');
   });
 
-  it.each([['/'], ['/overview'], ['/languages'], ['/languages/DUOLINGO_ES'], ['/trajectory']])(
+  it.each([['/'], ['/overview'], ['/languages'], ['/languages/DUOLINGO_ES'], ['/trajectory'], ['/settings']])(
     'shouldNotRedirectWhenAlreadyCanonical %s',
     (path) => expect(legacyRedirect(path, '', '')).toBeNull(),
   );
