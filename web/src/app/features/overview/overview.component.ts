@@ -5,7 +5,7 @@ import { RouterLink } from '@angular/router';
 import { catchError, forkJoin, map, Observable, of, switchMap } from 'rxjs';
 import { ApiClient } from '../../core/api-client';
 import { StatsService } from '../../core/stats.service';
-import { relDate, shortDate } from '../../core/format';
+import { fmtDate, pc1, relDate } from '../../core/format';
 import { CourseDetail, courseProgress, es, flag, lastSevenDays, Langs, resolveSelectedCourseId, toDay, XpDay } from '../../core/courses';
 
 // Port of loadOverviewDashboard/renderOverview (src/dashboard.client.js:783–1003, 1108–1142).
@@ -51,7 +51,7 @@ function langCard(langs: Langs | null, selected: string | null, detail: CourseDe
     // a course outside the Idiomas catalogue (Duolingo's own chess course, CHESS_CH) is not shown: its raw id says nothing here
     source: src && src.courseId !== selected ? 'Último curso en Duolingo: ' + (src.title || src.courseId) : '',
     // Explicit system state, not a bare dash: the Path is only captured for the course open at the last sync.
-    units: pct != null ? `${completed} / ${total} unidades (${pct}%)` : 'Sin observación aún · Path no sincronizado para este curso',
+    units: pct != null ? `${completed} / ${total} unidades (${pc1(Number(pct))})` : 'Sin observación aún · Path no sincronizado para este curso',
     progress: pct != null ? Number(pct) : 0,
     catalog: `${cs.length} cursos · ${catalogXp == null ? '—' : es(catalogXp)} XP`,
   };
@@ -84,7 +84,7 @@ function gamesCard(g: GamesSummary | null) {
   const maxTxt = max > 0 ? 'Racha máxima ' + gdays(max) : '';
   const historical = g.days ? gdays(g.days) + ' registrados' : '—';
   if (cur > 0) return { label: 'Racha actual', value: '🔥 ' + gdays(cur), small: false, meta: maxTxt, historical };
-  return { label: 'Último registro', value: g.to ? 'Sin registro desde ' + g.to : '—', small: true, meta: [maxTxt, 'registro manual'].filter(Boolean).join(' · '), historical };
+  return { label: 'Último registro', value: g.to ? 'Sin registro desde ' + fmtDate(g.to) : '—', small: true, meta: [maxTxt, 'registro manual'].filter(Boolean).join(' · '), historical };
 }
 
 function week(d: OverviewData) {
@@ -137,7 +137,7 @@ function view(d: OverviewData) {
     syncMeta: [
       synced ? 'Idiomas: sincronizado ' + relDate(synced) : 'Idiomas: sin sincronizar',
       d.lastChessSyncedAt ? 'Ajedrez: sincronizado ' + relDate(d.lastChessSyncedAt) : 'Ajedrez: sin sincronizar',
-      gTo ? `Games: último registro ${shortDate(gTo)} · manual` : d.games?.days ? `Games: ${gdays(d.games.days)} registrados` : 'Games: registro manual',
+      gTo ? `Games: último registro ${fmtDate(gTo)} · manual` : d.games?.days ? `Games: ${gdays(d.games.days)} registrados` : 'Games: registro manual',
     ].join(' · '),
     lang: langCard(d.langs, d.selectedCourseId, d.detail),
     chess: chessCard(d.stats, d.lastChessSyncedAt),

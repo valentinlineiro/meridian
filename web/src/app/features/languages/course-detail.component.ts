@@ -36,7 +36,7 @@ function sectionRows(sections: Section[]) {
       <div class="card" id="langCourseDetailCard" style="margin-bottom:12px">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:gap:8px">
           <div>
-            <h1 id="langDetailTitle" style="margin:0;font-size:22px">{{ head()?.title }}</h1>
+            <h2 id="langDetailTitle" style="margin:0;font-size:22px;letter-spacing:0;text-transform:none;color:#e6edf3">{{ head()?.title }}</h2>
             <div class="muted" id="langDetailSub" style="font-size:12px;margin-top:2px">{{ head()?.sub }}</div>
           </div>
           <span id="langDetailXpPill" class="pill" style="font-size:14px;font-weight:700">{{ head()?.xp }}</span>

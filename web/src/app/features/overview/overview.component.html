@@ -4,18 +4,18 @@
   <div class="hero-card" id="overviewHero">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
       <div>
-        <h2 style="margin:0;font-size:18px">Tu actividad</h2>
+        <h1>Tu actividad</h1>
         <div class="muted" style="font-size:12px;margin-top:2px" id="overviewSyncMeta">{{ d?.syncMeta ?? 'Pulso unificado y verificado por dominio' }}</div>
       </div>
       <span style="display:flex;align-items:center;gap:6px;max-width:100%"><span id="overviewStreak" class="pill" [class.pill-win]="d ? d.streakWin : true" style="font-size:13px;font-weight:700;white-space:normal;max-width:100%">{{ d?.streak ?? 'Duolingo · 🔥 —' }}</span></span>
     </div>
   </div>
 
-  <h2 style="margin:18px 0 10px;font-size:14px;letter-spacing:.05em;text-transform:uppercase;color:#8ea0b8">Estado por dominio</h2>
+  <h2 style="margin:18px 0 10px">Estado por dominio</h2>
   <div class="grid3" id="overviewDomainsGrid">
     <div class="card" id="overviewLangCard">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <h3 style="margin:0;font-size:15px;color:#e6edf3">Idiomas</h3>
+        <h3 style="margin:0">Idiomas</h3>
         <button type="button" class="btn btn-g" routerLink="/languages" style="font-size:12px;padding:4px 10px">Ver Idiomas →</button>
       </div>
       <div>
@@ -38,7 +38,7 @@
 
     <div class="card" id="overviewChessCard">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <h3 style="margin:0;font-size:15px;color:#e6edf3">Ajedrez</h3>
+        <h3 style="margin:0">Ajedrez</h3>
         <button type="button" class="btn btn-g" routerLink="/chess" style="font-size:12px;padding:4px 10px">Ver Ajedrez →</button>
       </div>
       <div>
@@ -67,7 +67,7 @@
 
     <div class="card" id="overviewGamesCard">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <h3 style="margin:0;font-size:15px;color:#e6edf3">LinkedIn Games</h3>
+        <h3 style="margin:0">LinkedIn Games</h3>
         <button type="button" class="btn btn-g" routerLink="/games" style="font-size:12px;padding:4px 10px">Ver LinkedIn Games →</button>
       </div>
       <div>
@@ -82,12 +82,12 @@
     </div>
   </div>
 
-  <h2 style="margin:18px 0 10px;font-size:14px;letter-spacing:.05em;text-transform:uppercase;color:#8ea0b8">Tu semana</h2>
+  <h2 style="margin:18px 0 10px">Tu semana</h2>
   <div class="grid3">
     <div class="card" id="overviewLangWeekCard">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
         <div>
-          <h3 style="margin:0;font-size:13px;color:#c8d7ea">Cuenta · últimos 7 días <span class="pill pill-scope">CUENTA</span></h3>
+          <h3 style="margin:0">Cuenta · últimos 7 días <span class="pill pill-scope">CUENTA</span></h3>
           <div class="muted" style="font-size:11px;margin-top:2px">Actividad global registrada en la cuenta</div>
         </div>
         <span id="overviewLangWeekSummary" class="muted" style="font-size:11px;white-space:nowrap">{{ d?.week?.lang?.summary ?? '—' }}</span>
@@ -96,14 +96,14 @@
     </div>
     <div class="card" id="overviewChessWeekCard">
       <div style="display:flex;justify-content:space-between;align-items:baseline">
-        <h3 style="margin:0;font-size:13px;color:#c8d7ea">Ajedrez · últimos 7 días</h3>
+        <h3 style="margin:0">Ajedrez · últimos 7 días</h3>
         <span id="overviewChessWeekSummary" class="muted" style="font-size:11px">{{ d?.week?.chess?.summary ?? '—' }}</span>
       </div>
       <div class="activity-strip" id="overviewChessWeek"><ng-container [ngTemplateOutlet]="strip" [ngTemplateOutletContext]="{ $implicit: d?.week?.chess?.cells }" /></div>
     </div>
     <div class="card" id="overviewGamesWeekCard">
       <div style="display:flex;justify-content:space-between;align-items:baseline">
-        <h3 style="margin:0;font-size:13px;color:#c8d7ea">Games · últimos 7 días <span class="pill pill-scope">MANUAL</span></h3>
+        <h3 style="margin:0">Games · últimos 7 días <span class="pill pill-scope">MANUAL</span></h3>
         <span id="overviewGamesWeekSummary" class="muted" style="font-size:11px">{{ d?.week?.games?.summary ?? '—' }}</span>
       </div>
       <div class="activity-strip" id="overviewGamesWeek"><ng-container [ngTemplateOutlet]="strip" [ngTemplateOutletContext]="{ $implicit: d?.week?.games?.cells }" /></div>

@@ -4,6 +4,7 @@ import { HttpTestingController, provideHttpClientTesting, TestRequest } from '@a
 import { provideRouter, Router, withComponentInputBinding } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { routes } from '../../app.routes';
+import { fmtDate } from '../../core/format';
 
 // Texts are compared as legacy's innerHTML gave them: adjacent elements with no whitespace between them.
 // Ports of tests/frontend.test.ts (languages view hierarchy, course selection, #16.9.2 scope isolation),
@@ -104,7 +105,7 @@ describe('Languages', () => {
       await open('/languages/XC_ES');
       expect((q('#langCourseSelect') as HTMLSelectElement).value).toBe('XC_ES');
       expect(text('langActiveHeroMeta')).toBe('45.000 XP acumulado en el curso · ES → XC');
-      expect(text('langActiveProgress')).toBe('1 / 4 unidades (25.0%)');
+      expect(text('langActiveProgress')).toBe('1 / 4 unidades (25,0 %)');
       http.verify();
     });
 
@@ -120,7 +121,7 @@ describe('Languages', () => {
 
     it('shouldUpdateUrlWhenSelectingCourse', async () => {
       await open('/languages');
-      expect(text('langActiveProgress')).toBe('3 / 10 unidades (30.0%)');
+      expect(text('langActiveProgress')).toBe('3 / 10 unidades (30,0 %)');
       await select('XC_ES');
       expect(router.url).toBe('/languages/XC_ES');
       expect(localStorage.getItem('longitudinal_selected_course')).toBe('XC_ES');
@@ -152,13 +153,13 @@ describe('Languages', () => {
 
     it('shouldNotPaintTheOldCourseWhileTheNewOneLoads', async () => {
       await open('/languages/XB_EN');
-      expect(text('langActiveProgress')).toBe('3 / 10 unidades (30.0%)');
+      expect(text('langActiveProgress')).toBe('3 / 10 unidades (30,0 %)');
       await harness.navigateByUrl('/languages/XC_ES');
       await tick();
       expect(text('langActiveProgress')).toBe('—');
       expect(q('#langCoursesList')!.textContent).not.toContain('SECCIÓN 1: A1.2');
       await answer(langApi());
-      expect(text('langActiveProgress')).toBe('1 / 4 unidades (25.0%)');
+      expect(text('langActiveProgress')).toBe('1 / 4 unidades (25,0 %)');
       http.verify();
     });
 
@@ -193,7 +194,7 @@ describe('Languages', () => {
       expect(text('langAccountXp')).toBe('421.500 XP');
       expect(text('langAccountStreak')).toBe('🔥 1212 días');
       expect(text('langAccountDays')).toBe('1 de 1 días');
-      expect(text('langAccountDaysSub')).toBe(`con XP · registro desde ${utcDay(0)}`);
+      expect(text('langAccountDaysSub')).toBe(`con XP · registro desde ${fmtDate(utcDay(0))}`);
       expect(text('langAccountCourses')).toBe('2 cursos');
       expect(q('#langCourseHero')!.querySelector('#langAccountXp')).toBeNull();
       expect(q('#langAccountCard')!.querySelector('#langCourseSelect')).toBeNull();
@@ -221,7 +222,7 @@ describe('Languages', () => {
       expect(opts).toEqual(['🌐 Demo Beta · EN → XB (94.000 XP)', '🌐 Demo Gamma · ES → XC (45.000 XP)']);
       expect(text('langCourseFlag')).toBe('🌐');
       expect(q('#langActiveProgressBar')!.style.width).toBe('30%');
-      expect(text('langSyncMeta')).toBe(`Sincronizado hoy · Actividad hasta ${utcDay(0)} · Último curso en Duolingo: XB_EN`);
+      expect(text('langSyncMeta')).toBe(`Sincronizado hoy · Actividad hasta ${fmtDate(utcDay(0))} · Último curso en Duolingo: XB_EN`);
       expect(text('langXpGapNote')).toBe('El total de la cuenta supera en 282.500 XP la suma de los 2 cursos del catálogo: esa parte no está asignada a ninguno de ellos.');
       expect(text('langLimitsCard')).toContain('Lo que estos datos no pueden decir');
       expect(text('langMethodology')).toContain('ΔtotalUnits = 0');
@@ -261,9 +262,9 @@ describe('Languages', () => {
       const items = [...el().querySelectorAll<HTMLDetailsElement>('#langCoursesList > details')];
       expect(items.map((d) => d.open)).toEqual([true, false]);
       expect(items[0].querySelector('.pill-selected')!.textContent).toBe('Seleccionado');
-      expect(items[0].textContent!.replace(/\s+/g, ' ')).toContain('SECCIÓN 1: A1.23 / 10 unidades (30.0%)');
+      expect(items[0].textContent!.replace(/\s+/g, ' ')).toContain('SECCIÓN 1: A1.23 / 10 unidades (30,0 %)');
       expect(items[1].querySelector('.pill-selected')).toBeNull();
-      expect(items[1].textContent!.replace(/\s+/g, ' ')).toContain('Progreso: 5 / 20 unidades25.0%');
+      expect(items[1].textContent!.replace(/\s+/g, ' ')).toContain('Progreso: 5 / 20 unidades25,0 %');
     });
 
     it('shouldDescribeTheObservedChangesWithoutCollapsingInsufficientIntoStable', async () => {
@@ -286,7 +287,7 @@ describe('Languages', () => {
       expect(text('langCourseStructureDetail')).toBe('1 curso(s) con CAMBIO ESTRUCTURAL en el árbol curricular (variación en total de unidades; progreso no comparable)');
       expect(text('langAccountActivityDetail')).toBe('Sin XP registrado hoy en la cuenta');
       const rows = [...el().querySelectorAll('#langComparabilityBody .row')].map((r) => r.textContent!.replace(/\s+/g, ' ').trim());
-      expect(rows[0]).toBe('XB_ENCAMBIO ESTRUCTURALReestructuración de árbol por la fuente (10 → 15 unidades totales)Observado: 2026-11-01 → 2026-11-05');
+      expect(rows[0]).toBe('XB_ENCAMBIO ESTRUCTURALReestructuración de árbol por la fuente (10 → 15 unidades totales)Observado: 1 nov 2026 → 5 nov 2026');
       // legacy parity: this card reads the status alone, so an unknown denominator still says COMPARABLE here
       expect(rows[1]).toBe('XC_ESCOMPARABLEΔ +0 unidades completadasObservado: — → —');
     });
@@ -303,7 +304,7 @@ describe('Languages', () => {
       expect(text('langConcentrationBody')).toBe('Demo Beta67,6 %Total vitalicio lingüístico: 139.000 XP en 1 cursos.');
       const comp = [...el().querySelectorAll('#langComparabilityBody .row')].map((r) => r.textContent!.replace(/\s+/g, ' ').trim());
       expect(comp).toEqual([
-        'XB_ENCOMPARABLEΔ +2 unidades completadasObservado: 2026-11-01 → 2026-11-05',
+        'XB_ENCOMPARABLEΔ +2 unidades completadasObservado: 1 nov 2026 → 5 nov 2026',
         'Demo GammaESPERANDO 2ª OBSERVACIÓNAún no hay una segunda captura del Path de este curso para poder comparar.',
       ]);
     });
@@ -348,7 +349,7 @@ describe('Languages', () => {
       for (const id of ['langObservedSynthesis', 'langCurricularProgressDetail', 'langCourseStructureDetail', 'langIntensityBody', 'langWeeklyBody', 'langConcentrationBody', 'langComparabilityBody']) {
         expect(text(id), id).toBe('No disponible');
       }
-      expect(text('langActiveProgress')).toBe('3 / 10 unidades (30.0%)');
+      expect(text('langActiveProgress')).toBe('3 / 10 unidades (30,0 %)');
     });
 
     it('shouldSayNoDisponibleWhenTheSettingsFail', async () => {
@@ -366,7 +367,7 @@ describe('Languages', () => {
 
     it('shouldUseTheAnalyticsUnitsWhenTheCourseDetailFails', async () => {
       await open('/languages/XC_ES', langApi({ '/api/languages/courses/XC_ES': FAIL }));
-      expect(text('langActiveProgress')).toBe('5 / 20 unidades (25.0%)');
+      expect(text('langActiveProgress')).toBe('5 / 20 unidades (25,0 %)');
     });
 
     it('shouldSayThePathIsNotSyncedOnlyWhenTheCourseReallyHasNoUnits', async () => {
@@ -397,8 +398,8 @@ describe('Languages', () => {
       expect(text('langAccountXp')).toBe('1500 XP'); // es-ES groups from five digits
       expect(text('langAccountStreak')).toBe('🔥 3 días');
       expect(text('langAccountDays')).toBe('2 de 3 días');
-      expect(text('langAccountDaysSub')).toBe('con XP · registro desde 2026-06-25');
-      expect(text('langSyncMeta')).toBe(`Sincronizado ayer · Actividad hasta ${utcDay(0)} · Path hace 2d`);
+      expect(text('langAccountDaysSub')).toBe('con XP · registro desde 25 jun 2026');
+      expect(text('langSyncMeta')).toBe(`Sincronizado ayer · Actividad hasta ${fmtDate(utcDay(0))} · Path hace 2d`);
       http.verify();
     });
   });
@@ -414,7 +415,7 @@ describe('Languages', () => {
     it('shouldDegradeTheAccountCardAloneWhenItsDatesCannotBeRead', async () => {
       await open('/languages', langApi({ '/api/languages/xp': { summaries: [{ date: 'bad', gainedXp: 1, numSessions: 1, totalSessionTime: 1 }] } }));
       expect(text('langSyncMeta')).toBe('No disponible');
-      expect(text('langActiveProgress')).toBe('3 / 10 unidades (30.0%)');
+      expect(text('langActiveProgress')).toBe('3 / 10 unidades (30,0 %)');
     });
 
     it('shouldDegradeTheWeekCardAloneWhenTheSummariesCannotBeRead', async () => {

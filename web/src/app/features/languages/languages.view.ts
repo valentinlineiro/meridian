@@ -1,4 +1,4 @@
-import { pc1, relDate } from '../../core/format';
+import { fmtDate, pc1, relDate } from '../../core/format';
 import { activeDaysSub, activeDaysText, Course, CourseDetail, courseProgress, es, flag, Langs, lastSevenDays, Section, toDay, xpText, XpDay } from '../../core/courses';
 import { list } from '../../core/guard';
 import { goalColor, goalSummary } from './goal-summary';
@@ -42,7 +42,7 @@ const pair = (c: Course) => c.fromLanguage && c.learningLanguage ? `${c.fromLang
 /** "EN → XB" with whichever side is known (legacy course list and detail). */
 export const looseFromTo = (c: Course) => (c.fromLanguage ? c.fromLanguage.toUpperCase() + ' → ' : '') + (c.learningLanguage ? c.learningLanguage.toUpperCase() : '');
 export const cefrLabel = (s: Section) => s.cefrLevel ? s.cefrLevel + (s.cefrSublevel ? '.' + s.cefrSublevel : '') : (s.type || 'General');
-// Unit progress keeps the "(30.0%)" copy the Overview card shows for the same figure (parity ruling).
+// Unit progress prints like every other percentage in the UI ("30,0 %"); the width stays the numeric string.
 const unitPct = (completed: number, total: number) => (completed / total * 100).toFixed(1);
 
 export function hero(d: LangData, selected: string | null) {
@@ -66,7 +66,7 @@ export function progress(d: LangData, selected: string | null, detail: Detail) {
     const cur = arr(d.analytics?.curriculum?.courses).find((c) => c.courseId === selected);
     if (cur?.totalUnits != null && cur.totalUnits > 0) { completed = cur.completedUnits || 0; total = cur.totalUnits; }
   }
-  if (total > 0) { const p = unitPct(completed, total); return { text: `${completed} / ${total} unidades (${p}%)`, width: Number(p) }; }
+  if (total > 0) { const p = unitPct(completed, total); return { text: `${completed} / ${total} unidades (${pc1(Number(p))})`, width: Number(p) }; }
   // a failed request is unknown; "not synced" is said only when the source answered without units
   return { text: detail === null ? NA : 'Sin observación aún · Path no sincronizado para este curso', width: 0 };
 }
@@ -101,7 +101,7 @@ export function accountActivity(d: LangData) {
   return {
     days: s.length ? activeDaysText(s.filter((x) => (x.gainedXp ?? 0) > 0).length, s.length) : '—',
     daysSub: s.length ? activeDaysSub(first) : '',
-    sync: 'Sincronizado ' + relDate(l.updatedAt || l.createdAt || '') + (last ? ' · Actividad hasta ' + last : '')
+    sync: 'Sincronizado ' + relDate(l.updatedAt || l.createdAt || '') + (last ? ' · Actividad hasta ' + fmtDate(last) : '')
       + (cur && d.courses.some((c) => c.courseId === cur) ? ' · Último curso en Duolingo: ' + cur : '') + staleNote(l),
   };
 }
@@ -117,7 +117,7 @@ export function legacyAccount(l: LegacyLang) {
     streak: l.streak != null ? `🔥 ${l.streak} días` : '',
     days: activeDaysText(t.activeDays ?? 0, t.days ?? 0),
     daysSub: activeDaysSub(s.length ? s[0].date : null),
-    sync: 'Sincronizado ' + relDate(l.createdAt || '') + ' · Actividad hasta ' + (lastIso || '—') + (lastSync ? ' · Path ' + relDate(lastSync) : ''),
+    sync: 'Sincronizado ' + relDate(l.createdAt || '') + ' · Actividad hasta ' + (lastIso ? fmtDate(lastIso) : '—') + (lastSync ? ' · Path ' + relDate(lastSync) : ''),
   };
 }
 
@@ -146,19 +146,19 @@ export function courseList(d: LangData, selected: string | null, detail: Detail)
   return d.courses.map((c) => {
     const isSelected = c.courseId === selected;
     const secs = isSelected && detail ? list<Section>(detail.sections) : null;
-    let units = '', sections: { key: string; title: string; units: string; pct: string; width: number }[] = [], prog: { text: string; pct: string } | null = null;
+    let units = '', sections: { key: string; title: string; units: string; pct: string; pctText: string; width: number }[] = [], prog: { text: string; pct: string; pctText: string } | null = null;
     if (secs?.length) {
       const p = courseProgress(detail);
       units = `${p.completed} / ${p.total} unidades`;
       sections = secs.map((s, i) => {
         const comp = s.completedUnits || 0, pct = ((s.totalUnits ? comp / s.totalUnits : 0) * 100).toFixed(1);
-        return { key: (s.sectionId ?? '') + i, title: `SECCIÓN ${s.sectionIndex}: ${cefrLabel(s)}`, units: `${comp} / ${s.totalUnits ?? 0} unidades`, pct, width: Number(pct) };
+        return { key: (s.sectionId ?? '') + i, title: `SECCIÓN ${s.sectionIndex}: ${cefrLabel(s)}`, units: `${comp} / ${s.totalUnits ?? 0} unidades`, pct, pctText: pc1(Number(pct)), width: Number(pct) };
       });
     } else {
       const m = cur.find((x) => x.courseId === c.courseId);
       if (m && m.totalUnits != null && m.totalUnits > 0) {
         units = `${m.completedUnits} / ${m.totalUnits} unidades`;
-        prog = { text: `Progreso: ${m.completedUnits} / ${m.totalUnits} unidades`, pct: (Number(m.ratio) * 100).toFixed(1) };
+        prog = { text: `Progreso: ${m.completedUnits} / ${m.totalUnits} unidades`, pct: (Number(m.ratio) * 100).toFixed(1), pctText: pc1(Number(m.ratio) * 100) };
       }
     }
     return { id: c.courseId, isSelected, flag: flag(c.learningLanguage), title: c.title || c.courseId, fromTo: looseFromTo(c), xp: xpText(c.xp) + ' XP', units, sections, prog };
@@ -253,7 +253,7 @@ export function comparability(a: Analytics, courses: Course[]) {
   const covered = new Set(deltas.map((x) => x.courseId));
   const waiting = courses.filter((c) => !covered.has(c.courseId));
   if (!deltas.length && !waiting.length) return null;
-  const day = (v?: string | null) => v ? v.slice(0, 10) : '—';
+  const day = (v?: string | null) => v ? fmtDate(v.slice(0, 10)) : '—';
   return {
     rows: deltas.map((x) => {
       const comp = x.status === 'comparable', struct = x.status === 'structural_change';

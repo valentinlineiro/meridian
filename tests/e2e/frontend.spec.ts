@@ -43,7 +43,7 @@ test.describe('Frontend E2E Integration Suite', () => {
     await expect(page).toHaveTitle('Hoy · Meridian');
 
     // Verify shell markup rendered from real Angular bundle
-    await expect(page.locator('header h1')).toHaveText('Meridian');
+    await expect(page.locator('header .brand')).toHaveText('Meridian');
     await expect(page.locator('nav.side')).toBeVisible();
     await expect(page.locator('a.side-item.active')).toHaveText('Hoy');
 

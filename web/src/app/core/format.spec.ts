@@ -1,4 +1,4 @@
-import { colorConclusion, fmtDelta, formatMatchDate, pc1, pctCi, relDate, shortDate } from './format';
+import { colorConclusion, fmtDate, fmtDelta, formatMatchDate, pc1, pctCi, relDate } from './format';
 import { esc } from './escape';
 
 describe('format', () => {
@@ -26,8 +26,8 @@ describe('format', () => {
     expect(pctCi(null, null)).toBe('—');
   });
   it('shouldFormatShortDateAsDayAndSpanishMonth', () => {
-    expect(shortDate('2026-11-03')).toBe('03-nov');
-    expect(shortDate('x')).toBe('x');
+    expect(fmtDate('2026-11-03')).toBe('3 nov 2026');
+    expect(fmtDate('x')).toBe('x');
   });
   it('shouldSayRelativeDaysInSpanish', () => {
     vi.useFakeTimers().setSystemTime(new Date('2026-11-06T12:00:00Z'));

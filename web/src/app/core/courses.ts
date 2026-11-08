@@ -1,3 +1,4 @@
+import { fmtDate } from './format';
 // Course and XP helpers shared by Hoy and Idiomas (src/dashboard.client.js: flag, xpText, activeDaysText,
 // getCourseProgress :136, resolveSelectedCourseId :388).
 
@@ -26,7 +27,7 @@ export const toDay = (v: string | number) => typeof v === 'string' ? v.slice(0, 
 // P7: "90/90" says nothing when every day has XP; what matters is how far back the record goes.
 export const activeDaysText = (active: number, total: number) => `${active} de ${total} días`;
 export const activeDaysSub = (firstSec: number | null | undefined) =>
-  'con XP' + (firstSec && isFinite(firstSec) ? ` · registro desde ${new Date(firstSec * 1000).toISOString().slice(0, 10)}` : '');
+  'con XP' + (firstSec && isFinite(firstSec) ? ` · registro desde ${fmtDate(new Date(firstSec * 1000).toISOString().slice(0, 10))}` : '');
 
 /** The last seven UTC days, oldest first, with the Spanish day letter. */
 export const lastSevenDays = () => {

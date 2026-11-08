@@ -54,7 +54,7 @@ describe('Trajectory', () => {
     it('shouldIncludeTrajectoryTabButtonAndSectionInMarkup', async () => {
       await open({ findings: [], evaluations: [], temporalSpan: null });
       expect(el.querySelector('#trajectoryTab')).not.toBeNull();
-      expect(el.querySelector('#trajectoryHeader h2')!.textContent).toBe('Tu trayectoria');
+      expect(el.querySelector('#trajectoryHeader h1')!.textContent).toBe('Tu trayectoria');
       expect(el.querySelector('#trajectorySubtitle')!.textContent).toBe('Síntesis de patrones estables a lo largo de tu historial completo');
       expect(findings()).not.toBeNull();
       expect(empty()).not.toBeNull();
@@ -210,7 +210,7 @@ describe('Trajectory', () => {
       el = fixture.nativeElement;
       await tick();
       expect(empty()).toBeNull();
-      expect(el.querySelector('#trajectoryHeader h2')!.textContent).toBe('Tu trayectoria');
+      expect(el.querySelector('#trajectoryHeader h1')!.textContent).toBe('Tu trayectoria');
       http.expectOne('/api/trajectory').flush({ findings: [] });
       await tick();
     });

@@ -82,11 +82,11 @@ describe('Overview', () => {
 
     expect(text(el, 'overviewStreak')).toBe('Duolingo · 🔥 1212 días de racha');
     expect(el.querySelector('#overviewStreak')!.className).toBe('pill pill-win');
-    expect(text(el, 'overviewSyncMeta')).toBe('Idiomas: sincronizado hoy · Ajedrez: sincronizado hace 2d · Games: último registro 03-nov · manual');
+    expect(text(el, 'overviewSyncMeta')).toBe('Idiomas: sincronizado hoy · Ajedrez: sincronizado hace 2d · Games: último registro 3 nov 2026 · manual');
 
     expect(text(el, 'overviewLangActiveCourse')).toBe('🇷🇺 Demo Beta (EN → RU)');
     expect(text(el, 'overviewLangSourceCourse')).toBe('');
-    expect(text(el, 'overviewLangUnits')).toBe('3 / 10 unidades (30.0%)');
+    expect(text(el, 'overviewLangUnits')).toBe('3 / 10 unidades (30,0 %)');
     expect(el.querySelector<HTMLElement>('#overviewLangProgressBar')!.style.width).toBe('30%');
     expect(text(el, 'overviewLangCatalogXp')).toBe('2 cursos · 421.500 XP');
 
@@ -232,7 +232,7 @@ describe('Overview', () => {
       const el = await open({ ...fullApi(), '/api/languages/courses/XC_EN': { totalUnits: 4, completedUnits: 1 } });
       expect(text(el, 'overviewLangActiveCourse')).toContain('Demo Gamma');
       expect(text(el, 'overviewLangSourceCourse')).toBe('Último curso en Duolingo: Demo Beta');
-      expect(text(el, 'overviewLangUnits')).toBe('1 / 4 unidades (25.0%)');
+      expect(text(el, 'overviewLangUnits')).toBe('1 / 4 unidades (25,0 %)');
     });
 
     it('shouldNotShowACourseOutsideTheCatalogueWhenDuolingoReportsIt', async () => {
@@ -261,7 +261,7 @@ describe('Overview', () => {
       Object.assign((api['/api/me/linkedin-games/summary'] as { summary: object }).summary, { days: 170, playStreak: { current: 0, max: 122 } });
       const el = await open(api);
       expect(text(el, 'overviewGamesStreakLabel')).toBe('Último registro');
-      expect(text(el, 'overviewGamesStreak')).toBe('Sin registro desde 2026-11-03');
+      expect(text(el, 'overviewGamesStreak')).toBe('Sin registro desde 3 nov 2026');
       expect(text(el, 'overviewGamesMeta')).toBe('Racha máxima 122 días · registro manual');
     });
 

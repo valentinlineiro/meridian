@@ -178,11 +178,11 @@ export function evaluationCards(evals: readonly unknown[], findingFor: (e: Evalu
     </ng-template>
     @for (c of cards(); track $index) {
       @if (c.na) {
-        <div class="card" style="margin-bottom:10px"><h3 style="margin:0;font-size:14px;color:#e6edf3">{{ c.title }}</h3><div class="muted" style="font-size:12px;margin-top:6px">No disponible</div></div>
+        <div class="card" style="margin-bottom:10px"><h3 style="margin:0">{{ c.title }}</h3><div class="muted" style="font-size:12px;margin-top:6px">No disponible</div></div>
       } @else if (c.collapsed) {
-        <details class="card evcard" style="margin-bottom:10px"><summary><span class="evhead"><h3 style="margin:0;font-size:14px;color:#e6edf3">{{ c.title }}</h3><span [class]="c.pill">{{ c.state }}</span></span><span class="muted evmsg">{{ c.summary }}</span></summary><div style="margin-top:8px"><span class="pill pill-scope">{{ c.scope }}</span></div><div style="margin-top:8px"><ng-container *ngTemplateOutlet="body; context: { $implicit: c }" /></div><div class="muted" style="font-size:11px;margin-top:6px">{{ c.foot }}</div></details>
+        <details class="card evcard" style="margin-bottom:10px"><summary><span class="evhead"><h3 style="margin:0">{{ c.title }}</h3><span [class]="c.pill">{{ c.state }}</span></span><span class="muted evmsg">{{ c.summary }}</span></summary><div style="margin-top:8px"><span class="pill pill-scope">{{ c.scope }}</span></div><div style="margin-top:8px"><ng-container *ngTemplateOutlet="body; context: { $implicit: c }" /></div><div class="muted" style="font-size:11px;margin-top:6px">{{ c.foot }}</div></details>
       } @else {
-        <div class="card" style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px"><h3 style="margin:0;font-size:14px;color:#e6edf3">{{ c.title }}</h3><span><span [class]="c.pill">{{ c.state }}</span>&ngsp;<span class="pill pill-scope">{{ c.scope }}</span></span></div><ng-container *ngTemplateOutlet="body; context: { $implicit: c }" /><div class="muted" style="font-size:11px;margin-top:6px">{{ c.foot }}</div></div>
+        <div class="card" style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px"><h3 style="margin:0">{{ c.title }}</h3><span><span [class]="c.pill">{{ c.state }}</span>&ngsp;<span class="pill pill-scope">{{ c.scope }}</span></span></div><ng-container *ngTemplateOutlet="body; context: { $implicit: c }" /><div class="muted" style="font-size:11px;margin-top:6px">{{ c.foot }}</div></div>
       }
     }
   `,
