@@ -37,10 +37,11 @@ const gnum = (v: number | null, d: number) => v == null ? '—' : v.toLocaleStri
 export const gmmss = (s: number) => Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
 export const gdays = (n: number) => n + (n === 1 ? ' día' : ' días');
 const gpct = (r: number | null) => r == null ? '—' : Math.round(r * 100) + ' %';
-// ponytail: the legacy ASCII "-" is kept, legacy tests pin "-13 %".
-const gsigned = (v: number | null, suffix: string) => { if (v == null) return '—'; const r = Math.round(v); return (r > 0 ? '+' : '') + r + suffix; };
+/** Typographic minus, as in the rest of the UI (changes, chess). */
+const minus = (s: string) => s.replace('-', '−');
+const gsigned = (v: number | null, suffix: string) => { if (v == null) return '—'; const r = Math.round(v); return (r > 0 ? '+' : '') + minus(String(r)) + suffix; };
 const gtime = (s: number | null) => s == null ? '—' : gmmss(Math.round(s));
-const gsign = (v: number | null, d: number) => v == null ? '—' : (v > 0 ? '+' : '') + gnum(v, d);
+const gsign = (v: number | null, d: number) => v == null ? '—' : (v > 0 ? '+' : '') + minus(gnum(v, d));
 const gband = (b: [number, number]) => gsigned(b[0] * 100, ' %') + ' a ' + gsigned(b[1] * 100, ' %');
 export const effText = (v: number | null) => v == null ? '—' : '×' + gnum(v, 2);
 export const beatText = gpct;

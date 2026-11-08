@@ -104,7 +104,7 @@ describe('Languages', () => {
       await open('/languages/XC_ES');
       expect((q('#langCourseSelect') as HTMLSelectElement).value).toBe('XC_ES');
       expect(text('langActiveHeroMeta')).toBe('45.000 XP acumulado en el curso · ES → XC');
-      expect(text('langActiveProgress')).toBe('1 / 4 unidades (25.0%)');
+      expect(text('langActiveProgress')).toBe('1 / 4 unidades (25,0 %)');
       http.verify();
     });
 
@@ -120,7 +120,7 @@ describe('Languages', () => {
 
     it('shouldUpdateUrlWhenSelectingCourse', async () => {
       await open('/languages');
-      expect(text('langActiveProgress')).toBe('3 / 10 unidades (30.0%)');
+      expect(text('langActiveProgress')).toBe('3 / 10 unidades (30,0 %)');
       await select('XC_ES');
       expect(router.url).toBe('/languages/XC_ES');
       expect(localStorage.getItem('longitudinal_selected_course')).toBe('XC_ES');
@@ -152,13 +152,13 @@ describe('Languages', () => {
 
     it('shouldNotPaintTheOldCourseWhileTheNewOneLoads', async () => {
       await open('/languages/XB_EN');
-      expect(text('langActiveProgress')).toBe('3 / 10 unidades (30.0%)');
+      expect(text('langActiveProgress')).toBe('3 / 10 unidades (30,0 %)');
       await harness.navigateByUrl('/languages/XC_ES');
       await tick();
       expect(text('langActiveProgress')).toBe('—');
       expect(q('#langCoursesList')!.textContent).not.toContain('SECCIÓN 1: A1.2');
       await answer(langApi());
-      expect(text('langActiveProgress')).toBe('1 / 4 unidades (25.0%)');
+      expect(text('langActiveProgress')).toBe('1 / 4 unidades (25,0 %)');
       http.verify();
     });
 
@@ -261,9 +261,9 @@ describe('Languages', () => {
       const items = [...el().querySelectorAll<HTMLDetailsElement>('#langCoursesList > details')];
       expect(items.map((d) => d.open)).toEqual([true, false]);
       expect(items[0].querySelector('.pill-selected')!.textContent).toBe('Seleccionado');
-      expect(items[0].textContent!.replace(/\s+/g, ' ')).toContain('SECCIÓN 1: A1.23 / 10 unidades (30.0%)');
+      expect(items[0].textContent!.replace(/\s+/g, ' ')).toContain('SECCIÓN 1: A1.23 / 10 unidades (30,0 %)');
       expect(items[1].querySelector('.pill-selected')).toBeNull();
-      expect(items[1].textContent!.replace(/\s+/g, ' ')).toContain('Progreso: 5 / 20 unidades25.0%');
+      expect(items[1].textContent!.replace(/\s+/g, ' ')).toContain('Progreso: 5 / 20 unidades25,0 %');
     });
 
     it('shouldDescribeTheObservedChangesWithoutCollapsingInsufficientIntoStable', async () => {
@@ -348,7 +348,7 @@ describe('Languages', () => {
       for (const id of ['langObservedSynthesis', 'langCurricularProgressDetail', 'langCourseStructureDetail', 'langIntensityBody', 'langWeeklyBody', 'langConcentrationBody', 'langComparabilityBody']) {
         expect(text(id), id).toBe('No disponible');
       }
-      expect(text('langActiveProgress')).toBe('3 / 10 unidades (30.0%)');
+      expect(text('langActiveProgress')).toBe('3 / 10 unidades (30,0 %)');
     });
 
     it('shouldSayNoDisponibleWhenTheSettingsFail', async () => {
@@ -366,7 +366,7 @@ describe('Languages', () => {
 
     it('shouldUseTheAnalyticsUnitsWhenTheCourseDetailFails', async () => {
       await open('/languages/XC_ES', langApi({ '/api/languages/courses/XC_ES': FAIL }));
-      expect(text('langActiveProgress')).toBe('5 / 20 unidades (25.0%)');
+      expect(text('langActiveProgress')).toBe('5 / 20 unidades (25,0 %)');
     });
 
     it('shouldSayThePathIsNotSyncedOnlyWhenTheCourseReallyHasNoUnits', async () => {
@@ -414,7 +414,7 @@ describe('Languages', () => {
     it('shouldDegradeTheAccountCardAloneWhenItsDatesCannotBeRead', async () => {
       await open('/languages', langApi({ '/api/languages/xp': { summaries: [{ date: 'bad', gainedXp: 1, numSessions: 1, totalSessionTime: 1 }] } }));
       expect(text('langSyncMeta')).toBe('No disponible');
-      expect(text('langActiveProgress')).toBe('3 / 10 unidades (30.0%)');
+      expect(text('langActiveProgress')).toBe('3 / 10 unidades (30,0 %)');
     });
 
     it('shouldDegradeTheWeekCardAloneWhenTheSummariesCannotBeRead', async () => {

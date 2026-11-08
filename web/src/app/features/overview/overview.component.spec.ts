@@ -86,7 +86,7 @@ describe('Overview', () => {
 
     expect(text(el, 'overviewLangActiveCourse')).toBe('🇷🇺 Demo Beta (EN → RU)');
     expect(text(el, 'overviewLangSourceCourse')).toBe('');
-    expect(text(el, 'overviewLangUnits')).toBe('3 / 10 unidades (30.0%)');
+    expect(text(el, 'overviewLangUnits')).toBe('3 / 10 unidades (30,0 %)');
     expect(el.querySelector<HTMLElement>('#overviewLangProgressBar')!.style.width).toBe('30%');
     expect(text(el, 'overviewLangCatalogXp')).toBe('2 cursos · 421.500 XP');
 
@@ -232,7 +232,7 @@ describe('Overview', () => {
       const el = await open({ ...fullApi(), '/api/languages/courses/XC_EN': { totalUnits: 4, completedUnits: 1 } });
       expect(text(el, 'overviewLangActiveCourse')).toContain('Demo Gamma');
       expect(text(el, 'overviewLangSourceCourse')).toBe('Último curso en Duolingo: Demo Beta');
-      expect(text(el, 'overviewLangUnits')).toBe('1 / 4 unidades (25.0%)');
+      expect(text(el, 'overviewLangUnits')).toBe('1 / 4 unidades (25,0 %)');
     });
 
     it('shouldNotShowACourseOutsideTheCatalogueWhenDuolingoReportsIt', async () => {

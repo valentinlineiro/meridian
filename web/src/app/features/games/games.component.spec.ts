@@ -131,7 +131,7 @@ describe('Games', () => {
       const cards = cardsOf();
       expect(cards.map(nameOf).sort()).toEqual(['Tango', 'Zip']);
       const lines = linesOf(cards[0]);
-      for (const l of ['Eficiencia (28 días): ×1,13 · n=28 (-13 % vs periodo previo (n=28/27))', 'Gana a la media: 65 % · n=28', 'Tiempo típico: 0:52 (P25–P75 0:43–1:04) · n=30', 'Mejor marca: 0:32 (2026-09-30)', 'Racha ganando a la media: 1 día (máx 8)']) expect(lines).toContain(l);
+      for (const l of ['Eficiencia (28 días): ×1,13 · n=28 (−13 % vs periodo previo (n=28/27))', 'Gana a la media: 65 % · n=28', 'Tiempo típico: 0:52 (P25–P75 0:43–1:04) · n=30', 'Mejor marca: 0:32 (2026-09-30)', 'Racha ganando a la media: 1 día (máx 8)']) expect(lines).toContain(l);
       expect(el.querySelector('#gamesHeroDist')).toBeNull(); // no pooled "beats the average" across games
       expect(text('gamesHeroStreak')).toBe('48 días seguidos');
       expect(text('gamesHeroMeta')).toBe('Racha máxima 122 días');
@@ -218,7 +218,7 @@ describe('Games', () => {
       await open(two());
       const rows = cellsOf();
       expect(rows).toHaveLength(2);
-      expect(rows.find((r) => r[0] === 'Tango')).toEqual(['Tango', '×1,13 · n=28', '65 % · n=28', '→ -13 % · n=28/27', '0:52 (0:43–1:04) · n=30', '1 día', '30']);
+      expect(rows.find((r) => r[0] === 'Tango')).toEqual(['Tango', '×1,13 · n=28', '65 % · n=28', '→ −13 % · n=28/27', '0:52 (0:43–1:04) · n=30', '1 día', '30']);
       for (const r of rows) for (const i of [1, 2, 4]) expect(r[i]).toMatch(/n=\d+/);
     });
 
@@ -319,9 +319,9 @@ describe('Games', () => {
     it('shouldExplainEachLabelWithTheValuesThatSupportIt', async () => {
       await open(all());
       const byName = Object.fromEntries(cardsOf().map((c) => [nameOf(c), linesOf(c)]));
-      expect(byName['Tango'][0]).toBe('Los últimos 28 días están un -31 % frente a los 56 anteriores; el límite de ruido de este juego es -23 % (n=27/54). Se repite dos semanas seguidas.');
+      expect(byName['Tango'][0]).toBe('Los últimos 28 días están un −31 % frente a los 56 anteriores; el límite de ruido de este juego es −23 % (n=27/54). Se repite dos semanas seguidas.');
       expect(byName['Wend'][0]).toBe('Tendencia al alza en los últimos 112 días: ρ de Spearman +0,28 (límite +0,18) y pendiente +3,3 % cada 28 días (n=110). Se repite dos semanas seguidas.');
-      expect(byName['Zip'][0]).toBe('Ninguna señal supera el ruido de este juego: a 28 días solo se detecta un cambio por debajo de -26 % o por encima de +34 %.');
+      expect(byName['Zip'][0]).toBe('Ninguna señal supera el ruido de este juego: a 28 días solo se detecta un cambio por debajo de −26 % o por encima de +34 %.');
       expect(byName['Patches'][0]).toBe('Faltan observaciones con media: hacen falta al menos 68 de los últimos 112 días, 17 de los últimos 28 y 34 de los 56 anteriores.');
       expect(byName['Zip']).toContain('Límites calibrados con datos hasta 2026-11-03.');
       expect(byName['Patches'].some((l: string) => l.startsWith('Límites calibrados'))).toBe(false);
@@ -332,7 +332,7 @@ describe('Games', () => {
       const none = game({ interpretation: interp({ label: 'datos_insuficientes', reason: 'sin_calibracion', candidate: 'datos_insuficientes', previousCandidate: 'datos_insuficientes', bands: null, calibratedThrough: null }) });
       await open({ zip: down, tango: none });
       const byName = Object.fromEntries(cardsOf().map((c) => [nameOf(c), linesOf(c)]));
-      expect(byName['Zip'][0]).toBe('Tendencia a la baja en los últimos 112 días: ρ de Spearman -0,3 (límite -0,19) y pendiente -4,1 % cada 28 días (n=100). Se repite dos semanas seguidas.');
+      expect(byName['Zip'][0]).toBe('Tendencia a la baja en los últimos 112 días: ρ de Spearman −0,3 (límite −0,19) y pendiente −4,1 % cada 28 días (n=100). Se repite dos semanas seguidas.');
       expect(byName['Tango'][0]).toBe('Este juego aún no tiene límites calibrados (57 de 112 días de historia observados; requiere el periodo completo sin validez parcial).');
     });
 
@@ -361,7 +361,7 @@ describe('Games', () => {
   describe('games 28-day arrow', () => {
     const withArrow = (arrow: string | null, value: number) => game({ windows: { ...game().windows, '28': win28(arrow, value) } });
 
-    it.each([['up', 0.4, '↑ +40 % · n=28/27'], ['down', -0.4, '↓ -40 % · n=28/27'], ['flat', 0.1, '→ +10 % · n=28/27']])('shouldShowTheArrowInTheDeltaCellWhenItIs %s', async (arrow, value, t) => {
+    it.each([['up', 0.4, '↑ +40 % · n=28/27'], ['down', -0.4, '↓ −40 % · n=28/27'], ['flat', 0.1, '→ +10 % · n=28/27']])('shouldShowTheArrowInTheDeltaCellWhenItIs %s', async (arrow, value, t) => {
       await open({ zip: withArrow(arrow as string, value as number) });
       expect(visible(delta28())).toBe(t);
     });
@@ -370,12 +370,12 @@ describe('Games', () => {
       await open({ zip: withArrow('down', -0.4) });
       expect(delta28().children[0].textContent).toBe(' (baja, fuera del ruido)');
       expect(delta28().children[0].className).toBe('sr-only');
-      expect(delta28().getAttribute('title')).toBe('Supera el ruido de este juego (fuera de -26 % a +34 %).');
+      expect(delta28().getAttribute('title')).toBe('Supera el ruido de este juego (fuera de −26 % a +34 %).');
     });
 
     it('shouldSayInsideTheNoiseWhenTheArrowIsFlat', async () => {
       await open({ zip: withArrow('flat', 0.1) });
-      expect(delta28().getAttribute('title')).toBe('Dentro del ruido de este juego (-26 % a +34 %).');
+      expect(delta28().getAttribute('title')).toBe('Dentro del ruido de este juego (−26 % a +34 %).');
       expect(delta28().children[0].textContent).toBe(' (dentro del ruido)');
     });
 

@@ -122,14 +122,14 @@
                         <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Desglose de secciones</div>
                         @for (sec of c.sections; track sec.key) {
                           <div class="row" style="padding:6px 0;border-bottom:1px solid #1e2e44"><div style="flex:1">
-                            <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:12px"><b>{{ sec.title }}</b><span><b>{{ sec.units }}</b> ({{ sec.pct }}%)</span></div>
+                            <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:12px"><b>{{ sec.title }}</b><span><b>{{ sec.units }}</b> ({{ sec.pctText }})</span></div>
                             <div class="progress-bar" style="height:6px;margin-top:4px"><div [style.width.%]="sec.width" style="background:#2ea043"></div></div>
                           </div></div>
                         }
                       </div>
                     } @else if (c.prog) {
                       <div style="margin-top:6px;font-size:12px">
-                        <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span class="muted">{{ c.prog.text }}</span><span>{{ c.prog.pct }}%</span></div>
+                        <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span class="muted">{{ c.prog.text }}</span><span>{{ c.prog.pctText }}</span></div>
                         <div class="progress-bar" style="height:6px"><div [style.width]="c.prog.pct + '%'" style="background:#58a6ff"></div></div>
                       </div>
                     }
