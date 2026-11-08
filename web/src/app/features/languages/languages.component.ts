@@ -58,10 +58,10 @@ export class Languages {
   protected readonly progress = computed(() => { const d = this.d(); return d ? safe(() => progress(d, this.selected(), this.detail()), { text: NA, width: 0 }) : null; });
   protected readonly account = computed(() => {
     const s = this.state();
-    if (s?.kind === 'legacy') return safe(() => ({ ...legacyAccount(s.legacy), courses: '—', gap: '' }), { xp: '—', streak: '—', days: '—', sync: NA, courses: '—', gap: '' });
+    if (s?.kind === 'legacy') return safe(() => ({ ...legacyAccount(s.legacy), courses: '—', gap: '' }), { xp: '—', streak: '—', days: '—', daysSub: '', sync: NA, courses: '—', gap: '' });
     const d = this.d();
     if (!d) return null;
-    return { ...safe(() => account(d), { xp: '—', streak: '—', courses: '—', gap: '' }), ...safe(() => accountActivity(d), { days: '—', sync: NA }) };
+    return { ...safe(() => account(d), { xp: '—', streak: '—', courses: '—', gap: '' }), ...safe(() => accountActivity(d), { days: '—', daysSub: '', sync: NA }) };
   });
   protected readonly week = computed(() => { const d = this.d(); return d && safe(() => week(d), { cells: [], summary: NA, goal: NA }); });
   protected readonly courses = computed(() => { const d = this.d(); return d && safe(() => courseList(d, this.selected(), this.detail()), NA); });

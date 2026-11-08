@@ -1,5 +1,5 @@
 import { pc1, relDate } from '../../core/format';
-import { activeDaysText, Course, CourseDetail, courseProgress, es, flag, Langs, lastSevenDays, Section, toDay, xpText, XpDay } from '../../core/courses';
+import { activeDaysSub, activeDaysText, Course, CourseDetail, courseProgress, es, flag, Langs, lastSevenDays, Section, toDay, xpText, XpDay } from '../../core/courses';
 import { list } from '../../core/guard';
 import { goalColor, goalSummary } from './goal-summary';
 
@@ -99,7 +99,8 @@ export function accountActivity(d: LangData) {
   const first = s.length && typeof s[0].date === 'number' ? s[0].date : null;
   const cur = l.currentCourseId;
   return {
-    days: s.length ? activeDaysText(s.filter((x) => (x.gainedXp ?? 0) > 0).length, s.length, first) : '—',
+    days: s.length ? activeDaysText(s.filter((x) => (x.gainedXp ?? 0) > 0).length, s.length) : '—',
+    daysSub: s.length ? activeDaysSub(first) : '',
     sync: 'Sincronizado ' + relDate(l.updatedAt || l.createdAt || '') + (last ? ' · Actividad hasta ' + last : '')
       + (cur && d.courses.some((c) => c.courseId === cur) ? ' · Último curso en Duolingo: ' + cur : '') + staleNote(l),
   };
@@ -114,7 +115,8 @@ export function legacyAccount(l: LegacyLang) {
   return {
     xp: l.totalXp != null ? es(l.totalXp) + ' XP' : '—',
     streak: l.streak != null ? `🔥 ${l.streak} días` : '',
-    days: activeDaysText(t.activeDays ?? 0, t.days ?? 0, s.length ? s[0].date : null),
+    days: activeDaysText(t.activeDays ?? 0, t.days ?? 0),
+    daysSub: activeDaysSub(s.length ? s[0].date : null),
     sync: 'Sincronizado ' + relDate(l.createdAt || '') + ' · Actividad hasta ' + (lastIso || '—') + (lastSync ? ' · Path ' + relDate(lastSync) : ''),
   };
 }

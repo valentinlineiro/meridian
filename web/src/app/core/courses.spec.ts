@@ -1,4 +1,4 @@
-import { activeDaysText, courseProgress, flag, resolveSelectedCourseId, SELECTED_COURSE_KEY, toDay, xpText } from './courses';
+import { activeDaysSub, activeDaysText, courseProgress, flag, resolveSelectedCourseId, SELECTED_COURSE_KEY, toDay, xpText } from './courses';
 
 describe('courses', () => {
   const courses = [{ courseId: 'A' }, { courseId: 'B' }, { courseId: 'C' }];
@@ -35,8 +35,9 @@ describe('courses', () => {
 
   // port of frontendDeltas shouldSayHowFarBackTheXpRecordGoesInsteadOfASaturatedRatio
   it('shouldSayHowFarBackTheXpRecordGoesInsteadOfASaturatedRatio', () => {
-    expect(activeDaysText(90, 90, 1782345600)).toBe('90 de 90 días con XP (registro desde 2026-06-25)');
-    expect(activeDaysText(2, 3, null)).toBe('2 de 3 días con XP');
-    expect(activeDaysText(2, 3, NaN)).toBe('2 de 3 días con XP');
+    expect(activeDaysText(90, 90)).toBe('90 de 90 días');
+    expect(activeDaysSub(1782345600)).toBe('con XP · registro desde 2026-06-25');
+    expect(activeDaysSub(null)).toBe('con XP');
+    expect(activeDaysSub(NaN)).toBe('con XP');
   });
 });

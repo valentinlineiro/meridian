@@ -192,7 +192,8 @@ describe('Languages', () => {
       expect(text('langActiveHeroMeta')).toBe('94.000 XP acumulado en el curso · EN → XB');
       expect(text('langAccountXp')).toBe('421.500 XP');
       expect(text('langAccountStreak')).toBe('🔥 1212 días');
-      expect(text('langAccountDays')).toBe(`1 de 1 días con XP (registro desde ${utcDay(0)})`);
+      expect(text('langAccountDays')).toBe('1 de 1 días');
+      expect(text('langAccountDaysSub')).toBe(`con XP · registro desde ${utcDay(0)}`);
       expect(text('langAccountCourses')).toBe('2 cursos');
       expect(q('#langCourseHero')!.querySelector('#langAccountXp')).toBeNull();
       expect(q('#langAccountCard')!.querySelector('#langCourseSelect')).toBeNull();
@@ -395,7 +396,8 @@ describe('Languages', () => {
       await open('/languages', { '/api/languages': { courses: [] }, '/api/stats/lang': legacy });
       expect(text('langAccountXp')).toBe('1500 XP'); // es-ES groups from five digits
       expect(text('langAccountStreak')).toBe('🔥 3 días');
-      expect(text('langAccountDays')).toBe('2 de 3 días con XP (registro desde 2026-06-25)');
+      expect(text('langAccountDays')).toBe('2 de 3 días');
+      expect(text('langAccountDaysSub')).toBe('con XP · registro desde 2026-06-25');
       expect(text('langSyncMeta')).toBe(`Sincronizado ayer · Actividad hasta ${utcDay(0)} · Path hace 2d`);
       http.verify();
     });

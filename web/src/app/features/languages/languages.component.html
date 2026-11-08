@@ -62,7 +62,7 @@
         <div class="kpis" style="margin:14px 0 0">
           <div class="kpi"><span class="kl">Total XP</span><b id="langAccountXp">{{ acc?.xp ?? '—' }}</b></div>
           <div class="kpi"><span class="kl">Racha</span><b id="langAccountStreak">{{ acc?.streak ?? '—' }}</b></div>
-          <div class="kpi"><span class="kl">Días con Actividad</span><b id="langAccountDays">{{ acc?.days ?? '—' }}</b></div>
+          <div class="kpi"><span class="kl">Días con Actividad</span><b id="langAccountDays">{{ acc?.days ?? '—' }}</b>@if (acc?.daysSub) {<small id="langAccountDaysSub">{{ acc?.daysSub }}</small>}</div>
           <div class="kpi"><span class="kl">Catálogo</span><b id="langAccountCourses">{{ acc?.courses ?? '—' }}</b></div>
         </div>
         <div class="muted" id="langSyncMeta" style="font-size:12px;margin-top:10px">{{ acc?.sync }}</div>
