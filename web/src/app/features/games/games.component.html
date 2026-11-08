@@ -21,7 +21,7 @@
   <div class="cindex" id="gamesRange" role="group" aria-label="Periodo de análisis"><span class="muted" style="align-self:center">Periodo</span>@for (r of ranges; track r.k) {<button type="button" class="btn btn-g" [id]="'gr-' + r.k" [attr.aria-pressed]="range() === r.k" (click)="range.set(r.k)">{{ r.l }}</button>}</div>
   <details class="cgroup" id="cg-games-cmp" open><summary>Comparativa</summary>
     <app-games-table [summary]="summary() ?? undefined" [range]="range()" />
-    <p class="muted">n (columna) = observaciones con tiempo (mediana y n final). Eficiencia y % que gana a la media añaden su propio n (observaciones con media global) solo cuando es distinto del de la columna. Racha «—» = sin racha activa; el último registro está en la cabecera. Δ eficiencia = cambio relativo frente al periodo anterior equivalente, con n actual/anterior; «—» si no es comparable.</p>
+    <p class="muted">n (columna) = observaciones con tiempo. Eficiencia y % que gana a la media añaden su n solo si difiere. Racha «—» = sin racha activa (último registro en la cabecera). Δ eficiencia = cambio relativo frente al periodo anterior equivalente (n actual/anterior); «—» si no es comparable.</p>
       @if (range() !== '28') {<p class="muted" id="gamesRangeNote">Con un periodo distinto de 28 días la tabla no marca flechas ni compara con el ruido del juego: la etiqueta de cada juego es siempre a 28 días.</p>}
   </details>
   <details class="cgroup" id="cg-games-traj" open><summary>Trayectoria</summary>
