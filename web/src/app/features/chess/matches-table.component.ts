@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
+import { Component, computed, inject, input } from '@angular/core';
 import { formatMatchDate } from '../../core/format';
 import { es, fmt, Openings } from './chess.model';
 import { FilterGroup, MatchesService, MatchRow } from './matches.service';
@@ -50,7 +50,6 @@ const CHIPS: { group: FilterGroup; label: string; options: [string, string][] }[
 /** The "Partidas" card: chips, the expanded filters, the table and its pager. */
 @Component({
   selector: 'app-matches-table',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @let f = m.filters();
     <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px"><h2>Partidas</h2><span class="muted" style="font-size:12px" id="chessMatchesSubtitle">{{ subtitle() }}</span><a class="btn btn-g" style="font-size:11px;padding:3px 8px;margin-left:8px" href="/api/export/matches.csv" download>Exportar CSV</a></div>
@@ -84,16 +83,9 @@ const CHIPS: { group: FilterGroup; label: string; options: [string, string][] }[
     <table class="tbl"><thead><tr><th>Fecha</th><th>Rival</th><th>Tipo</th><th>ELO</th><th>Color</th><th>Resultado</th><th>Fin</th><th>Rev.</th></tr></thead>
       <tbody id="mb">
         @for (r of rows(); track (r.id ?? r.date + r.opp)) {
-          <tr [class.gamerow]="!!r.id"
-              [attr.role]="r.id ? 'button' : null"
-              [attr.tabindex]="r.id ? 0 : null"
-              [attr.aria-label]="r.id ? ('Ver partida vs ' + r.opp + ', ' + r.date) : null"
-              [attr.title]="r.id ? 'Ver partida' : null"
-              (click)="r.id && m.open(r.id)"
-              (keydown.enter)="r.id && m.open(r.id)"
-              (keydown.space)="$event.preventDefault(); r.id && m.open(r.id)">
+          <tr [class.gamerow]="!!r.id" [attr.title]="r.id ? 'Ver partida' : null" (click)="r.id && m.open(r.id)">
             <td data-l="Fecha" [attr.title]="r.fullDate">{{ r.date }}</td>
-            <td data-l="Rival">{{ r.opp }}@if (r.seg) {<span class="pill" style="font-size:10px;margin-left:4px;opacity:.85">{{ r.seg }}</span>}</td>
+            <td data-l="Rival">@if (r.id) {<button type="button" class="rowbtn" [attr.aria-label]="'Ver partida vs ' + r.opp + ', ' + r.date" (click)="$event.stopPropagation(); m.open(r.id)">{{ r.opp }}</button>} @else {{{ r.opp }}}@if (r.seg) {<span class="pill" style="font-size:10px;margin-left:4px;opacity:.85">{{ r.seg }}</span>}</td>
             <td data-l="Tipo"><span class="pill" [style.border-color]="r.pvp ? '#58a6ff' : null" [style.color]="r.pvp ? '#a8c8ff' : null">{{ r.type }}</span>@if (r.opening) {<span class="pill" style="font-size:10px;margin-left:4px;opacity:.75">{{ r.opening }}</span>}@if (r.phase) {<span class="pill" style="font-size:10px;margin-left:4px;opacity:.8">{{ r.phase }}</span>}</td>
             <td data-l="ELO">{{ r.elo }}</td>
             <td data-l="Color">{{ r.color }}</td>
