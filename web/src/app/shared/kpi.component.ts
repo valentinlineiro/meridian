@@ -4,7 +4,7 @@ import { Component, input } from '@angular/core';
 @Component({
   selector: 'm-kpi',
   host: { class: 'kpi' },
-  template: '<label>{{ label() }}</label><b>{{ value() }}</b><small>{{ sub() }}</small>',
+  template: '<span class="kl">{{ label() }}</span><b>{{ value() }}</b><small>{{ sub() }}</small>',
 })
 export class Kpi {
   readonly label = input.required<string>();

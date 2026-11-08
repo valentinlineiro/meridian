@@ -16,7 +16,7 @@ describe('m-kpi', () => {
   it('shouldRenderLabelValueAndSubWhenGiven', async () => {
     const el = await render(Kpi, { label: 'Score', value: '62,0 %', sub: 'victoria 1 · tablas 0,5' });
     expect(el.classList).toContain('kpi');
-    expect(el.innerHTML.replace(/<!--.*?-->/g, '')).toBe('<label>Score</label><b>62,0 %</b><small>victoria 1 · tablas 0,5</small>');
+    expect(el.innerHTML.replace(/<!--.*?-->/g, '')).toBe('<span class="kl">Score</span><b>62,0 %</b><small>victoria 1 · tablas 0,5</small>');
   });
 
   it('shouldLeaveSubEmptyWhenMissing', async () => {
