@@ -32,11 +32,11 @@ const MISSING = 'No hay partida completa guardada para esta partida.';
             @let n = ply();
             <div id="gBody" style="display:block">
               <div class="gamegrid"><m-chess-board id="gBoard" [fen]="n ? g.plies[n - 1].fen : g.startFen" [flip]="g.userColor === 'black'" />
-                <div id="gMoves" class="moves">@for (p of g.plies; track $index; let i = $index) {@if (i % 2 === 0) {<span class="muted">{{ i / 2 + 1 }}.</span>{{ ' ' }}}<a href="#" class="gm" [class.on]="i + 1 === n" (click)="go($event, i + 1)">{{ p.san }}</a>{{ ' ' }}}</div></div>
-              <div id="gMissed" class="muted" style="margin-top:8px">@for (k of g.missedPlies ?? []; track k) {<div><a href="#" (click)="go($event, k - 1)">Jugada {{ k }} ({{ g.plies[k - 1]?.san ?? '' }}): el rival tenía mate en 1 y lo jugó</a></div>}</div>
+                <div id="gMoves" class="moves">@for (p of g.plies; track $index; let i = $index) {@if (i % 2 === 0) {<span class="muted">{{ i / 2 + 1 }}.</span>{{ ' ' }}}<a href="#" class="gm" [class.on]="i + 1 === n" (click)="go($event, i + 1)" (keydown.space)="go($event, i + 1)">{{ p.san }}</a>{{ ' ' }}}</div></div>
+              <div id="gMissed" class="muted" style="margin-top:8px">@for (k of g.missedPlies ?? []; track k) {<div><a href="#" (click)="go($event, k - 1)" (keydown.space)="go($event, k - 1)">Jugada {{ k }} ({{ g.plies[k - 1]?.san ?? '' }}): el rival tenía mate en 1 y lo jugó</a></div>}</div>
               <div id="gErrors" class="muted" style="margin-top:8px">
                 @if (g.engineSummary; as sm) {<div>Según el motor: {{ sm.serious }} errores graves en {{ sm.moves }} jugadas tuyas{{ sm.acpl == null ? '' : ' · pérdida media ' + round(sm.acpl) + ' cp' }}</div>}
-                @for (x of g.engineWorst ?? []; track x.ply) {<div><a href="#" (click)="go($event, x.ply - 1)">Jugada {{ x.ply }} ({{ g.plies[x.ply - 1]?.san ?? '' }}): pierdes {{ x.loss }} cp; el motor prefería {{ x.bestSan || x.best }}</a></div>}
+                @for (x of g.engineWorst ?? []; track x.ply) {<div><a href="#" (click)="go($event, x.ply - 1)" (keydown.space)="go($event, x.ply - 1)">Jugada {{ x.ply }} ({{ g.plies[x.ply - 1]?.san ?? '' }}): pierdes {{ x.loss }} cp; el motor prefería {{ x.bestSan || x.best }}</a></div>}
               </div>
               <div class="gamectl"><button class="btn btn-g" id="gPrev" type="button" [disabled]="n === 0" (click)="step(-1)" aria-label="Jugada anterior">‹</button><span class="muted" id="gPos">{{ n }} / {{ g.plies.length }}</span><button class="btn btn-g" id="gNext" type="button" [disabled]="n === g.plies.length" (click)="step(1)" aria-label="Jugada siguiente">›</button><a class="btn btn-g" id="gPgn" download style="text-decoration:none;margin-left:auto" [href]="'/api/me/matches/' + enc(id) + '/game.pgn'">Descargar PGN</a></div>
             </div>
@@ -107,7 +107,7 @@ export class MatchDetailModal {
     else if (e.key === 'ArrowLeft') { e.preventDefault(); this.step(-1); }
     else if (e.key === 'ArrowRight') { e.preventDefault(); this.step(1); }
     else if (e.key === 'Tab') {
-      const f = [...this.host.querySelectorAll<HTMLElement>('#gameModal button:not([disabled]), #gameModal a[href]:not(.gm)')];
+      const f = [...this.host.querySelectorAll<HTMLElement>('#gameModal button:not([disabled]), #gameModal a[href]')];
       if (!f.length) return;
       const i = f.indexOf(document.activeElement as HTMLElement);
       e.preventDefault();

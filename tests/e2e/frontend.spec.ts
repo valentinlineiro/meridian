@@ -153,6 +153,94 @@ test.describe('Frontend E2E Integration Suite', () => {
     await expect(openBtn).toBeFocused();
   });
 
+  test('shouldSupportKeyboardActivationOnMatchRowsAndNavigateMoveLinks', async ({ page }) => {
+    // Intercept matches and game API to provide a deterministic game with plies
+    await page.route('**/api/matches*', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          rows: [
+            {
+              match_id: 'm-e2e-1',
+              ply_count: 2,
+              played_at: 1728086400,
+              opponent_name: 'Bot 1',
+              opponent_type: 'bot',
+              opponent_segment: 'neural',
+              user_color: 'white',
+              result: 'win',
+              end_condition: 'checkmate',
+              reviewed: 1,
+            },
+          ],
+          total: 1,
+        }),
+      });
+    });
+
+    await page.route('**/api/me/matches/*/game', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          ok: true,
+          userColor: 'white',
+          opponent: 'Bot 1',
+          startFen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+          plies: [
+            { san: 'e4', fen: 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1' },
+            { san: 'e5', fen: 'rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2' },
+          ],
+        }),
+      });
+    });
+
+    // Session login to /chess
+    await page.goto('/login?next=%2Fchess');
+    await page.fill('input[name="email"]', 'owner@localhost');
+    await page.fill('input[name="password"]', 'local-dev-password-123');
+    await page.click('button[type="submit"]');
+
+    await expect(page).toHaveURL(/\/chess/);
+
+    // Verify row accessibility attributes
+    const row = page.locator('#mb tr.gamerow').first();
+    await expect(row).toBeVisible();
+    await expect(row).toHaveAttribute('role', 'button');
+    await expect(row).toHaveAttribute('tabindex', '0');
+    await expect(row).toHaveAttribute('aria-label', /Ver partida/);
+
+    // Open game modal with Enter key
+    await row.focus();
+    await page.keyboard.press('Enter');
+
+    const modal = page.locator('#gameModal');
+    await expect(modal).toBeVisible();
+    await expect(modal.locator('#gClose')).toBeFocused();
+
+    // Tab navigates into move links
+    await page.keyboard.press('Tab');
+    const firstMove = modal.locator('#gMoves .gm').first();
+    await expect(firstMove).toBeFocused();
+    await expect(firstMove).toHaveText('e4');
+
+    // Space key activates move link
+    await page.keyboard.press('Space');
+    await expect(modal.locator('#gPos')).toHaveText('1 / 2');
+
+    // Tab moves to next move link
+    await page.keyboard.press('Tab');
+    const secondMove = modal.locator('#gMoves .gm').nth(1);
+    await expect(secondMove).toBeFocused();
+    await expect(secondMove).toHaveText('e5');
+
+    // Escape closes modal and returns focus to the match row
+    await page.keyboard.press('Escape');
+    await expect(modal).not.toBeVisible();
+    await expect(row).toBeFocused();
+  });
+
   test('shouldLogoutAndClearSession', async ({ page }) => {
     // Session login
     await page.goto('/login?next=%2Foverview');

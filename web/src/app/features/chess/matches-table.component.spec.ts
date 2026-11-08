@@ -56,19 +56,28 @@ describe('MatchesTable', () => {
       new Date('2026-10-05T00:00:00Z').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }), hostile + ' Neural', 'BotEspañolaFinal', '—', 'Blancas', 'Victoria', 'Mate · pasillo', '✓']);
     expect(a.className).toBe('gamerow');
     expect(a.getAttribute('tabindex')).toBe('0');
+    expect(a.getAttribute('role')).toBe('button');
+    expect(a.getAttribute('aria-label')).toContain('Ver partida vs ' + hostile);
     expect([...b.querySelectorAll('td')].map((td) => td.textContent!.trim())).toEqual([
       new Date('2026-10-05T00:00:00Z').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }), 'Bot 8', 'PvP', '1210', 'Negras', 'Derrota', 'Desconexión', '']);
     expect(b.className).toBe(''); // no stored moves: not a game the viewer can open
+    expect(b.getAttribute('role')).toBeNull();
+    expect(b.getAttribute('aria-label')).toBeNull();
     expect(b.querySelector('td[data-l="Resultado"] .pill-loss')).not.toBeNull();
   });
 
-  it('shouldOpenTheGameWhenARowIsClickedOrEntered', async () => {
+  it('shouldOpenTheGameWhenARowIsClickedOrKeyboardActivated', async () => {
     await answer();
     await click('#mb tr.gamerow');
     expect(svc.openId()).toBe('m1');
     svc.openId.set(null);
     el.querySelector('#mb tr.gamerow')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
     expect(svc.openId()).toBe('m1');
+    svc.openId.set(null);
+    const spaceEv = new KeyboardEvent('keydown', { key: ' ', cancelable: true });
+    el.querySelector('#mb tr.gamerow')!.dispatchEvent(spaceEv);
+    expect(svc.openId()).toBe('m1');
+    expect(spaceEv.defaultPrevented).toBe(true);
   });
 
   it('shouldFilterMatchesByChipAndResetPage', async () => {

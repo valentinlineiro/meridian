@@ -93,7 +93,7 @@ describe('MatchDetailModal', () => {
     await open();
     const close = el.querySelector<HTMLButtonElement>('#gClose')!;
     expect(document.activeElement).toBe(close);
-    const focusables = [...el.querySelectorAll<HTMLElement>('#gameModal button:not([disabled]), #gameModal a[href]:not(.gm)')];
+    const focusables = [...el.querySelectorAll<HTMLElement>('#gameModal button:not([disabled]), #gameModal a[href]')];
     const last = focusables[focusables.length - 1];
     expect(last.id).toBe('gPgn');
     await key('Tab', true); // from the first, backwards: the last
@@ -104,6 +104,25 @@ describe('MatchDetailModal', () => {
     expect(el.querySelector('#gameModal')).toBeNull();
     expect(svc.openId()).toBeNull();
     expect(document.activeElement).toBe(opener);
+  });
+
+  it('shouldFocusMoveLinksDuringTabNavigationAndAllowSpaceActivation', async () => {
+    await open();
+    const close = el.querySelector<HTMLButtonElement>('#gClose')!;
+    expect(document.activeElement).toBe(close);
+    await key('Tab');
+    const firstMove = el.querySelector<HTMLAnchorElement>('#gMoves .gm')!;
+    expect(document.activeElement).toBe(firstMove);
+    expect(firstMove.textContent?.trim()).toBe('e4');
+
+    firstMove.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true }));
+    await tick();
+    expect(text('gPos')).toBe('1 / 7');
+
+    await key('Tab');
+    const secondMove = el.querySelectorAll<HTMLAnchorElement>('#gMoves .gm')[1];
+    expect(document.activeElement).toBe(secondMove);
+    expect(secondMove.textContent?.trim()).toBe('e5');
   });
 
   it('shouldCloseWhenTheBackdropOrTheCloseButtonIsClicked', async () => {
