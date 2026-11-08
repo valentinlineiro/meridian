@@ -2,7 +2,7 @@ import tseslint from 'typescript-eslint';
 import angular from 'angular-eslint';
 
 export default tseslint.config(
-  { ignores: ['dist/**', '.angular/**'] },
+  { ignores: ['dist/**', '.angular/**', 'src/app/shared/evaluation-fixtures.ts'] // generado (web/scripts/evaluation-fixtures.gen.ts) },
   {
     files: ['src/**/*.ts'],
     extends: [...tseslint.configs.recommended, ...angular.configs.tsRecommended],
