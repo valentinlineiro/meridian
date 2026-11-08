@@ -7,7 +7,7 @@ import { StatsService } from '../core/stats.service';
   selector: 'app-shell',
   imports: [RouterOutlet, SideNav],
   template: `
-    <header><div class="h-left"><h1>Meridian</h1>@if (stats.chessUpdated(); as m) {<small id="syncMeta">{{ m }}</small>}</div></header>
+    <header><div class="h-left"><p class="brand">Meridian</p>@if (stats.chessUpdated(); as m) {<small id="syncMeta">{{ m }}</small>}</div></header>
     <main class="shell">
       <nav app-side-nav></nav>
       <div class="content"><router-outlet /></div>

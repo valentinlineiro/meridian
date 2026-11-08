@@ -135,7 +135,7 @@ function bodyView(b: Body, w: Win) {
         <div class="hero-card" style="margin-bottom:12px">
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
             <div>
-              <h2 style="margin:0;font-size:18px">¿Qué ha cambiado?</h2>
+              <h1>¿Qué ha cambiado?</h1>
               <div class="muted" style="font-size:12px;margin-top:2px">{{ v.header.sub }}</div>
             </div>
             @if (v.header.canMark) {<button type="button" class="btn btn-p" id="btnMarkSeen" [disabled]="saving()" (click)="markSeen()">{{ markFailed() ? 'No se pudo guardar; reintenta' : 'Marcar como visto' }}</button>}
@@ -152,13 +152,13 @@ function bodyView(b: Body, w: Win) {
       @if (b?.empty) {<div id="changesEmpty" class="empty">{{ b!.empty }}</div>}
       <div id="changesFindings" style="margin-bottom:16px">@if (b?.findings; as f) {
         @if (f === 'na') {<ng-container *ngTemplateOutlet="na; context: { $implicit: 'Evaluaciones' }" />} @else {
-          <h2 style="margin:18px 0 10px;font-size:14px;letter-spacing:.05em;text-transform:uppercase;color:#8ea0b8">{{ f.head }}</h2>
+          <h2 style="margin:18px 0 10px">{{ f.head }}</h2>
           @if (f.legend) {<div class="muted" style="font-size:12px;margin-bottom:10px">Qué se observó, con qué criterio y qué no se puede afirmar todavía.</div>}
           @if (f.evalsNa) {<ng-container *ngTemplateOutlet="na; context: { $implicit: 'Evaluaciones' }" />}
           @if (f.evals.length) {<m-evaluation-cards [evaluations]="f.evals" [findingFor]="f.findingFor" [win]="f.win" />}
           @for (e of f.events; track $index) {
             @if ('na' in e) {<ng-container *ngTemplateOutlet="na; context: { $implicit: e.title }" />} @else {
-              <div class="card" style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><h3 style="margin:0;font-size:14px;color:#e6edf3">{{ e.title }}</h3><span><span class="pill pill-win">EVENTO</span>&ngsp;<span class="pill pill-scope">{{ e.category }}</span></span></div><div style="font-size:13px;font-weight:600;color:#c8d7ea;margin-bottom:6px">{{ e.claim }}</div><div class="muted" style="font-size:12px"><strong>Evidencia:</strong> {{ e.evidence }}</div></div>
+              <div class="card" style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><h3 style="margin:0">{{ e.title }}</h3><span><span class="pill pill-win">EVENTO</span>&ngsp;<span class="pill pill-scope">{{ e.category }}</span></span></div><div style="font-size:13px;font-weight:600;color:#c8d7ea;margin-bottom:6px">{{ e.claim }}</div><div class="muted" style="font-size:12px"><strong>Evidencia:</strong> {{ e.evidence }}</div></div>
             }
           }
           @if (f.findingsNa) {<ng-container *ngTemplateOutlet="na; context: { $implicit: 'Hallazgos' }" />}
@@ -182,7 +182,7 @@ function bodyView(b: Body, w: Win) {
         </div>
       }</div>
     </section>
-    <ng-template #na let-title><div class="card" style="margin-bottom:10px"><h3 style="margin:0;font-size:14px;color:#e6edf3">{{ title }}</h3><div class="muted" style="font-size:12px;margin-top:6px">No disponible</div></div></ng-template>
+    <ng-template #na let-title><div class="card" style="margin-bottom:10px"><h3 style="margin:0">{{ title }}</h3><div class="muted" style="font-size:12px;margin-top:6px">No disponible</div></div></ng-template>
   `,
 })
 export class Changes {

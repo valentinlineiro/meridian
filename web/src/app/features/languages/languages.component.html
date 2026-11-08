@@ -1,6 +1,7 @@
 <!-- Port of src/frontend.ts <section id="langTab"> (lines 289–471). Until the data answers, the legacy placeholders ("—") show; never 0. -->
 @let s = state();
 <section id="langTab">
+  <h1 class="sr-only">Idiomas</h1>
   @if (s?.kind === 'empty') {
     <div id="langEmpty" class="empty">Sin datos de Languages — sincroniza con la extensión.</div>
   } @else if (s?.kind === 'failed') {
@@ -74,7 +75,7 @@
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
           <div>
             <div style="display:flex;align-items:center;gap:8px">
-              <h2 style="margin:0;font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:#8ea0b8">Actividad de cuenta · últimos 7 días</h2>
+              <h2 style="margin:0">Actividad de cuenta · últimos 7 días</h2>
               <span class="pill pill-scope">CUENTA</span>
             </div>
             <div class="muted" style="font-size:11px;margin-top:2px">Incluye actividad de todos los cursos y actividades registradas en la fuente.</div>
@@ -150,7 +151,7 @@
         <!-- Cambios Observados (Longitudinal #16.9) -->
         <div class="card" id="langObservedChangesCard" style="margin:12px 0">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-            <h2 style="margin:0;font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:#8ea0b8">Cambios observados</h2>
+            <h2 style="margin:0">Cambios observados</h2>
           </div>
           <div id="langObservedChangesBody">
             <div id="langObservedSynthesis" style="font-weight:700;font-size:14px;color:#c8d7ea;margin-bottom:8px">{{ o?.synthesis ?? '—' }}</div>
