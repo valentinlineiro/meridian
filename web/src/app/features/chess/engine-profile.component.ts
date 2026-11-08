@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
+import { Component, computed, inject, input, output } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { Kpi } from '../../shared/kpi.component';
 import { dec1, pc0 } from './chess.model';
@@ -168,7 +168,6 @@ function view(b: Profile, cut: string) {
 @Component({
   selector: 'app-engine-profile',
   imports: [Kpi, NgTemplateOutlet],
-  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './engine-profile.component.html',
 })
 export class EngineProfile {

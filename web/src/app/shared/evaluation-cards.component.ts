@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { Component, computed, input } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { colorConclusion, ColorConclusion } from '../core/format';
 import { list, safe } from '../core/guard';
@@ -164,7 +164,6 @@ export function evaluationCards(evals: readonly unknown[], findingFor: (e: Evalu
   selector: 'm-evaluation-cards',
   imports: [NgTemplateOutlet],
   host: { style: 'display:contents' },
-  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ng-template #body let-c>
       @if (c.finding) {

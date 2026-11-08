@@ -79,8 +79,9 @@ svg text{font-family:system-ui,sans-serif}
  select,input{max-width:100%}
 }
 
-.gamerow{cursor:pointer}.gamerow:hover,.gamerow:focus{background:#16253b;outline:none}
-.gamerow:focus-visible{outline:2px solid #7aa7e6;outline-offset:-2px}
+.gamerow{cursor:pointer}.gamerow:hover,.gamerow:focus-within{background:#16253b}
+.rowbtn{all:inherit;padding:0;cursor:pointer;text-align:left}
+.rowbtn:focus-visible{outline:2px solid #7aa7e6;outline-offset:2px}
 .modal{position:fixed;inset:0;background:rgba(5,10,18,.75);align-items:center;justify-content:center;z-index:50;padding:12px}
 .gamecard{width:min(760px,100%);max-height:92vh;overflow:auto}
 .gamehead{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}

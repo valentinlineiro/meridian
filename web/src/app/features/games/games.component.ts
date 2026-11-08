@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { catchError, forkJoin, Observable, of } from 'rxjs';
 import { ApiClient } from '../../core/api-client';
@@ -16,7 +16,6 @@ const HERO_IDLE = { label: 'LinkedIn Games · racha actual', streak: '—', meta
 @Component({
   selector: 'app-games',
   imports: [GamesChart, GamesEntryModal, GamesTable],
-  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './games.component.html',
 })
 export class Games {

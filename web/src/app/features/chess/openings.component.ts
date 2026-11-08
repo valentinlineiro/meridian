@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
+import { Component, computed, inject, input, signal } from '@angular/core';
 import { Compare } from './compare.component';
 import { Group, list, Mates, Openings as OpeningStats, pc0, Phases, safe, Tally, Threats } from './chess.model';
 import { MatchesService } from './matches.service';
@@ -29,7 +29,6 @@ function threats(th: Threats | null | undefined) {
 @Component({
   selector: 'app-openings',
   imports: [Compare],
-  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (mates(); as m) {
       <div class="card" id="matesCard" style="display:block"><h2>Cómo terminan tus mates</h2>

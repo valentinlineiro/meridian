@@ -205,10 +205,8 @@ test.describe('Frontend E2E Integration Suite', () => {
     await expect(page).toHaveURL(/\/chess/);
 
     // Verify row accessibility attributes
-    const row = page.locator('#mb tr.gamerow').first();
+    const row = page.locator('#mb tr.gamerow button.rowbtn').first();
     await expect(row).toBeVisible();
-    await expect(row).toHaveAttribute('role', 'button');
-    await expect(row).toHaveAttribute('tabindex', '0');
     await expect(row).toHaveAttribute('aria-label', /Ver partida/);
 
     // Open game modal with Enter key

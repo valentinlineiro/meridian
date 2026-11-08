@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { Component, computed, input } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { pc1, pctCi } from '../../core/format';
 import { dec1, Group, list, NA, pc0, safe } from './chess.model';
@@ -29,7 +29,6 @@ function row(g: Group, total: number) {
 @Component({
   selector: 'm-compare',
   imports: [NgTemplateOutlet],
-  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @let rs = rows();
     @if (rs === null) {

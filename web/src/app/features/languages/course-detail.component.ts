@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { Component, computed, input, output } from '@angular/core';
 import { Course, flag, Section, xpText } from '../../core/courses';
 import { list, safe } from '../../core/guard';
 import { cefrLabel, Detail, looseFromTo, NA } from './languages.view';
@@ -28,7 +28,6 @@ function sectionRows(sections: Section[]) {
 
 @Component({
   selector: 'app-course-detail',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div id="langDetailView">
       <div style="margin-bottom:12px">

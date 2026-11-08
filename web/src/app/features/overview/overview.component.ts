@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { NgTemplateOutlet } from '@angular/common';
 import { RouterLink } from '@angular/router';
@@ -149,7 +149,6 @@ function view(d: OverviewData) {
 @Component({
   selector: 'app-overview',
   imports: [RouterLink, NgTemplateOutlet],
-  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './overview.component.html',
 })
 export class Overview {
