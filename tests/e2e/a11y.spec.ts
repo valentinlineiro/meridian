@@ -19,7 +19,7 @@ test.describe('Accesibilidad (axe)', () => {
       await expect(page).toHaveURL(new RegExp(`${route}$`)); // una ruta inexistente redirige a /overview
       await page.waitForLoadState('networkidle');
       const { violations } = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
-      expect(violations.map((v) => `${v.id}: ${v.nodes.length} (${v.nodes[0].target})`)).toEqual([]);
+      expect(violations.map((v) => `${v.id}: ${v.nodes.length} (${v.nodes[0]?.target})`)).toEqual([]);
     });
   }
 });
