@@ -83,8 +83,15 @@ const CHIPS: { group: FilterGroup; label: string; options: [string, string][] }[
     }
     <table class="tbl"><thead><tr><th>Fecha</th><th>Rival</th><th>Tipo</th><th>ELO</th><th>Color</th><th>Resultado</th><th>Fin</th><th>Rev.</th></tr></thead>
       <tbody id="mb">
-        @for (r of rows(); track $index) {
-          <tr [class.gamerow]="!!r.id" [attr.tabindex]="r.id ? 0 : null" [attr.title]="r.id ? 'Ver partida' : null" (click)="r.id && m.open(r.id)" (keydown.enter)="r.id && m.open(r.id)">
+        @for (r of rows(); track (r.id ?? r.date + r.opp)) {
+          <tr [class.gamerow]="!!r.id"
+              [attr.role]="r.id ? 'button' : null"
+              [attr.tabindex]="r.id ? 0 : null"
+              [attr.aria-label]="r.id ? ('Ver partida vs ' + r.opp + ', ' + r.date) : null"
+              [attr.title]="r.id ? 'Ver partida' : null"
+              (click)="r.id && m.open(r.id)"
+              (keydown.enter)="r.id && m.open(r.id)"
+              (keydown.space)="$event.preventDefault(); r.id && m.open(r.id)">
             <td data-l="Fecha" [attr.title]="r.fullDate">{{ r.date }}</td>
             <td data-l="Rival">{{ r.opp }}@if (r.seg) {<span class="pill" style="font-size:10px;margin-left:4px;opacity:.85">{{ r.seg }}</span>}</td>
             <td data-l="Tipo"><span class="pill" [style.border-color]="r.pvp ? '#58a6ff' : null" [style.color]="r.pvp ? '#a8c8ff' : null">{{ r.type }}</span>@if (r.opening) {<span class="pill" style="font-size:10px;margin-left:4px;opacity:.75">{{ r.opening }}</span>}@if (r.phase) {<span class="pill" style="font-size:10px;margin-left:4px;opacity:.8">{{ r.phase }}</span>}</td>
