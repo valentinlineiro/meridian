@@ -22,6 +22,7 @@
   <details class="cgroup" id="cg-games-cmp" open><summary>Comparativa</summary>
     <app-games-table [summary]="summary() ?? undefined" [range]="range()" />
     <p class="muted">n = observaciones con media global usadas (eficiencia y % que gana a la media) o con tiempo (mediana y n final). Δ eficiencia = cambio relativo frente al periodo anterior equivalente, con n actual/anterior; «—» si no es comparable.</p>
+      @if (range() !== '28') {<p class="muted" id="gamesRangeNote">Con un periodo distinto de 28 días la tabla no marca flechas ni compara con el ruido del juego: la etiqueta de cada juego es siempre a 28 días.</p>}
   </details>
   <details class="cgroup" id="cg-games-traj" open><summary>Trayectoria</summary>
     @let t = traj();
@@ -41,10 +42,12 @@
         } @else {
           <section class="card gcard" [class.det]="c.det">
             <h3>{{ c.name }}<span [class]="c.badgeClass" style="margin-left:8px">{{ c.badge }}</span></h3>
+            <p class="gcap">Señal · siempre a 28 días</p>
             @for (t of c.interp; track $index) {<p [class]="$first ? 'ginterp' : 'muted'">{{ t }}</p>}
-            @for (t of c.lines; track $index) {<p>{{ t }}</p>}
+            <p class="gcap">Periodo: {{ c.window }}</p>
+            <dl class="gmetrics">@for (m of c.metrics; track m.l) {<div><dt>{{ m.l }}</dt><dd>{{ m.v }}</dd>@if (m.s) {<dd class="muted">{{ m.s }}</dd>}</div>}</dl>
             <div>@if (c.spark) {<svg class="spark" viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true"><polyline [attr.points]="c.spark" fill="none" stroke="#7aa7e6" stroke-width="1.5" vector-effect="non-scaling-stroke" /></svg>}</div>
-            <p class="muted">Línea: mediana móvil de 28 días (suavizada).</p>
+            <p class="gcap">Mediana móvil de 28 días (suavizada)</p>
           </section>
         }
       }

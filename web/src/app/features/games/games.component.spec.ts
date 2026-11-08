@@ -2,6 +2,7 @@ import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting, TestRequest } from '@angular/common/http/testing';
 import { Games } from './games.component';
+import { chartGeometry } from './games-chart.component';
 
 // Port of tests/frontendGames.test.ts (the vm sandbox becomes component tests). Each legacy `it` keeps its name.
 const blk = (o: Record<string, any> = {}) => ({
@@ -63,7 +64,9 @@ describe('Games', () => {
   const cardsOf = () => [...el.querySelectorAll('#gamesList > section')];
   const nameOf = (c: Element) => visible(c.querySelector('h3')!);
   const badgeOf = (c: Element) => c.querySelector('h3 .pill')!;
-  const linesOf = (c: Element) => [...c.children].slice(1).map((x) => x.textContent!.trim());
+  // Card content after the title: captions (.gcap) are left out and each metric is "label | value | detail".
+  const linesOf = (c: Element) => [...c.children].slice(1).filter((x) => !x.classList.contains('gcap'))
+    .flatMap((x) => x.tagName === 'DL' ? [...x.children].map((m) => [...m.children].map((e) => e.textContent!.trim()).join(' | ')) : [x.textContent!.trim()]);
   const click = async (sel: string) => { el.querySelector<HTMLElement>(sel)!.click(); await tick(); };
   const setRange = (r: string) => click('#gr-' + r);
   const sortBy = (k: string) => click('#gth-' + k + ' button');
@@ -76,14 +79,15 @@ describe('Games', () => {
   describe('games tab: a stale manual log is not a zero streak', () => {
     it('shouldSayNoRecordSinceInsteadOfZeroDaysWhenTheLogIsStale', async () => {
       await open({ zip: game({ beatStreak: { current: 0, max: 8 } }) }, undefined, { playStreak: { current: 0, max: 122 } });
-      expect(linesOf(cardsOf()[0])).toContain('Racha ganando a la media: sin registro desde 3 nov 2026 (máx 8)');
-      expect(cellsOf()[0]).toContain('sin registro desde 3 nov 2026');
+      expect(linesOf(cardsOf()[0])).toContain('Racha ganando a la media | — | máx 8 · sin racha activa');
+      expect(cellsOf()[0][5]).toBe('—');
+      expect(el.querySelector('#gamesRows tr')!.children[5].getAttribute('title')).toBe('Sin registro desde 3 nov 2026');
       expect(cellsOf()[0]).not.toContain('0 días');
     });
 
     it('shouldKeepAnObservedZeroWhenTheLogIsCurrent', async () => {
       await open({ zip: game({ beatStreak: { current: 0, max: 8 } }) });
-      expect(linesOf(cardsOf()[0])).toContain('Racha ganando a la media: 0 días (máx 8)');
+      expect(linesOf(cardsOf()[0])).toContain('Racha ganando a la media | 0 días | máx 8');
     });
   });
 
@@ -131,7 +135,8 @@ describe('Games', () => {
       const cards = cardsOf();
       expect(cards.map(nameOf).sort()).toEqual(['Tango', 'Zip']);
       const lines = linesOf(cards[0]);
-      for (const l of ['Eficiencia (28 días): ×1,13 · n=28 (−13 % vs periodo previo (n=28/27))', 'Gana a la media: 65 % · n=28', 'Tiempo típico: 0:52 (P25–P75 0:43–1:04) · n=30', 'Mejor marca: 0:32 (30 sep 2026)', 'Racha ganando a la media: 1 día (máx 8)']) expect(lines).toContain(l);
+      expect(cards[0].querySelectorAll('.gcap')[1].textContent).toContain('Periodo: 28 días');
+      for (const l of ['Eficiencia | ×1,13 | n=28 · −13 % vs periodo previo (n=28/27)', 'Gana a la media | 65 % | n=28', 'Tiempo típico | 0:52 | P25–P75 0:43–1:04 · n=30', 'Mejor marca | 0:32 | 30 sep 2026', 'Racha ganando a la media | 1 día | máx 8']) expect(lines).toContain(l);
       expect(el.querySelector('#gamesHeroDist')).toBeNull(); // no pooled "beats the average" across games
       expect(text('gamesHeroStreak')).toBe('48 días seguidos');
       expect(text('gamesHeroMeta')).toBe('Racha máxima 122 días');
@@ -202,7 +207,7 @@ describe('Games', () => {
       expect(cards).toHaveLength(2);
       const zip = cards.find((c) => nameOf(c) === 'Zip')!, tango = cards.find((c) => nameOf(c) === 'Tango')!;
       expect(linesOf(zip)).toEqual(['No disponible']);
-      expect(linesOf(tango)).toContain('Mejor marca: 0:32 (30 sep 2026)');
+      expect(linesOf(tango)).toContain('Mejor marca | 0:32 | 30 sep 2026');
     });
 
     it('shouldKeepTheChipsWhenTheDayBodyIsMalformed', async () => {
@@ -214,12 +219,26 @@ describe('Games', () => {
   describe('games comparison table', () => {
     const two = () => ({ zip: game({ n: 170, windows: { ...game().windows, '28': win({ eff: { median: 2.08, nEff: 28 }, beat: { rate: 0.84, k: 24, nBeat: 28 } }) } }), tango: game() });
 
-    it('shouldShowOneRowPerGameWithTheSampleSizeNextToEveryPercentageAndMedian', async () => {
+    it('shouldShowOneRowPerGameAndSpellOutNOnlyWhereItDiffersFromTheNColumn', async () => {
       await open(two());
       const rows = cellsOf();
       expect(rows).toHaveLength(2);
-      expect(rows.find((r) => r[0] === 'Tango')).toEqual(['Tango', '×1,13 · n=28', '65 % · n=28', '→ −13 % · n=28/27', '0:52 (0:43–1:04) · n=30', '1 día', '30']);
-      for (const r of rows) for (const i of [1, 2, 4]) expect(r[i]).toMatch(/n=\d+/);
+      expect(rows.find((r) => r[0] === 'Tango')).toEqual(['Tango', '×1,13 · n=28', '65 % · n=28', '→ −13 % · n=28/27', '0:52 (0:43–1:04)', '1 día', '30']);
+      for (const r of rows) for (const i of [1, 2]) expect(r[i]).toMatch(/n=\d+/); // nEff, nBeat (28) differ from nTime (30)
+    });
+
+    it('shouldExplainThatTheLabelIsAlways28DaysWhenAnotherRangeIsSelected', async () => {
+      await open({ zip: game() });
+      expect(el.querySelector('#gamesRangeNote')).toBeNull();
+      await setRange('7');
+      expect(text('gamesRangeNote')).toContain('siempre a 28 días');
+    });
+
+    it('shouldNotRepeatNWhenEveryCellOfTheRowSharesTheNColumn', async () => {
+      const same = win({ eff: { median: 2, nEff: 30 }, beat: { rate: 0.9, k: 27, nBeat: 30 } });
+      await open({ zip: game({ windows: { ...game().windows, '28': same } }) });
+      expect(cellsOf()[0].slice(1, 3)).toEqual(['×2', '90 %']);
+      expect(cellsOf()[0][6]).toBe('30');
     });
 
     it('shouldSortByTheClickedColumnAndFlipTheDirectionOnASecondClick', async () => {
@@ -354,7 +373,7 @@ describe('Games', () => {
     it('shouldDrawTheRollingMedianSparkOnEachCard', async () => {
       await open({ zip: game() });
       expect(cardsOf()[0].querySelector('svg.spark polyline')!.getAttribute('points')).toBe('0.0,2.0 100.0,22.0');
-      expect(linesOf(cardsOf()[0]).at(-1)).toBe('Línea: mediana móvil de 28 días (suavizada).');
+      expect([...cardsOf()[0].querySelectorAll('.gcap')].map((x) => x.textContent).at(-1)).toBe('Mediana móvil de 28 días (suavizada)');
     });
   });
 
@@ -434,7 +453,15 @@ describe('Games', () => {
       await open({ zip: game({ trajectory: { '7': t, '28': t, '90': t, all: t } }) });
       for (const v of ['a · n=1 · ×1,5', 'b · n=1 · ×3', 'c · n=1 · ×2']) expect(titles()).toContain(v);
       expect(el.querySelectorAll('#gamesChart polyline')).toHaveLength(2);
-      expect(el.querySelector('#gamesChart polyline')!.getAttribute('points')).toBe('34.0,55.0 173.0,10.0 312.0,40.0');
+      expect(el.querySelector('#gamesChart polyline')!.getAttribute('points')).toBe('40.0,55.0 176.0,10.0 312.0,40.0');
+    });
+
+    it('shouldUseTheWholeWidthItIsGiven', () => {
+      const b = [{ start: 'a', n: 1, eff: 1.5, beat: 1 }, { start: 'b', n: 1, eff: 3, beat: 0 }];
+      const g = chartGeometry(b, 900)!;
+      expect(g.viewBox).toBe('0 0 900 196');
+      expect(g.xr).toBe(892);
+      expect(g.eff.dots.map((d) => d.cx)).toEqual(['40.0', '892.0']);
     });
 
     it('shouldChartOneGameAtATimeAndOfferNoAggregate', async () => {
@@ -472,7 +499,7 @@ describe('Games', () => {
       expect([...el.querySelectorAll('#gamesChart *')].some((n) => [...n.attributes].some((a) => a.value.includes('NaN')))).toBe(false);
       expect(cellsOf()).toHaveLength(2);
       expect(cardsOf()).toHaveLength(2);
-      expect(linesOf(cardsOf()[0])).toContain('Mejor marca: 0:32 (30 sep 2026)');
+      expect(linesOf(cardsOf()[0])).toContain('Mejor marca | 0:32 | 30 sep 2026');
     });
 
     it('shouldShowTheTrajectoryAsUnavailableWhenItIsMalformedWhileTheTableStillRenders', async () => {
