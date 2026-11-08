@@ -1,10 +1,9 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { Component, computed, input } from '@angular/core';
 import { pc1 } from '../core/format';
 
 /** Port of legacy donut(w, l, d): results ring plus legend and score (win 1, draw 0,5). */
 @Component({
   selector: 'm-donut',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap">
       <svg width="96" height="96" viewBox="0 0 72 72">

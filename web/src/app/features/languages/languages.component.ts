@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
+import { Component, computed, inject, input, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
 import { RouterLink, Router } from '@angular/router';
@@ -23,7 +23,6 @@ const ok = <T>(v: T | typeof NONE | null): v is T => v !== null && v !== NONE &&
 @Component({
   selector: 'app-languages',
   imports: [CourseDetailView, RouterLink],
-  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './languages.component.html',
 })
 export class Languages {

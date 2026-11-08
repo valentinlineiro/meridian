@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { ApiClient } from '../../core/api-client';
@@ -63,7 +63,6 @@ function trajectoryView(d: Rec) {
 @Component({
   selector: 'app-trajectory',
   imports: [EvaluationCards, NgTemplateOutlet],
-  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section id="trajectoryTab">
       <div id="trajectoryHeader" style="margin-bottom:16px">

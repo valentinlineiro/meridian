@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
+import { Component, computed, inject, input, output } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { catchError, map, of } from 'rxjs';
 import { ApiClient } from '../../core/api-client';
@@ -17,7 +17,6 @@ const DENOMINATOR_UNKNOWN = 'Denominador: partidas guardadas en el historial (el
  */
 @Component({
   selector: 'app-patterns',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px">
       <h2 style="margin:0">Patrones observados &amp; cobertura de análisis</h2>

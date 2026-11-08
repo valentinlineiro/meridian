@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { Component, computed, input } from '@angular/core';
 
 const GLYPH: Record<string, string> = { K: '♔', Q: '♕', R: '♖', B: '♗', N: '♘', P: '♙', k: '♚', q: '♛', r: '♜', b: '♝', n: '♞', p: '♟' };
 
@@ -6,7 +6,6 @@ const GLYPH: Record<string, string> = { K: '♔', Q: '♕', R: '♖', B: '♗', 
 @Component({
   selector: 'm-chess-board',
   host: { class: 'board' },
-  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `@for (s of squares(); track $index) {<i class="sq" [class.dk]="s.dk" [class.lt]="!s.dk">{{ s.g }}</i>}`,
 })
 export class ChessBoard {

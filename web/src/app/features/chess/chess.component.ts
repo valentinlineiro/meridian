@@ -1,4 +1,4 @@
-import { afterNextRender, ChangeDetectionStrategy, Component, computed, DestroyRef, effect, ElementRef, inject, Injector, linkedSignal, signal, viewChild } from '@angular/core';
+import { afterNextRender, Component, computed, DestroyRef, effect, ElementRef, inject, Injector, linkedSignal, signal, viewChild } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { catchError, forkJoin, map, Observable, of } from 'rxjs';
@@ -163,7 +163,6 @@ function view(d: ChessData) {
   selector: 'app-chess',
   imports: [Kpi, Donut, Sparkline, Compare, MatchesTable, MatchDetailModal, OpeningsBlock, Patterns, EngineProfile],
   providers: [MatchesService],
-  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './chess.component.html',
 })
 export class Chess {
