@@ -60,10 +60,10 @@
           <span class="pill pill-scope">CUENTA</span>
         </div>
         <div class="kpis" style="margin:14px 0 0">
-          <div class="kpi"><label>Total XP</label><b id="langAccountXp">{{ acc?.xp ?? '—' }}</b></div>
-          <div class="kpi"><label>Racha</label><b id="langAccountStreak">{{ acc?.streak ?? '—' }}</b></div>
-          <div class="kpi"><label>Días con Actividad</label><b id="langAccountDays">{{ acc?.days ?? '—' }}</b></div>
-          <div class="kpi"><label>Catálogo</label><b id="langAccountCourses">{{ acc?.courses ?? '—' }}</b></div>
+          <div class="kpi"><span class="kl">Total XP</span><b id="langAccountXp">{{ acc?.xp ?? '—' }}</b></div>
+          <div class="kpi"><span class="kl">Racha</span><b id="langAccountStreak">{{ acc?.streak ?? '—' }}</b></div>
+          <div class="kpi"><span class="kl">Días con Actividad</span><b id="langAccountDays">{{ acc?.days ?? '—' }}</b></div>
+          <div class="kpi"><span class="kl">Catálogo</span><b id="langAccountCourses">{{ acc?.courses ?? '—' }}</b></div>
         </div>
         <div class="muted" id="langSyncMeta" style="font-size:12px;margin-top:10px">{{ acc?.sync }}</div>
         <div class="muted" id="langXpGapNote" style="font-size:11px;margin-top:6px">{{ acc?.gap }}</div>

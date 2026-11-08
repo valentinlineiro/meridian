@@ -6,7 +6,6 @@ import { CHANGES, SALIENCE_GRID } from './evaluation-fixtures';
 // the shared <m-evaluation-cards> renders with What Changed's own contract: findingFor = the finding with the evaluation's id.
 type Payload = { findings: readonly { id: string; claim: string; evidence: string }[]; evaluations: readonly unknown[] };
 const WIN = '2026-09-20 → 2026-09-27';
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const copy = (v: unknown): any => structuredClone(v);
 
 function render(p: Payload, win = WIN): HTMLElement {

@@ -11,7 +11,7 @@ main{max-width:1120px;margin:0 auto;padding:20px 16px 40px}
 .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:16px 0}
 @media(max-width:760px){.kpis{grid-template-columns:repeat(2,1fr)}}
 .kpi{background:#142236;border:1px solid #1e2e44;border-radius:12px;padding:14px 16px}
-.kpi label{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#8ea0b8}
+.kpi .kl{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#8ea0b8}
 .kpi b{font-size:26px;display:block;margin-top:4px}
 .kpi small{color:#8ea0b8;font-size:12px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
@@ -73,7 +73,7 @@ svg text{font-family:system-ui,sans-serif}
  .kpis{gap:8px;margin:10px 0}
  .kpi{padding:10px 12px;border-radius:10px}
  .kpi b{font-size:20px;margin-top:2px}
- .kpi label{font-size:10px}
+ .kpi .kl{font-size:10px}
  .card{padding:12px;border-radius:10px}
  main{padding:12px 10px 32px}
  select,input{max-width:100%}
@@ -129,7 +129,7 @@ a.side-item{text-decoration:none}a.side-item:hover{text-decoration:none}
  .btn,.side-toggle,select,.filters input,summary{min-height:44px}.btn{min-width:44px}
  .side-menu a,.side-menu button{min-height:44px;display:flex;align-items:center}
  a[href="/settings"]{display:inline-block;padding:14px 8px}
- .muted,.pill,.kpi label,.kpi small,.flabel,[style*="font-size:10px"],[style*="font-size:11px"]{font-size:12px!important}
+ .muted,.pill,.kpi .kl,.kpi small,.flabel,[style*="font-size:10px"],[style*="font-size:11px"]{font-size:12px!important}
  .muted{font-size:13px!important}
  .fgroup{gap:4px}.fgroup .btn{padding:8px 8px}.flabel{min-width:0;width:60px}
  /* iOS Safari zooms the page when a field under 16px takes focus */

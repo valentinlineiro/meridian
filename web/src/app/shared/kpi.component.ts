@@ -5,7 +5,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
   selector: 'm-kpi',
   host: { class: 'kpi' },
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: '<label>{{ label() }}</label><b>{{ value() }}</b><small>{{ sub() }}</small>',
+  template: '<span class="kl">{{ label() }}</span><b>{{ value() }}</b><small>{{ sub() }}</small>',
 })
 export class Kpi {
   readonly label = input.required<string>();

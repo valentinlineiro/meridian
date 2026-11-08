@@ -15,6 +15,7 @@ jobs:
       - run: npm ci
       - run: npm run web:build
       - run: npm run typecheck
+      - run: npm run web:lint
       - run: python3 scripts/check_architecture_boundaries.py
       - run: npm test
       - run: npm run web:test
