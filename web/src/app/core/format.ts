@@ -2,7 +2,11 @@ export interface Delta { diff: number; lower: number; upper: number }
 
 const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 
-/** 'YYYY-MM-DD' -> '3 nov 2026' (the one date format for prose); anything else comes back as it came. */
+/**
+ * 'YYYY-MM-DD' -> '3 nov 2026'. Date rule by context: prose, milestones and history use this (with the year);
+ * dense tables and axes may drop the year when the context is unambiguous (Ajedrez: '7 nov'); technical tooltips stay ISO.
+ * Anything that is not a date comes back as it came.
+ */
 export const fmtDate = (d: string | null | undefined): string => {
   if (d == null) return '—';
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(d));

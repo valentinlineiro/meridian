@@ -53,8 +53,12 @@ export const LABEL_CLASS: Record<Label, string> = { mejora_sostenida: 'pill-win'
 const LABEL_ORDER: Record<Label, number> = { deterioro: 0, mejora_sostenida: 1, estable: 2, datos_insuficientes: 3 };
 
 /** A manual log has no broken streak: with no record for 2+ days the run is 0 because nothing was recorded. */
-const gbeatStreak = (x: Game, s: Summary) =>
-  x.beatStreak.current > 0 || (s.playStreak && s.playStreak.current > 0) ? gdays(x.beatStreak.current) : (s.to ? 'sin registro desde ' + fmtDate(s.to) : '—');
+const streakActive = (x: Game, s: Summary) => x.beatStreak.current > 0 || !!(s.playStreak && s.playStreak.current > 0);
+/** The run, or "—": a stale log is said once (hero, tooltip), not in every row. */
+const gbeatStreak = (x: Game, s: Summary) => streakActive(x, s) ? gdays(x.beatStreak.current) : '—';
+const staleTitle = (x: Game, s: Summary) => !streakActive(x, s) && s.to ? 'Sin registro desde ' + fmtDate(s.to) : null;
+/** n is spelled out only where it differs from the n column (the sample every cell of the row shares). */
+const nIfDiffers = (n: number, w: Win) => n === w.time.nTime ? '' : ' · n=' + n;
 
 export function interpretationLines(x: Game): string[] {
   const i = x.interpretation, b = i.bands, t = x.trend112, r = x.recent28vBase56, out: string[] = [];
@@ -99,12 +103,12 @@ type Val = string | number | null;
 interface Col { k: string; l: string; v: (g: Game, w: Win, k: string) => Val; t: (g: Game, w: Win, k: string, s: Summary, range: Range) => string }
 const GCOLS: Col[] = [
   { k: 'name', l: 'Juego', v: (g, w, k) => gameName(k), t: (g, w, k) => gameName(k) },
-  { k: 'eff', l: 'Eficiencia', v: (g, w) => w.eff.median, t: (g, w) => w.eff.median == null ? '—' : '×' + gnum(w.eff.median, 2) + ' · n=' + w.eff.nEff },
-  { k: 'beat', l: 'Gana a la media', v: (g, w) => w.beat.rate, t: (g, w) => w.beat.rate == null ? '—' : gpct(w.beat.rate) + ' · n=' + w.beat.nBeat },
+  { k: 'eff', l: 'Eficiencia', v: (g, w) => w.eff.median, t: (g, w) => w.eff.median == null ? '—' : '×' + gnum(w.eff.median, 2) + nIfDiffers(w.eff.nEff, w) },
+  { k: 'beat', l: 'Gana a la media', v: (g, w) => w.beat.rate, t: (g, w) => w.beat.rate == null ? '—' : gpct(w.beat.rate) + nIfDiffers(w.beat.nBeat, w) },
   { k: 'delta', l: 'Δ eficiencia', v: (g, w) => w.delta ? w.delta.effRel.value : null, t: (g, w, k, s, range) => {
     const e = w.delta && w.delta.effRel; if (!e || e.value == null) return '—';
     return (range === '28' && e.arrow ? ARROWS[e.arrow] + ' ' : '') + gsigned(e.value * 100, ' %') + ' · n=' + e.nCur + '/' + e.nPrev; } },
-  { k: 'time', l: 'Tiempo mediano (P25–P75)', v: (g, w) => w.time.median, t: (g, w) => w.time.median == null ? '—' : gtime(w.time.median) + ' (' + gtime(w.time.p25) + '–' + gtime(w.time.p75) + ') · n=' + w.time.nTime },
+  { k: 'time', l: 'Tiempo mediano (P25–P75)', v: (g, w) => w.time.median, t: (g, w) => w.time.median == null ? '—' : gtime(w.time.median) + ' (' + gtime(w.time.p25) + '–' + gtime(w.time.p75) + ')' },
   { k: 'streak', l: 'Racha', v: (g) => g.beatStreak.current, t: (g, w, k, s) => gbeatStreak(g, s) },
   { k: 'n', l: 'n', v: (g, w) => w.time.nTime, t: (g, w) => String(w.time.nTime) },
 ];
@@ -126,7 +130,7 @@ export function gamesTable(s: Summary, range: Range, sort: Sort) {
     head,
     rows: rows.map((r) => ({ k: r.k, cells: GCOLS.map((c): Cell => ({
       text: c.t(r.g, r.w, r.k, s, range),
-      title: c.k === 'delta' ? deltaTitle(r.w, range) : null,
+      title: c.k === 'delta' ? deltaTitle(r.w, range) : c.k === 'streak' ? staleTitle(r.g, s) : null,
       sr: c.k === 'delta' ? deltaSr(r.w, range) : null,
       num: c.k !== 'name',
     })) })),
@@ -146,12 +150,13 @@ export function gameCard(k: string, x: Game, s: Summary, range: Range) {
   return {
     k, name: gameName(k), det: lb === 'deterioro', badge: LABEL_TEXT[lb], badgeClass: 'pill ' + LABEL_CLASS[lb],
     interp: interpretationLines(x),
-    lines: [
-      'Eficiencia (' + RANGE_NAMES[range] + '): ' + (w.eff.median == null ? '—' : '×' + gnum(w.eff.median, 2) + ' · n=' + w.eff.nEff + ' (' + dl + ')'),
-      'Gana a la media: ' + (w.beat.rate == null ? '—' : gpct(w.beat.rate) + ' · n=' + w.beat.nBeat),
-      'Tiempo típico: ' + (w.time.median == null ? '—' : gtime(w.time.median) + ' (P25–P75 ' + gtime(w.time.p25) + '–' + gtime(w.time.p75) + ') · n=' + w.time.nTime),
-      'Mejor marca: ' + gmmss(x.best.seconds) + ' (' + fmtDate(x.best.date) + ')',
-      'Racha ganando a la media: ' + gbeatStreak(x, s) + ' (máx ' + x.beatStreak.max + ')',
+    window: RANGE_NAMES[range],
+    metrics: [
+      { l: 'Eficiencia', v: w.eff.median == null ? '—' : '×' + gnum(w.eff.median, 2), s: w.eff.median == null ? '' : 'n=' + w.eff.nEff + ' · ' + dl },
+      { l: 'Gana a la media', v: w.beat.rate == null ? '—' : gpct(w.beat.rate), s: w.beat.rate == null ? '' : 'n=' + w.beat.nBeat },
+      { l: 'Tiempo típico', v: w.time.median == null ? '—' : gtime(w.time.median), s: w.time.median == null ? '' : 'P25–P75 ' + gtime(w.time.p25) + '–' + gtime(w.time.p75) + ' · n=' + w.time.nTime },
+      { l: 'Mejor marca', v: gmmss(x.best.seconds), s: fmtDate(x.best.date) },
+      { l: 'Racha ganando a la media', v: gbeatStreak(x, s), s: 'máx ' + x.beatStreak.max + (streakActive(x, s) ? '' : ' · sin racha activa') },
     ],
     spark: gameSpark(x.series),
   };
