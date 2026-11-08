@@ -1,4 +1,5 @@
 import { Component, computed, input } from '@angular/core';
+import { fmtDate } from '../../core/format';
 import { beatText, Bucket, effText } from './games.model';
 
 const W = 320, L = 34, R = 8;
@@ -37,7 +38,7 @@ export function chartGeometry(b: readonly Bucket[]) {
     y1: f(ya(1)), hiY: f(ya(hi) + 3), loY: f(ya(lo) + 3), y1t: f(ya(1) + 3), hi: tick(hi), lo: tick(lo), mid: f(yb(.5)),
     eff: series('eff', ya, effText), beat: series('beat', yb, (v) => beatText(v)),
     bars: b.flatMap((p, i) => p.n ? [{ x: f(x(i) - 1.5), y: f(178 - p.n / maxN * 22), h: f(p.n / maxN * 22), title: p.start + ' · n=' + p.n }] : []),
-    first: b[0].start, last: b[b.length - 1].start,
+    first: fmtDate(b[0].start), last: fmtDate(b[b.length - 1].start),
   };
 }
 

@@ -76,8 +76,8 @@ describe('Games', () => {
   describe('games tab: a stale manual log is not a zero streak', () => {
     it('shouldSayNoRecordSinceInsteadOfZeroDaysWhenTheLogIsStale', async () => {
       await open({ zip: game({ beatStreak: { current: 0, max: 8 } }) }, undefined, { playStreak: { current: 0, max: 122 } });
-      expect(linesOf(cardsOf()[0])).toContain('Racha ganando a la media: sin registro desde 2026-11-03 (máx 8)');
-      expect(cellsOf()[0]).toContain('sin registro desde 2026-11-03');
+      expect(linesOf(cardsOf()[0])).toContain('Racha ganando a la media: sin registro desde 3 nov 2026 (máx 8)');
+      expect(cellsOf()[0]).toContain('sin registro desde 3 nov 2026');
       expect(cellsOf()[0]).not.toContain('0 días');
     });
 
@@ -131,11 +131,11 @@ describe('Games', () => {
       const cards = cardsOf();
       expect(cards.map(nameOf).sort()).toEqual(['Tango', 'Zip']);
       const lines = linesOf(cards[0]);
-      for (const l of ['Eficiencia (28 días): ×1,13 · n=28 (−13 % vs periodo previo (n=28/27))', 'Gana a la media: 65 % · n=28', 'Tiempo típico: 0:52 (P25–P75 0:43–1:04) · n=30', 'Mejor marca: 0:32 (2026-09-30)', 'Racha ganando a la media: 1 día (máx 8)']) expect(lines).toContain(l);
+      for (const l of ['Eficiencia (28 días): ×1,13 · n=28 (−13 % vs periodo previo (n=28/27))', 'Gana a la media: 65 % · n=28', 'Tiempo típico: 0:52 (P25–P75 0:43–1:04) · n=30', 'Mejor marca: 0:32 (30 sep 2026)', 'Racha ganando a la media: 1 día (máx 8)']) expect(lines).toContain(l);
       expect(el.querySelector('#gamesHeroDist')).toBeNull(); // no pooled "beats the average" across games
       expect(text('gamesHeroStreak')).toBe('48 días seguidos');
       expect(text('gamesHeroMeta')).toBe('Racha máxima 122 días');
-      expect(text('gamesHeroDays')).toBe('170 días registrados · 2026-05-17 → 2026-11-03');
+      expect(text('gamesHeroDays')).toBe('170 días registrados · 17 may 2026 → 3 nov 2026');
       expect(el.querySelector('#gamesTab')!.classList.contains('tab-panel')).toBe(false);
       expect(el.querySelector('#gamesTab')!.hasAttribute('hidden')).toBe(false);
     });
@@ -143,7 +143,7 @@ describe('Games', () => {
     it('shouldSayLastRecordInTheHeroWhenThePlayStreakIsZero', async () => {
       await open({ zip: game() }, undefined, { playStreak: { current: 0, max: 122 } });
       expect(text('gamesHeroStreakLabel')).toBe('LinkedIn Games · último registro');
-      expect(text('gamesHeroStreak')).toBe('Sin registro desde 2026-11-03');
+      expect(text('gamesHeroStreak')).toBe('Sin registro desde 3 nov 2026');
       expect(text('gamesHeroMeta')).toBe('Racha máxima 122 días · registro manual');
     });
 
@@ -202,7 +202,7 @@ describe('Games', () => {
       expect(cards).toHaveLength(2);
       const zip = cards.find((c) => nameOf(c) === 'Zip')!, tango = cards.find((c) => nameOf(c) === 'Tango')!;
       expect(linesOf(zip)).toEqual(['No disponible']);
-      expect(linesOf(tango)).toContain('Mejor marca: 0:32 (2026-09-30)');
+      expect(linesOf(tango)).toContain('Mejor marca: 0:32 (30 sep 2026)');
     });
 
     it('shouldKeepTheChipsWhenTheDayBodyIsMalformed', async () => {
@@ -323,7 +323,7 @@ describe('Games', () => {
       expect(byName['Wend'][0]).toBe('Tendencia al alza en los últimos 112 días: ρ de Spearman +0,28 (límite +0,18) y pendiente +3,3 % cada 28 días (n=110). Se repite dos semanas seguidas.');
       expect(byName['Zip'][0]).toBe('Ninguna señal supera el ruido de este juego: a 28 días solo se detecta un cambio por debajo de −26 % o por encima de +34 %.');
       expect(byName['Patches'][0]).toBe('Faltan observaciones con media: hacen falta al menos 68 de los últimos 112 días, 17 de los últimos 28 y 34 de los 56 anteriores.');
-      expect(byName['Zip']).toContain('Límites calibrados con datos hasta 2026-11-03.');
+      expect(byName['Zip']).toContain('Límites calibrados con datos hasta 3 nov 2026.');
       expect(byName['Patches'].some((l: string) => l.startsWith('Límites calibrados'))).toBe(false);
     });
 
@@ -472,7 +472,7 @@ describe('Games', () => {
       expect([...el.querySelectorAll('#gamesChart *')].some((n) => [...n.attributes].some((a) => a.value.includes('NaN')))).toBe(false);
       expect(cellsOf()).toHaveLength(2);
       expect(cardsOf()).toHaveLength(2);
-      expect(linesOf(cardsOf()[0])).toContain('Mejor marca: 0:32 (2026-09-30)');
+      expect(linesOf(cardsOf()[0])).toContain('Mejor marca: 0:32 (30 sep 2026)');
     });
 
     it('shouldShowTheTrajectoryAsUnavailableWhenItIsMalformedWhileTheTableStillRenders', async () => {

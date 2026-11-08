@@ -2,10 +2,11 @@ export interface Delta { diff: number; lower: number; upper: number }
 
 const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 
-/** 'YYYY-MM-DD' -> '03-nov'; anything else comes back as it came. */
-export const shortDate = (d: string): string => {
-  const m = /^\d{4}-(\d{2})-(\d{2})$/.exec(String(d));
-  return m ? `${m[2]}-${MONTHS[Number(m[1]) - 1]}` : String(d);
+/** 'YYYY-MM-DD' -> '3 nov 2026' (the one date format for prose); anything else comes back as it came. */
+export const fmtDate = (d: string | null | undefined): string => {
+  if (d == null) return '—';
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(d));
+  return m ? `${Number(m[3])} ${MONTHS[Number(m[2]) - 1]} ${m[1]}` : String(d);
 };
 
 export const relDate = (iso: string): string => {

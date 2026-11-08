@@ -1,4 +1,4 @@
-import { pc1, relDate } from '../../core/format';
+import { fmtDate, pc1, relDate } from '../../core/format';
 import { activeDaysSub, activeDaysText, Course, CourseDetail, courseProgress, es, flag, Langs, lastSevenDays, Section, toDay, xpText, XpDay } from '../../core/courses';
 import { list } from '../../core/guard';
 import { goalColor, goalSummary } from './goal-summary';
@@ -101,7 +101,7 @@ export function accountActivity(d: LangData) {
   return {
     days: s.length ? activeDaysText(s.filter((x) => (x.gainedXp ?? 0) > 0).length, s.length) : '—',
     daysSub: s.length ? activeDaysSub(first) : '',
-    sync: 'Sincronizado ' + relDate(l.updatedAt || l.createdAt || '') + (last ? ' · Actividad hasta ' + last : '')
+    sync: 'Sincronizado ' + relDate(l.updatedAt || l.createdAt || '') + (last ? ' · Actividad hasta ' + fmtDate(last) : '')
       + (cur && d.courses.some((c) => c.courseId === cur) ? ' · Último curso en Duolingo: ' + cur : '') + staleNote(l),
   };
 }
@@ -117,7 +117,7 @@ export function legacyAccount(l: LegacyLang) {
     streak: l.streak != null ? `🔥 ${l.streak} días` : '',
     days: activeDaysText(t.activeDays ?? 0, t.days ?? 0),
     daysSub: activeDaysSub(s.length ? s[0].date : null),
-    sync: 'Sincronizado ' + relDate(l.createdAt || '') + ' · Actividad hasta ' + (lastIso || '—') + (lastSync ? ' · Path ' + relDate(lastSync) : ''),
+    sync: 'Sincronizado ' + relDate(l.createdAt || '') + ' · Actividad hasta ' + (lastIso ? fmtDate(lastIso) : '—') + (lastSync ? ' · Path ' + relDate(lastSync) : ''),
   };
 }
 
@@ -253,7 +253,7 @@ export function comparability(a: Analytics, courses: Course[]) {
   const covered = new Set(deltas.map((x) => x.courseId));
   const waiting = courses.filter((c) => !covered.has(c.courseId));
   if (!deltas.length && !waiting.length) return null;
-  const day = (v?: string | null) => v ? v.slice(0, 10) : '—';
+  const day = (v?: string | null) => v ? fmtDate(v.slice(0, 10)) : '—';
   return {
     rows: deltas.map((x) => {
       const comp = x.status === 'comparable', struct = x.status === 'structural_change';

@@ -36,7 +36,7 @@ describe('courses', () => {
   // port of frontendDeltas shouldSayHowFarBackTheXpRecordGoesInsteadOfASaturatedRatio
   it('shouldSayHowFarBackTheXpRecordGoesInsteadOfASaturatedRatio', () => {
     expect(activeDaysText(90, 90)).toBe('90 de 90 días');
-    expect(activeDaysSub(1782345600)).toBe('con XP · registro desde 2026-06-25');
+    expect(activeDaysSub(1782345600)).toBe('con XP · registro desde 25 jun 2026');
     expect(activeDaysSub(null)).toBe('con XP');
     expect(activeDaysSub(NaN)).toBe('con XP');
   });

@@ -1,5 +1,6 @@
 // Port of the LinkedIn Games view builders (src/dashboard.client.js:1787–1943). Pure: the range is a parameter, not a global.
 // Nothing here is computed beyond formatting: labels, bands and arrows come from the server's contract.
+import { fmtDate } from '../../core/format';
 
 export type Range = '7' | '28' | '90' | 'all';
 export type Label = 'mejora_sostenida' | 'estable' | 'deterioro' | 'datos_insuficientes';
@@ -53,7 +54,7 @@ const LABEL_ORDER: Record<Label, number> = { deterioro: 0, mejora_sostenida: 1, 
 
 /** A manual log has no broken streak: with no record for 2+ days the run is 0 because nothing was recorded. */
 const gbeatStreak = (x: Game, s: Summary) =>
-  x.beatStreak.current > 0 || (s.playStreak && s.playStreak.current > 0) ? gdays(x.beatStreak.current) : (s.to ? 'sin registro desde ' + s.to : '—');
+  x.beatStreak.current > 0 || (s.playStreak && s.playStreak.current > 0) ? gdays(x.beatStreak.current) : (s.to ? 'sin registro desde ' + fmtDate(s.to) : '—');
 
 export function interpretationLines(x: Game): string[] {
   const i = x.interpretation, b = i.bands, t = x.trend112, r = x.recent28vBase56, out: string[] = [];
@@ -71,7 +72,7 @@ export function interpretationLines(x: Game): string[] {
     out.push('Faltan observaciones con media: hacen falta al menos 68 de los últimos 112 días, 17 de los últimos 28 y 34 de los 56 anteriores.');
   }
   if (i.pending) out.push('Señal sin confirmar: ' + LABEL_TEXT[i.pending].toLowerCase() + '. Se publicará si se repite la semana próxima.');
-  if (b) out.push('Límites calibrados con datos hasta ' + i.calibratedThrough + '.');
+  if (b) out.push('Límites calibrados con datos hasta ' + fmtDate(i.calibratedThrough) + '.');
   return out;
 }
 
@@ -149,7 +150,7 @@ export function gameCard(k: string, x: Game, s: Summary, range: Range) {
       'Eficiencia (' + RANGE_NAMES[range] + '): ' + (w.eff.median == null ? '—' : '×' + gnum(w.eff.median, 2) + ' · n=' + w.eff.nEff + ' (' + dl + ')'),
       'Gana a la media: ' + (w.beat.rate == null ? '—' : gpct(w.beat.rate) + ' · n=' + w.beat.nBeat),
       'Tiempo típico: ' + (w.time.median == null ? '—' : gtime(w.time.median) + ' (P25–P75 ' + gtime(w.time.p25) + '–' + gtime(w.time.p75) + ') · n=' + w.time.nTime),
-      'Mejor marca: ' + gmmss(x.best.seconds) + ' (' + x.best.date + ')',
+      'Mejor marca: ' + gmmss(x.best.seconds) + ' (' + fmtDate(x.best.date) + ')',
       'Racha ganando a la media: ' + gbeatStreak(x, s) + ' (máx ' + x.beatStreak.max + ')',
     ],
     spark: gameSpark(x.series),
@@ -166,9 +167,9 @@ export function gamesHero(s: Summary) {
   if (typeof s.days !== 'number') throw new TypeError('summary.days is not a number');
   const cur = s.playStreak?.current ?? 0, max = s.playStreak?.max ?? 0;
   const maxTxt = max > 0 ? 'Racha máxima ' + gdays(max) : '';
-  const days = gdays(s.days) + ' registrados · ' + s.from + ' → ' + s.to;
+  const days = gdays(s.days) + ' registrados · ' + fmtDate(s.from) + ' → ' + fmtDate(s.to);
   if (cur > 0) return { label: 'LinkedIn Games · racha actual', streak: gdays(cur) + (cur === 1 ? ' seguido' : ' seguidos'), meta: maxTxt, days };
-  return { label: 'LinkedIn Games · último registro', streak: s.to ? 'Sin registro desde ' + s.to : '—', meta: [maxTxt, 'registro manual'].filter(Boolean).join(' · '), days };
+  return { label: 'LinkedIn Games · último registro', streak: s.to ? 'Sin registro desde ' + fmtDate(s.to) : '—', meta: [maxTxt, 'registro manual'].filter(Boolean).join(' · '), days };
 }
 
 /** The game charted by default: the one with the most observations (first on a tie). */

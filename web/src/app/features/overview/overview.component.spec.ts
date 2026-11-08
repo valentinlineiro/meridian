@@ -82,7 +82,7 @@ describe('Overview', () => {
 
     expect(text(el, 'overviewStreak')).toBe('Duolingo · 🔥 1212 días de racha');
     expect(el.querySelector('#overviewStreak')!.className).toBe('pill pill-win');
-    expect(text(el, 'overviewSyncMeta')).toBe('Idiomas: sincronizado hoy · Ajedrez: sincronizado hace 2d · Games: último registro 03-nov · manual');
+    expect(text(el, 'overviewSyncMeta')).toBe('Idiomas: sincronizado hoy · Ajedrez: sincronizado hace 2d · Games: último registro 3 nov 2026 · manual');
 
     expect(text(el, 'overviewLangActiveCourse')).toBe('🇷🇺 Demo Beta (EN → RU)');
     expect(text(el, 'overviewLangSourceCourse')).toBe('');
@@ -261,7 +261,7 @@ describe('Overview', () => {
       Object.assign((api['/api/me/linkedin-games/summary'] as { summary: object }).summary, { days: 170, playStreak: { current: 0, max: 122 } });
       const el = await open(api);
       expect(text(el, 'overviewGamesStreakLabel')).toBe('Último registro');
-      expect(text(el, 'overviewGamesStreak')).toBe('Sin registro desde 2026-11-03');
+      expect(text(el, 'overviewGamesStreak')).toBe('Sin registro desde 3 nov 2026');
       expect(text(el, 'overviewGamesMeta')).toBe('Racha máxima 122 días · registro manual');
     });
 
