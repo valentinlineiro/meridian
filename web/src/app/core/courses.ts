@@ -24,8 +24,9 @@ export const xpText = (v: number | null | undefined) => v == null ? '—' : es(N
 export const toDay = (v: string | number) => typeof v === 'string' ? v.slice(0, 10) : new Date(v > 1e11 ? v : v * 1000).toISOString().slice(0, 10);
 
 // P7: "90/90" says nothing when every day has XP; what matters is how far back the record goes.
-export const activeDaysText = (active: number, total: number, firstSec: number | null | undefined) =>
-  `${active} de ${total} días con XP` + (firstSec && isFinite(firstSec) ? ` (registro desde ${new Date(firstSec * 1000).toISOString().slice(0, 10)})` : '');
+export const activeDaysText = (active: number, total: number) => `${active} de ${total} días`;
+export const activeDaysSub = (firstSec: number | null | undefined) =>
+  'con XP' + (firstSec && isFinite(firstSec) ? ` · registro desde ${new Date(firstSec * 1000).toISOString().slice(0, 10)}` : '');
 
 /** The last seven UTC days, oldest first, with the Spanish day letter. */
 export const lastSevenDays = () => {

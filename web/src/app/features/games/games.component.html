@@ -28,7 +28,7 @@
     <div id="gamesChart" class="card">@if (t?.view; as v) {<app-games-chart [buckets]="v.buckets" />} @else if (t && t.view === null) {<div class="muted">No disponible</div>}</div>
     <p class="muted" id="gamesChartNote">{{ t?.view?.note }}</p>
     <details class="gdata" id="gamesDataDetails"><summary>Ver los datos del gráfico (tabla)</summary>
-      <div class="tblwrap"><table class="gtable" id="gamesDataTable" aria-describedby="gamesDataCaption"><caption id="gamesDataCaption" class="sr-only">{{ t?.view?.caption }}</caption><thead><tr><th scope="col">Periodo</th><th scope="col">Eficiencia (mediana)</th><th scope="col">Gana a la media</th><th scope="col">n</th></tr></thead>
+      <div class="tblwrap" tabindex="0" role="region" aria-label="Datos del gráfico (desplazable)"><table class="gtable" id="gamesDataTable" aria-describedby="gamesDataCaption"><caption id="gamesDataCaption" class="sr-only">{{ t?.view?.caption }}</caption><thead><tr><th scope="col">Periodo</th><th scope="col">Eficiencia (mediana)</th><th scope="col">Gana a la media</th><th scope="col">n</th></tr></thead>
         <tbody id="gamesDataRows">@for (r of t?.view?.rows; track $index) {<tr><th scope="row">{{ r[0] }}</th><td class="num">{{ r[1] }}</td><td class="num">{{ r[2] }}</td><td class="num">{{ r[3] }}</td></tr>}</tbody></table></div>
     </details>
   </details>

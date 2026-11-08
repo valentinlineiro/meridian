@@ -80,7 +80,7 @@ svg text{font-family:system-ui,sans-serif}
 }
 
 .gamerow{cursor:pointer}.gamerow:hover,.gamerow:focus-within{background:#16253b}
-.rowbtn{all:inherit;padding:0;cursor:pointer;text-align:left}
+.rowbtn{all:inherit;display:inline-flex;align-items:center;min-height:24px;padding:0;cursor:pointer;text-align:left}
 .rowbtn:focus-visible{outline:2px solid #7aa7e6;outline-offset:2px}
 .modal{position:fixed;inset:0;background:rgba(5,10,18,.75);align-items:center;justify-content:center;z-index:50;padding:12px}
 .gamecard{width:min(760px,100%);max-height:92vh;overflow:auto}
@@ -154,7 +154,10 @@ a.side-item{text-decoration:none}a.side-item:hover{text-decoration:none}
 .lgday{list-style:none;margin:0;padding:0}.lgday li{padding:4px 0;border-top:1px solid #1e2e44;font-size:14px}
 .sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .cindex .btn[aria-pressed=true]{background:#1c2d42;border-color:#38577a;color:#fff}
-.tblwrap{overflow-x:auto;scrollbar-color:#2a3d56 #101a27;-webkit-overflow-scrolling:touch}
+.tblwrap{overflow-x:auto;scrollbar-color:#2a3d56 #101a27;-webkit-overflow-scrolling:touch;
+  /* sombras de scroll: aparecen solo en el lado con contenido oculto */
+  background:linear-gradient(to right,#0e141c 30%,transparent) left center/40px 100% no-repeat local,linear-gradient(to left,#0e141c 30%,transparent) right center/40px 100% no-repeat local,linear-gradient(to right,rgba(0,0,0,.55),transparent) left center/14px 100% no-repeat scroll,linear-gradient(to left,rgba(0,0,0,.55),transparent) right center/14px 100% no-repeat scroll}
+.tblwrap:focus-visible{outline:2px solid #7aa7e6;outline-offset:2px}
 .gtable{width:100%;min-width:640px;border-collapse:separate;border-spacing:0;font-size:13px}
 .gtable th:first-child,.gtable td:first-child{position:sticky;left:0;background:#131f33;z-index:2;box-shadow:2px 0 4px rgba(0,0,0,0.25)}
 .gtable th{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:#8ea0b8;text-align:left;padding:6px;border-bottom:1px solid #1e2e44;white-space:nowrap}
