@@ -1,11 +1,10 @@
-import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
+import { Component, computed, input, signal } from '@angular/core';
 import { safe } from '../../core/guard';
 import { gamesTable, nextSort, Range, Sort, Summary } from './games.model';
 
 /** Port of sortGames/renderGamesTable (src/dashboard.client.js:1859–1884): the comparison table; headers sort it. */
 @Component({
   selector: 'app-games-table',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @let v = view();
     <div class="tblwrap"><table class="gtable" id="gamesTable"><caption class="sr-only">Comparativa de juegos en el periodo seleccionado. Los encabezados ordenan la tabla. Cada porcentaje y cada mediana muestran su n.</caption>

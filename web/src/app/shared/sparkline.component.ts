@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { Component, computed, input } from '@angular/core';
 
 export interface EloPoint { date: string; elo: number }
 
@@ -7,7 +7,6 @@ const W = 520, H = 90, PAD = 10;
 /** Port of legacy sparkline(points): ELO line over time; one point is shown as the first snapshot. */
 @Component({
   selector: 'm-sparkline',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @let ps = points();
     @if (!ps.length) {

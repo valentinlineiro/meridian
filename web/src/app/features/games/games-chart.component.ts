@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { Component, computed, input } from '@angular/core';
 import { beatText, Bucket, effText } from './games.model';
 
 const W = 320, L = 34, R = 8;
@@ -43,7 +43,6 @@ export function chartGeometry(b: readonly Bucket[]) {
 
 @Component({
   selector: 'app-games-chart',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (g(); as c) {
       <svg class="gchart" [attr.viewBox]="c.viewBox" role="img" aria-label="Evolución de la eficiencia y del porcentaje que gana a la media, con el n de cada punto. Los mismos datos están en la tabla siguiente.">

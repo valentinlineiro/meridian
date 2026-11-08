@@ -1,4 +1,4 @@
-import { afterNextRender, afterRenderEffect, ChangeDetectionStrategy, Component, computed, effect, ElementRef, inject, Injector, linkedSignal, untracked, viewChild } from '@angular/core';
+import { afterNextRender, afterRenderEffect, Component, computed, effect, ElementRef, inject, Injector, linkedSignal, untracked, viewChild } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { catchError, map, of } from 'rxjs';
 import { ApiClient } from '../../core/api-client';
@@ -21,7 +21,6 @@ const MISSING = 'No hay partida completa guardada para esta partida.';
   selector: 'app-match-detail-modal',
   imports: [ChessBoard],
   host: { '(document:keydown)': 'onKey($event)' },
-  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (m.openId(); as id) {
       <div id="gameModal" class="modal" style="display:flex" role="dialog" aria-modal="true" aria-labelledby="gTitle" (click)="$event.target === $event.currentTarget && close()">

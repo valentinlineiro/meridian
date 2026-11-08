@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ApiClient } from '../../core/api-client';
@@ -10,7 +10,6 @@ interface Reply { ok?: boolean; error?: string; dailyGoalXp?: unknown }
 /** Port of src/settingsPage.ts (daily XP goal). Empty = no goal. */
 @Component({
   selector: 'app-settings',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="card">
       <h2 style="margin-bottom:4px">Objetivo diario</h2>

@@ -1,4 +1,4 @@
-import { afterNextRender, ChangeDetectionStrategy, Component, computed, DestroyRef, ElementRef, inject, Injector, output, signal } from '@angular/core';
+import { afterNextRender, Component, computed, DestroyRef, ElementRef, inject, Injector, output, signal } from '@angular/core';
 import { rxResource, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
 import { map } from 'rxjs';
@@ -16,7 +16,6 @@ interface Saved { ok?: boolean; error?: string; day?: Day | null }
 @Component({
   selector: 'app-games-entry-modal',
   host: { '(document:keydown)': 'onKey($event)' },
-  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (isOpen()) {
       <div id="lgModal" class="modal" style="display:flex" role="dialog" aria-modal="true" aria-labelledby="lgTitle" (click)="$event.target === $event.currentTarget && close()">
