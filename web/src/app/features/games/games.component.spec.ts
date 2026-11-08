@@ -234,6 +234,14 @@ describe('Games', () => {
       expect(text('gamesRangeNote')).toContain('siempre a 28 días');
     });
 
+    it('shouldExplainInTheCaptionAndTheNoteWhereNAndTheStreakDashAreRead', async () => {
+      await open({ zip: game() });
+      const caption = el.querySelector('#gamesTable caption')!.textContent!;
+      expect(caption).toContain('columna n');
+      expect(caption).toContain('solo cuando es distinto');
+      expect(el.querySelector('#cg-games-cmp p')!.textContent).toContain('Racha «—» = sin racha activa');
+    });
+
     it('shouldNotRepeatNWhenEveryCellOfTheRowSharesTheNColumn', async () => {
       const same = win({ eff: { median: 2, nEff: 30 }, beat: { rate: 0.9, k: 27, nBeat: 30 } });
       await open({ zip: game({ windows: { ...game().windows, '28': same } }) });

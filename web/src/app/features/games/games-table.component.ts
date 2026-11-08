@@ -7,7 +7,7 @@ import { gamesTable, nextSort, Range, Sort, Summary } from './games.model';
   selector: 'app-games-table',
   template: `
     @let v = view();
-    <div class="tblwrap" tabindex="0" role="region" aria-label="Comparativa de juegos (desplazable)"><table class="gtable" id="gamesTable"><caption class="sr-only">Comparativa de juegos en el periodo seleccionado. Los encabezados ordenan la tabla. Cada porcentaje y cada mediana muestran su n.</caption>
+    <div class="tblwrap" tabindex="0" role="region" aria-label="Comparativa de juegos (desplazable)"><table class="gtable" id="gamesTable"><caption class="sr-only">Comparativa de juegos en el periodo seleccionado. Los encabezados ordenan la tabla. El tamaño de muestra está en la columna n; la eficiencia y el porcentaje que gana a la media añaden su propio n solo cuando es distinto. Racha con un guion: sin racha activa; el último registro está en la cabecera.</caption>
       <thead id="gamesHead">@if (v) {<tr>@for (h of v.head; track h.k) {<th scope="col" [id]="'gth-' + h.k" [attr.aria-sort]="h.aria"><button type="button" class="thbtn" (click)="sortBy(h.k)">{{ h.l }}</button></th>}</tr>}</thead>
       <tbody id="gamesRows">
         @if (v) {
