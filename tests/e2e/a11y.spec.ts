@@ -23,3 +23,10 @@ test.describe('Accesibilidad (axe)', () => {
     });
   }
 });
+
+// Canario: si axe no detecta una infracción conocida, el resto de pruebas no prueban nada.
+test('shouldDetectViolationWhenImageHasNoAlt', async ({ page }) => {
+  await page.setContent('<!doctype html><html lang="es"><head><title>x</title></head><body><main><img src="data:image/gif;base64,R0lGODlhAQABAAAAACw="></main></body></html>');
+  const { violations } = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
+  expect(violations.map((v) => v.id)).toContain('image-alt');
+});
