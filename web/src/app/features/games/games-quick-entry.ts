@@ -1,4 +1,4 @@
-import { Component, computed, DestroyRef, inject, output, signal } from '@angular/core';
+import { Component, computed, DestroyRef, ElementRef, inject, output, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { catchError, debounceTime, map, of, switchMap } from 'rxjs';
 import { ApiClient } from '../../core/api-client';
@@ -20,7 +20,7 @@ const BADGE = { new: 'nuevo', changed: 'cambia', same: 'igual' } as const;
   template: `
     <div id="lgQuick">
       <label class="muted" for="lgQuickText" style="display:block;font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Registro rápido · juego, mis segundos, media</label>
-      <textarea id="lgQuickText" rows="2" style="width:100%" placeholder="Z, 6, 12" autocomplete="off" autocapitalize="characters" spellcheck="false"
+      <textarea #box id="lgQuickText" rows="2" style="width:100%" placeholder="Z, 6, 12" autocomplete="off" autocapitalize="characters" spellcheck="false"
         [value]="text()" (input)="onInput($event)" (keydown)="onKey($event)"></textarea>
       <div id="lgQuickPreview" role="status" class="muted" style="margin-top:6px;font-size:var(--fs-sm)">
         @if (message(); as m) { {{ m }} }
@@ -49,6 +49,7 @@ export class GamesQuickEntry {
   private readonly tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
   protected readonly today = localToday();
 
+  private readonly box = viewChild.required<ElementRef<HTMLTextAreaElement>>('box');
   protected readonly text = signal('');
   protected readonly message = signal('');
   private readonly saving = signal(false);
@@ -70,6 +71,17 @@ export class GamesQuickEntry {
     const p = this.preview();
     return !this.saving() && !!p && p.ok && p.errors.length === 0 && p.days.some((d) => d.games.some((g) => g.status !== 'same'));
   });
+
+  /** A game chip: starts a line for that game (a new line if something is already written) and puts the cursor there. */
+  prefill(game: string): void {
+    const t = this.text();
+    this.message.set('');
+    this.text.set((t.trim() ? t.replace(/\n*$/, '\n') : '') + game + ', ');
+    const el = this.box().nativeElement;
+    el.value = this.text();
+    el.focus();
+    el.setSelectionRange(el.value.length, el.value.length);
+  }
 
   protected name(k: string): string { return gameName(k); }
   protected badge(s: Imported['status']): string { return BADGE[s]; }

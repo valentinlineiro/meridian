@@ -195,7 +195,3 @@ export function trajectory(s: Summary, game: string, range: Range) {
     note: 'Cifras de ' + RANGE_NAMES[range] + ', un punto por ' + (weekly ? 'semana (lunes)' : 'día') + ', sin suavizar. Línea azul: cuánto más rápido que la media vas (la línea de puntos es la media). Línea verde: la parte de los días que le ganas a la media. Barras: partidas de cada ' + (weekly ? 'semana' : 'día') + '; un hueco es un periodo sin partidas.',
   };
 }
-
-/** One line of the modal's "Registrado ese día" list. */
-export const dayLine = (k: string, e: { score?: string | null; avg?: string | null; number?: number | null } | null) =>
-  gameName(k) + ': ' + (e?.score ?? '?') + (e?.avg ? '  (media ' + e.avg + ')' : '') + (e?.number ? '  #' + e.number : '');

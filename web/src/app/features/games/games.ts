@@ -4,7 +4,6 @@ import { catchError, forkJoin, Observable, of } from 'rxjs';
 import { ApiClient } from '../../core/api-client';
 import { safe } from '../../core/guard';
 import { GamesChart } from './games-chart';
-import { GamesEntryModal } from './games-entry-modal';
 import { GamesQuickEntry } from './games-quick-entry';
 import { GamesTable } from './games-table';
 import { Help } from '../../shared/help';
@@ -21,7 +20,7 @@ const HERO_IDLE = { label: 'LinkedIn Games · racha actual', streak: '—', meta
 
 @Component({
   selector: 'app-games',
-  imports: [GamesChart, GamesEntryModal, GamesQuickEntry, GamesTable, Help, Section, Segmented, Stats, VerdictPill],
+  imports: [GamesChart, GamesQuickEntry, GamesTable, Help, Section, Segmented, Stats, VerdictPill],
   templateUrl: './games.html',
 })
 export class Games {
@@ -63,7 +62,7 @@ export class Games {
     if (!this.summary()) return [];
     const g = this.loaded()?.d?.day?.games;
     const done = new Set(g && typeof g === 'object' ? Object.keys(g) : []);
-    return Object.keys(GAME_NAMES).map((k) => ({ k, done: done.has(k), text: (done.has(k) ? '✓ ' : '') + GAME_NAMES[k] }));
+    return Object.keys(GAME_NAMES).map((k) => ({ k, name: GAME_NAMES[k], done: done.has(k), text: (done.has(k) ? '✓ ' : '') + GAME_NAMES[k] }));
   });
   protected readonly cards = computed(() => {
     const s = this.summary(), range = this.range();

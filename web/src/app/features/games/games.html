@@ -9,15 +9,14 @@
         <div id="gamesHeroMeta" class="muted" style="font-size:var(--fs-sm);margin-top:4px">{{ h.meta }}</div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
-        <button class="btn btn-p" type="button" id="gamesEntryOpen" (click)="entry.open()">Registrar resultado</button>
         <span id="gamesHeroDays" class="muted" style="font-size:var(--fs-sm)">{{ h.days }}</span>
       </div>
     </div>
-    <div style="margin-top:14px"><div class="muted" style="font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Hoy · toca un juego para registrarlo</div>
-      <div id="gamesToday" class="chips">@for (c of chips(); track c.k) {<button type="button" [class]="'pill ' + (c.done ? 'pill-win' : 'pill-scope')" [attr.data-game]="c.k" (click)="entry.open(c.k)">{{ c.text }}</button>}</div>
+    <div style="margin-top:14px"><div class="muted" style="font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Hoy · toca un juego para empezar a escribirlo</div>
+      <div id="gamesToday" class="chips">@for (c of chips(); track c.k) {<button type="button" [class]="'pill ' + (c.done ? 'pill-win' : 'pill-scope')" [attr.data-game]="c.k" (click)="quick.prefill(c.name)">{{ c.text }}</button>}</div>
     </div>
+    <div style="margin-top:14px"><app-games-quick-entry #quick (saved)="data.reload()" /></div>
   </div>
-  <app-games-quick-entry (saved)="data.reload()" />
   <div id="gamesNote" class="muted" role="status">{{ note() }}</div>
   <app-segmented groupId="gamesRange" label="Periodo de análisis" caption="Periodo" idPrefix="gr-" [options]="ranges" [value]="range()" (picked)="range.set($any($event))" />
   <app-section title="Comparativa" sectionId="cg-games-cmp">
@@ -67,4 +66,3 @@
     </div>
   </app-section>
 </section>
-<app-games-entry-modal #entry (saved)="data.reload()" />
