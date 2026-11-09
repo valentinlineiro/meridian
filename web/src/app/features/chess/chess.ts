@@ -44,7 +44,7 @@ function hero(d: ChessData | null, failed: boolean) {
   const wP = sum ? Number((c!.w / sum * 100).toFixed(1)) : 0, lP = sum ? Number((c!.l / sum * 100).toFixed(1)) : 0;
   return {
     elo: elo != null ? String(elo) : '—',
-    sub: elo != null ? 'ELO' + (single ? ' · sin histórico comparable' : delta != null ? ` · ${signedInt(delta)} vs primer snapshot` : '') : 'ELO',
+    sub: elo != null ? 'ELO' + (single ? ' · sin histórico comparable' : delta != null ? ` · ${signedInt(delta)} vs primera lectura` : '') : 'ELO',
     meta: s.games ? es(s.games) + ' partidas disputadas · ELO observado en sincronizaciones' : 'Sin partidas registradas',
     pill: 'pill' + (n ? (s.currentStreakKind === 'loss' ? ' pill-loss' : ' pill-win') : ''),
     streak: n ? `🔥 ${n} ${streakWord(n, s.currentStreakKind)}${n === 1 ? ' consecutiva' : ' consecutivas'}` : '🔥 Sin racha activa',
@@ -89,7 +89,7 @@ function evolution(t: Timeline | null) {
   for (const snap of t.snapshots ?? []) if (snap.elo != null) byDay.set(snap.createdAt.slice(0, 10), snap.elo);
   const points: EloPoint[] = [...byDay.entries()].map(([date, elo]) => ({ date, elo })).sort((a, b) => a.date.localeCompare(b.date));
   let note = '';
-  if (!points.length) note = 'Sin snapshots';
+  if (!points.length) note = 'Sin lecturas de ELO';
   else if (points.length > 1) {
     const elos = points.map((p) => p.elo);
     note = `${points.length} días con ELO leído · lecturas entre ${Math.min(...elos)} y ${Math.max(...elos)} · ${signedInt(elos[elos.length - 1] - elos[0])} desde la primera lectura`;

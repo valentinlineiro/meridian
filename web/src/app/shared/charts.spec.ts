@@ -61,7 +61,7 @@ describe('m-sparkline', () => {
     const el = await render(Sparkline, { points: [{ date: '2026-11-03', elo: 912 }] });
     expect(el.querySelector('svg')).toBeNull();
     expect(el.textContent).toContain('912');
-    expect(el.textContent).toContain('Primer snapshot · 3 nov 2026');
+    expect(el.textContent).toContain('Primera lectura · 3 nov 2026');
     expect(el.textContent).toContain('La evolución aparecerá cuando haya más días de datos.');
   });
 

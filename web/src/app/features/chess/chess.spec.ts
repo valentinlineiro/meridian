@@ -136,9 +136,9 @@ describe('Chess', () => {
     it('shouldSayTheEloChangeIsAgainstTheFirstSnapshot', async () => {
       await t.open();
       expect(t.text('chessHeroElo')).toBe('1000');
-      expect(t.text('chessHeroEloSub')).toBe('ELO · +100 vs primer snapshot');
+      expect(t.text('chessHeroEloSub')).toBe('ELO · +100 vs primera lectura');
       expect(t.text('chessHeroMeta')).toBe('100 partidas disputadas · ELO observado en sincronizaciones');
-      expect(t.text('kpis')).not.toContain('vs primer snapshot'); // the hero is the one place for the ELO change
+      expect(t.text('kpis')).not.toContain('vs primera lectura'); // the hero is the one place for the ELO change
     });
 
     it('shouldShowTheHistoricalRateAndTheBotShareInTheHero', async () => {
@@ -147,7 +147,7 @@ describe('Chess', () => {
       expect(t.text('chessHeroWrLabel')).toBe('62,2 % de victorias (historial completo, todos los rivales)');
       expect(t.text('chessHeroDistMeta')).toBe('1046W · 505L · 132D');
       expect(t.text('chessHeroGames')).toBe('1650 de 1683 partidas contra bots');
-      expect(t.text('chessHeroEloSub')).toBe('ELO · −84 vs primer snapshot');
+      expect(t.text('chessHeroEloSub')).toBe('ELO · −84 vs primera lectura');
       expect(t.el().querySelector<HTMLElement>('#chessHeroDist .bar-win')!.style.width).toBe('62.2%');
     });
 
@@ -342,7 +342,7 @@ describe('Chess', () => {
       await t.open(chessApi(failing));
       expect(t.text('kpis')).toContain('Partidas');
       for (const id of ['col', 'opp', 'evo', 'elo', 'form', 'lossContext']) expect(t.text(id)).toBe('No disponible');
-      expect(t.text('chessHeroEloSub')).toBe('ELO · +100 vs primer snapshot'); // the summary still knows the first ELO
+      expect(t.text('chessHeroEloSub')).toBe('ELO · +100 vs primera lectura'); // the summary still knows the first ELO
     });
 
     it('shouldIgnoreStaleResponseWhenRouteChanged', async () => {

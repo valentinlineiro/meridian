@@ -66,7 +66,7 @@ function chessCard(stats: ChessSummary | null, syncedAt: string | null) {
   const wP = Number((w / sum * 100).toFixed(1)), lP = Number((l / sum * 100).toFixed(1));
   return {
     elo: elo != null ? `${elo} ELO` : '—',
-    eloMeta: elo != null && syncedAt ? 'último snapshot de Chess: ' + relDate(syncedAt) : '',
+    eloMeta: elo != null && syncedAt ? 'última lectura de Chess: ' + relDate(syncedAt) : '',
     wrLabel: (s.winRate != null ? (s.winRate * 100).toFixed(1).replace('.', ',') + ' ' : '') + '% de victorias (historial completo, todos los rivales)',
     wrMeta: known ? `${w} W · ${l} L · ${d} D` : '—',
     // an unknown or empty history draws no bar at all, not three zero-width ones

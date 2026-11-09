@@ -161,7 +161,7 @@ describe('A7: calibrated rules abstain on screen', () => {
   });
   it('shouldAttributeCalibrationOnlyToTheRulesThatUseIt', () => {
     const el = render(CHANGES.base);
-    expect(txt(card(el, 'Asimetría por color'))).toContain('fiable el 95 % de las veces');
+    expect(txt(card(el, 'Asimetría por color'))).toContain('este método incluye el valor real en unas 95 de cada 100 repeticiones');
     expect(txt(card(el, 'Asimetría por color'))).not.toContain('calibrados');
     for (const t of ['Salto de ELO', 'Mayor XP diario']) {
       expect(txt(card(el, t))).toContain('aún no sabemos qué es habitual en ti; datos hasta el 5 de noviembre');
@@ -227,6 +227,6 @@ describe('evaluation cards: a malformed evaluation degrades alone', () => {
     const el = render({ findings: [], evaluations: [{ id: 'NEW_RULE', kind: 'statistical', status: 'not_emitted', reasons: ['effect_below_threshold'], metrics: {}, criteria: {} }] });
     expect(el.querySelector('h3')!.textContent).toBe('NEW_RULE');
     expect(txt(el)).toContain('El cambio que se ve no llega al mínimo exigido.');
-    expect(txt(el)).toContain('Del 20 al 27 de septiembre · fiable el 95 % de las veces');
+    expect(txt(el)).toContain('Del 20 al 27 de septiembre · este método incluye el valor real en unas 95 de cada 100 repeticiones');
   });
 });

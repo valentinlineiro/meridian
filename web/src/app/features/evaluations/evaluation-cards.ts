@@ -144,7 +144,7 @@ export function evaluationCard(e: Evaluation, state: EvalStateName, finding: Eva
   const claim = state === 'AFIRMADO' && finding ? { claim: String(finding.claim), evidence: String(finding.evidence) } : null;
   // A7: "calibrated" only if the edge that decides this evaluation is admitted (ELO: the one of the direction of the change; XP: upper95).
   const edgeAdmitted = e.id === 'CHESS_RATING_JUMP' ? k[(m['ratingDelta'] != null && m['ratingDelta'] < 0 ? 'lower95' : 'upper95') + 'Admitted'] === 1 : k['upper95Admitted'] === 1;
-  const basis = e.kind === 'statistical' ? 'fiable el 95 % de las veces'
+  const basis = e.kind === 'statistical' ? 'este método incluye el valor real en unas 95 de cada 100 repeticiones'
     : k['calibratedThrough'] ? (edgeAdmitted ? 'lo habitual en ti, calculado hasta el ' + longDay(String(k['calibratedThrough'])) : 'aún no sabemos qué es habitual en ti; datos hasta el ' + longDay(String(k['calibratedThrough'])))
     : 'regla fija, sin margen de error calculado';
   const collapsed = state === 'INSUFICIENTE' || state === 'SIN INDICIO';

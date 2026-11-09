@@ -91,7 +91,7 @@ describe('Overview', () => {
     expect(text(el, 'overviewLangCatalogXp')).toBe('2 cursos · 421.500 XP');
 
     expect(text(el, 'overviewChessElo')).toBe('900 ELO');
-    expect(text(el, 'overviewChessEloMeta')).toBe('último snapshot de Chess: hace 2d');
+    expect(text(el, 'overviewChessEloMeta')).toBe('última lectura de Chess: hace 2d');
     expect(text(el, 'overviewChessWrLabel')).toBe('50,0 % de victorias (historial completo, todos los rivales)');
     expect(text(el, 'overviewChessWrMeta')).toBe('5 W · 3 L · 2 D');
     expect(el.querySelector<HTMLElement>('#overviewChessDist .bar-win')!.style.width).toBe('50%');
@@ -160,7 +160,7 @@ describe('Overview', () => {
       '/api/stats/timeline': { snapshots: [{ createdAt: iso(5 * DAY) }] },
     });
     expect(text(el, 'overviewChessElo')).toBe('880 ELO');
-    expect(text(el, 'overviewChessEloMeta')).toBe('último snapshot de Chess: hace 5d');
+    expect(text(el, 'overviewChessEloMeta')).toBe('última lectura de Chess: hace 5d');
   });
 
   it('shouldShowEmptyStateWhenNoData', async () => {

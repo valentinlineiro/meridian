@@ -85,7 +85,7 @@ export class Openings {
     if (ph === undefined) return undefined;
     if (!ph || ph.error) return null;
     const h = ph.population?.hydrated;
-    return { groups: ph.phases ?? [], meta: `Las partidas suelen durar ${ph.medianPlies == null ? '—' : Math.round(ph.medianPlies / 2)} jugadas · con detalle: ${h ?? '—'} partidas` };
+    return { groups: ph.phases ?? [], meta: `Las partidas suelen durar ${ph.medianPlies ? Math.round(ph.medianPlies / 2) : '—'} jugadas · con detalle: ${h ?? '—'} partidas` };
   });
   // Shown only when there is something to show: how the games won or lost by checkmate ended.
   protected readonly mates = computed(() => {

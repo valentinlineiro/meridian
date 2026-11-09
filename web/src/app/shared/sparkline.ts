@@ -14,7 +14,7 @@ const W = 520, H = 90, PAD = 10;
     } @else if (ps.length === 1) {
       <div style="min-height:96px;display:flex;flex-direction:column;justify-content:center">
         <div style="font-size:var(--fs-display);font-weight:800;line-height:1">{{ ps[0].elo }}</div>
-        <div class="muted" style="margin-top:4px">Primer snapshot · {{ firstLabel() }}</div>
+        <div class="muted" style="margin-top:4px">Primera lectura · {{ firstLabel() }}</div>
         <div class="muted" style="margin-top:8px;font-style:italic">La evolución aparecerá cuando haya más días de datos.</div>
       </div>
     } @else {

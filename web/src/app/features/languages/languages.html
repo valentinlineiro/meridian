@@ -191,7 +191,7 @@
         <!-- Bloques A y B: Intensidad y Perfil Semanal -->
         <div class="grid2" style="margin-bottom:12px">
           <div class="card" id="langIntensityCard">
-            <h2>Cuánto XP ganas por minuto · cuenta</h2>
+            <h2>XP y tiempo por sesión · cuenta</h2>
             <div id="langIntensityBody">
               @let i = intensity();
               @if (isNA(i)) { <div class="muted">{{ i }}</div> }
@@ -200,7 +200,7 @@
                   <div><div class="muted" style="font-size:var(--fs-xs);letter-spacing:.04em;text-transform:uppercase">XP / sesión</div><div style="font-size:var(--fs-h);font-weight:700">{{ i.xp }}</div><div class="muted" style="font-size:var(--fs-xs)">global · med: {{ i.xpMed }}</div></div>
                   <div style="border-left:1px solid var(--line);padding-left:8px"><div class="muted" style="font-size:var(--fs-xs);letter-spacing:.04em;text-transform:uppercase">Tiempo / sesión</div><div style="font-size:var(--fs-h);font-weight:700">{{ i.time }}</div><div class="muted" style="font-size:var(--fs-xs)">global · med: {{ i.timeMed }}</div></div>
                 </div>
-                <div class="muted" style="font-size:var(--fs-xs);line-height:1.4;border-top:1px solid var(--line);padding-top:8px">Relación entre el XP y el tiempo que dice Duolingo. No mide cuánto aprendes ni a qué velocidad.</div>
+                <div class="muted" style="font-size:var(--fs-xs);line-height:1.4;border-top:1px solid var(--line);padding-top:8px">Cuánto XP ganas y cuánto dura una sesión, según Duolingo. No mide cuánto aprendes ni a qué velocidad.</div>
               }
             </div>
           </div>
