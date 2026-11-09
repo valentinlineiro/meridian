@@ -1,9 +1,9 @@
 import { Component, computed, inject, input, output } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
-import { Kpi } from '../../shared/kpi.component';
-import { dec1, pc0 } from './chess.model';
-import { MatchesService } from './matches.service';
-import { safe } from '../../core/guard';
+import { Kpi } from '../../../shared/kpi';
+import { dec1, pc0 } from '../chess.model';
+import { MatchesService } from '../services/matches.service';
+import { safe } from '../../../core/guard';
 
 interface Rate { games?: number; moves: number; serious: number; ratePer100: number | null }
 interface Decisive { lossGames: number; withDecisive: number; medianMove?: number | null; byPhase: Record<PhaseKey, number> }
@@ -168,7 +168,7 @@ function view(b: Profile, cut: string) {
 @Component({
   selector: 'app-engine-profile',
   imports: [Kpi, NgTemplateOutlet],
-  templateUrl: './engine-profile.component.html',
+  templateUrl: './engine-profile.html',
 })
 export class EngineProfile {
   private readonly matches = inject(MatchesService);

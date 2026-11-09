@@ -1,11 +1,11 @@
 import { Component, computed, inject, input, output } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { catchError, map, of } from 'rxjs';
-import { ApiClient } from '../../core/api-client';
-import { colorConclusion } from '../../core/format';
-import { ColorStats, dec1, Group, list, NA, scaleDelta } from './chess.model';
-import { Profile } from './engine-profile.component';
-import { MatchesService } from './matches.service';
+import { ApiClient } from '../../../core/api-client';
+import { colorConclusion } from '../../../core/format';
+import { ColorStats, dec1, Group, list, NA, scaleDelta } from '../chess.model';
+import { Profile } from './engine-profile';
+import { MatchesService } from '../services/matches.service';
 
 interface Evaluation { id: string; status?: string; criteria?: { minDiffPp?: number | null } }
 const DENOMINATOR = (n: number) => `Denominador: ${n} partidas guardadas en el historial (elegibles para análisis)`;

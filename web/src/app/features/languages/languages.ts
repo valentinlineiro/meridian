@@ -6,7 +6,7 @@ import { catchError, forkJoin, map, Observable, of, switchMap } from 'rxjs';
 import { ApiClient } from '../../core/api-client';
 import { Course, CourseDetail, Langs, resolveSelectedCourseId, SELECTED_COURSE_KEY, XpDay } from '../../core/courses';
 import { list, safe } from '../../core/guard';
-import { CourseDetailView } from './course-detail.component';
+import { CourseDetailView } from './course-detail';
 import {
   account, accountActivity, activityToday, Analytics, comparability, concentration, courseList, Detail, hero, intensity, LangData, legacyAccount, LegacyLang,
   Load, NA, observed, progress, timeline, week, weekdays,
@@ -23,7 +23,7 @@ const ok = <T>(v: T | typeof NONE | null): v is T => v !== null && v !== NONE &&
 @Component({
   selector: 'app-languages',
   imports: [CourseDetailView, RouterLink],
-  templateUrl: './languages.component.html',
+  templateUrl: './languages.html',
 })
 export class Languages {
   /** The `:courseId` route param (absent on /languages). */

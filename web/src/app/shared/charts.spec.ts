@@ -1,8 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { Type } from '@angular/core';
-import { Kpi } from './kpi.component';
-import { Donut } from './donut.component';
-import { Sparkline } from './sparkline.component';
+import { Kpi } from './kpi';
+import { Donut } from './donut';
+import { Sparkline } from './sparkline';
 
 // Ports of kpi/donut/sparkline (src/dashboard.client.js:237–277): same markup and classes, so styles.css applies.
 const render = async <T,>(type: Type<T>, inputs: Record<string, unknown>) => {

@@ -4,7 +4,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { provideRouter, Router } from '@angular/router';
 import { routes } from '../app.routes';
 import { BROWSER_LOCATION } from '../core/api-client';
-import { SideNav } from './side-nav.component';
+import { SideNav } from './side-nav';
 
 describe('SideNav', () => {
   beforeEach(() => {

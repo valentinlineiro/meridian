@@ -3,9 +3,9 @@ import { rxResource } from '@angular/core/rxjs-interop';
 import { catchError, forkJoin, Observable, of } from 'rxjs';
 import { ApiClient } from '../../core/api-client';
 import { safe } from '../../core/guard';
-import { GamesChart } from './games-chart.component';
-import { GamesEntryModal } from './games-entry-modal.component';
-import { GamesTable } from './games-table.component';
+import { GamesChart } from './games-chart';
+import { GamesEntryModal } from './games-entry-modal';
+import { GamesTable } from './games-table';
 import { cardOrder, Day, defaultTrajGame, GAME_NAMES, gameCard, gameName, gamesHero, localToday, Range, RANGES, Summary, trajectory } from './games.model';
 
 // Port of the LinkedIn Games tab (src/frontend.ts:489–520, src/dashboard.client.js:1787–1971).
@@ -16,7 +16,7 @@ const HERO_IDLE = { label: 'LinkedIn Games · racha actual', streak: '—', meta
 @Component({
   selector: 'app-games',
   imports: [GamesChart, GamesEntryModal, GamesTable],
-  templateUrl: './games.component.html',
+  templateUrl: './games.html',
 })
 export class Games {
   private readonly api = inject(ApiClient);

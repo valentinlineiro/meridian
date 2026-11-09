@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { Settings } from './settings.component';
+import { Settings } from './settings';
 
 // Ports of tests/settingsPage.test.ts ("settings page: daily goal"); the "where the goal is edited" cases assert
 // the legacy dashboard HTML and stay with the root tests.

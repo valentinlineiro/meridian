@@ -1,7 +1,7 @@
 import { Component, computed, input } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
-import { colorConclusion, ColorConclusion } from '../core/format';
-import { list, safe } from '../core/guard';
+import { colorConclusion, ColorConclusion } from '../../core/format';
+import { list, safe } from '../../core/guard';
 
 // Port of evaluationCards and its helpers (src/dashboard.client.js:2167–2290): the epistemic-status cards shared by
 // Trayectoria and Qué cambió. Each caller says which claim backs an emitted evaluation (findingFor) and the window to name.
