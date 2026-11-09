@@ -208,7 +208,7 @@ export function timeline(xp: XpDay[]) {
     const g = s.gainedXp || 0;
     return {
       height: Math.max(3, Math.round(g / max * 56)),
-      color: g >= 500 ? '#2ea043' : g >= 100 ? '#58a6ff' : g > 0 ? '#8ea0b8' : '#1e2e44',
+      color: g >= 500 ? 'var(--ok)' : g >= 100 ? 'var(--info)' : g > 0 ? 'var(--muted)' : 'var(--line)',
       title: `${new Date(Number(s.date) * 1000).toISOString().slice(0, 10)}: ${g} XP (${s.numSessions} ses)`,
     };
   });

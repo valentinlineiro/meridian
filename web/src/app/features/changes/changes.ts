@@ -158,7 +158,7 @@ function bodyView(b: Body, w: Win) {
           @if (f.evals.length) {<m-evaluation-cards [evaluations]="f.evals" [findingFor]="f.findingFor" [win]="f.win" />}
           @for (e of f.events; track $index) {
             @if ('na' in e) {<ng-container *ngTemplateOutlet="na; context: { $implicit: e.title }" />} @else {
-              <div class="card" style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><h3 style="margin:0">{{ e.title }}</h3><span><span class="pill pill-win">EVENTO</span>&ngsp;<span class="pill pill-scope">{{ e.category }}</span></span></div><div style="font-size:13px;font-weight:600;color:#c8d7ea;margin-bottom:6px">{{ e.claim }}</div><div class="muted" style="font-size:12px"><strong>Evidencia:</strong> {{ e.evidence }}</div></div>
+              <div class="card" style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><h3 style="margin:0">{{ e.title }}</h3><span><span class="pill pill-win">EVENTO</span>&ngsp;<span class="pill pill-scope">{{ e.category }}</span></span></div><div style="font-size:13px;font-weight:600;color:var(--text-2);margin-bottom:6px">{{ e.claim }}</div><div class="muted" style="font-size:12px"><strong>Evidencia:</strong> {{ e.evidence }}</div></div>
             }
           }
           @if (f.findingsNa) {<ng-container *ngTemplateOutlet="na; context: { $implicit: 'Hallazgos' }" />}

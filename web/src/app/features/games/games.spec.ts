@@ -440,8 +440,8 @@ describe('Games', () => {
     it('shouldDrawBothSeriesWithTheSampleSizeBarsOnTheSameAxis', async () => {
       await open({ zip: game() });
       const svg = el.querySelector('#gamesChart svg')!;
-      expect(svg.querySelectorAll('circle[fill="#7aa7e6"]').length).toBeGreaterThan(0); // efficiency
-      expect(svg.querySelectorAll('circle[fill="#2ea043"]').length).toBeGreaterThan(0); // beats the average
+      expect(svg.querySelectorAll('circle[fill="var(--link)"]').length).toBeGreaterThan(0); // efficiency
+      expect(svg.querySelectorAll('circle[fill="var(--ok)"]').length).toBeGreaterThan(0); // beats the average
       expect(svg.querySelectorAll('rect')).toHaveLength(2); // bars only where n > 0
       expect(titles()).toContain('2026-11-01 · n=2 · ×1,1');
       expect(svg.textContent).toContain('100 %'); // beat strip axis

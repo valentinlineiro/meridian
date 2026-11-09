@@ -76,7 +76,7 @@ function trajectoryView(d: Rec) {
         @if (v.evals.length) {<m-evaluation-cards [evaluations]="v.evals" [findingFor]="v.findingFor" [win]="v.win" />}
         @for (c of v.plain; track $index) {
           @if ('na' in c) {<ng-container *ngTemplateOutlet="na; context: { $implicit: c.title }" />} @else {
-            <div class="card" style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><h3 style="margin:0">{{ c.title }}</h3><span class="pill pill-scope">SIN EVALUAR</span></div><div style="font-size:13px;font-weight:600;color:#c8d7ea;margin-bottom:6px">{{ c.claim }}</div><div class="muted" style="font-size:12px"><strong>Evidencia:</strong> {{ c.evidence }}</div></div>
+            <div class="card" style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><h3 style="margin:0">{{ c.title }}</h3><span class="pill pill-scope">SIN EVALUAR</span></div><div style="font-size:13px;font-weight:600;color:var(--text-2);margin-bottom:6px">{{ c.claim }}</div><div class="muted" style="font-size:12px"><strong>Evidencia:</strong> {{ c.evidence }}</div></div>
           }
         }
         @if (v.findingsNa) {<ng-container *ngTemplateOutlet="na; context: { $implicit: 'Patrones' }" />}

@@ -46,7 +46,7 @@
             @for (t of c.interp; track $index) {<p [class]="$first ? 'ginterp' : 'muted'">{{ t }}</p>}
             <p class="gcap">Periodo: {{ c.window }}</p>
             <dl class="gmetrics">@for (m of c.metrics; track m.l) {<div><dt>{{ m.l }}</dt><dd>{{ m.v }}</dd>@if (m.s) {<dd class="muted">{{ m.s }}</dd>}</div>}</dl>
-            <div>@if (c.spark) {<svg class="spark" viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true"><polyline [attr.points]="c.spark" fill="none" stroke="#7aa7e6" stroke-width="1.5" vector-effect="non-scaling-stroke" /></svg>}</div>
+            <div>@if (c.spark) {<svg class="spark" viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true"><polyline [attr.points]="c.spark" fill="none" stroke="var(--link)" stroke-width="1.5" vector-effect="non-scaling-stroke" /></svg>}</div>
             <p class="gcap">Mediana móvil de 28 días (suavizada)</p>
           </section>
         }

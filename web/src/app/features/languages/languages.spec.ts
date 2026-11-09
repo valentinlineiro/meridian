@@ -240,10 +240,10 @@ describe('Languages', () => {
       await open('/languages', langApi({ '/api/languages/xp': { summaries } }));
       const dots = [...el().querySelectorAll<HTMLElement>('#langActivityStrip > div > div')].map((d) => d.style.background);
       expect(dots).toHaveLength(7);
-      expect(dots[6]).toBe('rgb(46, 160, 67)'); // #2ea043: goal met
-      expect(dots[5]).toBe('rgb(88, 166, 255)'); // #58a6ff: some XP, under the goal
-      expect(dots[4]).toBe('rgb(46, 160, 67)'); // exactly the goal is met
-      expect(dots[3]).toBe('rgb(30, 46, 68)'); // #1e2e44: no XP
+      expect(dots[6]).toBe('var(--ok)'); // goal met
+      expect(dots[5]).toBe('var(--info)'); // some XP, under the goal
+      expect(dots[4]).toBe('var(--ok)'); // exactly the goal is met
+      expect(dots[3]).toBe('var(--line)'); // no XP
       expect(text('langGoalToday')).toBe('Hoy: 150 / 100 XP · objetivo cumplido · 2 de 7 días con objetivo cumplido');
       expect(text('langWeekSummary')).toBe('300 XP · 4 ses · 11 min');
       expect(el().querySelectorAll<HTMLElement>('#langActivityStrip > div')[6].title).toBe(`${utcDay(0)}: 150 XP · 2 ses · 10 min`);
@@ -252,7 +252,7 @@ describe('Languages', () => {
     it('shouldColourEveryActiveDayGreyWithoutAGoal', async () => {
       await open('/languages', langApi({ '/api/me/settings': { dailyGoalXp: null } }));
       const dots = [...el().querySelectorAll<HTMLElement>('#langActivityStrip > div > div')].map((d) => d.style.background);
-      expect(dots[6]).toBe('rgb(142, 160, 184)'); // #8ea0b8
+      expect(dots[6]).toBe('var(--muted)');
       expect(text('langGoalToday')).toBe('Sin objetivo diario configurado.');
     });
 

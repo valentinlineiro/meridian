@@ -30,7 +30,7 @@
         </div>
         <div class="progress-bar"><div id="overviewLangProgressBar" [style.width.%]="d?.lang?.progress ?? 0"></div></div>
       </div>
-      <div style="margin-top:12px;padding-top:10px;border-top:1px solid #1e2e44;display:flex;justify-content:space-between;align-items:center">
+      <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center">
         <span class="muted" style="font-size:12px">Todos los cursos <span class="pill pill-scope">CUENTA</span></span>
         <span id="overviewLangCatalogXp" class="pill" style="font-weight:700">{{ d?.lang?.catalog ?? '—' }}</span>
       </div>
@@ -59,7 +59,7 @@
           }
         </div>
       </div>
-      <div style="margin-top:12px;padding-top:10px;border-top:1px solid #1e2e44;display:flex;justify-content:space-between;align-items:center">
+      <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center">
         <span class="muted" style="font-size:12px">Histórico</span>
         <span id="overviewChessHistorical" class="muted" style="font-size:12px">{{ d?.chess?.historical ?? '—' }}</span>
       </div>
@@ -75,7 +75,7 @@
         <div id="overviewGamesStreak" style="font-weight:800;line-height:1.2" [style.font-size.px]="d?.games?.small ? 16 : 24">{{ d?.games?.value ?? '—' }}</div>
         <div id="overviewGamesMeta" class="muted" style="font-size:11px;margin-top:2px">{{ d?.games?.meta }}</div>
       </div>
-      <div style="margin-top:12px;padding-top:10px;border-top:1px solid #1e2e44;display:flex;justify-content:space-between;align-items:center">
+      <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center">
         <span class="muted" style="font-size:12px">Registro <span class="pill pill-scope">MANUAL</span></span>
         <span id="overviewGamesHistorical" class="muted" style="font-size:12px">{{ d?.games?.historical ?? '—' }}</span>
       </div>

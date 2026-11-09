@@ -4,9 +4,9 @@ import { es } from '../../core/courses';
 
 /** Day dot: grey without XP; with XP, green when the daily goal is met, blue under it, neutral grey without a goal. */
 export function goalColor(xp: number, goal: number | null): string {
-  if (!(xp > 0)) return '#1e2e44';
-  if (goal == null) return '#8ea0b8';
-  return xp >= goal ? '#2ea043' : '#58a6ff';
+  if (!(xp > 0)) return 'var(--line)';
+  if (goal == null) return 'var(--muted)';
+  return xp >= goal ? 'var(--ok)' : 'var(--info)';
 }
 
 /** "Hoy: 150 / 100 XP · objetivo cumplido · 1 de 7 días con objetivo cumplido"; days oldest first, the last is today. */

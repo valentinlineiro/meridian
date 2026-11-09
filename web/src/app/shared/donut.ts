@@ -7,7 +7,7 @@ import { pc1 } from '../core/format';
   template: `
     <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap">
       <svg width="96" height="96" viewBox="0 0 72 72">
-        <circle r="16" cx="36" cy="36" fill="transparent" stroke="#1e2e44" stroke-width="8" />
+        <circle r="16" cx="36" cy="36" fill="transparent" stroke="var(--line)" stroke-width="8" />
         @for (s of segs(); track s.k) {
           <circle r="16" cx="36" cy="36" fill="transparent" [attr.stroke]="s.c" stroke-width="8"
             [attr.stroke-dasharray]="s.dash" [attr.stroke-dashoffset]="s.off" transform="rotate(-90 36 36)" />
@@ -32,9 +32,9 @@ export class Donut {
   protected readonly segs = computed(() => {
     let acc = 0;
     return [
-      { v: this.wins(), c: '#2ea043', k: 'Victorias' },
-      { v: this.losses(), c: '#d15a5a', k: 'Derrotas' },
-      { v: this.draws(), c: '#6e7a8e', k: 'Tablas' },
+      { v: this.wins(), c: 'var(--ok)', k: 'Victorias' },
+      { v: this.losses(), c: 'var(--err)', k: 'Derrotas' },
+      { v: this.draws(), c: 'var(--neutral)', k: 'Tablas' },
     ].map((s) => {
       const dash = (s.v / this.total() * 100).toFixed(2);
       const off = (100 - acc).toFixed(2);

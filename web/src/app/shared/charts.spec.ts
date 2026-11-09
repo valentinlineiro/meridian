@@ -36,9 +36,9 @@ describe('m-donut', () => {
     const el = await render(Donut, { wins: 5, losses: 3, draws: 2 });
     const arcs = [...el.querySelectorAll('circle')].slice(1);
     expect(arcs.map((c) => [c.getAttribute('stroke'), c.getAttribute('stroke-dasharray'), c.getAttribute('stroke-dashoffset')])).toEqual([
-      ['#2ea043', '50.00 50', '100.00'],
-      ['#d15a5a', '30.00 70', '50.00'],
-      ['#6e7a8e', '20.00 80', '20.00'],
+      ['var(--ok)', '50.00 50', '100.00'],
+      ['var(--err)', '30.00 70', '50.00'],
+      ['var(--neutral)', '20.00 80', '20.00'],
     ]);
     expect(el.querySelector('.legend')!.textContent).toBe('Victorias 5 · 50,0 %Derrotas 3 · 30,0 %Tablas 2 · 20,0 %');
     expect(el.textContent).toContain('60,0 % score');

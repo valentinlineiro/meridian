@@ -167,12 +167,12 @@ export function evaluationCards(evals: readonly unknown[], findingFor: (e: Evalu
   template: `
     <ng-template #body let-c>
       @if (c.finding) {
-        <div style="font-size:13px;font-weight:600;color:#c8d7ea;margin-bottom:6px">{{ c.finding.claim }}</div>
+        <div style="font-size:13px;font-weight:600;color:var(--text-2);margin-bottom:6px">{{ c.finding.claim }}</div>
         <div class="muted" style="font-size:12px"><strong>Evidencia:</strong> {{ c.finding.evidence }}</div>
       } @else {
-        @if (c.observed) {<div style="font-size:13px;color:#c8d7ea;margin-bottom:4px"><strong>Observado:</strong> {{ c.observed }}</div>}
-        @if (c.color; as cc) {<div class="evcolor" style="font-size:12px;color:#c8d7ea;margin-bottom:4px">{{ cc.line1 }}<br>{{ cc.line2 }}</div>}
-        @if (c.indicio) {<div style="font-size:13px;font-weight:600;color:#c8d7ea;margin-bottom:4px">{{ c.indicio }}</div>}
+        @if (c.observed) {<div style="font-size:13px;color:var(--text-2);margin-bottom:4px"><strong>Observado:</strong> {{ c.observed }}</div>}
+        @if (c.color; as cc) {<div class="evcolor" style="font-size:12px;color:var(--text-2);margin-bottom:4px">{{ cc.line1 }}<br>{{ cc.line2 }}</div>}
+        @if (c.indicio) {<div style="font-size:13px;font-weight:600;color:var(--text-2);margin-bottom:4px">{{ c.indicio }}</div>}
         <ul class="muted" style="font-size:12px;margin:0;padding-left:18px">@for (r of c.reasons; track $index) {<li>{{ r }}</li>}</ul>
       }
     </ng-template>

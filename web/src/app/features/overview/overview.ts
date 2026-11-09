@@ -97,7 +97,7 @@ function week(d: OverviewData) {
     const byDay = new Map<string, XpDay>();
     for (const s of d.summaries) if (!byDay.has(toDay(s.date))) byDay.set(toDay(s.date), s); // first one wins, as legacy find()
     const xp = (date: string) => byDay.get(date)?.gainedXp || 0, ses = (date: string) => byDay.get(date)?.numSessions || 0;
-    const cells = strip(xp, (n) => n >= 500 ? '#2ea043' : n >= 100 ? '#58a6ff' : n > 0 ? '#8ea0b8' : '#1e2e44', (date, n) => `${date}: ${n} XP · ${ses(date)} ses`);
+    const cells = strip(xp, (n) => n >= 500 ? 'var(--ok)' : n >= 100 ? 'var(--info)' : n > 0 ? 'var(--muted)' : 'var(--line)', (date, n) => `${date}: ${n} XP · ${ses(date)} ses`);
     lang = { cells, summary: `${es(days.reduce((a, x) => a + xp(x.date), 0))} XP · ${days.reduce((a, x) => a + ses(x.date), 0)} ses` };
   }
 
@@ -108,7 +108,7 @@ function week(d: OverviewData) {
       const day = m.played_at ? toDay(m.played_at) : m.first_seen_at ? m.first_seen_at.slice(0, 10) : null;
       if (day) perDay[day] = (perDay[day] || 0) + 1;
     }
-    const cells = strip((date) => perDay[date] || 0, (n) => n >= 5 ? '#2ea043' : n > 0 ? '#58a6ff' : '#1e2e44', (date, n) => `${date}: ${n} partidas`);
+    const cells = strip((date) => perDay[date] || 0, (n) => n >= 5 ? 'var(--ok)' : n > 0 ? 'var(--info)' : 'var(--line)', (date, n) => `${date}: ${n} partidas`);
     const total = days.reduce((a, x) => a + (perDay[x.date] || 0), 0);
     chess = { cells, summary: total + (total === 1 ? ' partida en 7 días' : ' partidas en 7 días') };
   }
@@ -118,7 +118,7 @@ function week(d: OverviewData) {
   if (d.games) {
     const perDay: Record<string, number> = {};
     for (const g of Object.values(d.games.games ?? {})) for (const b of g.trajectory?.['7'] ?? []) perDay[b.start] = (perDay[b.start] || 0) + (b.n || 0);
-    const cells = strip((date) => perDay[date] || 0, (n) => n >= 4 ? '#2ea043' : n > 0 ? '#58a6ff' : '#1e2e44', (date, n) => `${date}: ${n} resultados con media global`);
+    const cells = strip((date) => perDay[date] || 0, (n) => n >= 4 ? 'var(--ok)' : n > 0 ? 'var(--info)' : 'var(--line)', (date, n) => `${date}: ${n} resultados con media global`);
     const total = days.reduce((a, x) => a + (perDay[x.date] || 0), 0);
     games = { cells, summary: total + (total === 1 ? ' resultado con media en 7 días' : ' resultados con media en 7 días') };
   }

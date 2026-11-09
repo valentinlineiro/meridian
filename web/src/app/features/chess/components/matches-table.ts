@@ -86,7 +86,7 @@ const CHIPS: { group: FilterGroup; label: string; options: [string, string][] }[
           <tr [class.gamerow]="!!r.id" [attr.title]="r.id ? 'Ver partida' : null" (click)="r.id && m.open(r.id)">
             <td data-l="Fecha" [attr.title]="r.fullDate">{{ r.date }}</td>
             <td data-l="Rival">@if (r.id) {<button type="button" class="rowbtn" [attr.aria-label]="'Ver partida vs ' + r.opp + ', ' + r.date" (click)="$event.stopPropagation(); m.open(r.id)">{{ r.opp }}</button>} @else {{{ r.opp }}}@if (r.seg) {<span class="pill" style="font-size:10px;margin-left:4px;opacity:.85">{{ r.seg }}</span>}</td>
-            <td data-l="Tipo"><span class="pill" [style.border-color]="r.pvp ? '#58a6ff' : null" [style.color]="r.pvp ? '#a8c8ff' : null">{{ r.type }}</span>@if (r.opening) {<span class="pill" style="font-size:10px;margin-left:4px;opacity:.75">{{ r.opening }}</span>}@if (r.phase) {<span class="pill" style="font-size:10px;margin-left:4px;opacity:.8">{{ r.phase }}</span>}</td>
+            <td data-l="Tipo"><span class="pill" [style.border-color]="r.pvp ? 'var(--info)' : null" [style.color]="r.pvp ? 'var(--link)' : null">{{ r.type }}</span>@if (r.opening) {<span class="pill" style="font-size:10px;margin-left:4px;opacity:.75">{{ r.opening }}</span>}@if (r.phase) {<span class="pill" style="font-size:10px;margin-left:4px;opacity:.8">{{ r.phase }}</span>}</td>
             <td data-l="ELO">{{ r.elo }}</td>
             <td data-l="Color">{{ r.color }}</td>
             <td data-l="Resultado"><span [class]="r.res.cls">{{ r.res.label }}</span></td>
