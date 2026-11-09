@@ -23,6 +23,24 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const DELIMS = ["\t", "|", ";", ","];
 const MARKDOWN_RULE = /^[\s|:-]+$/;
 
+/** Cells of one table line. Comma and semicolon honour CSV quoting ("a, b", "" for a quote); tab and pipe never contain either. */
+function cells(line: string, delim: string): string[] {
+  const body = delim === "|" ? line.replace(/^\||\|$/g, "") : line;
+  if (delim === "\t" || delim === "|") return body.split(delim).map((x) => x.trim());
+  const out: string[] = [];
+  let cell = "";
+  let quoted = false;
+  for (let i = 0; i < body.length; i++) {
+    const ch = body[i]!;
+    if (quoted && ch === '"' && body[i + 1] === '"') { cell += '"'; i++; }
+    else if (ch === '"') quoted = !quoted;
+    else if (ch === delim && !quoted) { out.push(cell.trim()); cell = ""; }
+    else cell += ch;
+  }
+  out.push(cell.trim());
+  return out;
+}
+
 const minusDays = (date: string, n: number): string => new Date(Date.parse(`${date}T00:00:00Z`) - n * 86_400_000).toISOString().slice(0, 10);
 
 /**
@@ -40,25 +58,29 @@ export function parseGamesText(text: string, today: string): { entries: ParsedEn
     const t = raw.trim();
     if (!t) return;
     const fail = (reason: string) => errors.push({ line, text: t, reason });
-    const push = (d: string, g: string, score: string | null, avg: string | null, what: string) => {
+    // avgRaw is what was written (null / "" when nothing was): an omitted average is fine, one that is given must be a valid time.
+    const push = (d: string, g: string, scoreRaw: string, avgRaw: string | null) => {
       const game = gameOf(g);
       if (!game) return fail(`juego desconocido «${g}»`);
-      if (score === null) return fail(`${what}: tiempo no válido`);
+      const score = clock(scoreRaw);
+      if (score === null) return fail(`mis segundos no válidos («${scoreRaw}»)`);
+      const given = avgRaw !== null && avgRaw !== "";
+      const avg = given ? clock(avgRaw) : null;
+      if (given && avg === null) return fail(`media no válida («${avgRaw}»)`);
       entries.push({ line, date: d, game, score, avg });
     };
 
     if (table) {
       if (MARKDOWN_RULE.test(t) && t.includes("-")) return;
-      const c = t.replace(/^\||\|$/g, "").split(table.delim).map((x) => x.trim());
+      const c = cells(t, table.delim);
       const d = /^(\d{4}-\d{2}-\d{2})(?:[ T].*)?$/.exec(c[table.fecha] ?? "")?.[1];
       if (!d) return fail("fecha no válida (se espera AAAA-MM-DD)");
-      const rawAvg = c[table.media] ?? "";
-      return push(d, c[table.juego] ?? "", clock(c[table.mi] ?? ""), rawAvg === "" ? null : clock(rawAvg), "Mi_seg");
+      return push(d, c[table.juego] ?? "", c[table.mi] ?? "", c[table.media] ?? null);
     }
 
     const delim = DELIMS.find((x) => t.includes(x));
     if (delim) {
-      const head = t.replace(/^\||\|$/g, "").split(delim).map((x) => norm(x));
+      const head = cells(t, delim).map((x) => norm(x));
       const at = (...names: string[]) => head.findIndex((h) => names.includes(h));
       if (at("fecha") >= 0 && at("juego") >= 0 && at("miseg", "mi") >= 0) {
         table = { delim, fecha: at("fecha"), juego: at("juego"), mi: at("miseg", "mi"), media: at("mediaseg", "media") };
@@ -73,7 +95,7 @@ export function parseGamesText(text: string, today: string): { entries: ParsedEn
 
     const m = SHORT.exec(t);
     if (!m) return fail("no se entiende la línea (esperaba «juego, mis segundos, media»)");
-    push(date, m[1]!, clock(m[2]!), m[3] === undefined ? null : clock(m[3]), "tiempo");
+    push(date, m[1]!, m[2]!, m[3] ?? null);
   });
 
   return { entries, errors };

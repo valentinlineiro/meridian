@@ -14,8 +14,9 @@ const READ_ONE_BY_ONE_UP_TO = 5;
 
 /**
  * Imports what the owner typed or pasted (see GamesText). The text wins over what is stored for the games it mentions; the rest of the day
- * is kept. One cumulative version per changed date (contract L8). All or nothing: any invalid line writes nothing. With apply=false it only
- * says what would happen.
+ * is kept. One cumulative version per changed date (contract L8). Validation is all or nothing: any invalid line writes nothing. The writes
+ * themselves are one per date and NOT atomic: if one fails, the earlier dates stay saved and the error is thrown. Importing the same text
+ * again finishes the job (saved dates come back as "same") and never duplicates. With apply=false it only says what would happen.
  */
 export class ImportGameResults {
   constructor(private readonly owners: OwnerLookup, private readonly days: DayRecordStore, private readonly now: () => Date) {}

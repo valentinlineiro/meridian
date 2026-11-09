@@ -75,6 +75,26 @@ describe('GamesQuickEntry', () => {
     expect(preview()).toBe('Hoy: Tango 0:43 (media 0:51) · nuevo');
   });
 
+  it('shouldNotSaveOrOfferToSaveWhileThePreviewBelongsToAnEarlierText', async () => {
+    await type('Z, 6, 12');
+    http.expectOne(URL).flush(day([zipNew]));
+    await tick();
+    expect(save().disabled).toBe(false);
+
+    box().value = 'T, 43, 51';
+    box().dispatchEvent(new Event('input'));
+    await tick(); // before the pause ends: the answer on screen is for the old text
+    expect(save().disabled).toBe(true);
+    expect(preview()).toBe('');
+    key('Enter');
+    http.expectNone(URL);
+
+    await tick(300);
+    http.expectOne(URL).flush(day([{ game: 'tango', score: '0:43', avg: '0:51', status: 'new' }]));
+    await tick();
+    expect(save().disabled).toBe(false);
+  });
+
   it('shouldAddALineInsteadOfSavingOnShiftEnter', async () => {
     await type('Z, 6, 12');
     http.expectOne(URL).flush(day([zipNew]));

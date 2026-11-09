@@ -106,4 +106,19 @@ describe("ImportGameResults", () => {
     const r = await run("   ");
     expect(r).toEqual({ applied: false, errors: [], days: [] });
   });
+
+  it("shouldCompleteTheRestWithoutDuplicatesWhenTheSameTextIsImportedAgainAfterAWriteFailed", async () => {
+    // Validation is all-or-nothing; the writes are one per date, so a failure in the middle leaves the earlier dates saved.
+    // What is guaranteed is that the identical retry finishes the job and adds nothing twice.
+    let appends = 0;
+    const flaky = { latest: store.latest.bind(store), all: store.all.bind(store), append: async (o: string, r: Parameters<typeof store.append>[1]) => { if (++appends === 2) throw new Error("d1 down"); return store.append(o, r); } };
+    const text = "2026-11-01\nZ, 6, 12\n2026-11-02\nZ, 7, 12\n2026-11-03\nZ, 8, 12";
+    const lookup = owners({ [OWNER]: "u1" });
+    await expect(new ImportGameResults(lookup, flaky, NOW).execute({ ownerEmail: OWNER, text, today: TODAY, apply: true })).rejects.toThrow("d1 down");
+    expect(store.versions.map((v) => v.record.date)).toEqual(["2026-11-01"]);
+
+    const retry = await run(text);
+    expect(retry.days.map((d) => d.games[0]!.status)).toEqual(["same", "new", "new"]);
+    expect(store.versions.map((v) => v.record.date)).toEqual(["2026-11-01", "2026-11-02", "2026-11-03"]);
+  });
 });

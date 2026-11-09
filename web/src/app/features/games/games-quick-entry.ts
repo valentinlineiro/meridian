@@ -7,7 +7,7 @@ import { gameName, localToday } from './games.model';
 const URL = '/api/me/linkedin-games/import';
 interface Line { line: number; text: string; reason: string }
 interface Imported { game: string; score: string; avg: string | null; status: 'new' | 'changed' | 'same' }
-interface Result { ok: boolean; applied: boolean; errors: Line[]; days: { date: string; games: Imported[] }[] }
+interface Result { forText?: string; ok: boolean; applied: boolean; errors: Line[]; days: { date: string; games: Imported[] }[] }
 const BADGE = { new: 'nuevo', changed: 'cambia', same: 'igual' } as const;
 
 /**
@@ -55,14 +55,16 @@ export class GamesQuickEntry {
 
   private body(apply: boolean) { return { text: this.text(), today: localToday(), tz: this.tz, apply }; }
 
-  // The preview follows what is typed (a short pause so a half-typed line is not judged), never a stale answer.
-  protected readonly preview = toSignal(toObservable(this.text).pipe(
+  // The preview follows what is typed (a short pause so a half-typed line is not judged). Each answer remembers the text it is for:
+  // while the text has moved on, nothing is shown and nothing can be saved on the strength of an older answer.
+  private readonly answer = toSignal(toObservable(this.text).pipe(
     debounceTime(250),
-    switchMap((t) => t.trim() === '' ? of(null) : this.api.post<Result>(URL, this.body(false)).pipe(
-      map((r): Result | null => r),
-      catchError(() => of<Result>({ ok: false, applied: false, days: [], errors: [{ line: 0, text: '', reason: 'No se pudo comprobar el texto.' }] })),
+    switchMap((t) => t.trim() === '' ? of(null) : this.api.post<Result>(URL, { text: t, today: localToday(), tz: this.tz, apply: false }).pipe(
+      map((r): Result | null => ({ ...r, forText: t })),
+      catchError(() => of<Result>({ forText: t, ok: false, applied: false, days: [], errors: [{ line: 0, text: '', reason: 'No se pudo comprobar el texto.' }] })),
     )),
   ), { initialValue: null });
+  protected readonly preview = computed(() => { const a = this.answer(); return a && a.forText === this.text() ? a : null; });
 
   protected readonly canSave = computed(() => {
     const p = this.preview();

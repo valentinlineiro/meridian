@@ -58,4 +58,31 @@ describe("parseGamesText", () => {
   it("shouldIgnoreBlankLinesAndReturnNothingForEmptyText", () => {
     expect(parseGamesText("  \n\n", TODAY)).toEqual({ entries: [], errors: [] });
   });
+
+  it("shouldRejectAnAverageThatIsGivenButNotAValidTimeInsteadOfDroppingIt", () => {
+    for (const bad of ["Z, 6, 9999", "Z, 6, 1:99"]) {
+      const { entries, errors } = parseGamesText(bad, TODAY);
+      expect(entries, bad).toEqual([]);
+      expect(errors[0]!.reason, bad).toContain("media");
+    }
+    const table = parseGamesText("Fecha,Juego,Mi_seg,Media_seg\n2026-11-09,Zip,6,texto\n2026-11-09,Tango,5,9999", TODAY);
+    expect(table.entries).toEqual([]);
+    expect(table.errors.map((e) => [e.line, e.reason.includes("media")])).toEqual([[2, true], [3, true]]);
+  });
+
+  it("shouldImportWithoutAverageWhenTheTableHasNoMediaColumnOrAnEmptyCell", () => {
+    const noColumn = parseGamesText("Fecha,Juego,Mi_seg\n2026-11-09,Zip,6", TODAY);
+    expect(noColumn.errors).toEqual([]);
+    expect(noColumn.entries.map((e) => e.avg)).toEqual([null]);
+    expect(parseGamesText("Fecha,Juego,Mi_seg,Media_seg\n2026-11-09,Zip,6,", TODAY).entries.map((e) => e.avg)).toEqual([null]);
+  });
+
+  it("shouldReadCsvWithQuotedFieldsAndACommaInsideAQuotedCell", () => {
+    const quoted = parseGamesText('"Fecha","Juego","Mi_seg","Media_seg"\n"2026-11-09","Zip","6","12"', TODAY);
+    expect(quoted.errors).toEqual([]);
+    expect(quoted.entries.map((e) => [e.date, e.game, e.score, e.avg])).toEqual([["2026-11-09", "zip", "0:06", "0:12"]]);
+    const comma = parseGamesText('Fecha,DiaSemana,Juego,Mi_seg,Media_seg\n2026-11-09,"lunes, 9 nov",Zip,6,"1:12"\n2026-11-09,"di ""x""",Tango,5,9', TODAY);
+    expect(comma.errors).toEqual([]);
+    expect(comma.entries.map((e) => [e.game, e.score, e.avg])).toEqual([["zip", "0:06", "1:12"], ["tango", "0:05", "0:09"]]);
+  });
 });
