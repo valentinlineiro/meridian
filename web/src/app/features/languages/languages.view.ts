@@ -261,7 +261,7 @@ export function comparability(a: Analytics, courses: Course[]) {
         key: x.courseId,
         pill: comp ? 'pill pill-win' : struct ? 'pill pill-loss' : 'pill pill-draw',
         status: comp ? 'COMPARABLE' : struct ? 'CAMBIO ESTRUCTURAL' : 'INSUFICIENTE',
-        text: comp ? `Δ +${x.deltaCompletedUnits ?? 0} unidades completadas` : struct ? `Reestructuración de árbol por la fuente (${x.previousTotalUnits} → ${x.latestTotalUnits} unidades totales)` : 'Intervalo de observación único',
+        text: comp ? `+${x.deltaCompletedUnits ?? 0} unidades completadas` : struct ? `Duolingo ha cambiado el curso (${x.previousTotalUnits} → ${x.latestTotalUnits} unidades en total)` : 'Solo hay una lectura de este curso',
         observed: `Observado: ${day(x.previousObservedAt)} → ${day(x.latestObservedAt)}`,
       };
     }),

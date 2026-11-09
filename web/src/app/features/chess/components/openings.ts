@@ -12,7 +12,7 @@ const frac = (t: Tally) => `${t.neutralized} de ${t.faced} (${pc0((t.rate ?? 0) 
 function threats(th: Threats | null | undefined) {
   if (!th || th.error || !th.totals) return null;
   const tt = th.totals, faced = tt.faced;
-  const notes = ['Solo cuenta amenazas de mate en 1. Son tasas descriptivas de posiciones observadas, sin intervalo: las posiciones de una misma partida no son independientes.'];
+  const notes = ['Solo cuenta amenazas de mate en una jugada. Son cifras de tus partidas, sin margen de error: las posiciones de una misma partida no son independientes.'];
   if (th.pending) notes.push(th.pending + ' partidas sin analizar');
   if (th.invalid) notes.push(th.invalid + ' no se pudieron reproducir');
   if (th.unknownVersion) notes.push(th.unknownVersion + ' con un formato que este panel no entiende');
@@ -77,7 +77,7 @@ export class Openings {
     if (!white || !black) return null;
     return {
       white, black,
-      pop: op.population ? `Hidratadas: ${op.population.hydrated} / ${op.population.totalMatches} partidas` + ((op.unclassified ?? 0) > 0 ? ` · ${op.unclassified} sin clasificar` : '') : '',
+      pop: op.population ? `Con detalle: ${op.population.hydrated} de ${op.population.totalMatches} partidas` + ((op.unclassified ?? 0) > 0 ? ` · ${op.unclassified} sin clasificar` : '') : '',
     };
   });
   protected readonly phasesView = computed(() => {
@@ -85,7 +85,7 @@ export class Openings {
     if (ph === undefined) return undefined;
     if (!ph || ph.error) return null;
     const h = ph.population?.hydrated;
-    return { groups: ph.phases ?? [], meta: `Mediana: ${ph.medianPlies ?? '—'} plies · Hidratadas: ${h ?? '—'} partidas` };
+    return { groups: ph.phases ?? [], meta: `Las partidas suelen durar ${ph.medianPlies == null ? '—' : Math.round(ph.medianPlies / 2)} jugadas · con detalle: ${h ?? '—'} partidas` };
   });
   // Shown only when there is something to show: how the games won or lost by checkmate ended.
   protected readonly mates = computed(() => {

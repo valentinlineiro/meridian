@@ -94,8 +94,8 @@ function activityView(d: Rec, catalog: Course[]) {
   const blocks: { title: string; rows: Row[] }[] = [
     { title: 'Ajedrez', rows: [
       { label: 'Partidas jugadas', value: n(c['gamesCount']) },
-      { label: '% de victorias en intervalo', value: fin(c['intervalWinRate']) ? pc1(c['intervalWinRate']) : '—' },
-      { label: 'Delta WR histórico', value: isObj(hd) && fin(hd['diff']) && fin(hd['lower']) && fin(hd['upper']) ? fmtDelta(hd as { diff: number; lower: number; upper: number }) : '—' }] },
+      { label: '% de victorias en este periodo', value: fin(c['intervalWinRate']) ? pc1(c['intervalWinRate']) : '—' },
+      { label: 'Cambio en tu % de victorias', value: isObj(hd) && fin(hd['diff']) && fin(hd['lower']) && fin(hd['upper']) ? fmtDelta(hd as { diff: number; lower: number; upper: number }) : '—' }] },
     { title: 'Idiomas', rows: [
       { label: 'XP ganado', value: fin(xp) ? (xp > 0 ? '+' + es(xp) : String(xp)) : '—' },
       { label: 'Sesiones completadas', value: n(l['sessionsCount']) },
@@ -104,7 +104,7 @@ function activityView(d: Rec, catalog: Course[]) {
     { title: 'Racha', rows: [
       { label: 'Racha actual', value: '🔥 ' + n(s['currentStreak']) },
       { label: 'Racha anterior', value: n(s['baselineStreak']) },
-      { label: 'Delta racha', value: signed(s['streakDelta']) },
+      { label: 'Cambio en la racha', value: signed(s['streakDelta']) },
       { label: 'Estado', value: typeof s['status'] === 'string' ? s['status'] : '—', pill: s['status'] === 'active' ? 'pill pill-win' : 'pill pill-loss' }] },
   ];
   return blocks;

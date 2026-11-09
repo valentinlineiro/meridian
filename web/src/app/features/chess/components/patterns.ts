@@ -19,8 +19,8 @@ const DENOMINATOR_UNKNOWN = 'Denominador: partidas guardadas en el historial (el
   selector: 'app-patterns',
   template: `
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px">
-      <h2 style="margin:0">Patrones observados &amp; cobertura de análisis</h2>
-      <span class="muted" style="font-size:var(--fs-xs)">Intervalos Wilson al 95 % · Muestras explícitas (n)</span>
+      <h2 style="margin:0">Patrones en tus partidas y cuántas se han analizado</h2>
+      <span class="muted" style="font-size:var(--fs-xs)">Con pocas partidas, tómalo con cautela</span>
     </div>
     <div class="grid2" id="chessPatternsGrid" style="margin-top:10px">
       <div class="card" id="chessPatternColorCard" style="margin:0;background:var(--sunken);border:1px solid var(--line)">
@@ -77,7 +77,7 @@ export class Patterns {
     if (!first || !d) return '';
     if (this.persistence.isLoading() || !this.persistence.hasValue()) return first.line1 + ' · patrón persistente: comprobando…';
     const ev = this.persistence.value();
-    const label = `Patrón persistente (≥ ${ev?.criteria?.minDiffPp ?? 15} pp y en ambas mitades)`;
+    const label = `Patrón persistente (al menos ${ev?.criteria?.minDiffPp ?? 15} puntos de % y en las dos mitades)`;
     return first.line1 + ' · ' + colorConclusion(d.diff, d.lower, d.upper, ev ? { met: ev.status === 'emitted', label } : { known: false, label })!.line2;
   });
 

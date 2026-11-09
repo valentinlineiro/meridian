@@ -116,7 +116,7 @@ describe('Chess', () => {
       await t.harness.fixture.whenStable();
       for (const r of ['/api/stats/summary', '/api/stats/results', '/api/stats/color', '/api/stats/opponents', '/api/stats/opponent-elo', '/api/stats/timeline', '/api/stats/recent?limit=50'])
         expect(asked.filter((u) => u === r)).toHaveLength(1);
-      expect(t.text('colDiff')).toBe('Blancas 70,0 % · Negras 45,0 % → +25,0 pp · IC95 [+3,8; +43,3]');
+      expect(t.text('colDiff')).toBe('Blancas 70,0 % · Negras 45,0 % → +25,0 puntos de % (entre +3,8 y +43,3)');
     });
   });
 
@@ -222,7 +222,7 @@ describe('Chess', () => {
       expect(form).toContain('Últimas 50');
       expect(form).toContain('50,0 % [36–64] WR');
       expect(form).toContain('55,0 % score · 25W 20L 5D');
-      expect(form).toContain('+2,5 pp · IC95 [−23,0; +25,4] · sin evidencia suficiente vs anteriores');
+      expect(form).toContain('+2,5 puntos de % (entre −23,0 y +25,4) · sin evidencia suficiente vs anteriores');
       expect(form).toContain('Anteriores · 50');
       expect(form).not.toMatch(/score vs anteriores|vs\s+hist/); // the delta is against the earlier games, and only for the win rate
       expect(form).toContain('50,0 % [40–70] WR');
@@ -268,9 +268,9 @@ describe('Chess', () => {
   describe('comparativa, results, evolution and opponent ELO', () => {
     it('shouldShowConfidenceIntervalWithEveryColorDelta', async () => {
       await t.open();
-      expect(t.text('colDiff')).toBe('Blancas 70,0 % · Negras 45,0 % → +25,0 pp · IC95 [+3,8; +43,3]');
+      expect(t.text('colDiff')).toBe('Blancas 70,0 % · Negras 45,0 % → +25,0 puntos de % (entre +3,8 y +43,3)');
       expect(t.text('col')).toContain('Win 70,0 % [20–80]');
-      expect(t.text('form')).toMatch(/pp · IC95 \[/);
+      expect(t.text('form')).toMatch(/puntos de % \(entre /);
     });
 
     it('shouldLeaveTheColourLineEmptyWhenAColourHasNoWinRate', async () => {
@@ -374,7 +374,7 @@ describe('Chess', () => {
       expect(t.el().querySelector<HTMLElement>('#openingsBlack')!.hidden).toBe(false);
       expect(t.el().querySelector('#tabBtn-black')!.getAttribute('aria-pressed')).toBe('true');
       expect(t.text('openingsBlack')).toContain('Siciliana');
-      expect(t.text('openingsPop')).toBe('Hidratadas: 5 / 100 partidas');
+      expect(t.text('openingsPop')).toBe('Con detalle: 5 de 100 partidas');
       t.el().querySelector<HTMLButtonElement>('#btnAllMatches')!.click();
       await t.tick();
       expect([...t.el().querySelectorAll('#fOpening option')].map((o) => (o as HTMLOptionElement).value)).toEqual(['', 'ruy_lopez', 'sicilian']);
@@ -382,18 +382,18 @@ describe('Chess', () => {
 
     it('shouldSayHowManyGamesHaveNoOpeningFamilyYet', async () => {
       await t.open(chessApi({ '/api/stats/openings': { white: [], black: [], unclassified: 7, population: { hydrated: 5, totalMatches: 100 } } }));
-      expect(t.text('openingsPop')).toBe('Hidratadas: 5 / 100 partidas · 7 sin clasificar');
+      expect(t.text('openingsPop')).toBe('Con detalle: 5 de 100 partidas · 7 sin clasificar');
     });
 
     it('shouldShowThePhasesWithTheirMedianLength', async () => {
       await t.open();
       expect(t.text('phasesBody')).toContain('Final');
-      expect(t.text('phasesMeta')).toBe('Mediana: 42 plies · Hidratadas: 10 partidas');
+      expect(t.text('phasesMeta')).toBe('Las partidas suelen durar 21 jugadas · con detalle: 10 partidas');
     });
 
     it('shouldNotShowZeroForAMedianTheSourceDidNotReport', async () => {
       await t.open(chessApi({ '/api/stats/phases': { phases: [], medianPlies: null, population: { hydrated: null } } }));
-      expect(t.text('phasesMeta')).toBe('Mediana: — plies · Hidratadas: — partidas');
+      expect(t.text('phasesMeta')).toBe('Las partidas suelen durar — jugadas · con detalle: — partidas');
     });
 
     it('shouldKeepTheKpisAndSayNoDisponibleWhenOpeningsOrPhasesCannotBeRead', async () => {
@@ -421,7 +421,7 @@ describe('Chess', () => {
       expect(t.text('threatsPhases')).toBe('Apertura 53 de 74 (72 %) · Medio juego 132 de 268 (49 %) · Final 98 de 157 (62 %)');
       expect(t.text('threatsTrend')).toBe('Últimas 100 partidas analizadas: 90 de 150 (60 %) · el resto (226): 193 de 349 (55 %)');
       const note = t.text('threatsNote');
-      for (const s of ['Solo cuenta amenazas de mate en 1', 'tasas descriptivas de posiciones observadas', 'sin intervalo', '12 partidas sin analizar', '2 no se pudieron reproducir', '1 con un formato que este panel no entiende'])
+      for (const s of ['Solo cuenta amenazas de mate en una jugada', 'Son cifras de tus partidas', 'sin margen de error', '12 partidas sin analizar', '2 no se pudieron reproducir', '1 con un formato que este panel no entiende'])
         expect(note).toContain(s);
     });
 
@@ -466,7 +466,7 @@ describe('Chess', () => {
     const siblingsRender = () => {
       expect(t.text('kpis')).toContain('Partidas');
       expect(t.text('colDiff')).toContain('Blancas 70,0 %');
-      expect(t.text('phasesMeta')).toBe('Mediana: 42 plies · Hidratadas: 10 partidas');
+      expect(t.text('phasesMeta')).toBe('Las partidas suelen durar 21 jugadas · con detalle: 10 partidas');
     };
 
     it('shouldHideTheThreatsCardWhenAPhaseIsMissing', async () => {
@@ -519,15 +519,15 @@ describe('Chess', () => {
       for (const r of all) t.flush(r, api[r.request.url]);
       await t.tick();
       const traj = t.pending().find((r) => r.request.url === '/api/trajectory')!;
-      expect(t.text('chessPatternColorConclusion')).toBe('Diferencia detectable: no (+6,0 pp · IC95 [−18,0; +30,0] pp, incluye 0) · patrón persistente: comprobando…');
+      expect(t.text('chessPatternColorConclusion')).toBe('Con estos datos no se puede asegurar que haya diferencia (+6,0 puntos de %; podría estar entre −18,0 y +30,0). · patrón persistente: comprobando…');
       traj.flush(api['/api/trajectory'] as object);
       await t.tick();
-      expect(t.text('chessPatternColorConclusion')).toBe('Diferencia detectable: no (+6,0 pp · IC95 [−18,0; +30,0] pp, incluye 0) · Patrón persistente (≥ 15 pp y en ambas mitades): no demostrado');
+      expect(t.text('chessPatternColorConclusion')).toBe('Con estos datos no se puede asegurar que haya diferencia (+6,0 puntos de %; podría estar entre −18,0 y +30,0). · Patrón persistente (al menos 15 puntos de % y en las dos mitades): no demostrado');
     });
 
     it('shouldSaySinEvaluarWhenThePersistenceCannotBeRead', async () => {
       await t.open(chessApi({ '/api/trajectory': FAIL }));
-      expect(t.text('chessPatternColorConclusion')).toBe('Diferencia detectable: sí (+25,0 pp · IC95 [+3,8; +43,3] pp, excluye 0) · Patrón persistente (≥ 15 pp y en ambas mitades): sin evaluar');
+      expect(t.text('chessPatternColorConclusion')).toBe('La diferencia se nota: +25,0 puntos de % (con estos datos, entre +3,8 y +43,3). · Patrón persistente (al menos 15 puntos de % y en las dos mitades): sin evaluar');
     });
 
     it('shouldSayThereIsNotEnoughColourDataOrThatItIsUnavailable', async () => {
@@ -842,7 +842,7 @@ describe('EngineProfile', () => {
     await render(PROFILE);
     expect([...el.querySelectorAll('#profileKpis m-kpi')].map((k) => [k.querySelector('b')!.textContent, k.querySelector('small')!.textContent])).toEqual([
       ['9,7', 'por 100 jugadas · 388 de 4000'],
-      ['1,0', 'peones por jugada · 103 cp'],
+      ['1,0', 'peones por jugada'],
       ['80 %', '24 de 30 derrotas sin desconexión · 10 por desconexión aparte'],
       ['78 %', '62 de 80 · 12 perdidas'],
     ]);
@@ -957,7 +957,7 @@ describe('EngineProfile', () => {
     await render(PROFILE);
     expect(text('profileContext')).toContain('98 % contra bots');
     const note = text('profileNote');
-    for (const s of ['3 partidas sin analizar', '1 no se pudieron evaluar', '2 con un formato que este panel no entiende', 'sin intervalo']) expect(note).toContain(s);
+    for (const s of ['3 partidas sin analizar', '1 no se pudieron evaluar', '2 con un formato que este panel no entiende', 'sin margen de error']) expect(note).toContain(s);
   });
 
   it('shouldShowNothingMisleadingWhenNothingIsAnalysedYet', async () => {
@@ -1009,7 +1009,7 @@ describe('EngineProfile', () => {
 
   it('shouldNotRenderNaNCentipawnsWhenTheAverageLossIsMissing', async () => {
     await render(all({ acpl: null }));
-    expect(el.querySelectorAll('#profileKpis m-kpi small')[1].textContent).toBe('peones por jugada · — cp');
+    expect(el.querySelectorAll('#profileKpis m-kpi small')[1].textContent).toBe('peones por jugada');
   });
 
   it('shouldEmitTheTrimmedCutOnApplyAndAnEmptyOneOnClear', async () => {

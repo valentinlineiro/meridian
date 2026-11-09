@@ -30,10 +30,10 @@ const signed = (v: number, raw = false): string => {
   return v === 0 || (!raw && Number(n) === 0) ? t : (v > 0 ? '+' : '−') + t;
 };
 
-/** Delta in percentage points; never shown without its interval. */
+/** Delta in percentage points; never shown without its range. */
 export const fmtDelta = (d: Delta | null | undefined): string =>
   d
-    ? `${signed(d.diff)} pp · IC95 [${signed(d.lower, true)}; ${signed(d.upper, true)}]` +
+    ? `${signed(d.diff)} puntos de % (entre ${signed(d.lower, true)} y ${signed(d.upper, true)})` +
       (d.lower <= 0 && d.upper >= 0 ? ' · sin evidencia suficiente' : '')
     : '—';
 
@@ -58,7 +58,7 @@ export const colorConclusion = (diff: number | null | undefined, lo: number | nu
   const ruleTxt = rule && rule.known === false ? 'sin evaluar' : rule?.met ? 'sí' : 'no demostrado';
   return {
     detectable: det, rule: rule?.met === true,
-    line1: `Diferencia detectable: ${det ? 'sí' : 'no'} (${diff != null ? sg(diff) + ' pp · ' : ''}IC95 [${sg(lo)}; ${sg(hi)}] pp, ${det ? 'excluye 0' : 'incluye 0'})`,
+    line1: det ? `La diferencia se nota${diff != null ? ': ' + sg(diff) + ' puntos de %' : ''} (con estos datos, entre ${sg(lo)} y ${sg(hi)}).` : `Con estos datos no se puede asegurar que haya diferencia${diff != null ? ' (' + sg(diff) + ' puntos de %' : ' ('}; podría estar entre ${sg(lo)} y ${sg(hi)}).`,
     line2: `${rule?.label || 'Patrón persistente'}: ${ruleTxt}`,
   };
 };

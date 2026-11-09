@@ -5,7 +5,7 @@ import { CHANGES, SALIENCE_GRID } from './evaluation-fixtures';
 // Port of the card parts of tests/frontendEvaluations.test.ts. Legacy rendered renderEvaluations(payload) to a string; here
 // the shared <m-evaluation-cards> renders with What Changed's own contract: findingFor = the finding with the evaluation's id.
 type Payload = { findings: readonly { id: string; claim: string; evidence: string }[]; evaluations: readonly unknown[] };
-const WIN = '2026-09-20 → 2026-09-27';
+const WIN = 'Del 20 al 27 de septiembre';
 const copy = (v: unknown): any => structuredClone(v);
 
 function render(p: Payload, win = WIN): HTMLElement {
@@ -45,30 +45,30 @@ describe('evaluation cards (P0)', () => {
     expect(h).toContain('Confirmado');
     expect(h).toContain('Asimetría por color');
     expect(h).toContain('Evidencia:');
-    expect(h).toContain('2026-09-20 → 2026-09-27');
+    expect(h).toContain('Del 20 al 27 de septiembre');
   });
 
   it('shouldExplainWhatIsMissingWhenEvaluationIsIndicio', () => {
     const h = html(CHANGES.decided9);
     expect(h).toContain('Posible señal');
-    expect(h).toContain('9 partidas decididas observadas; el criterio exige al menos 10.');
+    expect(h).toContain('Tienes 9 partidas con ganador; hacen falta 10 para fiarse.');
     expect(h).toContain('no podemos darla por buena');
   });
 
   it('shouldShowIntervalReasonWhenIntervalIncludesZero', () => {
-    expect(html(CHANGES.wide)).toContain('[−16, 72] pp incluye 0');
+    expect(html(CHANGES.wide)).toContain('entre −16 y +72 puntos de %, es decir, también podría no existir');
   });
 
   it('shouldMarkInsuficienteWhenDataIsUnavailable', () => {
     const h = html(CHANGES.histZero);
     expect(h).toContain('Aún pocos datos');
-    expect(h).toContain('No hay media histórica de referencia.');
+    expect(h).toContain('Aún no tenemos suficientes días anteriores para saber cuál es tu XP normal.');
   });
 
   it('shouldMarkSinIndicioWhenEffectIsBelowCriterion', () => {
     const h = html(CHANGES.below);
     expect(h).toContain('Sin señales de cambio');
-    expect(h).toContain('Diferencia observada entre colores: 4,0 pp');
+    expect(h).toContain('Entre blancas y negras hay 4,0 puntos de % de diferencia');
     expect(h).toContain('no demuestra que no haya habido cambio');
   });
 
@@ -76,37 +76,37 @@ describe('evaluation cards (P0)', () => {
     const h = txt(card(render(CHANGES.short), 'Mayor XP diario'));
     expect(h).not.toContain('Sin señales de cambio');
     expect(h).toContain('Aún pocos datos');
-    expect(h).toContain('La ventana contiene 2 días completos (UTC); el criterio exige al menos 3.');
+    expect(h).toContain('El periodo tiene 2 días completos; hacen falta 3.');
   });
 
   it('shouldNotRenderMissingHistoricalReferenceAsZeroWhenRateHasNoReference', () => {
     const h = html(CHANGES.noRefRate);
-    expect(h).toContain('15 XP por día con registro en la ventana; no hay referencia histórica disponible (+1355 XP)');
+    expect(h).toContain('15 XP por día en este periodo; aún no hay historial con el que comparar (+1355 XP)');
     expect(h).not.toContain('0 XP por día con registro histórico');
   });
 
   it('shouldShowHistoricalReferenceWhenItExists', () => {
-    expect(html(CHANGES.refRate)).toContain('20 XP por día con registro en la ventana vs 50 XP por día con registro histórico (+140 XP)');
+    expect(html(CHANGES.refRate)).toContain('20 XP por día en este periodo vs 50 XP por día en tu historial (+140 XP)');
   });
 
   it('shouldMarkRatingJumpInsuficienteWhenNoRatingIsObservedInTheWindow', () => {
     const h = txt(card(render(CHANGES.noRating), 'Salto de ELO'));
     expect(h).toContain('Aún pocos datos');
     expect(h).not.toContain('Sin señales de cambio');
-    expect(h).toContain('dos observaciones de ELO en snapshots distintos');
+    expect(h).toContain('Falta una lectura de tu ELO antes o después de este periodo');
   });
 
   it('shouldQuoteTheCriteriaCarriedByTheEvaluationNotACopy', () => {
     const p = copy(CHANGES.decided9);
     p.evaluations.find((e: Evaluation) => e.id === 'CHESS_COLOR_ASYMMETRY')!.criteria = { minDecided: 77, minDiffPp: 15 };
-    expect(html(p)).toContain('el criterio exige al menos 77.');
+    expect(html(p)).toContain('hacen falta 77 para fiarse.');
   });
 
   it('shouldNotInventACriterionWhenTheEvaluationCarriesNone', () => {
     const p = copy(CHANGES.decided9);
     delete p.evaluations.find((e: Evaluation) => e.id === 'CHESS_COLOR_ASYMMETRY')!.criteria;
     const h = html(p);
-    expect(h).toContain('9 partidas decididas observadas; no se alcanza el criterio.');
+    expect(h).toContain('Tienes 9 partidas con ganador; todavía no se llega al mínimo para fiarse.');
     expect(h).not.toContain('al menos 10');
   });
 
@@ -120,7 +120,7 @@ describe('evaluation cards (P0)', () => {
   });
 
   it('shouldNotClaimCalibratedLimitsWhenNoBandIsAdmitted', () => {
-    expect(html(CHANGES.base)).toContain('sin banda calibrada todavía; datos evaluados hasta');
+    expect(html(CHANGES.base)).toContain('aún no sabemos qué es habitual en ti; datos hasta el');
   });
 
   it('shouldOrderAfirmadoBeforeIndicioBeforeSinIndicio', () => {
@@ -141,7 +141,7 @@ describe('evaluation cards: verdict first, criteria on demand', () => {
     expect(xp.className).toBe('card evcard');
     expect(xp.hasAttribute('open')).toBe(false);
     expect(txt(xp)).toContain('Aún pocos datos');
-    expect(txt(xp)).toContain('La ventana contiene 2 días completos (UTC); el criterio exige al menos 3.');
+    expect(txt(xp)).toContain('El periodo tiene 2 días completos; hacen falta 3.');
     const affirmed = cards(el).find((c) => txt(c).includes('Confirmado'))!;
     expect(affirmed.tagName).toBe('DIV');
     expect(affirmed.className).toBe('card');
@@ -153,7 +153,7 @@ describe('A7: calibrated rules abstain on screen', () => {
   it('shouldShowInsuficienteWithTheObservedEffectWhenTheUsualVariationIsUnknown', () => {
     const h = elo(CHANGES.eloDown40);
     expect(h).toContain('Aún pocos datos');
-    expect(h).toContain('Cambio de ELO observado: −40 puntos en 10 partidas entre las dos lecturas. Sin referencia de variación habitual todavía.');
+    expect(h).toContain('Tu ELO ha bajado 40 puntos en 10 partidas. Todavía no sabemos cuánto varía normalmente');
     expect(h).not.toContain('Sin señales de cambio');
   });
   it('shouldShowSinIndicioWhenThereIsNoEffect', () => {
@@ -161,19 +161,19 @@ describe('A7: calibrated rules abstain on screen', () => {
   });
   it('shouldAttributeCalibrationOnlyToTheRulesThatUseIt', () => {
     const el = render(CHANGES.base);
-    expect(txt(card(el, 'Asimetría por color'))).toContain('con intervalo de confianza del 95 %');
+    expect(txt(card(el, 'Asimetría por color'))).toContain('fiable el 95 % de las veces');
     expect(txt(card(el, 'Asimetría por color'))).not.toContain('calibrados');
     for (const t of ['Salto de ELO', 'Mayor XP diario']) {
-      expect(txt(card(el, t))).toContain('sin banda calibrada todavía; datos evaluados hasta 2026-11-05');
-      expect(txt(card(el, t))).not.toContain('calibrados con tu historial');
+      expect(txt(card(el, t))).toContain('aún no sabemos qué es habitual en ti; datos hasta el 5 de noviembre');
+      expect(txt(card(el, t))).not.toContain('lo habitual en ti, calculado hasta');
     }
   });
   it('shouldClaimCalibrationOnlyWhenTheEdgeOfTheDirectionIsAdmitted', () => {
-    expect(elo(CHANGES.up30UpBand)).toContain('calibrados con tu historial (hasta ');
-    expect(elo(CHANGES.down30UpBand)).toContain('sin banda calibrada todavía');
-    expect(elo(CHANGES.down30DownBand)).toContain('calibrados con tu historial');
-    expect(txt(card(render(CHANGES.xpAdmitted), 'Mayor XP diario'))).toContain('calibrados con tu historial');
-    expect(txt(card(render(CHANGES.xp14Admitted), 'Mayor XP diario'))).toContain('sin banda calibrada todavía');
+    expect(elo(CHANGES.up30UpBand)).toContain('lo habitual en ti, calculado hasta el ');
+    expect(elo(CHANGES.down30UpBand)).toContain('aún no sabemos qué es habitual en ti');
+    expect(elo(CHANGES.down30DownBand)).toContain('lo habitual en ti, calculado hasta');
+    expect(txt(card(render(CHANGES.xpAdmitted), 'Mayor XP diario'))).toContain('lo habitual en ti, calculado hasta');
+    expect(txt(card(render(CHANGES.xp14Admitted), 'Mayor XP diario'))).toContain('aún no sabemos qué es habitual en ti');
   });
   it('shouldNeverQuoteTheRetiredFixedThresholds', () => {
     const h = html(CHANGES.retired);
@@ -186,7 +186,7 @@ describe('audit P8: evaluation cards use the same notation', () => {
   it('shouldWriteTheObservedRatesAndTheReasonsWithCommaAndSpace', () => {
     const h = html(CHANGES.p8);
     expect(h).toContain('Blancas 64,7 % · Negras 52,3 %');
-    expect(h).toContain('Diferencia observada entre colores: 12,4 pp');
+    expect(h).toContain('Entre blancas y negras hay 12,4 puntos de % de diferencia');
     expect(h.match(/.{0,25}(\d\.\d+ ?(%|pp)|\d%).{0,10}/g)).toBeNull();
   });
 });
@@ -226,7 +226,7 @@ describe('evaluation cards: a malformed evaluation degrades alone', () => {
   it('shouldNameAnUnknownEvaluationByItsIdWithAnEmptyScope', () => {
     const el = render({ findings: [], evaluations: [{ id: 'NEW_RULE', kind: 'statistical', status: 'not_emitted', reasons: ['effect_below_threshold'], metrics: {}, criteria: {} }] });
     expect(el.querySelector('h3')!.textContent).toBe('NEW_RULE');
-    expect(txt(el)).toContain('El efecto observado no alcanza el criterio.');
-    expect(txt(el)).toContain(`Ventana: ${WIN} · con intervalo de confianza del 95 %`);
+    expect(txt(el)).toContain('El cambio que se ve no llega al mínimo exigido.');
+    expect(txt(el)).toContain('Del 20 al 27 de septiembre · fiable el 95 % de las veces');
   });
 });

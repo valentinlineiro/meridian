@@ -100,7 +100,7 @@ function view(b: Profile, cut: string) {
     context: !b.analysed ? 'Calculado con Stockfish sobre tus partidas guardadas.' : safe(() =>
       `Calculado con Stockfish sobre ${num(b.analysed)} partidas` + (b.bots?.share != null ? ` (${Math.round(100 * num(b.bots.share))} % contra bots; no describe cómo juegas contra personas)` : '') + '. Son cifras descriptivas, no una nota de nivel.', 'No disponible'),
     sinceNote: cut && !b.since ? 'No encontré esa partida con fecha: se muestra todo sin dividir.' : '',
-    note: 'Error grave: jugada que cuesta 3 peones o más (300 cp) según Stockfish a profundidad 12. Son tasas descriptivas, sin intervalo: los errores de una partida no son independientes.' +
+    note: 'Error grave: una jugada que te cuesta 3 peones o más según Stockfish. Son cifras de tus partidas, sin margen de error: los errores de una partida no son independientes.' +
       (notes.length ? ' Fuera de las cifras: ' + notes.join(' · ') + '.' : ''),
   };
   if (!b.analysed) return { ...common, a: null };
@@ -114,7 +114,7 @@ function view(b: Profile, cut: string) {
     a: {
       kpis: [
         kpi('Errores graves', () => ({ value: per100(a.ratePer100), sub: `por 100 jugadas · ${num(a.serious)} de ${num(a.moves)}` })),
-        kpi('Pérdida media', () => ({ value: pawns(a.acpl), sub: `peones por jugada · ${a.acpl == null ? '—' : Math.round(num(a.acpl))} cp` })),
+        kpi('Pérdida media', () => ({ value: pawns(a.acpl), sub: 'peones por jugada' })),
         kpi('Derrotas con momento decisivo', () => ({ value: pct(dc.withDecisive, dc.lossGames),
           sub: (dc.lossGames ? `${num(dc.withDecisive)} de ${dc.lossGames} derrotas sin desconexión` : 'sin derrotas fuera de las desconexiones') + (dd?.lossGames ? ` · ${num(dd.lossGames)} por desconexión aparte` : '') })),
         kpi('Ventajas sostenidas ganadas', () => ({ value: pct(c.advantage.win, c.advantage.games), sub: `${num(c.advantage.win)} de ${c.advantage.games} · ${num(c.thrown)} perdidas` })),

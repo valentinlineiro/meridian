@@ -226,7 +226,7 @@ describe('Languages', () => {
       expect(text('langSyncMeta')).toBe(`Sincronizado hoy · Actividad hasta ${fmtDate(utcDay(0))} · Último curso en Duolingo: XB_EN`);
       expect(text('langXpGapNote')).toBe('El total de la cuenta supera en 282.500 XP la suma de los 2 cursos del catálogo: esa parte no está asignada a ninguno de ellos.');
       expect(text('langLimitsCard')).toContain('Lo que estos datos no pueden decir');
-      expect(text('langMethodology')).toContain('ΔtotalUnits = 0');
+      expect(text('langMethodology')).toContain('el mismo número de unidades');
       expect(q('#langTab')!.classList).not.toContain('tab-panel'); // the global CSS hides a .tab-panel that is not .active
     });
 
@@ -288,9 +288,9 @@ describe('Languages', () => {
       expect(text('langCourseStructureDetail')).toBe('1 curso(s) con CAMBIO ESTRUCTURAL en el árbol curricular (variación en total de unidades; progreso no comparable)');
       expect(text('langAccountActivityDetail')).toBe('Sin XP registrado hoy en la cuenta');
       const rows = [...el().querySelectorAll('#langComparabilityBody .row')].map((r) => r.textContent!.replace(/\s+/g, ' ').trim());
-      expect(rows[0]).toBe('XB_ENCAMBIO ESTRUCTURALReestructuración de árbol por la fuente (10 → 15 unidades totales)Observado: 1 nov 2026 → 5 nov 2026');
+      expect(rows[0]).toBe('XB_ENCAMBIO ESTRUCTURALDuolingo ha cambiado el curso (10 → 15 unidades en total)Observado: 1 nov 2026 → 5 nov 2026');
       // legacy parity: this card reads the status alone, so an unknown denominator still says COMPARABLE here
-      expect(rows[1]).toBe('XC_ESCOMPARABLEΔ +0 unidades completadasObservado: — → —');
+      expect(rows[1]).toBe('XC_ESCOMPARABLE+0 unidades completadasObservado: — → —');
     });
 
     it('shouldRenderTheNinetyDaysAndTheAnalyticsCards', async () => {
@@ -305,7 +305,7 @@ describe('Languages', () => {
       expect(text('langConcentrationBody')).toBe('Demo Beta67,6 %Total vitalicio lingüístico: 139.000 XP en 1 cursos.');
       const comp = [...el().querySelectorAll('#langComparabilityBody .row')].map((r) => r.textContent!.replace(/\s+/g, ' ').trim());
       expect(comp).toEqual([
-        'XB_ENCOMPARABLEΔ +2 unidades completadasObservado: 1 nov 2026 → 5 nov 2026',
+        'XB_ENCOMPARABLE+2 unidades completadasObservado: 1 nov 2026 → 5 nov 2026',
         'Demo GammaESPERANDO 2ª OBSERVACIÓNAún no hay una segunda captura del Path de este curso para poder comparar.',
       ]);
     });
@@ -592,7 +592,7 @@ describe('Languages', () => {
       await open('/languages', langApi({ '/api/languages/analytics': a }));
       expect(text('langConcentrationBody')).not.toMatch(/HHI|Cursos efectivos|Cuota Top 3|0[.,]3552|2[.,]82/);
       expect(text('langIntensityBody')).not.toMatch(/XP \/ minuto|29[.,]0/);
-      expect(text('langIntensityBody')).toMatch(/No representan eficiencia cognitiva ni velocidad de aprendizaje/);
+      expect(text('langIntensityBody')).toMatch(/No mide cuánto aprendes ni a qué velocidad/);
     });
 
     it.each([[{ totalUnits: 4 }], [{}]])('shouldShowSectionsWithoutUnitCountsAsZeroNotAsNaN %j', async (units) => {
