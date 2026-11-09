@@ -1,6 +1,6 @@
 import { afterNextRender, Component, ElementRef, inject, Injector, input, OnDestroy, output } from '@angular/core';
 
-const FOCUSABLE = 'button:not([disabled]), a[href], input, select, textarea';
+const FOCUSABLE = 'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]';
 
 /**
  * The one modal shell: backdrop, dialog semantics, Escape / backdrop click to dismiss, Tab trapped inside, focus goes to
@@ -36,10 +36,10 @@ export class Modal implements OnDestroy {
   protected onKey(e: KeyboardEvent): void {
     if (e.key === 'Escape') this.dismissed.emit();
     else if (e.key === 'Tab') {
-      const f = [...this.host.querySelectorAll<HTMLElement>(FOCUSABLE)];
+      const f = [...this.host.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((el) => el.tabIndex >= 0);
+      e.preventDefault(); // nothing focusable: Tab still must not leave the dialog
       if (!f.length) return;
       const i = f.indexOf(document.activeElement as HTMLElement);
-      e.preventDefault();
       f[e.shiftKey ? (i <= 0 ? f.length - 1 : i - 1) : (i === f.length - 1 ? 0 : i + 1)].focus();
     }
   }

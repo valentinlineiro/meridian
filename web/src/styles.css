@@ -149,7 +149,7 @@ a.side-item{text-decoration:none}a.side-item:hover{text-decoration:none}
  .btn,.side-toggle,select,.filters input,summary{min-height:44px}.btn{min-width:44px}
  .side-menu a,.side-menu button{min-height:44px;display:flex;align-items:center}
  a[href="/settings"]{display:inline-block;padding:14px 8px}
- .muted,.pill,.kpi .kl,.kpi small,.flabel,[style*="font-size:var(--fs-xs)"]{font-size:var(--fs-sm)!important}
+ .pill,.kpi .kl,.kpi small,.flabel,[style*="font-size:var(--fs-xs)"]{font-size:var(--fs-sm)!important}
  .muted{font-size:var(--fs-md)!important}
  .fgroup{gap:4px}.fgroup .btn{padding:8px 8px}.flabel{min-width:0;width:60px}
  /* iOS Safari zooms the page when a field under 16px takes focus */

@@ -11,7 +11,7 @@ const files = (d: string): string[] =>
 describe('web design tokens', () => {
   const offenders = (re: RegExp) =>
     files('web/src').flatMap((f) => {
-      const text = readFileSync(f, 'utf8').replace(/:root\{[^}]*\}/, '');
+      const text = readFileSync(f, 'utf8').replace(/:root\s*\{[^}]*\}/, '');
       return [...text.matchAll(re)].map((m) => `${f}: ${m[0]}`);
     });
 
@@ -20,6 +20,6 @@ describe('web design tokens', () => {
   });
 
   it('shouldUseScaleTokensWhenSizingTypeOrRoundingCorners', () => {
-    expect(offenders(/font-size: ?\d+px|border-radius: ?\d+px/g)).toEqual([]);
+    expect(offenders(/font-size\s*:\s*\d+px|border-radius\s*:\s*\d+px/g)).toEqual([]);
   });
 });
