@@ -7,6 +7,7 @@ import { ApiClient } from '../../core/api-client';
 import { Course, es } from '../../core/courses';
 import { fmtDelta, pc1 } from '../../core/format';
 import { list, safe } from '../../core/guard';
+import { Segmented } from '../../shared/segmented';
 import { EvalFinding, Evaluation, EvaluationCards } from '../evaluations/evaluation-cards';
 
 // Port of the Qué cambió tab (src/frontend.ts:472–477; src/dashboard.client.js fmtWhen, putChangesAnchor, loadChangesAnchor,
@@ -127,7 +128,7 @@ function bodyView(b: Body, w: Win) {
 
 @Component({
   selector: 'app-changes',
-  imports: [EvaluationCards, NgTemplateOutlet],
+  imports: [EvaluationCards, NgTemplateOutlet, Segmented],
   template: `
     @let v = view();
     <section id="changesTab">
@@ -141,11 +142,7 @@ function bodyView(b: Body, w: Win) {
             @if (v.header.canMark) {<button type="button" class="btn btn-p" id="btnMarkSeen" [disabled]="saving()" (click)="markSeen()">{{ markFailed() ? 'No se pudo guardar; reintenta' : 'Marcar como visto' }}</button>}
           </div>
           @if (v.header.markNote) {<div class="muted" style="font-size:var(--fs-xs);margin-top:6px">Para marcar como visto, elige «Desde última visita»: esta ventana no cubre todo lo que no has visto.</div>}
-          <div class="filters" style="margin-top:12px;margin-bottom:0">
-            <button type="button" class="btn btn-g" [attr.aria-pressed]="v.header.is7d" (click)="choose(7)">Últimos 7 días</button>
-            <button type="button" class="btn btn-g" [attr.aria-pressed]="v.header.is30d" (click)="choose(30)">Últimos 30 días</button>
-            <button type="button" class="btn btn-g" [attr.aria-pressed]="v.header.visit" (click)="choose(0)">Desde última visita</button>
-          </div>
+          <app-segmented style="display:block;margin-top:12px" label="Periodo" [options]="windows" [value]="v.header.visit ? '0' : v.header.is7d ? '7' : v.header.is30d ? '30' : ''" (picked)="choose($event === '7' ? 7 : $event === '30' ? 30 : 0)" />
         </div>
       }</div>
       @let b = v?.body;
@@ -230,6 +227,7 @@ export class Changes {
     return (isObj(iv) && typeof iv['until'] === 'string' && iv['until']) || s.win.until;
   });
 
+  protected readonly windows = [{ k: '7', l: 'Últimos 7 días' }, { k: '30', l: 'Últimos 30 días' }, { k: '0', l: 'Desde última visita' }];
   protected choose(days: Choice['days']): void { this.choice.set({ days }); }
 
   protected markSeen(): void {

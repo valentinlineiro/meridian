@@ -1,4 +1,4 @@
-import { afterNextRender, Component, computed, DestroyRef, effect, ElementRef, inject, Injector, linkedSignal, signal, viewChild } from '@angular/core';
+import { afterNextRender, Component, computed, DestroyRef, effect, inject, Injector, linkedSignal, signal, viewChild } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { catchError, forkJoin, map, Observable, of } from 'rxjs';
@@ -6,6 +6,8 @@ import { ApiClient } from '../../core/api-client';
 import { fmtDelta, pc1, pctCi } from '../../core/format';
 import { StatsService } from '../../core/stats.service';
 import { Kpi } from '../../shared/kpi';
+import { Section } from '../../shared/section';
+import { Segmented } from '../../shared/segmented';
 import { Donut } from '../../shared/donut';
 import { EloPoint, Sparkline } from '../../shared/sparkline';
 import { Compare } from './components/compare';
@@ -161,7 +163,7 @@ function view(d: ChessData) {
 
 @Component({
   selector: 'app-chess',
-  imports: [Kpi, Donut, Sparkline, Compare, MatchesTable, MatchDetailModal, OpeningsBlock, Patterns, EngineProfile],
+  imports: [Kpi, Section, Segmented, Donut, Sparkline, Compare, MatchesTable, MatchDetailModal, OpeningsBlock, Patterns, EngineProfile],
   providers: [MatchesService],
   templateUrl: './chess.html',
 })
@@ -219,13 +221,14 @@ export class Chess {
       const once = effect(() => {
         if (this.data.isLoading() || this.profile() === undefined) return;
         once.destroy();
-        afterNextRender(() => this.jump(this.engineDetails().nativeElement), { injector });
+        afterNextRender(() => this.engineDetails().reveal(), { injector });
       });
     }
   }
 
-  private readonly engineDetails = viewChild.required<ElementRef<HTMLDetailsElement>>('engineDetails');
+  private readonly engineDetails = viewChild.required<Section>('engineDetails');
 
+  protected readonly recentOptions = [20, 50, 100].map((n) => ({ k: String(n), l: String(n) }));
   protected setRecent(n: number): void { this.recentN.set(n); }
 
   protected setCut(v: string): void {
@@ -239,9 +242,8 @@ export class Chess {
     card.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  /** Page index: open the block (if collapsed) and scroll to it. Buttons, not #anchors: the URL belongs to the router. */
+  /** Page index: scroll to a block (sections use their own reveal()). Buttons, not #anchors: the URL belongs to the router. */
   protected jump(el: HTMLElement): void {
-    if (el instanceof HTMLDetailsElement) el.open = true;
     el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 

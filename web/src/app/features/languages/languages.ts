@@ -1,3 +1,4 @@
+import { Section } from '../../shared/section';
 import { Component, computed, inject, input, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -22,7 +23,7 @@ const ok = <T>(v: T | typeof NONE | null): v is T => v !== null && v !== NONE &&
 
 @Component({
   selector: 'app-languages',
-  imports: [CourseDetailView, RouterLink],
+  imports: [CourseDetailView, RouterLink, Section],
   templateUrl: './languages.html',
 })
 export class Languages {

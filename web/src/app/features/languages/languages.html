@@ -98,8 +98,7 @@
       </div>
 
       <!-- Tus Cursos (Comprensión 1m) -->
-      <details class="cgroup" id="langCoursesDetails" style="margin-bottom:12px">
-        <summary style="cursor:pointer;font-weight:600;font-size:var(--fs-md);color:var(--muted);padding:10px 0">Tus Cursos <span id="langCoursesCount" class="muted" style="font-size:var(--fs-sm);margin-left:8px">{{ d() ? d()!.courses.length + ' cursos registrados' : '' }}</span></summary>
+      <app-section sectionId="langCoursesDetails" title="Tus Cursos" metaId="langCoursesCount" [meta]="d() ? d()!.courses.length + ' cursos registrados' : ''" [open]="false">
         <div class="card" style="margin-top:8px">
           <div id="langCoursesList">
             @if (isNA(cl)) { <div class="muted">{{ cl }}</div> }
@@ -143,11 +142,10 @@
             }
           </div>
         </div>
-      </details>
+      </app-section>
 
       <!-- Análisis y métricas longitudinales (Disclosure Progresivo) -->
-      <details class="cgroup" id="langAnalyticsDetails" style="margin-bottom:12px">
-        <summary style="cursor:pointer;font-weight:600;font-size:var(--fs-md);color:var(--muted);padding:10px 0">Análisis y métricas longitudinales</summary>
+      <app-section sectionId="langAnalyticsDetails" title="Análisis y métricas longitudinales" [open]="false">
         <!-- Cambios Observados (Longitudinal #16.9) -->
         <div class="card" id="langObservedChangesCard" style="margin:12px 0">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
@@ -264,7 +262,7 @@
             }
           </div>
         </div>
-      </details>
+      </app-section>
 
       <!-- ¿Cómo sabemos esto? (MethodologyDisclosure) -->
       <details class="methodology-disclosure" id="langMethodology" style="margin-top:16px;margin-bottom:16px">

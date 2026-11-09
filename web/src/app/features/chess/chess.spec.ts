@@ -369,10 +369,10 @@ describe('Chess', () => {
       expect(t.text('openingsWhite')).toContain('Española (Ruy López)');
       expect(t.text('openingsWhite')).not.toContain('ruy_lopez');
       expect(t.el().querySelector<HTMLElement>('#openingsBlack')!.hidden).toBe(true);
-      t.el().querySelector<HTMLButtonElement>('#tabBtnNegras')!.click();
+      t.el().querySelector<HTMLButtonElement>('#tabBtn-black')!.click();
       await t.tick();
       expect(t.el().querySelector<HTMLElement>('#openingsBlack')!.hidden).toBe(false);
-      expect(t.el().querySelector('#tabBtnNegras')!.getAttribute('aria-pressed')).toBe('true');
+      expect(t.el().querySelector('#tabBtn-black')!.getAttribute('aria-pressed')).toBe('true');
       expect(t.text('openingsBlack')).toContain('Siciliana');
       expect(t.text('openingsPop')).toBe('Hidratadas: 5 / 100 partidas');
       t.el().querySelector<HTMLButtonElement>('#btnAllMatches')!.click();
@@ -712,7 +712,7 @@ describe('Chess', () => {
       Element.prototype.scrollIntoView = function (this: Element) { scrolled.push(this.id); };
       const evo = t.el().querySelector<HTMLDetailsElement>('#cg-evo')!;
       evo.open = false;
-      const buttons = [...t.el().querySelectorAll<HTMLButtonElement>('.cindex button')];
+      const buttons = [...t.el().querySelectorAll<HTMLButtonElement>('nav.cindex button')];
       expect(buttons.map((b) => b.textContent)).toEqual(['Comparativa', 'Aperturas', 'Evolución', 'Partidas']);
       for (const b of buttons) b.click();
       expect(scrolled).toEqual(['cg-comp', 'cg-open', 'cg-evo', 'allMatchesCard']);
