@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { InvalidCommandError } from "../../../application/errors.ts";
 import type { Container } from "../../../kernel/container.ts";
-import { GET_DAY, GET_SUMMARY, IMPORT_GAME_RESULTS, RECORD_GAME_RESULT } from "../module.ts";
+import { EXPORT_GAME_RESULTS, GET_DAY, GET_SUMMARY, IMPORT_GAME_RESULTS, RECORD_GAME_RESULT } from "../module.ts";
 
 type Vars = { Variables: { email: string | null; container: Container } };
 const body = z.object({
@@ -28,6 +28,11 @@ linkedinGamesRoutes.get("/summary", async (c) => {
   const today = c.req.query("today") ?? new Date().toISOString().slice(0, 10);
   const summary = await c.get("container").resolve(GET_SUMMARY).execute({ ownerEmail: c.get("email")!, today });
   return c.json({ ok: true, summary });
+});
+
+linkedinGamesRoutes.get("/export.csv", async (c) => {
+  const csv = await c.get("container").resolve(EXPORT_GAME_RESULTS).execute({ ownerEmail: c.get("email")! });
+  return new Response(csv, { headers: { "content-type": "text/csv; charset=utf-8", "content-disposition": 'attachment; filename="linkedin-games.csv"' } });
 });
 
 linkedinGamesRoutes.put("/", async (c) => {

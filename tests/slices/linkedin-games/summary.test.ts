@@ -13,7 +13,18 @@ const TODAY = "2026-11-03";
 
 describe("summarize", () => {
   it("shouldReturnEmptySummaryWhenThereAreNoDays", () => {
-    expect(summarize([], TODAY)).toEqual({ days: 0, from: null, to: null, playStreak: { current: 0, max: 0 }, games: {} });
+    const s = summarize([], TODAY);
+    expect(s).toMatchObject({ days: 0, from: null, to: null, playStreak: { current: 0, max: 0 }, games: {} });
+    expect(s.weekdays.map((w) => w.n)).toEqual([0, 0, 0, 0, 0, 0, 0]);
+  });
+
+  it("shouldGroupAllGamesByWeekdayMondayFirstWhenSummarising", () => {
+    // 2026-11-01 is a Sunday, 2026-11-02 a Monday
+    const s = summarize([day("2026-11-01", { zip: entry(10, 25), tango: entry(30, 20) }), day("2026-11-02", { zip: entry(10, 20) })], TODAY);
+    expect(s.weekdays.map((w) => w.n)).toEqual([1, 0, 0, 0, 0, 0, 2]);
+    expect(s.weekdays[0]!.eff.median).toBe(2);
+    expect(s.weekdays[0]!.beat.rate).toBe(1);
+    expect(s.weekdays[6]!.beat.rate).toBe(0.5);
   });
 
   it("shouldComputeEfficiencyAsAvgOverScoreWhenBothPresent", () => {

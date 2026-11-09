@@ -24,7 +24,8 @@ export interface Game {
   interpretation: Interp; series: { roll: number }[];
   windows: Record<Range, Win>; trajectory: Record<Range, Bucket[]>;
 }
-export interface Summary { days: number; from: string | null; to: string | null; playStreak?: { current: number; max: number } | null; games: Record<string, Game> }
+export interface Weekday { dow: number; n: number; beat: { rate: number | null }; eff: { median: number | null } }
+export interface Summary { weekdays?: Weekday[]; days: number; from: string | null; to: string | null; playStreak?: { current: number; max: number } | null; games: Record<string, Game> }
 export interface Day { games?: Record<string, { score?: string | null; avg?: string | null; number?: number | null }> }
 
 export const GAME_NAMES: Record<string, string> = { zip: 'Zip', tango: 'Tango', queens: 'Queens', mini_sudoku: 'Mini Sudoku', patches: 'Patches', wend: 'Wend' };
@@ -125,6 +126,22 @@ export function gamesTable(s: Summary, range: Range, sort: Sort) {
       num: c.k !== 'name' && c.k !== 'verdict',
     })) })),
   };
+}
+
+const DAYS = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'];
+/** A weekday says nothing with only a few results behind it. */
+export const MIN_WEEKDAY = 8;
+/** How the games go on each weekday (all games together, whole history): rows plus the best and weakest day when there is enough to say. */
+export function weekdayRows(s: Summary) {
+  const ws = s.weekdays ?? [];
+  if (!ws.some((w) => w.n > 0)) return undefined;
+  const enough = (w: Weekday) => w.n >= MIN_WEEKDAY && w.eff.median != null;
+  const rows = ws.map((w) => ({ day: DAYS[w.dow][0].toUpperCase() + DAYS[w.dow].slice(1), n: w.n, speed: enough(w) ? speedWords(w.eff.median) : 'Aún pocos datos', beat: enough(w) ? gpct(w.beat.rate) : '—' }));
+  const ok = ws.filter(enough).sort((a, b) => b.eff.median! - a.eff.median!);
+  const best = ok[0], weak = ok[ok.length - 1];
+  const sentence = ok.length >= 2 && best.eff.median! > weak.eff.median!
+    ? `Tu mejor día frente a la media es el ${DAYS[best.dow]}; el más flojo, el ${DAYS[weak.dow]}.` : '';
+  return { rows, sentence };
 }
 
 /** Polyline points of the 28-day rolling median, or '' with fewer than two points. */

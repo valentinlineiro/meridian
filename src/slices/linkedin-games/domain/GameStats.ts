@@ -1,4 +1,4 @@
-import { beats, dayNo, efficiencyOf as eff, median, trajectory, windows, type Bucket, type Delta, type Obs, type RangeKey, type WindowResult } from "./GameAnalysis.ts";
+import { beats, block, dayNo, efficiencyOf as eff, median, trajectory, windows, type BeatBlock, type Bucket, type Delta, type EffBlock, type Obs, type RangeKey, type WindowResult } from "./GameAnalysis.ts";
 import { arrow28, candidate, publish, type Arrow, type Label, type Reason } from "./GameInterpretation.ts";
 import type { DayRecord } from "./LinkedinGames.ts";
 import { NOISE_BANDS, type Band, type GameBands, type NoiseBands } from "./NoiseBands.ts";
@@ -43,11 +43,14 @@ export interface GameSummary {
   interpretation: Interpretation;
   trajectory: Record<RangeKey, Bucket[]>;
 }
+/** Monday = 0 … Sunday = 6: how all the games together went on that weekday, over the whole history. */
+export interface Weekday { dow: number; n: number; beat: BeatBlock; eff: EffBlock }
 export interface Summary {
   days: number;
   from: string | null;
   to: string | null;
   playStreak: Streak;
+  weekdays: Weekday[];
   games: Record<string, GameSummary>;
 }
 
@@ -102,6 +105,14 @@ function gameSummary(game: string, obs: Obs[], today: string, noise: NoiseBands)
   };
 }
 
+const dowOf = (date: string): number => (new Date(`${date}T00:00:00Z`).getUTCDay() + 6) % 7;
+function weekdays(obs: Obs[]): Weekday[] {
+  return Array.from({ length: 7 }, (_, dow) => {
+    const mine = obs.filter((o) => dowOf(o.date) === dow), b = block(mine);
+    return { dow, n: mine.length, beat: b.beat, eff: b.eff };
+  });
+}
+
 // `days` holds the current version of each date, ascending. `today` is the player's calendar date.
 export function summarize(days: DayRecord[], today: string, noise: NoiseBands = NOISE_BANDS): Summary {
   const byGame = new Map<string, Obs[]>();
@@ -121,6 +132,7 @@ export function summarize(days: DayRecord[], today: string, noise: NoiseBands = 
     from: played[0]?.date ?? null,
     to: played[played.length - 1]?.date ?? null,
     playStreak: streak(played, today),
+    weekdays: weekdays([...byGame.values()].flat()),
     games: Object.fromEntries([...byGame].map(([g, obs]) => [g, gameSummary(g, obs, today, noise)])),
   };
 }
