@@ -64,6 +64,8 @@ web/src/app/
     `tests/webDesignTokens.test.ts` fails if one appears.
   - Controls: one global rule styles `input`/`select`; contexts only set widths. `.btn` + `.btn-g` is the default button, `.btn-p` a primary action,
     and a toggled button is `.btn[aria-pressed=true]` (never a class swap).
+  - Shared pieces in `web/src/app/shared/`: `app-segmented` (one group of exclusive buttons, `aria-pressed`), `app-section` (collapsible block), `app-help` ("Cómo se calcula": the formulas and fine print, folded), `app-verdict` (verdict pill), `app-stats` (label, value, note). A new view uses these instead of its own markup.
+  - Words (`core/words.ts`): what a screen shows first is plain: a verdict phrase, a time (m:ss) or a count of days ("20 de 23 días"). No ×, %, P25–P75, `n=` or Δ at first sight; they live in the view's "Cómo se calcula". One verdict vocabulary (confirmed up/down, possible, few data, no signal) and one speed scale (`speedWords`). "Sin señales de cambio" never reads as "nothing changed". Speed tiers are an interpretation: change them in that one table.
   - Dialogs use `<app-modal>` (`shared/modal.ts`): Escape, backdrop click, Tab trap, initial focus and focus restore. Not native `<dialog>`
     because jsdom has no `showModal()`. Scroll lock and `inert` are deliberately not implemented.
 

@@ -1,0 +1,54 @@
+import { beatDays, PERIODS, speedWords, typicalTime, verdictFor, VERDICT_ORDER } from './words';
+
+describe('words', () => {
+  it('shouldPutARatioInTheRightPlainSpeedPhrase', () => {
+    expect([0.5, 0.89, 0.9, 1.09, 1.1, 1.39, 1.4, 1.79, 1.8, 2.04, 2.49, 2.5, 4.4].map(speedWords)).toEqual([
+      'más lento', 'más lento', 'a la par', 'a la par', 'un poco más rápido', 'un poco más rápido', 'bastante más rápido', 'bastante más rápido',
+      'el doble de rápido', 'el doble de rápido', 'el doble de rápido', 'mucho más rápido', 'mucho más rápido',
+    ]);
+    expect(speedWords(null)).toBe('—');
+  });
+
+  it('shouldSayHowManyDaysOutOfHowMany', () => {
+    expect(beatDays(20, 23)).toBe('20 de 23 días');
+    expect(beatDays(1, 1)).toBe('1 de 1 día');
+    expect(beatDays(null, 5)).toBe('—');
+    expect(beatDays(3, 0)).toBe('—');
+  });
+
+  it('shouldSayTheNormalTimeWithItsUsualRange', () => {
+    expect(typicalTime(52, 47, 60)).toEqual({ main: '0:52', range: 'suele estar entre 0:47 y 1:00' });
+    expect(typicalTime(52, null, 60)).toEqual({ main: '0:52', range: '' });
+    expect(typicalTime(null, 1, 2)).toEqual({ main: '—', range: '' });
+  });
+
+  it('shouldNameThePeriodsTheWayAPlayerSaysThem', () => {
+    expect(PERIODS.map((p) => p.l)).toEqual(['Semana', '4 semanas', '3 meses', 'Todo']);
+    expect(PERIODS.map((p) => p.phrase)).toEqual(['la última semana', 'las últimas 4 semanas', 'los últimos 3 meses', 'todo el histórico']);
+  });
+
+  it('shouldNeverCallNoSignalAProofThatNothingChanged', () => {
+    const v = verdictFor({ label: 'estable', pending: null });
+    expect(v.label).toBe('Sin señales de cambio');
+    expect(v.sentence).toBe('No se ve ningún cambio claro en las últimas 4 semanas.');
+    expect(v.sentence).not.toMatch(/sin cambios|no hubo cambio|estable/i);
+  });
+
+  it('shouldMapTheEngineLabelsToOneVocabularyWithADirection', () => {
+    expect(verdictFor({ label: 'mejora_sostenida', pending: null })).toMatchObject({ state: 'confirmed', dir: 'up', label: 'Al alza', pill: 'pill pill-win' });
+    expect(verdictFor({ label: 'deterioro', pending: null })).toMatchObject({ state: 'confirmed', dir: 'down', label: 'A la baja', pill: 'pill pill-warn' });
+    expect(verdictFor({ label: 'datos_insuficientes', pending: null })).toMatchObject({ state: 'few-data', label: 'Aún pocos datos', pill: 'pill pill-draw' });
+    expect(verdictFor({ label: 'estable', pending: null })).toMatchObject({ state: 'no-signal', pill: 'pill' });
+  });
+
+  it('shouldCallAnUnconfirmedSignalPossibleWithItsDirection', () => {
+    const down = verdictFor({ label: 'estable', pending: 'deterioro' });
+    expect(down).toMatchObject({ state: 'possible', dir: 'down', label: 'Posible bajada' });
+    expect(down.sentence).toBe('Puede que vayas algo más lento. Si se repite la semana que viene, lo confirmamos.');
+    expect(verdictFor({ label: 'estable', pending: 'mejora_sostenida' })).toMatchObject({ state: 'possible', dir: 'up', label: 'Posible subida' });
+  });
+
+  it('shouldListWhatNeedsAttentionFirst', () => {
+    expect(VERDICT_ORDER).toEqual(['confirmed-down', 'possible-down', 'possible-up', 'confirmed-up', 'no-signal', 'few-data']);
+  });
+});

@@ -1,6 +1,7 @@
 import { afterNextRender, Component, computed, DestroyRef, ElementRef, inject, input, signal } from '@angular/core';
 import { fmtDate } from '../../core/format';
-import { beatText, Bucket, effText } from './games.model';
+import { speedWords } from '../../core/words';
+import { Bucket } from './games.model';
 
 const L = 40, R = 8, DEFAULT_W = 320, MIN_W = 300, MAX_W = 1100;
 const f = (v: number) => v.toFixed(1);
@@ -28,18 +29,17 @@ export function chartGeometry(b: readonly Bucket[], W = DEFAULT_W) {
       const v = p[key];
       if (v == null) { flush(); return; }
       seg.push([x(i), yf(v)]);
-      dots.push({ cx: f(x(i)), cy: f(yf(v)), title: p.start + ' · n=' + p.n + ' · ' + fmt(v) });
+      dots.push({ cx: f(x(i)), cy: f(yf(v)), title: p.start + ' · ' + p.n + (p.n === 1 ? ' partida' : ' partidas') + ' · ' + fmt(v) });
     });
     flush();
     return { lines, dots };
   };
-  // ponytail: tick labels take the decimal comma (legacy toFixed gave "×1.3").
-  const tick = (v: number) => '×' + v.toFixed(1).replace('.', ',');
   return {
     W, L, bw: f(bw), xr: W - R, viewBox: '0 0 ' + W + ' 196',
-    y1: f(ya(1)), hiY: f(ya(hi) + 3), loY: f(ya(lo) + 3), y1t: f(ya(1) + 3), hi: tick(hi), lo: tick(lo), mid: f(yb(.5)),
-    eff: series('eff', ya, effText), beat: series('beat', yb, (v) => beatText(v)),
-    bars: b.flatMap((p, i) => p.n ? [{ x: f(x(i) - bw / 2), y: f(178 - p.n / maxN * 22), h: f(p.n / maxN * 22), title: p.start + ' · n=' + p.n }] : []),
+    showHi: ya(1) - ya(hi) > 11, showLo: ya(lo) - ya(1) > 11,
+    y1: f(ya(1)), hiY: f(ya(hi) + 3), loY: f(ya(lo) + 3), y1t: f(ya(1) + 3), mid: f(yb(.5)),
+    eff: series('eff', ya, (v) => 'frente a la media: ' + speedWords(v)), beat: series('beat', yb, (v) => 'le ganas a la media en el ' + Math.round(v * 100) + ' %'),
+    bars: b.flatMap((p, i) => p.n ? [{ x: f(x(i) - bw / 2), y: f(178 - p.n / maxN * 22), h: f(p.n / maxN * 22), title: p.start + ' · ' + p.n + (p.n === 1 ? ' partida' : ' partidas') }] : []),
     first: fmtDate(b[0].start), last: fmtDate(b[b.length - 1].start),
   };
 }
@@ -49,16 +49,16 @@ export function chartGeometry(b: readonly Bucket[], W = DEFAULT_W) {
   host: { style: 'display:block' },
   template: `
     @if (g(); as c) {
-      <svg class="gchart" [attr.viewBox]="c.viewBox" role="img" aria-label="Evolución de la eficiencia y del porcentaje que gana a la media, con el n de cada punto. Los mismos datos están en la tabla siguiente.">
+      <svg class="gchart" [attr.viewBox]="c.viewBox" role="img" aria-label="Evolución de lo rápido que vas frente a la media y de los días que le ganas, con las partidas de cada punto. Los mismos datos están en la tabla siguiente.">
         <line [attr.x1]="c.L" [attr.x2]="c.xr" [attr.y1]="c.y1" [attr.y2]="c.y1" stroke="var(--line)" stroke-width="1" stroke-dasharray="3 3" />
-        <text x="2" [attr.y]="c.hiY" fill="var(--muted)" font-size="11">{{ c.hi }}</text><text x="2" [attr.y]="c.loY" fill="var(--muted)" font-size="11">{{ c.lo }}</text><text x="2" [attr.y]="c.y1t" fill="var(--muted)" font-size="11">×1</text>
+        @if (c.showHi) {<text x="2" [attr.y]="c.hiY" fill="var(--muted)" font-size="11">rápido</text>}@if (c.showLo) {<text x="2" [attr.y]="c.loY" fill="var(--muted)" font-size="11">lento</text>}<text x="2" [attr.y]="c.y1t" fill="var(--muted)" font-size="11">media</text>
         @for (l of c.eff.lines; track $index) {<polyline [attr.points]="l" fill="none" stroke="var(--link)" stroke-width="1.5" />}
         @for (p of c.eff.dots; track $index) {<circle [attr.cx]="p.cx" [attr.cy]="p.cy" r="3" fill="var(--link)"><title>{{ p.title }}</title></circle>}
         <line [attr.x1]="c.L" [attr.x2]="c.xr" [attr.y1]="c.mid" [attr.y2]="c.mid" stroke="var(--line)" stroke-width="1" stroke-dasharray="3 3" />
-        <text x="2" y="98" fill="var(--muted)" font-size="11">100 %</text><text x="2" y="143" fill="var(--muted)" font-size="11">0 %</text>
+        <text x="2" y="98" fill="var(--muted)" font-size="11">todos</text><text x="2" y="143" fill="var(--muted)" font-size="11">ninguno</text>
         @for (l of c.beat.lines; track $index) {<polyline [attr.points]="l" fill="none" stroke="var(--ok)" stroke-width="1.5" />}
         @for (p of c.beat.dots; track $index) {<circle [attr.cx]="p.cx" [attr.cy]="p.cy" r="3" fill="var(--ok)"><title>{{ p.title }}</title></circle>}
-        <line [attr.x1]="c.L" [attr.x2]="c.xr" y1="178" y2="178" stroke="var(--line)" stroke-width="1" /><text x="2" y="176" fill="var(--muted)" font-size="11">n</text>
+        <line [attr.x1]="c.L" [attr.x2]="c.xr" y1="178" y2="178" stroke="var(--line)" stroke-width="1" /><text x="2" y="176" fill="var(--muted)" font-size="9">partidas</text>
         @for (r of c.bars; track $index) {<rect [attr.x]="r.x" [attr.y]="r.y" [attr.width]="c.bw" [attr.height]="r.h" fill="var(--neutral)"><title>{{ r.title }}</title></rect>}
         <text [attr.x]="c.L" y="192" fill="var(--muted)" font-size="11">{{ c.first }}</text><text [attr.x]="c.xr" y="192" fill="var(--muted)" font-size="11" text-anchor="end">{{ c.last }}</text>
       </svg>

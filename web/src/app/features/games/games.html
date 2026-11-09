@@ -19,40 +19,52 @@
   </div>
   <app-games-quick-entry (saved)="data.reload()" />
   <div id="gamesNote" class="muted" role="status">{{ note() }}</div>
-  <div class="cindex" id="gamesRange" role="group" aria-label="Periodo de análisis"><span class="muted" style="align-self:center">Periodo</span>@for (r of ranges; track r.k) {<button type="button" class="btn btn-g" [id]="'gr-' + r.k" [attr.aria-pressed]="range() === r.k" (click)="range.set(r.k)">{{ r.l }}</button>}</div>
-  <details class="cgroup" id="cg-games-cmp" open><summary>Comparativa</summary>
+  <app-segmented groupId="gamesRange" label="Periodo de análisis" caption="Periodo" idPrefix="gr-" [options]="ranges" [value]="range()" (picked)="range.set($any($event))" />
+  <app-section title="Comparativa" sectionId="cg-games-cmp">
     <app-games-table [summary]="summary() ?? undefined" [range]="range()" />
-    <p class="muted">n (columna) = observaciones con tiempo. Eficiencia y % que gana a la media añaden su n solo si difiere. Racha «—» = sin racha activa (último registro en la cabecera). Δ eficiencia = cambio relativo frente al periodo anterior equivalente (n actual/anterior); «—» si no es comparable.</p>
-      @if (range() !== '28') {<p class="muted" id="gamesRangeNote">Con un periodo distinto de 28 días la tabla no marca flechas ni compara con el ruido del juego: la etiqueta de cada juego es siempre a 28 días.</p>}
-  </details>
-  <details class="cgroup" id="cg-games-traj" open><summary>Trayectoria</summary>
+    @if (range() !== '28') {<p class="muted" id="gamesRangeNote">«Cómo vas» mira siempre las últimas 4 semanas, elijas el periodo que elijas.</p>}
+    <app-help label="Cómo leer esta tabla">
+      <p><b>Cómo vas:</b> mira siempre las últimas 4 semanas y solo habla de cambio si se repite dos semanas seguidas.</p>
+      <p><b>Velocidad frente a la media:</b> tu tiempo frente a la media de LinkedIn ese día (×1 es igual que la media, ×2 el doble de rápido).</p>
+      <p><b>Le ganas a la media:</b> los días en que tu tiempo fue mejor que la media, sobre los días con media disponible.</p>
+      <p><b>Tiempo normal:</b> tu tiempo típico (la mediana). Pasa el ratón por encima para ver entre qué tiempos suele estar la mitad central.</p>
+      <p><b>Días seguidos mejor que la media:</b> «—» significa sin racha activa; el último registro está en la cabecera.</p>
+    </app-help>
+  </app-section>
+  <app-section title="Trayectoria" sectionId="cg-games-traj">
     @let t = traj();
     <label class="muted" for="gamesTrajGame">Juego</label> <select id="gamesTrajGame" (change)="trajPick.set($any($event.target).value)">@for (o of t?.options; track o.k) {<option [value]="o.k" [selected]="o.k === t?.game">{{ o.l }}</option>}</select>
     <div id="gamesChart" class="card">@if (t?.view; as v) {<app-games-chart [buckets]="v.buckets" />} @else if (t && t.view === null) {<div class="muted">No disponible</div>}</div>
     <p class="muted" id="gamesChartNote">{{ t?.view?.note }}</p>
-    <details class="gdata" id="gamesDataDetails"><summary>Ver los datos del gráfico (tabla)</summary>
-      <div class="tblwrap" tabindex="0" role="region" aria-label="Datos del gráfico (desplazable)"><table class="gtable" id="gamesDataTable" aria-describedby="gamesDataCaption"><caption id="gamesDataCaption" class="sr-only">{{ t?.view?.caption }}</caption><thead><tr><th scope="col">Periodo</th><th scope="col">Eficiencia (mediana)</th><th scope="col">Gana a la media</th><th scope="col">n</th></tr></thead>
+    <app-help label="Ver los datos del gráfico (tabla)" helpId="gamesDataDetails">
+      <div class="tblwrap" tabindex="0" role="region" aria-label="Datos del gráfico (desplazable)"><table class="gtable" id="gamesDataTable" aria-describedby="gamesDataCaption"><caption id="gamesDataCaption" class="sr-only">{{ t?.view?.caption }}</caption><thead><tr><th scope="col">Periodo</th><th scope="col">Velocidad (veces la media)</th><th scope="col">Le ganas a la media</th><th scope="col">Partidas</th></tr></thead>
         <tbody id="gamesDataRows">@for (r of t?.view?.rows; track $index) {<tr><th scope="row">{{ r[0] }}</th><td class="num">{{ r[1] }}</td><td class="num">{{ r[2] }}</td><td class="num">{{ r[3] }}</td></tr>}</tbody></table></div>
-    </details>
-  </details>
-  <details class="cgroup" id="cg-games" open><summary>Por juego</summary><p class="muted" id="gamesInterpNote">La etiqueta compara con el ruido propio de cada juego (límites calibrados con datos reales) y solo se publica si se repite dos semanas seguidas. «Estable» significa «sin cambio detectable», no «sin cambio». Las flechas de la tabla solo existen en el periodo de 28 días.</p>
+    </app-help>
+  </app-section>
+  <app-section title="Por juego" sectionId="cg-games">
+    <app-help label="Cómo leer estas tarjetas" helpId="gamesInterpNote">
+      <p>La etiqueta compara con la variación normal de cada juego (límites calibrados con datos reales) y solo se publica si se repite dos semanas seguidas. «Sin señales de cambio» significa que no se ve un cambio claro, no que no lo haya habido. Las cifras de cada tarjeta siguen el periodo elegido; la etiqueta, no.</p>
+    </app-help>
     <div id="gamesList" class="grid2">
       @for (c of cards(); track c.k) {
         @if ('na' in c) {
           <section class="card gcard"><h3>{{ c.name }}</h3><p class="muted">No disponible</p></section>
         } @else {
           <section class="card gcard" [class.det]="c.det">
-            <h3>{{ c.name }}<span [class]="c.badgeClass" style="margin-left:8px">{{ c.badge }}</span></h3>
-            <p class="gcap">Señal · siempre a 28 días</p>
-            @for (t of c.interp; track $index) {<p [class]="$first ? 'ginterp' : 'muted'">{{ t }}</p>}
-            <p class="gcap">Periodo: {{ c.window }}</p>
-            <dl class="gmetrics">@for (m of c.metrics; track m.l) {<div><dt>{{ m.l }}</dt><dd>{{ m.v }}</dd>@if (m.s) {<dd class="muted">{{ m.s }}</dd>}</div>}</dl>
+            <h3>{{ c.name }}<app-verdict [verdict]="c.verdict" /></h3>
+            <p class="ginterp">{{ c.verdict.sentence }}</p>
+            <p class="gcap">Cifras de {{ c.period }}</p>
+            <app-stats [items]="c.stats" />
             <div>@if (c.spark) {<svg class="spark" viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true"><polyline [attr.points]="c.spark" fill="none" stroke="var(--link)" stroke-width="1.5" vector-effect="non-scaling-stroke" /></svg>}</div>
-            <p class="gcap">Mediana móvil de 28 días (suavizada)</p>
+            <p class="gcap">Tendencia de 28 días</p>
+            <app-help>
+              @for (t of c.how.lines; track $index) {<p>{{ t }}</p>}
+              <app-stats [items]="c.how.metrics" />
+            </app-help>
           </section>
         }
       }
     </div>
-  </details>
+  </app-section>
 </section>
 <app-games-entry-modal #entry (saved)="data.reload()" />
