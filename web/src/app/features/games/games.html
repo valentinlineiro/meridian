@@ -24,9 +24,9 @@
       @for (r of rows(); track r.k) {
         <div class="grow card">
           <div class="grow-h"><b>{{ r.name }}</b><app-verdict [verdict]="r.verdict" /></div>
-          <p class="grow-line">{{ r.line }}</p>
+          <p class="grow-line" title="Frente a tu ritmo habitual, teniendo en cuenta lo difícil que era cada día">{{ r.line }}</p>
           <div class="grow-viz">
-            <span class="dots" role="img" [attr.aria-label]="r.aria">@for (d of r.dots; track $index) {<i [class]="d.win ? 'dot dot-w' : 'dot dot-l'" [attr.title]="d.title"></i>}</span>
+            <span class="dots" role="img" [attr.aria-label]="r.aria" title="Verde: mejor que la media de LinkedIn ese día. Rojo: peor. Solo cuentan las partidas con media">@for (d of r.dots; track $index) {<i [class]="d.win ? 'dot dot-w' : 'dot dot-l'" [attr.title]="d.title"></i>}</span>
             @if (r.spark) {<svg class="spark" viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true"><polyline [attr.points]="r.spark" fill="none" stroke="var(--link)" stroke-width="1.5" vector-effect="non-scaling-stroke" /></svg>}
           </div>
           <span class="muted grow-t">{{ r.time }}</span>
@@ -34,7 +34,7 @@
       }
     </div>
     <app-help label="Cómo leerlo">
-      <p>Cada punto es una de tus últimas 14 partidas: verde si le ganaste a la media de LinkedIn ese día, rojo si no. La línea es tu velocidad de las últimas semanas. «Más rápido de lo normal» tiene en cuenta que unos días son más difíciles que otros. Debajo, «Más detalle» tiene las tablas y los gráficos.</p>
+      <p>Cada punto es una de tus últimas 14 partidas con media: verde si le ganaste a la media de LinkedIn ese día, rojo si no. La línea es tu velocidad de las últimas 4 semanas. «Más rápido de lo normal» tiene en cuenta que unos días son más difíciles que otros. Debajo, «Más detalle» tiene las tablas y los gráficos.</p>
     </app-help>
   </app-section>
   <app-section title="Dónde pierdes" sectionId="cg-games-loss">
