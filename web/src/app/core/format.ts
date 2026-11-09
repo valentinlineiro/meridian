@@ -62,3 +62,6 @@ export const colorConclusion = (diff: number | null | undefined, lo: number | nu
     line2: `${rule?.label || 'Patrón persistente'}: ${ruleTxt}`,
   };
 };
+
+/** Seconds as m:ss (a time on a clock, not a duration in words). */
+export const fmtClock = (s: number): string => Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
