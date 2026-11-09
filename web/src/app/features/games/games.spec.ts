@@ -189,9 +189,11 @@ describe('Games', () => {
       await click('#gamesToday [data-game="tango"]');
       expect(box().value).toBe('Tango, ');
       expect(document.activeElement).toBe(box());
+      expect([box().selectionStart, box().selectionEnd]).toEqual([7, 7]); // the cursor waits after "Tango, "
       box().value = 'Tango, 0:30'; box().dispatchEvent(new Event('input'));
       await click('#gamesToday [data-game="zip"]');
       expect(box().value).toBe('Tango, 0:30\nZip, ');
+      expect([box().selectionStart, box().selectionEnd]).toEqual([box().value.length, box().value.length]);
     });
 
     it('shouldSayTheDayCouldNotBeLoadedInsteadOfShowingNothingRecordedWhenTodayFails', async () => {
