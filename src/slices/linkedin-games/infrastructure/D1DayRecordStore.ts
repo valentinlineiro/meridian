@@ -12,14 +12,14 @@ export class D1DayRecordStore implements DayRecordStore {
   async latest(ownerId: string, date: string): Promise<DayRecord | null> {
     const row = await this.db.prepare(
       `SELECT raw_json FROM snapshots WHERE source = ? AND user_id = ? AND json_extract(raw_json, '$.date') = ?
-       ORDER BY created_at DESC, id DESC LIMIT 1`).bind(SOURCE, ownerId, date).first<{ raw_json: string }>();
+       ORDER BY created_at DESC, rowid DESC LIMIT 1`).bind(SOURCE, ownerId, date).first<{ raw_json: string }>();
     return row ? (JSON.parse(row.raw_json) as DayRecord) : null;
   }
 
   async all(ownerId: string): Promise<DayRecord[]> {
     // Latest version wins (L2): rows come oldest first, so a later row for the same date overwrites. A few hundred small rows;
     // a SQL "latest per date" would be quadratic without an index on the date.
-    const { results } = await this.db.prepare("SELECT raw_json FROM snapshots WHERE source = ? AND user_id = ? ORDER BY created_at, id")
+    const { results } = await this.db.prepare("SELECT raw_json FROM snapshots WHERE source = ? AND user_id = ? ORDER BY created_at, rowid")
       .bind(SOURCE, ownerId).all<{ raw_json: string }>();
     const byDate = new Map<string, DayRecord>();
     for (const r of results) { const d = JSON.parse(r.raw_json) as DayRecord; byDate.set(d.date, d); }
