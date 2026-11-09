@@ -1,5 +1,6 @@
 import { Component, computed, inject, input, signal } from '@angular/core';
 import { Compare } from './compare';
+import { Segmented } from '../../../shared/segmented';
 import { Group, list, Mates, Openings as OpeningStats, pc0, Phases, safe, Tally, Threats } from '../chess.model';
 import { MatchesService } from '../services/matches.service';
 
@@ -28,7 +29,7 @@ function threats(th: Threats | null | undefined) {
 /** The «Repertorio de aperturas & fases» block (src/frontend.ts:181–186; src/dashboard.client.js:1532–1585). */
 @Component({
   selector: 'app-openings',
-  imports: [Compare],
+  imports: [Compare, Segmented],
   template: `
     @if (mates(); as m) {
       <div class="card" id="matesCard" style="display:block"><h2>Cómo terminan tus mates</h2>
@@ -43,7 +44,7 @@ function threats(th: Threats | null | undefined) {
     }
     <div class="grid2">
       <div class="card" id="openingsCard"><h2>Repertorio de aperturas</h2>
-        <div id="openingsTabs" style="display:flex;gap:6px;margin-bottom:12px"><button type="button" class="btn btn-g" [attr.aria-pressed]="tab() === 'white'" id="tabBtnBlancas" (click)="tab.set('white')">Blancas</button><button type="button" class="btn btn-g" [attr.aria-pressed]="tab() === 'black'" id="tabBtnNegras" (click)="tab.set('black')">Negras</button></div>
+        <app-segmented groupId="openingsTabs" label="Color" idPrefix="tabBtn-" [options]="colors" [value]="tab()" (picked)="tab.set($event === 'black' ? 'black' : 'white')" />
         @let op = openingsView();
         <div id="openingsWhite" [hidden]="tab() !== 'white'">@if (op) {<m-compare [groups]="op.white" [total]="total()" [cap]="shown" noun="aperturas" />} @else if (op === null) {<div class="muted">No disponible</div>}</div>
         <div id="openingsBlack" [hidden]="tab() !== 'black'">@if (op) {<m-compare [groups]="op.black" [total]="total()" [cap]="shown" noun="aperturas" />} @else if (op === null) {<div class="muted">No disponible</div>}</div>
@@ -65,6 +66,7 @@ export class Openings {
   readonly total = input(1);
 
   protected readonly shown = OPENINGS_SHOWN;
+  protected readonly colors = [{ k: 'white', l: 'Blancas' }, { k: 'black', l: 'Negras' }];
   protected readonly tab = signal<'white' | 'black'>('white');
 
   protected readonly openingsView = computed(() => {

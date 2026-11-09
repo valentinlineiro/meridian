@@ -1,4 +1,5 @@
 import { Component, computed, inject, input } from '@angular/core';
+import { Segmented } from '../../../shared/segmented';
 import { formatMatchDate } from '../../../core/format';
 import { es, fmt, Openings } from '../chess.model';
 import { FilterGroup, MatchesService, MatchRow } from '../services/matches.service';
@@ -41,25 +42,22 @@ function rowView(m: MatchRow) {
   };
 }
 
-const CHIPS: { group: FilterGroup; label: string; options: [string, string][] }[] = [
-  { group: 'type', label: 'Rival', options: [['', 'Todos'], ['bot', 'Bots'], ['pvp', 'PvP']] },
-  { group: 'result', label: 'Resultado', options: [['', 'Todos'], ['win', 'Victorias'], ['loss', 'Derrotas'], ['draw', 'Tablas']] },
-  { group: 'color', label: 'Color', options: [['', 'Todos'], ['white', 'Blancas'], ['black', 'Negras']] },
+const CHIPS: { group: FilterGroup; label: string; options: { k: string; l: string }[] }[] = [
+  { group: 'type', label: 'Rival', options: [{ k: '', l: 'Todos' }, { k: 'bot', l: 'Bots' }, { k: 'pvp', l: 'PvP' }] },
+  { group: 'result', label: 'Resultado', options: [{ k: '', l: 'Todos' }, { k: 'win', l: 'Victorias' }, { k: 'loss', l: 'Derrotas' }, { k: 'draw', l: 'Tablas' }] },
+  { group: 'color', label: 'Color', options: [{ k: '', l: 'Todos' }, { k: 'white', l: 'Blancas' }, { k: 'black', l: 'Negras' }] },
 ];
 
 /** The "Partidas" card: chips, the expanded filters, the table and its pager. */
 @Component({
   selector: 'app-matches-table',
+  imports: [Segmented],
   template: `
     @let f = m.filters();
     <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px"><h2>Partidas</h2><span class="muted" style="font-size:var(--fs-sm)" id="chessMatchesSubtitle">{{ subtitle() }}</span><a class="btn btn-g" style="font-size:var(--fs-xs);padding:3px 8px;margin-left:8px" href="/api/export/matches.csv" download>Exportar CSV</a></div>
     <div class="filters" id="matchChips">
       @for (c of chips; track c.group) {
-        <div class="fgroup" role="group" [attr.aria-label]="c.label"><span class="flabel">{{ c.label }}</span>
-          @for (o of c.options; track o[0]) {
-            <button type="button" [attr.data-chip]="c.group + ':' + o[0]" class="btn btn-g" [attr.aria-pressed]="f[c.group] === o[0]" (click)="m.setFilter(c.group, o[0])">{{ o[1] }}</button>
-          }
-        </div>
+        <app-segmented [label]="c.label" [caption]="c.label" [chipGroup]="c.group" [options]="c.options" [value]="f[c.group]" (picked)="m.setFilter(c.group, $event)" />
       }
     </div>
     @if (!m.compact()) {

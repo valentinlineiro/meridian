@@ -33,7 +33,7 @@
     </div>
   </div>
   <nav class="cindex" aria-label="Secciones de ajedrez">
-    <button class="btn btn-g" type="button" (click)="jump(cgComp)">Comparativa</button><button class="btn btn-g" type="button" (click)="jump(cgOpen)">Aperturas</button><button class="btn btn-g" type="button" (click)="jump(cgEvo)">Evolución</button><button class="btn btn-g" type="button" (click)="jump(allMatches)">Partidas</button>
+    <button class="btn btn-g" type="button" (click)="cgComp.reveal()">Comparativa</button><button class="btn btn-g" type="button" (click)="cgOpen.reveal()">Aperturas</button><button class="btn btn-g" type="button" (click)="cgEvo.reveal()">Evolución</button><button class="btn btn-g" type="button" (click)="jump(allMatches)">Partidas</button>
   </nav>
   <section class="kpis" id="kpis">
     @if (failed()) {
@@ -43,10 +43,8 @@
     }
   </section>
   <div class="card" id="formCard" style="margin-top:12px"><h2>Forma actual</h2>
-    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:10px"><span class="muted">Últimas</span>
-      @for (n of [20, 50, 100]; track n) {
-        <button type="button" [id]="'b' + n" class="btn btn-g" [attr.aria-pressed]="(recentN() ?? 50) === n" (click)="setRecent(n)">{{ n }}</button>
-      }
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+      <app-segmented label="Últimas partidas" caption="Últimas" idPrefix="b" [options]="recentOptions" [value]="'' + (recentN() ?? 50)" (picked)="setRecent(+$event)" />
       <span class="muted" id="formMeta" style="margin-left:6px"></span></div>
     <div id="form">
       @let f = form();
@@ -72,23 +70,23 @@
   </div>
 
   <div class="card" id="chessPatternsCard" style="margin-top:12px">
-    <app-patterns [games]="x ? d()!.s.games ?? 0 : undefined" [colorStats]="x ? d()!.c : undefined" [profile]="profile()" (color)="filterColor($event, allMatches)" (engine)="jump(engineDetails)" />
+    <app-patterns [games]="x ? d()!.s.games ?? 0 : undefined" [colorStats]="x ? d()!.c : undefined" [profile]="profile()" (color)="filterColor($event, allMatches)" (engine)="engineDetails.reveal()" />
   </div>
 
-  <details class="cgroup" id="cg-comp" open #cgComp><summary>Comparativa por color y oponente</summary>
+  <app-section sectionId="cg-comp" title="Comparativa por color y oponente" #cgComp>
     <div class="grid2">
       <div class="card" id="colCard"><h2>Rendimiento por color</h2><div id="colDiff" class="muted" style="margin-bottom:8px">{{ x?.colDiff }}</div>
         <div id="col">@if (x) {@if (x.col; as g) {<m-compare [groups]="g" [total]="x.total" />} @else {<div class="muted">No disponible</div>}}</div></div>
       <div class="card" id="oppCard"><h2>Oponentes por familia</h2><div class="muted" style="font-size:var(--fs-xs);margin-bottom:6px">Las diferencias por familia de oponente no aíslan la dificultad del rival.</div><div id="oppMacro" class="muted" style="margin-bottom:8px">{{ x?.oppMacro }}</div>
         <div id="opp">@if (x) {@if (x.opp; as g) {<m-compare [groups]="g" [total]="x.total" />} @else {<div class="muted">No disponible</div>}}</div></div>
     </div>
-  </details>
+  </app-section>
 
-  <details class="cgroup" id="cg-open" [open]="!phone" #cgOpen><summary>Repertorio de aperturas &amp; fases</summary>
+  <app-section sectionId="cg-open" title="Repertorio de aperturas y fases" [open]="!phone" #cgOpen>
     <app-openings [openings]="x ? d()!.op : undefined" [phases]="x ? d()!.ph : undefined" [matesStats]="x ? d()!.mt : undefined" [threatStats]="x ? d()!.th : undefined" [total]="x?.total ?? 1" />
-  </details>
+  </app-section>
 
-  <details class="cgroup" id="cg-evo" [open]="!phone" #cgEvo><summary>Evolución &amp; detalle</summary>
+  <app-section sectionId="cg-evo" title="Evolución y detalle" [open]="!phone" #cgEvo>
     <div class="grid2">
       <div class="card" id="evoCard"><h2>Evolución · ELO</h2><div class="muted" style="font-size:var(--fs-xs)">ELO observado en sincronizaciones</div>
         <div id="evo">@if (x) {@if (x.evo; as e) {<m-sparkline [points]="e.points" />} @else {<div class="muted">No disponible</div>}}</div>
@@ -107,12 +105,11 @@
         <div class="muted" id="eloNote" style="margin-top:6px">{{ x?.elo?.note }}</div>
       </div>
     </details>
-  </details>
+  </app-section>
 
-  <details class="cgroup" id="chessEngineProfileDetails" open #engineDetails>
-    <summary style="cursor:pointer;font-weight:600;font-size:var(--fs-md);color:var(--muted);padding:10px 0">Perfil de juego y análisis de motor (Stockfish) ▾</summary>
+  <app-section sectionId="chessEngineProfileDetails" title="Perfil de juego y análisis de motor (Stockfish)" #engineDetails>
     <div id="chessEngineProfileContent"><app-engine-profile [profile]="profile()" [cut]="cut()" (cutChange)="setCut($event)" /></div>
-  </details>
+  </app-section>
 
   <div class="card" style="margin-top:14px" id="allMatchesCard" #allMatches>
     <app-matches-table [openings]="d()?.op ?? null" />
