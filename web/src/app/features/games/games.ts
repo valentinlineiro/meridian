@@ -7,6 +7,11 @@ import { GamesChart } from './games-chart';
 import { GamesEntryModal } from './games-entry-modal';
 import { GamesQuickEntry } from './games-quick-entry';
 import { GamesTable } from './games-table';
+import { Help } from '../../shared/help';
+import { Section } from '../../shared/section';
+import { Segmented } from '../../shared/segmented';
+import { Stats } from '../../shared/stats';
+import { VerdictPill } from '../../shared/verdict';
 import { cardOrder, Day, defaultTrajGame, GAME_NAMES, gameCard, gameName, gamesHero, localToday, Range, RANGES, Summary, trajectory } from './games.model';
 
 // Port of the LinkedIn Games tab (src/frontend.ts:489–520, src/dashboard.client.js:1787–1971).
@@ -16,7 +21,7 @@ const HERO_IDLE = { label: 'LinkedIn Games · racha actual', streak: '—', meta
 
 @Component({
   selector: 'app-games',
-  imports: [GamesChart, GamesEntryModal, GamesQuickEntry, GamesTable],
+  imports: [GamesChart, GamesEntryModal, GamesQuickEntry, GamesTable, Help, Section, Segmented, Stats, VerdictPill],
   templateUrl: './games.html',
 })
 export class Games {

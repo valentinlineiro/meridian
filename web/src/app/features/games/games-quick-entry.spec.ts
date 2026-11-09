@@ -13,7 +13,8 @@ describe('GamesQuickEntry', () => {
   let fixture: ComponentFixture<GamesQuickEntry>;
   let el: HTMLElement;
   let saved: number;
-  const tick = async (ms = 0) => { TestBed.tick(); await new Promise((r) => setTimeout(r, ms)); TestBed.tick(); };
+  // Fake timers: the debounce is advanced by exactly the time asked, so no test depends on how busy the machine is.
+  const tick = async (ms = 0) => { TestBed.tick(); await vi.advanceTimersByTimeAsync(ms); TestBed.tick(); };
   const box = () => el.querySelector<HTMLTextAreaElement>('#lgQuickText')!;
   const save = () => el.querySelector<HTMLButtonElement>('#lgQuickSave')!;
   const preview = () => el.querySelector('#lgQuickPreview')!.textContent!.replace(/\s+/g, ' ').trim();
@@ -21,6 +22,7 @@ describe('GamesQuickEntry', () => {
   const key = (k: string, shiftKey = false) => { const e = new KeyboardEvent('keydown', { key: k, shiftKey, cancelable: true, bubbles: true }); box().dispatchEvent(e); return e; };
 
   beforeEach(async () => {
+    vi.useFakeTimers();
     TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
     http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(GamesQuickEntry);
@@ -29,7 +31,7 @@ describe('GamesQuickEntry', () => {
     el = fixture.nativeElement;
     await tick();
   });
-  afterEach(() => http.verify());
+  afterEach(() => { http.verify(); vi.useRealTimers(); });
 
   it('shouldAskNothingWhileTheBoxIsEmpty', async () => {
     await tick(300);

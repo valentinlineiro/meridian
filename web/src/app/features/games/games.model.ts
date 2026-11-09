@@ -1,12 +1,13 @@
 // Port of the LinkedIn Games view builders (src/dashboard.client.js:1787–1943). Pure: the range is a parameter, not a global.
 // Nothing here is computed beyond formatting: labels, bands and arrows come from the server's contract.
-import { fmtDate } from '../../core/format';
+import { fmtClock, fmtDate } from '../../core/format';
+import { beatDays, PERIODS, PeriodKey, speedWords, typicalTime, Verdict, verdictFor, verdictKey, VERDICT_ORDER } from '../../core/words';
 
-export type Range = '7' | '28' | '90' | 'all';
+export type Range = PeriodKey;
 export type Label = 'mejora_sostenida' | 'estable' | 'deterioro' | 'datos_insuficientes';
 export interface Blk {
   eff: { median: number | null; nEff: number };
-  beat: { rate: number | null; nBeat: number };
+  beat: { rate: number | null; k: number; nBeat: number };
   time: { median: number | null; p25: number | null; p75: number | null; nTime: number };
 }
 export interface EffRel { value: number | null; nCur: number; nPrev: number; arrow?: 'up' | 'down' | 'flat' | null; band?: [number, number] }
@@ -28,37 +29,31 @@ export interface Day { games?: Record<string, { score?: string | null; avg?: str
 
 export const GAME_NAMES: Record<string, string> = { zip: 'Zip', tango: 'Tango', queens: 'Queens', mini_sudoku: 'Mini Sudoku', patches: 'Patches', wend: 'Wend' };
 export const gameName = (k: string): string => GAME_NAMES[k] || k;
-export const RANGES: { k: Range; l: string }[] = [{ k: '7', l: '7 d' }, { k: '28', l: '28 d' }, { k: '90', l: '90 d' }, { k: 'all', l: 'Todo' }];
-export const RANGE_NAMES: Record<Range, string> = { '7': '7 días', '28': '28 días', '90': '90 días', all: 'todo el histórico' };
+export const RANGES: { k: Range; l: string }[] = PERIODS.map(({ k, l }) => ({ k, l }));
+export const RANGE_NAMES = Object.fromEntries(PERIODS.map((p) => [p.k, p.phrase])) as Record<Range, string>;
 
 /** The browser's calendar day (sv-SE formats as YYYY-MM-DD), not UTC: a result logged at 01:00 belongs to today. */
 export const localToday = (): string => new Date().toLocaleDateString('sv-SE');
 
 const gnum = (v: number | null, d: number) => v == null ? '—' : v.toLocaleString('es-ES', { maximumFractionDigits: d });
-export const gmmss = (s: number) => Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
 export const gdays = (n: number) => n + (n === 1 ? ' día' : ' días');
 const gpct = (r: number | null) => r == null ? '—' : Math.round(r * 100) + ' %';
 /** Typographic minus, as in the rest of the UI (changes, chess). */
 const minus = (s: string) => s.replace('-', '−');
 const gsigned = (v: number | null, suffix: string) => { if (v == null) return '—'; const r = Math.round(v); return (r > 0 ? '+' : '') + minus(String(r)) + suffix; };
-const gtime = (s: number | null) => s == null ? '—' : gmmss(Math.round(s));
+const gtime = (s: number | null) => s == null ? '—' : fmtClock(Math.round(s));
 const gsign = (v: number | null, d: number) => v == null ? '—' : (v > 0 ? '+' : '') + minus(gnum(v, d));
 const gband = (b: [number, number]) => gsigned(b[0] * 100, ' %') + ' a ' + gsigned(b[1] * 100, ' %');
 export const effText = (v: number | null) => v == null ? '—' : '×' + gnum(v, 2);
 export const beatText = gpct;
 
-const ARROWS = { up: '↑', down: '↓', flat: '→' };
 export const LABEL_TEXT: Record<Label, string> = { mejora_sostenida: 'Mejora sostenida', estable: 'Estable (sin cambio detectable)', deterioro: 'Deterioro', datos_insuficientes: 'Datos insuficientes' };
-export const LABEL_CLASS: Record<Label, string> = { mejora_sostenida: 'pill-win', estable: '', deterioro: 'pill-warn', datos_insuficientes: 'pill-draw' };
-const LABEL_ORDER: Record<Label, number> = { deterioro: 0, mejora_sostenida: 1, estable: 2, datos_insuficientes: 3 };
 
 /** A manual log has no broken streak: with no record for 2+ days the run is 0 because nothing was recorded. */
 const streakActive = (x: Game, s: Summary) => x.beatStreak.current > 0 || !!(s.playStreak && s.playStreak.current > 0);
 /** The run, or "—": a stale log is said once (hero, tooltip), not in every row. */
 const gbeatStreak = (x: Game, s: Summary) => streakActive(x, s) ? gdays(x.beatStreak.current) : '—';
 const staleTitle = (x: Game, s: Summary) => !streakActive(x, s) && s.to ? 'Sin registro desde ' + fmtDate(s.to) : null;
-/** n is spelled out only where it differs from the n column (the sample every cell of the row shares). */
-const nIfDiffers = (n: number, w: Win) => n === w.time.nTime ? '' : ' · n=' + n;
 
 export function interpretationLines(x: Game): string[] {
   const i = x.interpretation, b = i.bands, t = x.trend112, r = x.recent28vBase56, out: string[] = [];
@@ -93,33 +88,28 @@ function deltaTitle(w: Win, range: Range): string | null {
   if (e.arrow) return 'Supera el ruido de este juego (fuera de ' + gband(e.band!) + ').';
   return 'Sin calibración o sin observaciones suficientes para interpretar este cambio.';
 }
-function deltaSr(w: Win, range: Range): string | null {
-  const e = w.delta && w.delta.effRel;
-  return range === '28' && e && e.value != null && e.arrow ? (e.arrow === 'flat' ? ' (dentro del ruido)' : e.arrow === 'up' ? ' (sube, fuera del ruido)' : ' (baja, fuera del ruido)') : null;
-}
 
-// Table columns: one source for the header, the cell text and the sort value. nulls always sort last.
+// Table columns: one source for the header, the cell text and the sort value. nulls always sort last. What is shown is plain words
+// (core/words); the numbers behind them are in each card's "Cómo se calcula".
 type Val = string | number | null;
-interface Col { k: string; l: string; v: (g: Game, w: Win, k: string) => Val; t: (g: Game, w: Win, k: string, s: Summary, range: Range) => string }
+interface Col { k: string; l: string; v: (g: Game, w: Win, k: string) => Val; t: (g: Game, w: Win, k: string, s: Summary) => string; title?: (g: Game, w: Win, s: Summary) => string | null }
+const verdictOf = (g: Game): Verdict => verdictFor(g.interpretation);
 const GCOLS: Col[] = [
   { k: 'name', l: 'Juego', v: (g, w, k) => gameName(k), t: (g, w, k) => gameName(k) },
-  { k: 'eff', l: 'Eficiencia', v: (g, w) => w.eff.median, t: (g, w) => w.eff.median == null ? '—' : '×' + gnum(w.eff.median, 2) + nIfDiffers(w.eff.nEff, w) },
-  { k: 'beat', l: 'Gana a la media', v: (g, w) => w.beat.rate, t: (g, w) => w.beat.rate == null ? '—' : gpct(w.beat.rate) + nIfDiffers(w.beat.nBeat, w) },
-  { k: 'delta', l: 'Δ eficiencia', v: (g, w) => w.delta ? w.delta.effRel.value : null, t: (g, w, k, s, range) => {
-    const e = w.delta && w.delta.effRel; if (!e || e.value == null) return '—';
-    return (range === '28' && e.arrow ? ARROWS[e.arrow] + ' ' : '') + gsigned(e.value * 100, ' %') + ' · n=' + e.nCur + '/' + e.nPrev; } },
-  { k: 'time', l: 'Tiempo mediano (P25–P75)', v: (g, w) => w.time.median, t: (g, w) => w.time.median == null ? '—' : gtime(w.time.median) + ' (' + gtime(w.time.p25) + '–' + gtime(w.time.p75) + ')' },
-  { k: 'streak', l: 'Racha', v: (g) => g.beatStreak.current, t: (g, w, k, s) => gbeatStreak(g, s) },
-  { k: 'n', l: 'n', v: (g, w) => w.time.nTime, t: (g, w) => String(w.time.nTime) },
+  { k: 'verdict', l: 'Cómo vas', v: (g) => VERDICT_ORDER.indexOf(verdictKey(verdictOf(g))), t: (g) => verdictOf(g).label },
+  { k: 'speed', l: 'Velocidad frente a la media', v: (g, w) => w.eff.median, t: (g, w) => speedWords(w.eff.median) },
+  { k: 'beat', l: 'Le ganas a la media', v: (g, w) => w.beat.rate, t: (g, w) => beatDays(w.beat.k, w.beat.nBeat) },
+  { k: 'time', l: 'Tiempo normal', v: (g, w) => w.time.median, t: (g, w) => typicalTime(w.time.median, w.time.p25, w.time.p75).main, title: (g, w) => typicalTime(w.time.median, w.time.p25, w.time.p75).range || null },
+  { k: 'streak', l: 'Días seguidos mejor que la media', v: (g) => g.beatStreak.current, t: (g, w, k, s) => gbeatStreak(g, s), title: (g, w, s) => staleTitle(g, s) },
 ];
 
 export interface Sort { key: string; dir: 1 | -1 }
 export const nextSort = (cur: Sort, key: string): Sort => cur.key === key ? { key, dir: -cur.dir as 1 | -1 } : { key, dir: key === 'name' ? 1 : -1 };
-export interface Cell { text: string; title: string | null; sr: string | null; num: boolean }
+export interface Cell { text: string; title: string | null; pill: string | null; num: boolean }
 
 export function gamesTable(s: Summary, range: Range, sort: Sort) {
   const head = GCOLS.map((c) => ({ k: c.k, l: c.l, aria: sort.key === c.k ? (sort.dir > 0 ? 'ascending' : 'descending') : 'none' }));
-  const col = GCOLS.find((c) => c.k === sort.key) || GCOLS[1];
+  const col = GCOLS.find((c) => c.k === sort.key) || GCOLS[2];
   const rows = Object.keys(s.games).map((k) => { const g = s.games[k]; return { k, g, w: g.windows[range] }; });
   rows.sort((a, b) => {
     const x = col.v(a.g, a.w, a.k), y = col.v(b.g, b.w, b.k);
@@ -129,10 +119,10 @@ export function gamesTable(s: Summary, range: Range, sort: Sort) {
   return {
     head,
     rows: rows.map((r) => ({ k: r.k, cells: GCOLS.map((c): Cell => ({
-      text: c.t(r.g, r.w, r.k, s, range),
-      title: c.k === 'delta' ? deltaTitle(r.w, range) : c.k === 'streak' ? staleTitle(r.g, s) : null,
-      sr: c.k === 'delta' ? deltaSr(r.w, range) : null,
-      num: c.k !== 'name',
+      text: c.t(r.g, r.w, r.k, s),
+      title: c.title?.(r.g, r.w, s) ?? null,
+      pill: c.k === 'verdict' ? verdictOf(r.g).pill : null,
+      num: c.k !== 'name' && c.k !== 'verdict',
     })) })),
   };
 }
@@ -145,35 +135,47 @@ export function gameSpark(series: { roll: number }[]): string {
 }
 
 export function gameCard(k: string, x: Game, s: Summary, range: Range) {
-  const w = x.windows[range], lb = x.interpretation.label, e = w.delta && w.delta.effRel;
+  const w = x.windows[range], e = w.delta && w.delta.effRel, v = verdictOf(x), t = typicalTime(w.time.median, w.time.p25, w.time.p75);
   const dl = e && e.value != null ? gsigned(e.value * 100, ' %') + ' vs periodo previo (n=' + e.nCur + '/' + e.nPrev + ')' : 'sin periodo previo comparable';
   return {
-    k, name: gameName(k), det: lb === 'deterioro', badge: LABEL_TEXT[lb], badgeClass: 'pill ' + LABEL_CLASS[lb],
-    interp: interpretationLines(x),
-    window: RANGE_NAMES[range],
-    metrics: [
-      { l: 'Eficiencia', v: w.eff.median == null ? '—' : '×' + gnum(w.eff.median, 2), s: w.eff.median == null ? '' : 'n=' + w.eff.nEff + ' · ' + dl },
-      { l: 'Gana a la media', v: w.beat.rate == null ? '—' : gpct(w.beat.rate), s: w.beat.rate == null ? '' : 'n=' + w.beat.nBeat },
-      { l: 'Tiempo típico', v: w.time.median == null ? '—' : gtime(w.time.median), s: w.time.median == null ? '' : 'P25–P75 ' + gtime(w.time.p25) + '–' + gtime(w.time.p75) + ' · n=' + w.time.nTime },
-      { l: 'Mejor marca', v: gmmss(x.best.seconds), s: fmtDate(x.best.date) },
-      { l: 'Racha ganando a la media', v: gbeatStreak(x, s), s: 'máx ' + x.beatStreak.max + (streakActive(x, s) ? '' : ' · sin racha activa') },
+    k, name: gameName(k), verdict: v, det: v.state === 'confirmed' && v.dir === 'down',
+    period: RANGE_NAMES[range],
+    // What is read first: words, a time, a count of days.
+    stats: [
+      { l: 'Velocidad frente a la media', v: speedWords(w.eff.median) },
+      { l: 'Le ganas a la media', v: beatDays(w.beat.k, w.beat.nBeat) },
+      { l: 'Tiempo normal', v: t.main, s: t.range },
+      { l: 'Mejor marca', v: fmtClock(x.best.seconds), s: fmtDate(x.best.date) },
+      { l: 'Días seguidos mejor que la media', v: gbeatStreak(x, s), s: 'tu récord: ' + gdays(x.beatStreak.max) + (streakActive(x, s) ? '' : ' · sin racha activa') },
     ],
+    // The formulas and fine print: the engine's own sentences and the figures behind every word above.
+    how: {
+      lines: interpretationLines(x),
+      metrics: [
+        { l: 'Eficiencia', v: w.eff.median == null ? '—' : '×' + gnum(w.eff.median, 2), s: w.eff.median == null ? '' : 'n=' + w.eff.nEff + ' · ' + dl },
+        { l: 'Gana a la media', v: w.beat.rate == null ? '—' : gpct(w.beat.rate), s: w.beat.rate == null ? '' : 'n=' + w.beat.nBeat },
+        { l: 'Cambio frente al periodo anterior', v: e && e.value != null ? gsigned(e.value * 100, ' %') : '—', s: deltaTitle(w, range) ?? '' },
+        { l: 'Tiempo mediano', v: w.time.median == null ? '—' : gtime(w.time.median), s: w.time.median == null ? '' : 'P25–P75 ' + gtime(w.time.p25) + '–' + gtime(w.time.p75) + ' · n=' + w.time.nTime },
+      ],
+    },
     spark: gameSpark(x.series),
   };
 }
 export type GameCard = ReturnType<typeof gameCard>;
-/** Cards in label priority: deterioration first. A game without a readable label goes last. */
-export const cardOrder = (s: Summary): string[] =>
-  Object.keys(s.games).sort((a, b) => (LABEL_ORDER[s.games[a]?.interpretation?.label] ?? 9) - (LABEL_ORDER[s.games[b]?.interpretation?.label] ?? 9));
+/** Cards in verdict order: what needs a look first. A game without a readable verdict goes last. */
+export const cardOrder = (s: Summary): string[] => {
+  const rank = (k: string) => { try { return VERDICT_ORDER.indexOf(verdictKey(verdictOf(s.games[k]!))); } catch { return 99; } };
+  return Object.keys(s.games).sort((a, b) => (rank(a) < 0 ? 98 : rank(a)) - (rank(b) < 0 ? 98 : rank(b)));
+};
 
 /** Port of gamesStreakView (src/dashboard.client.js:828) for the hero. */
 export function gamesHero(s: Summary) {
-  if (!Object.keys(s.games).length) return { label: 'LinkedIn Games · racha actual', streak: '—', meta: 'Aún no hay datos.', days: '—' };
+  if (!Object.keys(s.games).length) return { label: 'LinkedIn Games · días seguidos jugando', streak: '—', meta: 'Aún no hay datos.', days: '—' };
   if (typeof s.days !== 'number') throw new TypeError('summary.days is not a number');
   const cur = s.playStreak?.current ?? 0, max = s.playStreak?.max ?? 0;
-  const maxTxt = max > 0 ? 'Racha máxima ' + gdays(max) : '';
+  const maxTxt = max > 0 ? 'Tu récord: ' + gdays(max) : '';
   const days = gdays(s.days) + ' registrados · ' + fmtDate(s.from) + ' → ' + fmtDate(s.to);
-  if (cur > 0) return { label: 'LinkedIn Games · racha actual', streak: gdays(cur) + (cur === 1 ? ' seguido' : ' seguidos'), meta: maxTxt, days };
+  if (cur > 0) return { label: 'LinkedIn Games · días seguidos jugando', streak: gdays(cur) + (cur === 1 ? ' seguido' : ' seguidos'), meta: maxTxt, days };
   return { label: 'LinkedIn Games · último registro', streak: s.to ? 'Sin registro desde ' + fmtDate(s.to) : '—', meta: [maxTxt, 'registro manual'].filter(Boolean).join(' · '), days };
 }
 
@@ -190,7 +192,7 @@ export function trajectory(s: Summary, game: string, range: Range) {
     buckets: b,
     caption: 'Datos de la trayectoria de ' + gameName(game) + ', ' + RANGE_NAMES[range] + ': un valor por ' + (weekly ? 'semana' : 'día') + '.',
     rows: b.map((p) => [(weekly ? 'Semana del ' : '') + p.start, p.eff == null ? '—' : effText(p.eff), p.beat == null ? '—' : gpct(p.beat), String(p.n)]),
-    note: 'Periodo: ' + RANGE_NAMES[range] + '. Un punto por ' + (weekly ? 'semana (lunes)' : 'día') + ', valor sin suavizar. Azul: mediana de eficiencia (la línea de puntos es ×1, la media global). Verde: % que gana a la media. Barras: n por ' + (weekly ? 'semana' : 'día') + '; un hueco es un periodo sin observaciones.',
+    note: 'Cifras de ' + RANGE_NAMES[range] + ', un punto por ' + (weekly ? 'semana (lunes)' : 'día') + ', sin suavizar. Línea azul: cuánto más rápido que la media vas (la línea de puntos es la media). Línea verde: la parte de los días que le ganas a la media. Barras: partidas de cada ' + (weekly ? 'semana' : 'día') + '; un hueco es un periodo sin partidas.',
   };
 }
 
