@@ -1,5 +1,5 @@
 // Usage (password never touches argv or shell history):
-//   read -rs P && printf %s "$P" | node scripts/hash-password.mjs | npx wrangler secret put ADMIN_PASSWORD_HASH
+//   read -rs P && printf %s "$P" | node scripts/hash-password.ts | npx wrangler secret put ADMIN_PASSWORD_HASH
 // Needs Node >= 22.18 (runs the TypeScript hashing module directly).
 import { hashPassword } from "../src/infrastructure/auth/pbkdf2PasswordVerifier.ts";
 
