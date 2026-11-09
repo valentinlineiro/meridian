@@ -21,10 +21,10 @@
      <div id="langGlobalView">
       <div class="card" id="langLimitsCard" style="margin-bottom:12px;background:var(--sunken);border:1px solid var(--selected)">
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
-          <span style="color:var(--warn);font-size:13px" aria-hidden="true">⚠</span>
-          <b style="font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--text)">Lo que estos datos no pueden decir</b>
+          <span style="color:var(--warn);font-size:var(--fs-md)" aria-hidden="true">⚠</span>
+          <b style="font-size:var(--fs-sm);letter-spacing:.04em;text-transform:uppercase;color:var(--text)">Lo que estos datos no pueden decir</b>
         </div>
-        <div class="muted" style="font-size:12px;line-height:1.5">
+        <div class="muted" style="font-size:var(--fs-sm);line-height:1.5">
           No miden comprensión auditiva, expresión oral, lectura ni competencia comunicativa real. XP, racha y lecciones completadas son métricas de actividad y avance curricular en la plataforma, no representan dominio lingüístico ni una evaluación de competencia real.
         </div>
       </div>
@@ -32,19 +32,19 @@
         <div id="langHeroCard">
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
             <div style="min-width:0;max-width:100%">
-              <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.05em">Curso seleccionado</div>
+              <div class="muted" style="font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.05em">Curso seleccionado</div>
               <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-                <span id="langCourseFlag" style="font-size:18px">{{ h?.flag }}</span>
-                <select id="langCourseSelect" aria-label="Curso seleccionado" (change)="select($any($event.target).value)" style="flex:1 1 0;min-width:0;max-width:100%;text-overflow:ellipsis;background:var(--sunken);color:var(--text-2);border:1px solid var(--line);border-radius:6px;padding:4px 8px;font-size:16px;font-weight:700">
+                <span id="langCourseFlag" style="font-size:var(--fs-h)">{{ h?.flag }}</span>
+                <select id="langCourseSelect" aria-label="Curso seleccionado" (change)="select($any($event.target).value)" style="flex:1 1 0;min-width:0;max-width:100%;text-overflow:ellipsis;background:var(--sunken);color:var(--text-2);border:1px solid var(--line);border-radius:var(--r-md);padding:4px 8px;font-size:var(--fs-xl);font-weight:700">
                   @for (op of h?.options ?? []; track op.id) { <option [value]="op.id" [selected]="op.id === selected()">{{ op.label }}</option> }
                 </select>
               </div>
-              <div id="langActiveHeroMeta" class="muted" style="font-size:12px;margin-top:2px">{{ h?.meta ?? '—' }}</div>
+              <div id="langActiveHeroMeta" class="muted" style="font-size:var(--fs-sm);margin-top:2px">{{ h?.meta ?? '—' }}</div>
             </div>
             <span class="pill pill-scope">CURSO</span>
           </div>
           <div style="margin-top:14px">
-            <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:12px;margin-bottom:4px">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:var(--fs-sm);margin-bottom:4px">
               <span class="muted">Progreso curricular</span>
               <span id="langActiveProgress" style="font-weight:600">{{ p?.text ?? '—' }}</span>
             </div>
@@ -56,7 +56,7 @@
       <div class="card" id="langAccountCard" style="margin-bottom:12px">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
           <div>
-            <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.05em">Estado de la cuenta</div>
+            <div class="muted" style="font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.05em">Estado de la cuenta</div>
           </div>
           <span class="pill pill-scope">CUENTA</span>
         </div>
@@ -66,8 +66,8 @@
           <div class="kpi"><span class="kl">Días con Actividad</span><b id="langAccountDays">{{ acc?.days ?? '—' }}</b>@if (acc?.daysSub) {<small id="langAccountDaysSub">{{ acc?.daysSub }}</small>}</div>
           <div class="kpi"><span class="kl">Catálogo</span><b id="langAccountCourses">{{ acc?.courses ?? '—' }}</b></div>
         </div>
-        <div class="muted" id="langSyncMeta" style="font-size:12px;margin-top:10px">{{ acc?.sync }}</div>
-        <div class="muted" id="langXpGapNote" style="font-size:11px;margin-top:6px">{{ acc?.gap }}</div>
+        <div class="muted" id="langSyncMeta" style="font-size:var(--fs-sm);margin-top:10px">{{ acc?.sync }}</div>
+        <div class="muted" id="langXpGapNote" style="font-size:var(--fs-xs);margin-top:6px">{{ acc?.gap }}</div>
       </div>
 
       <!-- Tira semanal (Estado 10s) -->
@@ -78,20 +78,20 @@
               <h2 style="margin:0">Actividad de cuenta · últimos 7 días</h2>
               <span class="pill pill-scope">CUENTA</span>
             </div>
-            <div class="muted" style="font-size:11px;margin-top:2px">Incluye actividad de todos los cursos y actividades registradas en la fuente.</div>
+            <div class="muted" style="font-size:var(--fs-xs);margin-top:2px">Incluye actividad de todos los cursos y actividades registradas en la fuente.</div>
           </div>
-          <span id="langWeekSummary" class="muted" style="font-size:11px;white-space:nowrap">{{ w?.summary ?? '—' }}</span>
+          <span id="langWeekSummary" class="muted" style="font-size:var(--fs-xs);white-space:nowrap">{{ w?.summary ?? '—' }}</span>
         </div>
         <div class="activity-strip" id="langActivityStrip" style="margin-top:10px">
           @for (c of w?.cells ?? []; track c.date) {
             <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px" [title]="c.title">
-              <span class="muted" style="font-size:11px">{{ c.letter }}</span>
+              <span class="muted" style="font-size:var(--fs-xs)">{{ c.letter }}</span>
               <div style="width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center" [style.background]="c.color"></div>
-              <span class="muted" style="font-size:10px">{{ c.label }}</span>
+              <span class="muted" style="font-size:var(--fs-xs)">{{ c.label }}</span>
             </div>
           }
         </div>
-        <div id="langGoalRow" style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:10px;font-size:12px">
+        <div id="langGoalRow" style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:10px;font-size:var(--fs-sm)">
           <span id="langGoalToday" class="muted">{{ w?.goal }}</span>
           <a routerLink="/settings">Configurar</a>
         </div>
@@ -99,7 +99,7 @@
 
       <!-- Tus Cursos (Comprensión 1m) -->
       <details class="cgroup" id="langCoursesDetails" style="margin-bottom:12px">
-        <summary style="cursor:pointer;font-weight:600;font-size:13px;color:var(--muted);padding:10px 0">Tus Cursos <span id="langCoursesCount" class="muted" style="font-size:12px;margin-left:8px">{{ d() ? d()!.courses.length + ' cursos registrados' : '' }}</span></summary>
+        <summary style="cursor:pointer;font-weight:600;font-size:var(--fs-md);color:var(--muted);padding:10px 0">Tus Cursos <span id="langCoursesCount" class="muted" style="font-size:var(--fs-sm);margin-left:8px">{{ d() ? d()!.courses.length + ' cursos registrados' : '' }}</span></summary>
         <div class="card" style="margin-top:8px">
           <div id="langCoursesList">
             @if (isNA(cl)) { <div class="muted">{{ cl }}</div> }
@@ -108,34 +108,34 @@
                 <details class="card" style="margin:0 0 8px 0;padding:12px;background:var(--sunken)" [open]="c.isSelected">
                   <summary style="cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px" (click)="select(c.id)">
                     <div style="display:flex;align-items:center;gap:8px">
-                      <span style="font-size:18px">{{ c.flag }}</span>
-                      <div><b>{{ c.title }}</b>@if (c.isSelected) {&ngsp;<span class="pill pill-selected" style="font-size:10px">Seleccionado</span>}<div class="muted" style="font-size:11px">{{ c.fromTo }}</div></div>
+                      <span style="font-size:var(--fs-h)">{{ c.flag }}</span>
+                      <div><b>{{ c.title }}</b>@if (c.isSelected) {&ngsp;<span class="pill pill-selected" style="font-size:var(--fs-xs)">Seleccionado</span>}<div class="muted" style="font-size:var(--fs-xs)">{{ c.fromTo }}</div></div>
                     </div>
                     <div style="display:flex;align-items:center;gap:8px">
                       <span class="pill" style="font-weight:700">{{ c.xp }}</span>
                       @if (c.units) { <span class="pill" [style.border-color]="c.sections.length ? 'var(--ok)' : null" [style.color]="c.sections.length ? 'var(--ok-soft)' : null">{{ c.units }}</span> }
-                      <span class="muted" style="font-size:12px">▾</span>
+                      <span class="muted" style="font-size:var(--fs-sm)">▾</span>
                     </div>
                   </summary>
                   <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--line)">
                     @if (c.sections.length) {
                       <div style="margin-top:8px">
-                        <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Desglose de secciones</div>
+                        <div class="muted" style="font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Desglose de secciones</div>
                         @for (sec of c.sections; track sec.key) {
                           <div class="row" style="padding:6px 0;border-bottom:1px solid var(--line)"><div style="flex:1">
-                            <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:12px"><b>{{ sec.title }}</b><span><b>{{ sec.units }}</b> ({{ sec.pctText }})</span></div>
+                            <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:var(--fs-sm)"><b>{{ sec.title }}</b><span><b>{{ sec.units }}</b> ({{ sec.pctText }})</span></div>
                             <div class="progress-bar" style="height:6px;margin-top:4px"><div [style.width.%]="sec.width" style="background:var(--ok)"></div></div>
                           </div></div>
                         }
                       </div>
                     } @else if (c.prog) {
-                      <div style="margin-top:6px;font-size:12px">
+                      <div style="margin-top:6px;font-size:var(--fs-sm)">
                         <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span class="muted">{{ c.prog.text }}</span><span>{{ c.prog.pctText }}</span></div>
                         <div class="progress-bar" style="height:6px"><div [style.width]="c.prog.pct + '%'" style="background:var(--info)"></div></div>
                       </div>
                     }
                     <div style="margin-top:8px;display:flex;justify-content:flex-end">
-                      <button type="button" class="btn btn-g" style="padding:4px 8px;font-size:11px" (click)="openDetail(c.id)">Ver detalle curricular completo</button>
+                      <button type="button" class="btn btn-g" style="padding:4px 8px;font-size:var(--fs-xs)" (click)="openDetail(c.id)">Ver detalle curricular completo</button>
                     </div>
                   </div>
                 </details>
@@ -147,15 +147,15 @@
 
       <!-- Análisis y métricas longitudinales (Disclosure Progresivo) -->
       <details class="cgroup" id="langAnalyticsDetails" style="margin-bottom:12px">
-        <summary style="cursor:pointer;font-weight:600;font-size:13px;color:var(--muted);padding:10px 0">Análisis y métricas longitudinales</summary>
+        <summary style="cursor:pointer;font-weight:600;font-size:var(--fs-md);color:var(--muted);padding:10px 0">Análisis y métricas longitudinales</summary>
         <!-- Cambios Observados (Longitudinal #16.9) -->
         <div class="card" id="langObservedChangesCard" style="margin:12px 0">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
             <h2 style="margin:0">Cambios observados</h2>
           </div>
           <div id="langObservedChangesBody">
-            <div id="langObservedSynthesis" style="font-weight:700;font-size:14px;color:var(--text-2);margin-bottom:8px">{{ o?.synthesis ?? '—' }}</div>
-            <div id="langObservedDimensions" style="display:grid;gap:8px;font-size:12px">
+            <div id="langObservedSynthesis" style="font-weight:700;font-size:var(--fs-lg);color:var(--text-2);margin-bottom:8px">{{ o?.synthesis ?? '—' }}</div>
+            <div id="langObservedDimensions" style="display:grid;gap:8px;font-size:var(--fs-sm)">
               <div id="langCurricularProgressBlock" class="observed-dim">
                 <div style="font-weight:600;color:var(--muted)">1. Avance curricular (Δ unidades con ΔtotalUnits = 0)</div>
                 <div id="langCurricularProgressDetail" class="muted" style="margin-top:2px">{{ o?.progress ?? '—' }}</div>
@@ -167,7 +167,7 @@
               <div id="langAccountActivityBlock" class="observed-dim">
                 <div style="display:flex;justify-content:space-between;align-items:baseline">
                   <span style="font-weight:600;color:var(--muted)">3. Actividad de cuenta (XP y sesiones)</span>
-                  <span class="pill pill-scope" style="font-size:10px">CUENTA · NO ES COMPETENCIA</span>
+                  <span class="pill pill-scope" style="font-size:var(--fs-xs)">CUENTA · NO ES COMPETENCIA</span>
                 </div>
                 <div id="langAccountActivityDetail" class="muted" style="margin-top:2px">{{ activityToday() ?? '—' }}</div>
               </div>
@@ -183,11 +183,11 @@
           <div id="langXpTimeline" style="height:60px;display:flex;align-items:flex-end;gap:2px;padding:8px 0">
             @if (isNA(tl)) { <div class="muted">{{ tl }}</div> }
             @else if (tl) {
-              @for (b of tl.bars; track $index) { <div [title]="b.title" style="flex:1;border-radius:2px" [style.height.px]="b.height" [style.background]="b.color"></div> }
+              @for (b of tl.bars; track $index) { <div [title]="b.title" style="flex:1;border-radius:var(--r-sm)" [style.height.px]="b.height" [style.background]="b.color"></div> }
               @if (tl.empty) { <div class="muted">{{ tl.empty }}</div> }
             }
           </div>
-          <div class="muted" id="langXpSummary" style="font-size:12px;margin-top:8px">{{ isNA(tl) ? '' : tl?.summary }}</div>
+          <div class="muted" id="langXpSummary" style="font-size:var(--fs-sm);margin-top:8px">{{ isNA(tl) ? '' : tl?.summary }}</div>
         </div>
 
         <!-- Bloques A y B: Intensidad y Perfil Semanal -->
@@ -199,10 +199,10 @@
               @if (isNA(i)) { <div class="muted">{{ i }}</div> }
               @else if (i) {
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;text-align:center;margin-bottom:12px">
-                  <div><div class="muted" style="font-size:11px;letter-spacing:.04em;text-transform:uppercase">XP / sesión</div><div style="font-size:20px;font-weight:700">{{ i.xp }}</div><div class="muted" style="font-size:11px">global · med: {{ i.xpMed }}</div></div>
-                  <div style="border-left:1px solid var(--line);padding-left:8px"><div class="muted" style="font-size:11px;letter-spacing:.04em;text-transform:uppercase">Tiempo / sesión</div><div style="font-size:20px;font-weight:700">{{ i.time }}</div><div class="muted" style="font-size:11px">global · med: {{ i.timeMed }}</div></div>
+                  <div><div class="muted" style="font-size:var(--fs-xs);letter-spacing:.04em;text-transform:uppercase">XP / sesión</div><div style="font-size:var(--fs-h);font-weight:700">{{ i.xp }}</div><div class="muted" style="font-size:var(--fs-xs)">global · med: {{ i.xpMed }}</div></div>
+                  <div style="border-left:1px solid var(--line);padding-left:8px"><div class="muted" style="font-size:var(--fs-xs);letter-spacing:.04em;text-transform:uppercase">Tiempo / sesión</div><div style="font-size:var(--fs-h);font-weight:700">{{ i.time }}</div><div class="muted" style="font-size:var(--fs-xs)">global · med: {{ i.timeMed }}</div></div>
                 </div>
-                <div class="muted" style="font-size:11px;line-height:1.4;border-top:1px solid var(--line);padding-top:8px">Ratios descriptivos observados entre XP y tiempo reportado. No representan eficiencia cognitiva ni velocidad de aprendizaje.</div>
+                <div class="muted" style="font-size:var(--fs-xs);line-height:1.4;border-top:1px solid var(--line);padding-top:8px">Ratios descriptivos observados entre XP y tiempo reportado. No representan eficiencia cognitiva ni velocidad de aprendizaje.</div>
               }
             </div>
           </div>
@@ -215,7 +215,7 @@
                 @for (r of wd.rows; track $index) {
                   <div class="hist-row"><span>{{ r.day }}</span><div class="bar"><i [style.width.%]="r.width" style="background:var(--info)"></i></div><span style="min-width:120px;text-align:right" class="muted">{{ r.text }}</span></div>
                 }
-                @if (wd.rows.length) { <div class="muted" style="font-size:11px;margin-top:8px">Medianas observadas por día de la semana en la ventana de {{ wd.calendarDays }} días.</div> }
+                @if (wd.rows.length) { <div class="muted" style="font-size:var(--fs-xs);margin-top:8px">Medianas observadas por día de la semana en la ventana de {{ wd.calendarDays }} días.</div> }
                 @else { <div class="muted">Sin datos suficientes</div> }
               }
             </div>
@@ -234,7 +234,7 @@
                   <div class="hist-row"><span style="width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ c.name }}</span><div class="bar"><i [style.width.%]="c.width" style="background:var(--ok)"></i></div><span style="min-width:70px;text-align:right">{{ c.share }}</span></div>
                 }
               </div>
-              <div class="muted" style="font-size:11px;margin-top:8px">{{ hc.footer }}</div>
+              <div class="muted" style="font-size:var(--fs-xs);margin-top:8px">{{ hc.footer }}</div>
             }
           </div>
         </div>
@@ -250,17 +250,17 @@
               @for (r of cmp.rows; track $index) {
                 <div class="row" style="padding:8px 0"><div style="flex:1">
                   <div style="display:flex;justify-content:space-between;align-items:center"><b>{{ r.key }}</b><span [class]="r.pill">{{ r.status }}</span></div>
-                  <div style="font-size:12px;margin-top:4px">{{ r.text }}</div>
-                  <div class="muted" style="font-size:11px;margin-top:2px">{{ r.observed }}</div>
+                  <div style="font-size:var(--fs-sm);margin-top:4px">{{ r.text }}</div>
+                  <div class="muted" style="font-size:var(--fs-xs);margin-top:2px">{{ r.observed }}</div>
                 </div></div>
               }
               @for (c of cmp.waiting; track c.key) {
                 <div class="row" style="padding:8px 0"><div style="flex:1">
                   <div style="display:flex;justify-content:space-between;align-items:center"><b>{{ c.name }}</b><span class="pill pill-draw">ESPERANDO 2ª OBSERVACIÓN</span></div>
-                  <div class="muted" style="font-size:11px;margin-top:2px">Aún no hay una segunda captura del Path de este curso para poder comparar.</div>
+                  <div class="muted" style="font-size:var(--fs-xs);margin-top:2px">Aún no hay una segunda captura del Path de este curso para poder comparar.</div>
                 </div></div>
               }
-              <div class="muted" style="font-size:11px;margin-top:8px">Criterio estricto: cuando la fuente reestructura el árbol (cambio en el denominador total de unidades), no se calcula un progreso numérico para evitar atribuciones artificiales.</div>
+              <div class="muted" style="font-size:var(--fs-xs);margin-top:8px">Criterio estricto: cuando la fuente reestructura el árbol (cambio en el denominador total de unidades), no se calcula un progreso numérico para evitar atribuciones artificiales.</div>
             }
           </div>
         </div>
@@ -268,8 +268,8 @@
 
       <!-- ¿Cómo sabemos esto? (MethodologyDisclosure) -->
       <details class="methodology-disclosure" id="langMethodology" style="margin-top:16px;margin-bottom:16px">
-        <summary style="cursor:pointer;font-weight:600;font-size:13px;color:var(--muted)">¿Cómo sabemos esto? <span class="muted" style="font-weight:400">· Marco metodológico e integridad de datos</span></summary>
-        <div style="margin-top:10px;font-size:12px;line-height:1.5;color:var(--muted)">
+        <summary style="cursor:pointer;font-weight:600;font-size:var(--fs-md);color:var(--muted)">¿Cómo sabemos esto? <span class="muted" style="font-weight:400">· Marco metodológico e integridad de datos</span></summary>
+        <div style="margin-top:10px;font-size:var(--fs-sm);line-height:1.5;color:var(--muted)">
           <p style="margin:6px 0"><b>1. Fuente canónica:</b> Registros inmutables en Cloudflare D1 capturados vía snapshots periódicos de la fuente (actividad de cuenta y progreso curricular).</p>
           <p style="margin:6px 0"><b>2. Regla de comparabilidad curricular:</b> Se exige estrictamente <code>ΔtotalUnits = 0</code> (mismo denominador de unidades totales) entre dos observaciones temporales para computar un avance real. Si Duolingo reorganiza las secciones o añade unidades al árbol, la observación se clasifica como <i>cambio estructural</i> en lugar de progreso sintético.</p>
           <p style="margin:6px 0"><b>3. Aislamiento de métricas de actividad:</b> Las series temporales de XP proceden de <code>xp_summaries</code> a nivel de cuenta. No se realiza atribución heurística de XP a cursos individuales para preservar la exactitud epistemológica.</p>

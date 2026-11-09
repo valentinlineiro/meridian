@@ -14,7 +14,7 @@ import { pc1 } from '../core/format';
         }
       </svg>
       <div>
-        <div style="font-size:24px;font-weight:800">{{ score() }} % <span class="muted" style="font-weight:400;font-size:13px">score</span></div>
+        <div style="font-size:var(--fs-display);font-weight:800">{{ score() }} % <span class="muted" style="font-weight:400;font-size:var(--fs-md)">score</span></div>
         <div class="legend">
           @for (s of segs(); track s.k) {<span><i class="dot" [style.background]="s.c"></i>{{ s.legend }}</span>}
         </div>

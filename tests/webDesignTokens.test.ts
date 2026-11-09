@@ -9,11 +9,17 @@ const files = (d: string): string[] =>
   });
 
 describe('web design tokens', () => {
-  it('shouldUseVarTokensWhenColouringAnythingOutsideRoot', () => {
-    const offenders = files('web/src').flatMap((f) => {
+  const offenders = (re: RegExp) =>
+    files('web/src').flatMap((f) => {
       const text = readFileSync(f, 'utf8').replace(/:root\{[^}]*\}/, '');
-      return [...text.matchAll(/(?<![\w&])#[0-9a-fA-F]{3,6}\b(?![0-9a-fA-F])/g)].map((m) => `${f}: ${m[0]}`);
+      return [...text.matchAll(re)].map((m) => `${f}: ${m[0]}`);
     });
-    expect(offenders).toEqual([]);
+
+  it('shouldUseVarTokensWhenColouringAnythingOutsideRoot', () => {
+    expect(offenders(/(?<![\w&])#[0-9a-fA-F]{3,6}\b(?![0-9a-fA-F])/g)).toEqual([]);
+  });
+
+  it('shouldUseScaleTokensWhenSizingTypeOrRoundingCorners', () => {
+    expect(offenders(/font-size: ?\d+px|border-radius: ?\d+px/g)).toEqual([]);
   });
 });

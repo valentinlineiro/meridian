@@ -36,15 +36,15 @@ function sectionRows(sections: Section[]) {
       <div class="card" id="langCourseDetailCard" style="margin-bottom:12px">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:gap:8px">
           <div>
-            <h2 id="langDetailTitle" style="margin:0;font-size:22px;letter-spacing:0;text-transform:none;color:var(--text)">{{ head()?.title }}</h2>
-            <div class="muted" id="langDetailSub" style="font-size:12px;margin-top:2px">{{ head()?.sub }}</div>
+            <h2 id="langDetailTitle" style="margin:0;font-size:var(--fs-h);letter-spacing:0;text-transform:none;color:var(--text)">{{ head()?.title }}</h2>
+            <div class="muted" id="langDetailSub" style="font-size:var(--fs-sm);margin-top:2px">{{ head()?.sub }}</div>
           </div>
-          <span id="langDetailXpPill" class="pill" style="font-size:14px;font-weight:700">{{ head()?.xp }}</span>
+          <span id="langDetailXpPill" class="pill" style="font-size:var(--fs-lg);font-weight:700">{{ head()?.xp }}</span>
         </div>
       </div>
       <div class="card" id="langCefrCard" style="margin-bottom:12px">
         <h2 style="margin:0 0 4px">Unidades curriculares por nivel CEFR</h2>
-        <div class="muted" style="font-size:11px;margin-bottom:10px">Mide unidades del árbol clasificadas por la fuente bajo cada nivel; no constituye evaluación ni certificación de competencia lingüística.</div>
+        <div class="muted" style="font-size:var(--fs-xs);margin-bottom:10px">Mide unidades del árbol clasificadas por la fuente bajo cada nivel; no constituye evaluación ni certificación de competencia lingüística.</div>
         <div id="langCefrBody">
           @let c = cefr();
           @if (typeof c === 'string') { <div class="muted">{{ c }}</div> }
@@ -68,8 +68,8 @@ function sectionRows(sections: Section[]) {
               <div class="row" style="padding:10px 0;border-bottom:1px solid var(--line)"><div style="flex:1">
                 <div style="display:flex;justify-content:space-between;align-items:baseline"><b>{{ s.title }}</b><span><b>{{ s.units }}</b></span></div>
                 <div style="margin-top:6px"><div class="bar" style="height:8px"><i [style.width.%]="s.width" style="background:var(--ok)"></i></div></div>
-                <details style="margin-top:6px"><summary class="muted" style="cursor:pointer;font-size:11px">Detalle de sección</summary>
-                  <div class="muted" style="font-size:12px;margin-top:4px">{{ s.meta }}</div>
+                <details style="margin-top:6px"><summary class="muted" style="cursor:pointer;font-size:var(--fs-xs)">Detalle de sección</summary>
+                  <div class="muted" style="font-size:var(--fs-sm);margin-top:4px">{{ s.meta }}</div>
                 </details>
               </div></div>
             } @empty { <div class="muted">Sin secciones registradas</div> }
