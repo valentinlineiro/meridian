@@ -1,6 +1,6 @@
 # Diseño: colector de LinkedIn Games (2026-11-09)
 
-Estado: borrador para revisión. Sin código. Parte del contrato `docs/contracts/2026-10-13-linkedin-games-ingestion-contract.md` (L1–L10), que ya prevé "un colector externo".
+Estado: borrador para revisión. Sin código. D1 y D2 resueltas el 2026-11-09 (§8). Parte del contrato `docs/contracts/2026-10-13-linkedin-games-ingestion-contract.md` (L1–L10), que ya prevé "un colector externo".
 
 ## 1. Objetivo y decisión de riesgo
 Registrar los resultados diarios sin teclearlos, con el mismo patrón que el colector de Duolingo (programado, sin intervención). El propietario eligió este camino conociendo el riesgo:
@@ -39,7 +39,7 @@ Dos ejecuciones al día cerca del final del día local (no hay backfill, así qu
 ## 5. Riesgos técnicos
 1. **IP de datacenter.** Usar la cookie `li_at` desde un runner de GitHub (otra IP, otro país) puede provocar un `checkpoint` e invalidar la sesión. Es el mayor riesgo y no se puede evaluar sin probarlo. Con Duolingo, Cloudflare recibió un 403 con las mismas credenciales que desde WSL daban 200 (2026-09-24).
 2. **Fragilidad del HTML.** El parseo depende de clases CSS de LinkedIn. Se esperan roturas; C3 y C6 las hacen visibles en lugar de silenciosas.
-3. **Precedencia manual frente a colector.** Si el propietario corrige un dato a mano y luego corre el colector con el valor de LinkedIn, la última versión gana.
+3. **Precedencia (resuelta, D2).** El colector es la fuente; gana la última versión (L2). No se registra a mano, salvo la importación de un CSV.
 4. **Frontera del día.** No se sabe en qué zona horaria cambia el puzzle de LinkedIn. Se verifica con el número de puzzle: el histórico de 170 días ya tiene pares (fecha, número).
 
 ## 6. Fase 0: prueba de viabilidad, solo lectura, sin `POST`
@@ -62,8 +62,8 @@ Criterio de parada: cualquier checkpoint, CAPTCHA o sesión invalidada. Se detie
 ## 8. Decisiones abiertas para el propietario
 | Id | Pregunta | Propuesta |
 |---|---|---|
-| D1 | ¿Sigue vigente el congelado legal (citado hasta 2026-10-23)? | Confirmar antes de implementar. |
-| D2 | Precedencia manual frente a colector | Colector solo escribe juegos aún no registrados ese día; no pisa un valor manual. Requiere leer la versión vigente (hoy `GET /api/me/linkedin-games` exige sesión; habría que añadir una lectura por token de máquina, o aceptar que gana el último). |
+| D1 | ¿Sigue vigente el congelado legal? | **No vigente** (propietario, 2026-11-09). Ya no bloquea la implementación. |
+| D2 | Precedencia manual frente a colector | **Manda el colector** (propietario, 2026-11-09): no se registra a mano, salvo importar un CSV. Gana la última versión (L2); no hace falta leer la versión vigente antes de enviar, así que no hay lectura por token de máquina. El formulario manual (`PUT /api/me/linkedin-games`) queda para decidir su retirada cuando el colector esté activo; la importación de CSV se diseña aparte. |
 | D3 | Frontera del día | Resolver con la Fase 0 (número de puzzle frente a histórico). |
 | D4 | Runner | Actions primero; local si la Fase 0 falla. |
 | D5 | Pinpoint y Crossclimb | Fuera. |
@@ -72,4 +72,5 @@ Criterio de parada: cualquier checkpoint, CAPTCHA o sesión invalidada. Se detie
 0. Fase 0 (sección 6), en `meridian-collector`, sin tocar Meridian.
 1. Colector + tests con fixtures, `POST` solo tras pasar la Fase 0, cron inerte.
 2. Activar el cron (`vars.LINKEDIN_GAMES_SCHEDULE`) tras una semana de ejecuciones manuales correctas.
-3. Si D2 lo exige, lectura por token de máquina en Meridian (un único PR en `meridian`, con migración ninguna).
+3. ~~Lectura por token de máquina~~: descartada por D2.
+4. Aparte: importación de CSV (única vía manual) y decidir la retirada del formulario manual.
