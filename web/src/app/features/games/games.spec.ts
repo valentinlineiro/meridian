@@ -29,7 +29,7 @@ const game = (o: Record<string, any> = {}) => ({
   firstDate: '2026-05-17',
   windows: { '7': win(), '28': win28(), '90': win({ prev: null, delta: null }), all: win({ prev: null, delta: null }) },
   trajectory: { '7': traj, '28': traj, '90': traj, all: traj },
-  adjusted: { label: 'sin_cambio', elasticity: 0.5, n: 57, windows: { '7': { pct: 5, n: 6 }, '28': { pct: 12.4, n: 28 }, '90': { pct: -1, n: 57 }, all: { pct: null, n: 3 } }, trend: { pctPer28d: -4, ci: [-9, 2], weeks: 12 } },
+  adjusted: { label: 'sin_cambio', elasticity: 0.5, n: 57, windows: { '7': { pct: 5, n: 6 }, '28': { pct: 12.4, n: 28 }, '90': { pct: -1, n: 57 }, all: { pct: null, n: 3 } }, trend: { pctPer28d: -4, noise: [-9, 2], weeks: 12 } },
   losses: { cells: [0, 1, 2, 3, 4, 5, 6].map((dow) => ({ dow, n: dow === 6 ? 3 : 10, losses: dow === 0 ? 7 : 1, rate: dow === 0 ? 0.7 : 0.1, lo: 0.4, hi: 0.9 })), losses: 12, near: 3 }, ...o,
 });
 const summaryOf = (games: Record<string, unknown>, o: Record<string, unknown> = {}) =>
@@ -670,7 +670,7 @@ describe('Games', () => {
       expect(card).toContain('Forma, descontando la dificultad');
       expect(card).toContain('bastante más rápido');
       expect(card).toContain('Al alza');
-      expect(card).toContain('de −9 % a +2 %'); // the figures live in "Cómo se calcula"
+      expect(card).toContain('entre −9 % y +2 %'); // the figures live in "Cómo se calcula"
       expect(card).toContain('Forma de este periodo: +12 % (n=28)');
     });
 
@@ -689,10 +689,16 @@ describe('Games', () => {
       expect(cells[7]).toBe('25 % por poco');
     });
 
-    it('shouldSayNothingStandsOutWhenNoWeekdayPassesTwentyFivePercent', async () => {
-      const calm = game({ losses: { cells: [0, 1, 2, 3, 4, 5, 6].map((dow) => ({ dow, n: 10, losses: 1, rate: 0.1, lo: 0.02, hi: 0.4 })), losses: 7, near: 0 } });
+    it('shouldStillNameTheWorstWeekdayWhenEveryRateIsLow', async () => {
+      const calm = game({ losses: { cells: [0, 1, 2, 3, 4, 5, 6].map((dow) => ({ dow, n: 10, losses: dow === 3 ? 2 : 1, rate: dow === 3 ? 0.2 : 0.1, lo: 0.02, hi: 0.4 })), losses: 8, near: 0 } });
       await open({ zip: calm });
-      expect(text('gamesLossNote')).toContain('Ningún día');
+      expect(text('gamesLossNote')).toBe('Donde más pierdes: Zip los jueves (20 %, 10 partidas).');
+    });
+
+    it('shouldSayThereIsNotEnoughWhenNoWeekdayHasEightGames', async () => {
+      const few = game({ losses: { cells: [0, 1, 2, 3, 4, 5, 6].map((dow) => ({ dow, n: 7, losses: 3, rate: 3 / 7, lo: 0.1, hi: 0.8 })), losses: 21, near: 0 } });
+      await open({ zip: few });
+      expect(text('gamesLossNote')).toContain('Aún no hay ningún día');
     });
 
     it('shouldDrawTheLastFourWeeksOfDifficultyMondayFirst', async () => {

@@ -24,7 +24,7 @@ describe("adjustedForm", () => {
     const f = adjustedForm(series(120, -0.004), TODAY);
     expect(f.label).toBe("mejora");
     expect(f.trend!.pctPer28d).toBeCloseTo((Math.exp(-0.004 * 28) - 1) * 100, 1);
-    expect(f.trend!.ci[1]).toBeLessThan(0);
+    expect(f.trend!.pctPer28d).toBeLessThan(f.trend!.noise[0]);
     expect(f.windows["7"].pct).toBeGreaterThan(f.windows.all.pct!); // the last week is faster than the whole history
   });
 
@@ -45,6 +45,32 @@ describe("adjustedForm", () => {
   it("shouldAskForMoreDataWhenThereAreFewerThan60ResultsWithAnAverage", () => {
     expect(adjustedForm(series(59), TODAY)).toMatchObject({ label: "pocos_datos", elasticity: null, trend: null });
     expect(adjustedForm(series(60), TODAY).elasticity).not.toBeNull();
+  });
+
+  it("shouldRarelyCallATrendWhenTheWeeklyNoiseIsAutocorrelatedAndThereIsNone", () => {
+    // AR(1) weekly noise (0.5) aligned with the analysis weeks, plus daily noise; a plain weekly resampling labels ~35 % of these.
+    let seed = 7;
+    const rand = () => { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; };
+    const gauss = () => Math.sqrt(-2 * Math.log(rand() + 1e-12)) * Math.cos(2 * Math.PI * rand());
+    let called = 0;
+    const N = 100;
+    for (let s = 0; s < N; s++) {
+      let u = 0;
+      const o = Array.from({ length: 160 }, (_, i) => {
+        if ((159 - i) % 7 === 0) u = 0.5 * u + Math.sqrt(0.75) * 0.15 * gauss();
+        const avg = 20 + Math.floor(rand() * 60);
+        return { date: addDays(TODAY, i - 159), avg, score: Math.exp(1 + 0.5 * Math.log(avg) + u + 0.2 * gauss()) };
+      });
+      if (["mejora", "deterioro"].includes(adjustedForm(o, TODAY).label)) called++;
+    }
+    expect(called / N).toBeLessThan(0.15);
+  });
+
+  it("shouldSeeAClearTrendThroughNoise", () => {
+    let seed = 11;
+    const rand = () => { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; };
+    const o = series(160, -0.006).map((p) => ({ ...p, score: p.score * Math.exp(0.1 * (rand() - 0.5)) }));
+    expect(adjustedForm(o, TODAY).label).toBe("mejora");
   });
 
   it("shouldHaveNoTrendWhenTheLast112DaysAreMostlyEmpty", () => {

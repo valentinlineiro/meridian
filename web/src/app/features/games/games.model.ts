@@ -27,7 +27,7 @@ export interface Game {
 }
 export interface Adjusted {
   label: 'mejora' | 'deterioro' | 'sin_cambio' | 'pocos_datos'; elasticity: number | null; n: number;
-  windows: Record<Range, { pct: number | null; n: number }>; trend: { pctPer28d: number; ci: [number, number]; weeks: number } | null;
+  windows: Record<Range, { pct: number | null; n: number }>; trend: { pctPer28d: number; noise: [number, number]; weeks: number } | null;
 }
 export interface LossCell { dow: number; n: number; losses: number; rate: number | null; lo: number | null; hi: number | null }
 export interface Losses { cells: LossCell[]; losses: number; near: number }
@@ -173,7 +173,7 @@ function formLines(x: Game, range: Range): string[] {
   if (a.elasticity == null) return ['Descontar la dificultad necesita al menos 60 resultados con media de este juego (hay ' + a.n + ').'];
   return [
     'Forma descontando la dificultad: tu tiempo se compara con el que cabía esperar según la media de ese día, con tu propia historia (n=' + a.n + '). Forma de este periodo: ' + (a.windows[range].pct == null ? '—' : gsigned(a.windows[range].pct, ' %') + ' (n=' + a.windows[range].n + ')') + '. Cuando la media sube un 10 %, tu tiempo sube un ' + gnum(a.elasticity * 10, 1) + ' %.',
-    a.trend ? 'Tendencia: tu tiempo cambia ' + gsigned(a.trend.pctPer28d, ' %') + ' cada 4 semanas (intervalo del 95 %: de ' + gsigned(a.trend.ci[0], ' %') + ' a ' + gsigned(a.trend.ci[1], ' %') + '), con la pendiente de los últimos 112 días y ' + a.trend.weeks + ' semanas; el intervalo sale de repetir el cálculo con las semanas remuestreadas.' : 'Tendencia: faltan resultados en los últimos 112 días (hacen falta al menos 68 y 10 semanas con datos).',
+    a.trend ? 'Tendencia: tu tiempo cambia ' + gsigned(a.trend.pctPer28d, ' %') + ' cada 4 semanas (con ruido solo, este juego daría entre ' + gsigned(a.trend.noise[0], ' %') + ' y ' + gsigned(a.trend.noise[1], ' %') + '), con la pendiente de los últimos 112 días y ' + a.trend.weeks + ' semanas. El ruido sale de barajar bloques de 4 semanas seguidas, que conservan que una semana se parece a la anterior.' : 'Tendencia: faltan resultados en los últimos 112 días (hacen falta al menos 68 y 10 semanas con datos).',
   ];
 }
 
@@ -265,7 +265,7 @@ export function lossRows(s: Summary) {
   let worst: { k: string; c: LossCell } | null = null;
   const rows = keys.map((k) => {
     const l = s.games[k].losses;
-    for (const c of l.cells) if (c.n >= MIN_LOSS_CELL && c.rate! >= 0.25 && (!worst || c.rate! > worst.c.rate!)) worst = { k, c };
+    for (const c of l.cells) if (c.n >= MIN_LOSS_CELL && (!worst || c.rate! > worst.c.rate!)) worst = { k, c };
     return {
       k, name: gameName(k), near: l.losses ? Math.round(l.near / l.losses * 100) + ' % por poco' : 'sin derrotas',
       cells: l.cells.map((c) => c.n >= MIN_LOSS_CELL
@@ -274,5 +274,5 @@ export function lossRows(s: Summary) {
     };
   });
   const w = worst as { k: string; c: LossCell } | null;
-  return { rows, days: DAYS.map((d) => d.slice(0, 3)), sentence: w ? `Donde más pierdes: ${gameName(w.k)} los ${DAYS[w.c.dow]} (${gpct(w.c.rate)}, ${w.c.n} partidas).` : 'Ningún día con suficientes partidas supera el 25 % de derrotas.' };
+  return { rows, days: DAYS.map((d) => d.slice(0, 3)), sentence: w ? `Donde más pierdes: ${gameName(w.k)} los ${DAYS[w.c.dow]} (${gpct(w.c.rate)}, ${w.c.n} partidas).` : 'Aún no hay ningún día con partidas suficientes para decir dónde pierdes más.' };
 }

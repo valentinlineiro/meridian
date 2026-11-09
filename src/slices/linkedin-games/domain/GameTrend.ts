@@ -33,9 +33,12 @@ export function spearman(x: number[], y: number[]): number {
 
 // Theil-Sen: the median of the slopes of every pair of points with different x.
 export function theilSenSlope(x: number[], y: number[]): number {
-  const s: number[] = [];
-  for (let i = 0; i < x.length; i++) for (let j = i + 1; j < x.length; j++) if (x[j]! !== x[i]!) s.push((y[j]! - y[i]!) / (x[j]! - x[i]!));
-  return median(s);
+  let m = 0;
+  const s = new Float64Array((x.length * (x.length - 1)) / 2); // typed-array sort: numeric and several times faster (the bootstrap calls this thousands of times)
+  for (let i = 0; i < x.length; i++) for (let j = i + 1; j < x.length; j++) if (x[j]! !== x[i]!) s[m++] = (y[j]! - y[i]!) / (x[j]! - x[i]!);
+  if (m === 0) return NaN;
+  const v = s.subarray(0, m).sort(), h = (m - 1) / 2, lo = Math.floor(h), hi = Math.ceil(h);
+  return v[lo]! + (h - lo) * (v[hi]! - v[lo]!);
 }
 
 // Last 112 days (today-111 .. today). Needs >= 60 % of the days with an observation that has an average; otherwise null.

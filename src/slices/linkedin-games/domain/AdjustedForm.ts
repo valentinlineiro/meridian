@@ -11,6 +11,7 @@ export const MIN_CELL = 8; // results per game and weekday needed to classify a 
 export const MIN_WEEKS = 10; // non-empty weeks (of 16) needed for a trend
 export const NEAR_MISS = 1.15; // a loss within 15 % of the average
 const BOOTSTRAP = 1000;
+export const BLOCK_WEEKS = 4; // moving-block length: one month, longer than the weekly dependence seen in the data (design §3.A)
 const WEEKS = TREND_DAYS / 7;
 
 /** Monday = 0 … Sunday = 6. */
@@ -18,7 +19,7 @@ export const dowOf = (date: string): number => (new Date(`${date}T00:00:00Z`).ge
 
 export type FormLabel = "mejora" | "deterioro" | "sin_cambio" | "pocos_datos";
 export interface FormWindow { pct: number | null; n: number } // pct > 0: faster than the difficulty of those days predicted
-export interface FormTrend { pctPer28d: number; ci: [number, number]; weeks: number } // pct < 0: faster
+export interface FormTrend { pctPer28d: number; noise: [number, number]; weeks: number } // pct < 0: faster; noise: what a series without trend produces
 export interface AdjustedForm {
   label: FormLabel;
   elasticity: number | null; // slope of log(own time) on log(average): 1 would mean the difficulty fully passes through
@@ -50,26 +51,34 @@ function fit(obs: Obs[]): { a: number; b: number; resid: Map<string, number> } |
   return { a, b, resid: new Map(pts.map((o, i) => [o.date, y[i]! - (a + b * x[i]!)])) };
 }
 
-// Theil-Sen of the weekly medians, with a bootstrap over whole weeks (the weekly rhythm is kept inside each block).
-function trendOf(obs: Obs[], resid: Map<string, number>, today: string): FormTrend | null {
+// Theil-Sen of the weekly medians against the noise a series with no trend produces: the weekly medians (centred) are reshuffled in
+// blocks of consecutive weeks, so the dependence between neighbouring weeks stays inside each block, and `noise` is the 2.5-97.5 %
+// range of the slopes that come out. A trend outside it is a signal. Weeks without results are skipped, not filled.
+// Calibrated by simulation (design rev. 2, §3.A): with 16 weeks and blocks of 4, a series without trend gets a false label ~8 % of the
+// time for weekly dependence 0 to 0.5 and ~16 % at 0.8; a trend of 5 % per 28 days is seen ~25 % of the time. Weekly resampling
+// (blocks of 1) failed at 25-45 % false labels under dependence, and a residual bootstrap around the fitted line was too narrow.
+function trendOf(obs: Obs[], resid: Map<string, number>, today: string, block: number): FormTrend | null {
   const t = dayNo(today), pts = withAvg(obs).filter((o) => dayNo(o.date) > t - TREND_DAYS && dayNo(o.date) <= t);
   if (pts.length < COVERAGE * TREND_DAYS) return null;
   const byWeek = new Map<number, number[]>();
   for (const o of pts) { const w = WEEKS - 1 - Math.floor((t - dayNo(o.date)) / 7); (byWeek.get(w) ?? byWeek.set(w, []).get(w)!).push(resid.get(o.date)!); }
-  const weeks = [...byWeek].map(([w, r]) => [w, median(r)] as const);
-  if (weeks.length < MIN_WEEKS) return null;
-  const slope = (ps: ReadonlyArray<readonly [number, number]>) => theilSenSlope(ps.map((p) => p[0]), ps.map((p) => p[1]));
-  const pct = (s: number) => (Math.exp(s * 4) - 1) * 100;
-  const rand = rng(1), out: number[] = [];
+  const weeks = [...byWeek].sort((p, q) => p[0] - q[0]).map(([w, r]) => [w, median(r)] as const);
+  const n = weeks.length;
+  if (n < MIN_WEEKS) return null;
+  const xs = weeks.map((w) => w[0]), ys = weeks.map((w) => w[1]), centre = median(ys), e = ys.map((y) => y - centre);
+  const pct = (v: number) => (Math.exp(v * 4) - 1) * 100;
+  const L = Math.min(block, n), rand = rng(1), out: number[] = [];
   for (let i = 0; i < BOOTSTRAP; i++) {
-    const s = slope(weeks.map(() => weeks[Math.floor(rand() * weeks.length)]!));
-    if (Number.isFinite(s)) out.push(pct(s));
+    const star: number[] = [];
+    while (star.length < n) { const st = Math.floor(rand() * (n - L + 1)); for (let k = 0; k < L && star.length < n; k++) star.push(e[st + k]!); }
+    const sb = theilSenSlope(xs, star);
+    if (Number.isFinite(sb)) out.push(pct(sb));
   }
   if (out.length < BOOTSTRAP / 2) return null;
-  return { pctPer28d: pct(slope(weeks)), ci: [percentile(out, 0.025), percentile(out, 0.975)], weeks: weeks.length };
+  return { pctPer28d: pct(theilSenSlope(xs, ys)), noise: [percentile(out, 0.025), percentile(out, 0.975)], weeks: n };
 }
 
-export function adjustedForm(obs: Obs[], today: string): AdjustedForm {
+export function adjustedForm(obs: Obs[], today: string, blockWeeks = BLOCK_WEEKS): AdjustedForm {
   const f = fit(obs), t = dayNo(today);
   const empty: Record<RangeKey, FormWindow> = { "7": { pct: null, n: 0 }, "28": { pct: null, n: 0 }, "90": { pct: null, n: 0 }, all: { pct: null, n: 0 } };
   if (!f) return { label: "pocos_datos", elasticity: null, n: withAvg(obs).length, windows: empty, trend: null };
@@ -77,8 +86,8 @@ export function adjustedForm(obs: Obs[], today: string): AdjustedForm {
     const r = withAvg(obs).filter((o) => k === "all" || (dayNo(o.date) > t - Number(k) && dayNo(o.date) <= t)).map((o) => f.resid.get(o.date)!);
     return [k, { pct: r.length >= 4 ? (1 - Math.exp(median(r))) * 100 : null, n: r.length }];
   })) as Record<RangeKey, FormWindow>;
-  const trend = trendOf(obs, f.resid, today);
-  const label: FormLabel = !trend ? "pocos_datos" : trend.ci[1] < 0 ? "mejora" : trend.ci[0] > 0 ? "deterioro" : "sin_cambio";
+  const trend = trendOf(obs, f.resid, today, blockWeeks);
+  const label: FormLabel = !trend ? "pocos_datos" : trend.pctPer28d < trend.noise[0] ? "mejora" : trend.pctPer28d > trend.noise[1] ? "deterioro" : "sin_cambio";
   return { label, elasticity: f.b, n: f.resid.size, windows, trend };
 }
 
