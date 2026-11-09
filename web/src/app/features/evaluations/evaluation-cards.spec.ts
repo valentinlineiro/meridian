@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { EvalFinding, Evaluation, EvaluationCards, evalState } from './evaluation-cards.component';
+import { EvalFinding, Evaluation, EvaluationCards, evalState } from './evaluation-cards';
 import { CHANGES, SALIENCE_GRID } from './evaluation-fixtures';
 
 // Port of the card parts of tests/frontendEvaluations.test.ts. Legacy rendered renderEvaluations(payload) to a string; here

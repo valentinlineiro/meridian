@@ -2,8 +2,8 @@ import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting, TestRequest } from '@angular/common/http/testing';
 import { MatchesService } from '../services/matches.service';
-import { MatchDetailModal } from './match-detail-modal.component';
-import { ChessBoard } from './chess-board.component';
+import { MatchDetailModal } from './match-detail-modal';
+import { ChessBoard } from './chess-board';
 
 // Ports of the game viewer (src/dashboard.client.js:1396–1446) and its tests: chessDashboardEngine "game viewer: engine errors",
 // chessDashboardThreats "game viewer: missed threats".

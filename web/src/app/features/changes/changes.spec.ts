@@ -7,7 +7,7 @@ import { routes } from '../../app.routes';
 import { BROWSER_LOCATION } from '../../core/api-client';
 import { legacyRedirect } from '../../core/legacy-url';
 import { CHANGES } from '../evaluations/evaluation-fixtures';
-import { Changes } from './changes.component';
+import { Changes } from './changes';
 
 // Port of tests/frontendWhatChanged.test.ts, tests/frontendVisitAnchor.test.ts and the What Changed cases of
 // tests/frontendEmptyAndErrorStates.test.ts, tests/frontendErrorIsNotZero.test.ts, tests/frontendNetwork.test.ts,

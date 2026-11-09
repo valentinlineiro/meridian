@@ -1,8 +1,8 @@
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting, TestRequest } from '@angular/common/http/testing';
-import { Games } from './games.component';
-import { chartGeometry } from './games-chart.component';
+import { Games } from './games';
+import { chartGeometry } from './games-chart';
 
 // Port of tests/frontendGames.test.ts (the vm sandbox becomes component tests). Each legacy `it` keeps its name.
 const blk = (o: Record<string, any> = {}) => ({

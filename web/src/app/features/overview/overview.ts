@@ -149,7 +149,7 @@ function view(d: OverviewData) {
 @Component({
   selector: 'app-overview',
   imports: [RouterLink, NgTemplateOutlet],
-  templateUrl: './overview.component.html',
+  templateUrl: './overview.html',
 })
 export class Overview {
   private readonly api = inject(ApiClient);

@@ -4,7 +4,7 @@ import { catchError, map, of } from 'rxjs';
 import { ApiClient } from '../../../core/api-client';
 import { colorConclusion } from '../../../core/format';
 import { ColorStats, dec1, Group, list, NA, scaleDelta } from '../chess.model';
-import { Profile } from './engine-profile.component';
+import { Profile } from './engine-profile';
 import { MatchesService } from '../services/matches.service';
 
 interface Evaluation { id: string; status?: string; criteria?: { minDiffPp?: number | null } }

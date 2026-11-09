@@ -4,7 +4,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting, TestRequest } from '@angular/common/http/testing';
 import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { Overview } from './overview.component';
+import { Overview } from './overview';
 
 // Ports of tests/frontendOverviewScope, frontendErrorIsNotZero (overview), frontendEmptyAndErrorStates (overview),
 // uxPhase1/uxPhase4 (overview cases). An unanswered or failed request is "No disponible" / "—", never 0.

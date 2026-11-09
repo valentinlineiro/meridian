@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ApiClient, BROWSER_LOCATION } from './api-client';
-import { unauthorizedInterceptor } from './unauthorized.interceptor';
+import { unauthorizedInterceptor } from './unauthorized-interceptor';
 
 describe('unauthorizedInterceptor', () => {
   it('shouldRedirectToLoginWithCurrentRouteWhenApiReturns401', () => {

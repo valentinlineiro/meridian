@@ -1,5 +1,5 @@
 import { Component, computed, inject, input, signal } from '@angular/core';
-import { Compare } from './compare.component';
+import { Compare } from './compare';
 import { Group, list, Mates, Openings as OpeningStats, pc0, Phases, safe, Tally, Threats } from '../chess.model';
 import { MatchesService } from '../services/matches.service';
 

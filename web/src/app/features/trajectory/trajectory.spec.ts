@@ -2,7 +2,7 @@ import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TRAJECTORY } from '../evaluations/evaluation-fixtures';
-import { Trajectory } from './trajectory.component';
+import { Trajectory } from './trajectory';
 
 // Port of tests/frontendTrajectory.test.ts, tests/frontendTrajectoryEvaluations.test.ts and the trajectory cases of
 // tests/frontendErrorIsNotZero.test.ts and tests/frontendEmptyAndErrorStates.test.ts. Payloads are the domain's own

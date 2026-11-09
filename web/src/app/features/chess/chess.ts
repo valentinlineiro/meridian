@@ -5,16 +5,16 @@ import { catchError, forkJoin, map, Observable, of } from 'rxjs';
 import { ApiClient } from '../../core/api-client';
 import { fmtDelta, pc1, pctCi } from '../../core/format';
 import { StatsService } from '../../core/stats.service';
-import { Kpi } from '../../shared/kpi.component';
-import { Donut } from '../../shared/donut.component';
-import { EloPoint, Sparkline } from '../../shared/sparkline.component';
-import { Compare } from './components/compare.component';
+import { Kpi } from '../../shared/kpi';
+import { Donut } from '../../shared/donut';
+import { EloPoint, Sparkline } from '../../shared/sparkline';
+import { Compare } from './components/compare';
 import { MatchesService } from './services/matches.service';
-import { MatchesTable } from './components/matches-table.component';
-import { MatchDetailModal } from './components/match-detail-modal.component';
-import { Openings as OpeningsBlock } from './components/openings.component';
-import { Patterns } from './components/patterns.component';
-import { EngineProfile, Profile, PROFILE_CUT_KEY } from './components/engine-profile.component';
+import { MatchesTable } from './components/matches-table';
+import { MatchDetailModal } from './components/match-detail-modal';
+import { Openings as OpeningsBlock } from './components/openings';
+import { Patterns } from './components/patterns';
+import { EngineProfile, Profile, PROFILE_CUT_KEY } from './components/engine-profile';
 import {
   ChessData, ColorStats, es, fmt, Group, list, Mates, NA, OpponentElo, Openings, Opponents, Phases, Recent, Results, scaleDelta, signedInt, streakWord,
   Summary, Threats, Timeline,
@@ -163,7 +163,7 @@ function view(d: ChessData) {
   selector: 'app-chess',
   imports: [Kpi, Donut, Sparkline, Compare, MatchesTable, MatchDetailModal, OpeningsBlock, Patterns, EngineProfile],
   providers: [MatchesService],
-  templateUrl: './chess.component.html',
+  templateUrl: './chess.html',
 })
 export class Chess {
   private readonly api = inject(ApiClient);

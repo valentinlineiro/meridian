@@ -1,6 +1,6 @@
 import { Component, computed, inject, input, output } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
-import { Kpi } from '../../../shared/kpi.component';
+import { Kpi } from '../../../shared/kpi';
 import { dec1, pc0 } from '../chess.model';
 import { MatchesService } from '../services/matches.service';
 import { safe } from '../../../core/guard';
@@ -168,7 +168,7 @@ function view(b: Profile, cut: string) {
 @Component({
   selector: 'app-engine-profile',
   imports: [Kpi, NgTemplateOutlet],
-  templateUrl: './engine-profile.component.html',
+  templateUrl: './engine-profile.html',
 })
 export class EngineProfile {
   private readonly matches = inject(MatchesService);

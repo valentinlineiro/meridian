@@ -1,6 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { SideNav } from './side-nav.component';
+import { SideNav } from './side-nav';
 import { StatsService } from '../core/stats.service';
 
 @Component({

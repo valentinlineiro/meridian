@@ -2,7 +2,7 @@ import { afterNextRender, afterRenderEffect, Component, computed, effect, Elemen
 import { rxResource } from '@angular/core/rxjs-interop';
 import { catchError, map, of } from 'rxjs';
 import { ApiClient } from '../../../core/api-client';
-import { ChessBoard } from './chess-board.component';
+import { ChessBoard } from './chess-board';
 import { MatchesService } from '../services/matches.service';
 
 interface Ply { san: string; fen: string }

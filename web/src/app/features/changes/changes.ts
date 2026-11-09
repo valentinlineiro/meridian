@@ -7,7 +7,7 @@ import { ApiClient } from '../../core/api-client';
 import { Course, es } from '../../core/courses';
 import { fmtDelta, pc1 } from '../../core/format';
 import { list, safe } from '../../core/guard';
-import { EvalFinding, Evaluation, EvaluationCards } from '../evaluations/evaluation-cards.component';
+import { EvalFinding, Evaluation, EvaluationCards } from '../evaluations/evaluation-cards';
 
 // Port of the Qué cambió tab (src/frontend.ts:472–477; src/dashboard.client.js fmtWhen, putChangesAnchor, loadChangesAnchor,
 // fetchWhatChanged, markChangesAsSeen, setChangesInterval :2039–2165, renderEvaluations and renderWhatChanged :2291–2400).
