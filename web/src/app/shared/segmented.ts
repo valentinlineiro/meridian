@@ -6,7 +6,7 @@ export interface Choice { k: string; l: string }
 @Component({
   selector: 'app-segmented',
   template: `
-    <div class="cindex" role="group" [attr.id]="groupId()" [attr.aria-label]="label()">
+    <div class="cindex" style="flex-wrap:wrap;overflow:visible" role="group" [attr.id]="groupId()" [attr.aria-label]="label()">
       @if (caption()) { <span class="muted" style="align-self:center">{{ caption() }}</span> }
       @for (o of options(); track o.k) {
         <button type="button" class="btn btn-g" [attr.id]="idPrefix() ? idPrefix() + o.k : null" [attr.aria-pressed]="value() === o.k" [attr.data-chip]="chipGroup() ? chipGroup() + ':' + o.k : null" (click)="picked.emit(o.k)">{{ o.l }}</button>
