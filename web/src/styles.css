@@ -186,7 +186,7 @@ a.side-item{text-decoration:none}a.side-item:hover{text-decoration:none}
 .thbtn:focus-visible{outline:2px solid var(--link);outline-offset:2px;border-radius:var(--r-sm)}
 .gtable td{padding:9px 6px;border-bottom:1px solid var(--line)}.gtable td.num{font-variant-numeric:tabular-nums}
 .gweek{min-width:0}.gweek th{white-space:normal}
-.gloss{min-width:0}.gloss td.gl0{color:var(--muted)}.gloss td.gl1{background:color-mix(in srgb,var(--warn-bg) 40%,transparent)}.gloss td.gl2{background:color-mix(in srgb,var(--warn-bg) 80%,transparent)}.gloss td.gl3{background:var(--warn-bg);color:var(--warn-fg);font-weight:600}.gloss td.gl-1{color:var(--muted)}
+.gloss{min-width:0}.gloss td{white-space:nowrap}.gloss td.gl0{color:var(--muted)}.gloss td.gl1{background:color-mix(in srgb,var(--warn-bg) 40%,transparent)}.gloss td.gl2{background:color-mix(in srgb,var(--warn-bg) 80%,transparent)}.gloss td.gl3{background:var(--warn-bg);color:var(--warn-fg);font-weight:600}.gloss td.gl-1{color:var(--muted)}
 .gdiff{display:grid;grid-template-columns:repeat(7,minmax(0,2.5rem));gap:4px}.gdh{text-align:center;font-size:var(--fs-xs);color:var(--muted)}.gd{text-align:center;padding:6px 0;border:1px solid var(--draw-line);border-radius:var(--r-sm);font-size:var(--fs-sm);font-variant-numeric:tabular-nums}.gd-facil{background:var(--win-bg);border-color:var(--win-line);color:var(--win-fg)}.gd-normal{background:var(--draw-bg);color:var(--draw-fg)}.gd-duro{background:var(--warn-bg);border-color:var(--warn-line);color:var(--warn-fg)}.gd-none{background:transparent;color:var(--muted);border-style:dashed}
 @media(max-width:760px){
  /* the comparison table becomes one card per game; the headers stay on top as the sort buttons */
