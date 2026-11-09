@@ -1,7 +1,7 @@
 import { Component, computed, inject, input } from '@angular/core';
-import { formatMatchDate } from '../../core/format';
-import { es, fmt, Openings } from './chess.model';
-import { FilterGroup, MatchesService, MatchRow } from './matches.service';
+import { formatMatchDate } from '../../../core/format';
+import { es, fmt, Openings } from '../chess.model';
+import { FilterGroup, MatchesService, MatchRow } from '../services/matches.service';
 
 const SEGMENTS: Record<string, string> = { noisy_neural: 'Noisy Neural', neural: 'Neural', blended: 'Blended', stockfish: 'Stockfish', pvp: 'PvP' };
 const ENDS: Record<string, string> = { checkmate: 'Mate', disconnection: 'Desconexión', stalemate: 'Ahogado', repetition: 'Repetición', resignation: 'Rendición', insufficient_material: 'Material', timeout: 'Tiempo', fifty_moves: '50 jugadas' };

@@ -1,7 +1,7 @@
 import { Component, computed, inject, input, signal } from '@angular/core';
 import { Compare } from './compare.component';
-import { Group, list, Mates, Openings as OpeningStats, pc0, Phases, safe, Tally, Threats } from './chess.model';
-import { MatchesService } from './matches.service';
+import { Group, list, Mates, Openings as OpeningStats, pc0, Phases, safe, Tally, Threats } from '../chess.model';
+import { MatchesService } from '../services/matches.service';
 
 const OPENINGS_SHOWN = 8;
 const PHASE_NAMES = { opening: 'Apertura', middlegame: 'Medio juego', endgame: 'Final' } as const;

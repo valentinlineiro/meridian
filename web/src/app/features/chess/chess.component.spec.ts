@@ -6,9 +6,9 @@ import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { StatsService } from '../../core/stats.service';
 import { Chess } from './chess.component';
-import { Compare } from './compare.component';
-import { MatchesService } from './matches.service';
-import { EngineProfile, Profile } from './engine-profile.component';
+import { Compare } from './components/compare.component';
+import { MatchesService } from './services/matches.service';
+import { EngineProfile, Profile } from './components/engine-profile.component';
 import { routes } from '../../app.routes';
 
 // Ports of tests/chessDashboard, chessDashboardThreats, chessDashboardEngine (chess tab), frontendErrorIsNotZero and

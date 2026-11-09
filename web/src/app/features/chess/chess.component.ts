@@ -8,13 +8,13 @@ import { StatsService } from '../../core/stats.service';
 import { Kpi } from '../../shared/kpi.component';
 import { Donut } from '../../shared/donut.component';
 import { EloPoint, Sparkline } from '../../shared/sparkline.component';
-import { Compare } from './compare.component';
-import { MatchesService } from './matches.service';
-import { MatchesTable } from './matches-table.component';
-import { MatchDetailModal } from './match-detail-modal.component';
-import { Openings as OpeningsBlock } from './openings.component';
-import { Patterns } from './patterns.component';
-import { EngineProfile, Profile, PROFILE_CUT_KEY } from './engine-profile.component';
+import { Compare } from './components/compare.component';
+import { MatchesService } from './services/matches.service';
+import { MatchesTable } from './components/matches-table.component';
+import { MatchDetailModal } from './components/match-detail-modal.component';
+import { Openings as OpeningsBlock } from './components/openings.component';
+import { Patterns } from './components/patterns.component';
+import { EngineProfile, Profile, PROFILE_CUT_KEY } from './components/engine-profile.component';
 import {
   ChessData, ColorStats, es, fmt, Group, list, Mates, NA, OpponentElo, Openings, Opponents, Phases, Recent, Results, scaleDelta, signedInt, streakWord,
   Summary, Threats, Timeline,

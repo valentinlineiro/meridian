@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting, TestRequest } from '@angular/common/http/testing';
-import { MatchesService } from './matches.service';
+import { MatchesService } from '../services/matches.service';
 import { MatchDetailModal } from './match-detail-modal.component';
 import { ChessBoard } from './chess-board.component';
 

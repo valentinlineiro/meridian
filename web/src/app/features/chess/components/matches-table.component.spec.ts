@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting, TestRequest } from '@angular/common/http/testing';
-import { MatchesService } from './matches.service';
+import { MatchesService } from '../services/matches.service';
 import { MatchesTable } from './matches-table.component';
 
 // Ports of loadM/renderRows/setChip/onSearch/clearF (src/dashboard.client.js:1180–1196, 1366–1395, 1626–1663) and their tests:

@@ -1,6 +1,6 @@
 import { computed, DestroyRef, inject, Injectable, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
-import { ApiClient } from '../../core/api-client';
+import { ApiClient } from '../../../core/api-client';
 
 export interface MatchRow {
   match_id?: string | null; ply_count?: number | null; played_at?: number | null; first_seen_at?: string | null;

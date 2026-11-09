@@ -1,7 +1,7 @@
 import { Component, computed, input } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
-import { pc1, pctCi } from '../../core/format';
-import { dec1, Group, list, NA, pc0, safe } from './chess.model';
+import { pc1, pctCi } from '../../../core/format';
+import { dec1, Group, list, NA, pc0, safe } from '../chess.model';
 
 const SEG_LABELS: Record<string, string> = { noisy_neural: 'Noisy Neural', neural: 'Neural', blended: 'Blended', stockfish: 'Stockfish', pvp: 'PvP', bot: 'Bots', white: 'Blancas', black: 'Negras' };
 
