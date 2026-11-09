@@ -15,7 +15,7 @@
     <div style="margin-top:14px"><div class="muted" style="font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Hoy · toca un juego para empezar a escribirlo</div>
       <div id="gamesToday" class="chips">@for (c of chips(); track c.k) {<button type="button" [class]="'pill ' + (c.done ? 'pill-win' : 'pill-scope')" [attr.data-game]="c.k" (click)="quick.prefill(c.name)">{{ c.text }}</button>}</div>
     </div>
-    <div style="margin-top:14px"><app-games-quick-entry #quick (saved)="data.reload()" /></div>
+    <div style="margin-top:14px"><app-games-quick-entry #quick (saved)="data.reload()" /><a class="btn btn-g" id="gamesExport" style="margin-top:8px" href="/api/me/linkedin-games/export.csv" download>Descargar todo en CSV</a></div>
   </div>
   <div id="gamesNote" class="muted" role="status">{{ note() }}</div>
   <app-segmented groupId="gamesRange" label="Periodo de análisis" caption="Periodo" idPrefix="gr-" [options]="ranges" [value]="range()" (picked)="range.set($any($event))" />
@@ -39,6 +39,14 @@
       <div class="tblwrap" tabindex="0" role="region" aria-label="Datos del gráfico (desplazable)"><table class="gtable" id="gamesDataTable" aria-describedby="gamesDataCaption"><caption id="gamesDataCaption" class="sr-only">{{ t?.view?.caption }}</caption><thead><tr><th scope="col">Periodo</th><th scope="col">Velocidad (veces la media)</th><th scope="col">Le ganas a la media</th><th scope="col">Partidas</th></tr></thead>
         <tbody id="gamesDataRows">@for (r of t?.view?.rows; track $index) {<tr><th scope="row">{{ r[0] }}</th><td class="num">{{ r[1] }}</td><td class="num">{{ r[2] }}</td><td class="num">{{ r[3] }}</td></tr>}</tbody></table></div>
     </app-help>
+  </app-section>
+  <app-section title="Por día de la semana" sectionId="cg-games-week" [open]="false">
+    @if (week(); as w) {
+      <p class="muted" id="gamesWeekNote">{{ w.sentence || 'Todos los juegos juntos, con todo tu histórico, frente a la media de cada día.' }}</p>
+      <div class="tblwrap" tabindex="0" role="region" aria-label="Perfil por día de la semana (desplazable)"><table class="gtable gweek" id="gamesWeek"><caption class="sr-only">Cómo te van los juegos según el día de la semana</caption>
+        <thead><tr><th scope="col">Día</th><th scope="col">Partidas</th><th scope="col">Velocidad frente a la media</th><th scope="col">Le ganas a la media</th></tr></thead>
+        <tbody>@for (r of w.rows; track r.day) {<tr><th scope="row">{{ r.day }}</th><td class="num">{{ r.n }}</td><td>{{ r.speed }}</td><td class="num">{{ r.beat }}</td></tr>}</tbody></table></div>
+    } @else if (week() === null) {<div class="muted">No disponible</div>}
   </app-section>
   <app-section title="Por juego" sectionId="cg-games">
     <app-help label="Cómo leer estas tarjetas" helpId="gamesInterpNote">

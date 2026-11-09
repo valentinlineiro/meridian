@@ -183,6 +183,30 @@ describe('Games', () => {
       expect(chips.find((c) => c.textContent!.includes('Tango'))!.className).not.toContain('pill-win');
     });
 
+    it('shouldOfferTheWholeHistoryAsCsvFromTheHero', async () => {
+      await open({ zip: game() });
+      const a = el.querySelector<HTMLAnchorElement>('#gamesHero #gamesExport')!;
+      expect(a.getAttribute('href')).toBe('/api/me/linkedin-games/export.csv');
+      expect(a.hasAttribute('download')).toBe(true);
+    });
+
+    it('shouldSayHowEachWeekdayGoesInWordsAndNameTheBestAndTheWeakestDay', async () => {
+      const w = (dow: number, n: number, eff: number | null, rate: number | null) => ({ dow, n, eff: { median: eff, nEff: n }, beat: { rate, k: 0, nBeat: n } });
+      await open({ zip: game() }, undefined, { weekdays: [w(0, 20, 1.2, 0.75), w(1, 3, 2, 1), w(2, 0, null, null), w(3, 0, null, null), w(4, 0, null, null), w(5, 0, null, null), w(6, 30, 2.4, 0.96)] });
+      const rows = [...el.querySelectorAll('#gamesWeek tbody tr')].map((tr) => [...tr.children].map((c) => c.textContent!.trim()));
+      expect(rows[0]).toEqual(['Lunes', '20', 'un poco más rápido', '75 %']);
+      expect(rows[1]).toEqual(['Martes', '3', 'Aún pocos datos', '—']); // too few results to say anything
+      expect(rows[6]).toEqual(['Domingo', '30', 'el doble de rápido', '96 %']);
+      expect(text('gamesWeekNote')).toBe('Tu mejor día frente a la media es el domingo; el más flojo, el lunes.');
+      expect(el.querySelector('#gamesWeek')!.textContent).not.toMatch(/[×Δ]|P25|n=/);
+    });
+
+    it('shouldLabelEveryCellOfTheComparisonTableSoItCanBecomeCardsOnPhones', async () => {
+      await open({ zip: game() });
+      const cells = [...el.querySelectorAll('#gamesRows tr:first-child td')].map((c) => c.getAttribute('data-l'));
+      expect(cells).toEqual([...el.querySelectorAll('#gamesHead th')].map((h) => h.textContent!.trim()));
+    });
+
     it('shouldStartALineInTheQuickBoxWhenAHeroChipIsPressed', async () => {
       await open({ zip: game() });
       const box = () => el.querySelector<HTMLTextAreaElement>('#gamesHero #lgQuickText')!;

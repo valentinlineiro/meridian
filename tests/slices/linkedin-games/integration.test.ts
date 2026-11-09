@@ -112,7 +112,7 @@ describe("linkedin games manual entry over HTTP and D1", () => {
   it("shouldServeWindowsAndTrajectoryPerGameWithoutARootLevelAllField", async () => {
     expect((await put(zip)).status).toBe(200); // 2026-10-13, today is 2026-10-14 in the summary request
     const body: any = await (await summary({ cookie: await cookie() })).json();
-    expect(Object.keys(body.summary).sort()).toEqual(["days", "from", "games", "playStreak", "to"]);
+    expect(Object.keys(body.summary).sort()).toEqual(["days", "from", "games", "playStreak", "to", "weekdays"]);
     const z = body.summary.games.zip;
     expect(z.firstDate).toBe("2026-10-13");
     expect(z.windows["28"].eff).toEqual({ median: 17 / 8, nEff: 1 });

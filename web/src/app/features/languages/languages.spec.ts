@@ -54,6 +54,7 @@ describe('Languages', () => {
   let seen: TestRequest[];
   let done: Set<TestRequest>;
 
+  afterEach(() => { vi.useRealTimers(); });
   beforeEach(async () => {
     localStorage.clear();
     seen = [];
@@ -393,6 +394,7 @@ describe('Languages', () => {
     });
 
     it('shouldFallBackToTheLegacyStatsWhenTheCatalogueIsEmpty', async () => {
+      vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-11-09T12:00:00Z') }); // "ayer" / "hace 2d" are read against the clock: pinned, not the machine's
       const legacy = { createdAt: iso(DAY), totalXp: 1500, streak: 3, totals: { days: 3, activeDays: 2 }, summaries: [{ date: 1782345600 }, { date: nowSec() }], courseProgressIndex: [{ capturedAt: iso(2 * DAY) }] };
       await open('/languages', { '/api/languages': { courses: [] }, '/api/stats/lang': legacy });
       expect(text('langAccountXp')).toBe('1500 XP'); // es-ES groups from five digits

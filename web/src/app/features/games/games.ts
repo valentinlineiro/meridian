@@ -11,7 +11,7 @@ import { Section } from '../../shared/section';
 import { Segmented } from '../../shared/segmented';
 import { Stats } from '../../shared/stats';
 import { VerdictPill } from '../../shared/verdict';
-import { cardOrder, Day, defaultTrajGame, GAME_NAMES, gameCard, gameName, gamesHero, localToday, Range, RANGES, Summary, trajectory } from './games.model';
+import { cardOrder, Day, defaultTrajGame, GAME_NAMES, gameCard, gameName, gamesHero, localToday, Range, RANGES, Summary, trajectory, weekdayRows } from './games.model';
 
 // Port of the LinkedIn Games tab (src/frontend.ts:489–520, src/dashboard.client.js:1787–1971).
 const orNull = <T>(o: Observable<T>) => o.pipe(catchError(() => of(null)));
@@ -64,6 +64,7 @@ export class Games {
     const done = new Set(g && typeof g === 'object' ? Object.keys(g) : []);
     return Object.keys(GAME_NAMES).map((k) => ({ k, name: GAME_NAMES[k], done: done.has(k), text: (done.has(k) ? '✓ ' : '') + GAME_NAMES[k] }));
   });
+  protected readonly week = computed(() => { const s = this.summary(); return s ? safe(() => weekdayRows(s), null) : undefined; });
   protected readonly cards = computed(() => {
     const s = this.summary(), range = this.range();
     if (!s) return [];

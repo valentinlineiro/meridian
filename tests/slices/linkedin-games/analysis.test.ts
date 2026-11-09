@@ -177,7 +177,7 @@ describe("trajectory", () => {
 describe("contract shape", () => {
   it("shouldNotAddAnyRootLevelAllField", () => {
     const s = summarize(run(TODAY, 3, () => entry(10, 20)), TODAY);
-    expect(Object.keys(s).sort()).toEqual(["days", "from", "games", "playStreak", "to"]);
+    expect(Object.keys(s).sort()).toEqual(["days", "from", "games", "playStreak", "to", "weekdays"]);
   });
 
   it("shouldKeepAnAllKeyOnlyInsideWindowsAndTrajectory", () => {
