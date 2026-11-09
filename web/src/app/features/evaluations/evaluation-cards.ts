@@ -2,6 +2,8 @@ import { Component, computed, input } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { colorConclusion, ColorConclusion } from '../../core/format';
 import { list, safe } from '../../core/guard';
+import { EVAL_VERDICTS, Verdict } from '../../core/words';
+import { VerdictPill } from '../../shared/verdict';
 
 // Port of evaluationCards and its helpers (src/dashboard.client.js:2167–2290): the epistemic-status cards shared by
 // Trayectoria and Qué cambió. Each caller says which claim backs an emitted evaluation (findingFor) and the window to name.
@@ -36,12 +38,6 @@ export function evalState(e: Evaluation): EvalStateName {
   return rs.some((r) => r === 'data_unavailable' || r === 'span_too_short' || r === 'insufficient_sample') ? 'INSUFICIENTE' : 'SIN INDICIO';
 }
 const ORDER: EvalStateName[] = ['AFIRMADO', 'INDICIO', 'INSUFICIENTE', 'SIN INDICIO'];
-const PILL: Record<EvalStateName, string> = { 'AFIRMADO': 'pill pill-win', 'INDICIO': 'pill pill-warn', 'INSUFICIENTE': 'pill pill-draw', 'SIN INDICIO': 'pill' };
-const MSG: Record<string, string> = {
-  'INDICIO': 'Vemos una señal, pero con la evidencia actual no podemos afirmarla.',
-  'INSUFICIENTE': 'No hay evidencia suficiente para responder en esta ventana.',
-  'SIN INDICIO': 'No se observa evidencia suficiente de un cambio bajo este criterio; no equivale a demostrar que no hubo cambio.',
-};
 const META: Record<string, { title: string; scope: string }> = {
   CHESS_COLOR_ASYMMETRY: { title: 'Asimetría por color', scope: 'Ajedrez · partidas decididas' },
   CHESS_RATING_JUMP: { title: 'Salto de ELO', scope: 'Ajedrez · ELO observado' },
@@ -116,7 +112,7 @@ function colorView(e: Evaluation, state: EvalStateName, rs: string[]): { cc: Col
 }
 
 export interface EvalCard {
-  na: false; title: string; state: EvalStateName; pill: string; scope: string;
+  na: false; title: string; state: EvalStateName; verdict: Verdict; scope: string;
   /** INSUFICIENTE and SIN INDICIO: nothing to claim, the verdict shows and the criteria stay one tap away. */
   collapsed: boolean; summary: string;
   finding: EvalFinding | null; observed: string; color: ColorConclusion | null; indicio: string; reasons: string[]; foot: string;
@@ -136,12 +132,12 @@ export function evaluationCard(e: Evaluation, state: EvalStateName, finding: Eva
     : 'umbral fijo, sin intervalo de confianza';
   const collapsed = state === 'INSUFICIENTE' || state === 'SIN INDICIO';
   return {
-    na: false, title: meta.title, state, pill: PILL[state], scope: meta.scope,
-    collapsed, summary: collapsed ? (cv?.summary || MSG[state]) : '',
+    na: false, title: meta.title, state, verdict: EVAL_VERDICTS[state], scope: meta.scope,
+    collapsed, summary: collapsed ? (cv?.summary || EVAL_VERDICTS[state].sentence) : '',
     finding: claim,
     observed: claim ? '' : observed(e.id, m),
     color: claim ? null : cv?.cc ?? null,
-    indicio: !claim && state === 'INDICIO' ? MSG[state] : '',
+    indicio: !claim && state === 'INDICIO' ? EVAL_VERDICTS[state].sentence : '',
     reasons: claim ? [] : rs.map((r) => reasonText(e, r)),
     foot: 'Ventana: ' + win + ' · ' + basis,
   };
@@ -162,7 +158,7 @@ export function evaluationCards(evals: readonly unknown[], findingFor: (e: Evalu
  */
 @Component({
   selector: 'm-evaluation-cards',
-  imports: [NgTemplateOutlet],
+  imports: [NgTemplateOutlet, VerdictPill],
   host: { style: 'display:contents' },
   template: `
     <ng-template #body let-c>
@@ -180,9 +176,9 @@ export function evaluationCards(evals: readonly unknown[], findingFor: (e: Evalu
       @if (c.na) {
         <div class="card" style="margin-bottom:10px"><h3 style="margin:0">{{ c.title }}</h3><div class="muted" style="font-size:var(--fs-sm);margin-top:6px">No disponible</div></div>
       } @else if (c.collapsed) {
-        <details class="card evcard" style="margin-bottom:10px"><summary><span class="evhead"><h3 style="margin:0">{{ c.title }}</h3><span [class]="c.pill">{{ c.state }}</span></span><span class="muted evmsg">{{ c.summary }}</span></summary><div style="margin-top:8px"><span class="pill pill-scope">{{ c.scope }}</span></div><div style="margin-top:8px"><ng-container *ngTemplateOutlet="body; context: { $implicit: c }" /></div><div class="muted" style="font-size:var(--fs-xs);margin-top:6px">{{ c.foot }}</div></details>
+        <details class="card evcard" style="margin-bottom:10px"><summary><span class="evhead"><h3 style="margin:0">{{ c.title }}</h3><app-verdict [verdict]="c.verdict" /></span><span class="muted evmsg">{{ c.summary }}</span></summary><div style="margin-top:8px"><span class="pill pill-scope">{{ c.scope }}</span></div><div style="margin-top:8px"><ng-container *ngTemplateOutlet="body; context: { $implicit: c }" /></div><div class="muted" style="font-size:var(--fs-xs);margin-top:6px">{{ c.foot }}</div></details>
       } @else {
-        <div class="card" style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px"><h3 style="margin:0">{{ c.title }}</h3><span><span [class]="c.pill">{{ c.state }}</span>&ngsp;<span class="pill pill-scope">{{ c.scope }}</span></span></div><ng-container *ngTemplateOutlet="body; context: { $implicit: c }" /><div class="muted" style="font-size:var(--fs-xs);margin-top:6px">{{ c.foot }}</div></div>
+        <div class="card" style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px"><h3 style="margin:0">{{ c.title }}</h3><span><app-verdict [verdict]="c.verdict" />&ngsp;<span class="pill pill-scope">{{ c.scope }}</span></span></div><ng-container *ngTemplateOutlet="body; context: { $implicit: c }" /><div class="muted" style="font-size:var(--fs-xs);margin-top:6px">{{ c.foot }}</div></div>
       }
     }
   `,

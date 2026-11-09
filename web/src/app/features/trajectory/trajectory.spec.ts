@@ -107,7 +107,7 @@ describe('Trajectory', () => {
   describe('trajectory evaluations in the UI (P1 #4)', () => {
     it('shouldShowTheEmittedPatternAsAfirmadoWithItsClaimAndWindow', async () => {
       await open(TRAJECTORY.afirmado);
-      expect(html()).toContain('AFIRMADO');
+      expect(html()).toContain('Confirmado');
       expect(html()).toContain('consistentemente superior');
       expect(html()).toContain('2026-05-01 → 2026-09-01');
       expect(empty()).toBeNull();
@@ -123,7 +123,7 @@ describe('Trajectory', () => {
 
     it('shouldExplainWhyThereIsNoPatternInsteadOfShowingAnEmptyTab', async () => {
       await open(TRAJECTORY.indicio);
-      expect(html()).toContain('INDICIO');
+      expect(html()).toContain('Posible señal');
       expect(html()).toContain('días con actividad: 59');
       expect(html()).toContain('El criterio exige al menos 40 decididas por color y 60 días con actividad.');
       expect(empty()).toBeNull();
@@ -137,7 +137,7 @@ describe('Trajectory', () => {
 
     it('shouldMarkInsuficienteWhenTheHistoryIsTooShort', async () => {
       await open(TRAJECTORY.short);
-      expect(html()).toContain('INSUFICIENTE');
+      expect(html()).toContain('Aún pocos datos');
       expect(html()).toContain('cubre 59 días; el criterio exige al menos 60');
     });
 
@@ -153,7 +153,7 @@ describe('Trajectory', () => {
       delete p['evaluations'];
       await open(p);
       expect(html()).toContain('Asimetría por color');
-      expect(html()).not.toContain('AFIRMADO');
+      expect(html()).not.toContain('Confirmado');
     });
 
     it('shouldShowTheQuietEmptyMessageWhenThereIsNothingAtAll', async () => {
@@ -255,14 +255,14 @@ describe('Trajectory', () => {
     it('shouldShowTheFindingsAsUnavailableWhenTheyAreNotAList', async () => {
       await open({ ...copy(TRAJECTORY.indicio), findings: 'none' });
       expect(cardText('Patrones')).toContain('No disponible');
-      expect(html()).toContain('INDICIO');
+      expect(html()).toContain('Posible señal');
     });
 
     it('shouldKeepTheAfirmadoCardWhenItsFindingCannotBeRead', async () => {
       const p = copy(TRAJECTORY.afirmado) as Any;
       p['findings'][0].metrics.globalWhiteWinRate = 'x';
       await open(p);
-      expect(html()).toContain('AFIRMADO');
+      expect(html()).toContain('Confirmado');
       expect(html()).not.toContain('NaN');
       expect(empty()).toBeNull();
     });

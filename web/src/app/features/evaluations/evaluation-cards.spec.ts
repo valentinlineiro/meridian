@@ -36,9 +36,13 @@ describe('evaluation cards (P0)', () => {
     }
   });
 
+  it('shouldSpeakTheGamesVerdictWordsNotTheEngineStates', () => {
+    for (const d of [CHANGES.base, CHANGES.wide, CHANGES.decided9]) expect(html(d)).not.toMatch(/AFIRMADO|INDICIO|INSUFICIENTE/);
+  });
+
   it('shouldShowClaimAndEvidenceWhenEvaluationIsAfirmado', () => {
     const h = html(CHANGES.base);
-    expect(h).toContain('AFIRMADO');
+    expect(h).toContain('Confirmado');
     expect(h).toContain('Asimetría por color');
     expect(h).toContain('Evidencia:');
     expect(h).toContain('2026-09-20 → 2026-09-27');
@@ -46,9 +50,9 @@ describe('evaluation cards (P0)', () => {
 
   it('shouldExplainWhatIsMissingWhenEvaluationIsIndicio', () => {
     const h = html(CHANGES.decided9);
-    expect(h).toContain('INDICIO');
+    expect(h).toContain('Posible señal');
     expect(h).toContain('9 partidas decididas observadas; el criterio exige al menos 10.');
-    expect(h).toContain('no podemos afirmarla');
+    expect(h).toContain('no podemos darla por buena');
   });
 
   it('shouldShowIntervalReasonWhenIntervalIncludesZero', () => {
@@ -57,21 +61,21 @@ describe('evaluation cards (P0)', () => {
 
   it('shouldMarkInsuficienteWhenDataIsUnavailable', () => {
     const h = html(CHANGES.histZero);
-    expect(h).toContain('INSUFICIENTE');
+    expect(h).toContain('Aún pocos datos');
     expect(h).toContain('No hay media histórica de referencia.');
   });
 
   it('shouldMarkSinIndicioWhenEffectIsBelowCriterion', () => {
     const h = html(CHANGES.below);
-    expect(h).toContain('SIN INDICIO');
+    expect(h).toContain('Sin señales de cambio');
     expect(h).toContain('Diferencia observada entre colores: 4,0 pp');
-    expect(h).toContain('no equivale a demostrar que no hubo cambio');
+    expect(h).toContain('no demuestra que no haya habido cambio');
   });
 
   it('shouldMarkInsuficienteNotSinIndicioWhenTheWindowIsTooShort', () => {
     const h = txt(card(render(CHANGES.short), 'Mayor XP diario'));
-    expect(h).not.toContain('SIN INDICIO');
-    expect(h).toContain('INSUFICIENTE');
+    expect(h).not.toContain('Sin señales de cambio');
+    expect(h).toContain('Aún pocos datos');
     expect(h).toContain('La ventana contiene 2 días completos (UTC); el criterio exige al menos 3.');
   });
 
@@ -87,8 +91,8 @@ describe('evaluation cards (P0)', () => {
 
   it('shouldMarkRatingJumpInsuficienteWhenNoRatingIsObservedInTheWindow', () => {
     const h = txt(card(render(CHANGES.noRating), 'Salto de ELO'));
-    expect(h).toContain('INSUFICIENTE');
-    expect(h).not.toContain('SIN INDICIO');
+    expect(h).toContain('Aún pocos datos');
+    expect(h).not.toContain('Sin señales de cambio');
     expect(h).toContain('dos observaciones de ELO en snapshots distintos');
   });
 
@@ -111,8 +115,8 @@ describe('evaluation cards (P0)', () => {
   });
 
   it('shouldRenderIndicioWithAmberPill', () => {
-    const pill = [...render(CHANGES.decided9).querySelectorAll('.pill')].find((p) => p.textContent === 'INDICIO')!;
-    expect(pill.className).toBe('pill pill-warn');
+    const pill = [...render(CHANGES.decided9).querySelectorAll('.pill')].find((p) => p.textContent === 'Posible señal')!;
+    expect(pill.className).toBe('pill pill-selected');
   });
 
   it('shouldNotClaimCalibratedLimitsWhenNoBandIsAdmitted', () => {
@@ -121,10 +125,10 @@ describe('evaluation cards (P0)', () => {
 
   it('shouldOrderAfirmadoBeforeIndicioBeforeSinIndicio', () => {
     const h = html(CHANGES.wide);
-    expect(h.indexOf('INDICIO')).toBeGreaterThan(-1);
-    expect(h.indexOf('INDICIO')).toBeLessThan(h.indexOf('SIN INDICIO'));
+    expect(h.indexOf('Posible señal')).toBeGreaterThan(-1);
+    expect(h.indexOf('Posible señal')).toBeLessThan(h.indexOf('Sin señales de cambio'));
     const states = cards(render(CHANGES.wide)).map((c) => c.querySelector('.pill:not(.pill-scope)')!.textContent);
-    const order = ['AFIRMADO', 'INDICIO', 'INSUFICIENTE', 'SIN INDICIO'];
+    const order = ['Confirmado', 'Posible señal', 'Aún pocos datos', 'Sin señales de cambio'];
     expect(states.map((s) => order.indexOf(s!))).toEqual([...states.map((s) => order.indexOf(s!))].sort());
   });
 });
@@ -136,9 +140,9 @@ describe('evaluation cards: verdict first, criteria on demand', () => {
     expect(xp.tagName).toBe('DETAILS');
     expect(xp.className).toBe('card evcard');
     expect(xp.hasAttribute('open')).toBe(false);
-    expect(txt(xp)).toContain('INSUFICIENTE');
+    expect(txt(xp)).toContain('Aún pocos datos');
     expect(txt(xp)).toContain('La ventana contiene 2 días completos (UTC); el criterio exige al menos 3.');
-    const affirmed = cards(el).find((c) => txt(c).includes('AFIRMADO'))!;
+    const affirmed = cards(el).find((c) => txt(c).includes('Confirmado'))!;
     expect(affirmed.tagName).toBe('DIV');
     expect(affirmed.className).toBe('card');
   });
@@ -148,12 +152,12 @@ describe('A7: calibrated rules abstain on screen', () => {
   const elo = (p: Payload) => txt(card(render(p), 'Salto de ELO'));
   it('shouldShowInsuficienteWithTheObservedEffectWhenTheUsualVariationIsUnknown', () => {
     const h = elo(CHANGES.eloDown40);
-    expect(h).toContain('INSUFICIENTE');
+    expect(h).toContain('Aún pocos datos');
     expect(h).toContain('Cambio de ELO observado: −40 puntos en 10 partidas entre las dos lecturas. Sin referencia de variación habitual todavía.');
-    expect(h).not.toContain('SIN INDICIO');
+    expect(h).not.toContain('Sin señales de cambio');
   });
   it('shouldShowSinIndicioWhenThereIsNoEffect', () => {
-    expect(elo(CHANGES.elo0)).toContain('SIN INDICIO');
+    expect(elo(CHANGES.elo0)).toContain('Sin señales de cambio');
   });
   it('shouldAttributeCalibrationOnlyToTheRulesThatUseIt', () => {
     const el = render(CHANGES.base);
@@ -174,7 +178,7 @@ describe('A7: calibrated rules abstain on screen', () => {
   it('shouldNeverQuoteTheRetiredFixedThresholds', () => {
     const h = html(CHANGES.retired);
     expect(h).not.toMatch(/25 puntos|1,3|200 XP|al menos 25|al menos 200/);
-    expect(txt(card(render(CHANGES.retired), 'Salto de ELO'))).not.toContain('AFIRMADO');
+    expect(txt(card(render(CHANGES.retired), 'Salto de ELO'))).not.toContain('Confirmado');
   });
 });
 
@@ -194,7 +198,7 @@ describe('evaluation cards: a malformed evaluation degrades alone', () => {
     const el = render(p);
     expect(cards(el).length).toBe(3);
     expect(txt(card(el, 'Asimetría por color'))).toContain('No disponible');
-    expect(txt(card(el, 'Salto de ELO'))).toContain('SIN INDICIO');
+    expect(txt(card(el, 'Salto de ELO'))).toContain('Sin señales de cambio');
     expect(txt(card(el, 'Mayor XP diario'))).not.toContain('No disponible');
   });
 
