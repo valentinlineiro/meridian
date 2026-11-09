@@ -27,7 +27,7 @@ export default tseslint.config(
   },
   {
     // el fondo del modal cierra con clic; el teclado cierra con Escape (otro manejador)
-    files: ['src/**/match-detail-modal.ts/*.html', 'src/**/games-entry-modal.ts/*.html'],
+    files: ['src/**/match-detail-modal.ts/*.html'],
     rules: { '@angular-eslint/template/click-events-have-key-events': 'off', '@angular-eslint/template/interactive-supports-focus': 'off' },
   },
   ...FEATURES.map((f) => ({

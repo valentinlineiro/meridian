@@ -118,41 +118,6 @@ test.describe('Frontend E2E Integration Suite', () => {
     await expect(page.locator('a.side-item.active')).toHaveText('LinkedIn Games');
   });
 
-  test('shouldOpenModalTrapFocusAndCloseRestoringFocus', async ({ page }) => {
-    // Session login to /games
-    await page.goto('/login?next=%2Fgames');
-    await page.fill('input[name="email"]', 'owner@localhost');
-    await page.fill('input[name="password"]', 'local-dev-password-123');
-    await page.click('button[type="submit"]');
-
-    await expect(page).toHaveURL(/\/games/);
-
-    const openBtn = page.locator('#gamesEntryOpen');
-    await expect(openBtn).toBeVisible();
-    await openBtn.click();
-
-    const modal = page.locator('#lgModal');
-    await expect(modal).toBeVisible();
-
-    // Verify auto-focus on #lgScore
-    await expect(page.locator('#lgScore')).toBeFocused();
-
-    // Verify Tab stays within modal
-    await page.keyboard.press('Tab');
-    await expect(modal.locator(':focus')).toHaveCount(1);
-
-    // Verify Shift+Tab stays within modal
-    await page.keyboard.press('Shift+Tab');
-    await expect(modal.locator(':focus')).toHaveCount(1);
-
-    // Press Escape to close modal
-    await page.keyboard.press('Escape');
-    await expect(modal).not.toBeVisible();
-
-    // Focus restored to opener button
-    await expect(openBtn).toBeFocused();
-  });
-
   test('shouldSupportKeyboardActivationOnMatchRowsAndNavigateMoveLinks', async ({ page }) => {
     // Intercept matches and game API to provide a deterministic game with plies
     await page.route('**/api/matches*', async (route) => {
