@@ -1,8 +1,9 @@
-import { afterNextRender, afterRenderEffect, Component, computed, effect, ElementRef, inject, Injector, linkedSignal, untracked, viewChild } from '@angular/core';
+import { afterRenderEffect, Component, computed, ElementRef, inject, linkedSignal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { catchError, map, of } from 'rxjs';
 import { ApiClient } from '../../../core/api-client';
 import { ChessBoard } from './chess-board';
+import { Modal } from '../../../shared/modal';
 import { MatchesService } from '../services/matches.service';
 
 interface Ply { san: string; fen: string }
@@ -19,13 +20,12 @@ const MISSING = 'No hay partida completa guardada para esta partida.';
  */
 @Component({
   selector: 'app-match-detail-modal',
-  imports: [ChessBoard],
+  imports: [ChessBoard, Modal],
   host: { '(document:keydown)': 'onKey($event)' },
   template: `
     @if (m.openId(); as id) {
-      <div id="gameModal" class="modal" style="display:flex" role="dialog" aria-modal="true" aria-labelledby="gTitle" (click)="$event.target === $event.currentTarget && close()">
-        <div class="card gamecard">
-          <div class="gamehead"><b id="gTitle">{{ title() }}</b><button class="btn btn-g" id="gClose" type="button" (click)="close()" aria-label="Cerrar" #closeBtn>✕</button></div>
+      <app-modal modalId="gameModal" labelledby="gTitle" initialFocus="#gClose" (dismissed)="close()">
+          <div class="gamehead"><b id="gTitle">{{ title() }}</b><button class="btn btn-g" id="gClose" type="button" (click)="close()" aria-label="Cerrar">✕</button></div>
           <div id="gErr" class="muted">{{ error() }}</div>
           @if (game(); as g) {
             @let n = ply();
@@ -40,8 +40,7 @@ const MISSING = 'No hay partida completa guardada para esta partida.';
               <div class="gamectl"><button class="btn btn-g" id="gPrev" type="button" [disabled]="n === 0" (click)="step(-1)" aria-label="Jugada anterior">‹</button><span class="muted" id="gPos">{{ n }} / {{ g.plies.length }}</span><button class="btn btn-g" id="gNext" type="button" [disabled]="n === g.plies.length" (click)="step(1)" aria-label="Jugada siguiente">›</button><a class="btn btn-g" id="gPgn" download style="text-decoration:none;margin-left:auto" [href]="'/api/me/matches/' + enc(id) + '/game.pgn'">Descargar PGN</a></div>
             </div>
           }
-        </div>
-      </div>
+      </app-modal>
     }
   `,
 })
@@ -49,8 +48,6 @@ export class MatchDetailModal {
   protected readonly m = inject(MatchesService);
   private readonly api = inject(ApiClient);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
-  private readonly closeBtn = viewChild<ElementRef<HTMLButtonElement>>('closeBtn');
-  private opener: HTMLElement | null = null;
 
   // A new id cancels the request for the one before: a late game never lands under another title.
   private readonly res = rxResource<Game | { error: string }, string | undefined>({
@@ -71,21 +68,11 @@ export class MatchDetailModal {
   protected readonly ply = linkedSignal(() => { this.game(); return 0; });
 
   constructor() {
-    const injector = inject(Injector);
-    effect(() => {
-      if (!this.m.openId()) return;
-      untracked(() => {
-        this.opener ??= document.activeElement as HTMLElement | null;
-        afterNextRender(() => this.closeBtn()?.nativeElement.focus(), { injector });
-      });
-    });
     afterRenderEffect(() => { this.ply(); this.host.querySelector<HTMLElement>('#gMoves .on')?.scrollIntoView?.({ block: 'nearest' }); });
   }
 
   close(): void {
     this.m.openId.set(null);
-    this.opener?.focus();
-    this.opener = null;
   }
 
   protected step(d: number): void {
@@ -102,16 +89,8 @@ export class MatchDetailModal {
 
   protected onKey(e: KeyboardEvent): void {
     if (!this.m.openId()) return;
-    if (e.key === 'Escape') this.close();
-    else if (e.key === 'ArrowLeft') { e.preventDefault(); this.step(-1); }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); this.step(-1); }
     else if (e.key === 'ArrowRight') { e.preventDefault(); this.step(1); }
-    else if (e.key === 'Tab') {
-      const f = [...this.host.querySelectorAll<HTMLElement>('#gameModal button:not([disabled]), #gameModal a[href]')];
-      if (!f.length) return;
-      const i = f.indexOf(document.activeElement as HTMLElement);
-      e.preventDefault();
-      f[e.shiftKey ? (i <= 0 ? f.length - 1 : i - 1) : (i === f.length - 1 ? 0 : i + 1)].focus();
-    }
   }
 
   protected round(n: number): number { return Math.round(n); }
