@@ -109,7 +109,7 @@ describe('Trajectory', () => {
       await open(TRAJECTORY.afirmado);
       expect(html()).toContain('Confirmado');
       expect(html()).toContain('consistentemente superior');
-      expect(html()).toContain('2026-05-01 → 2026-09-01');
+      expect(html()).toContain('Del 1 de mayo al 1 de septiembre');
       expect(empty()).toBeNull();
     });
 
@@ -117,28 +117,28 @@ describe('Trajectory', () => {
       const p = copy(TRAJECTORY.indicio) as Any;
       p['temporalSpan'] = { startedAt: '2026-01-01T00:00:00.000Z', endedAt: '2026-09-01T00:00:00.000Z', totalDays: 243 };
       await open(p);
-      expect(html()).toContain('Ventana: 2026-05-01 → 2026-09-01');
+      expect(html()).toContain('Del 1 de mayo al 1 de septiembre');
       expect(html()).not.toContain('2026-01-01');
     });
 
     it('shouldExplainWhyThereIsNoPatternInsteadOfShowingAnEmptyTab', async () => {
       await open(TRAJECTORY.indicio);
       expect(html()).toContain('Posible señal');
-      expect(html()).toContain('días con actividad: 59');
-      expect(html()).toContain('El criterio exige al menos 40 decididas por color y 60 días con actividad.');
+      expect(html()).toContain('repartidas en 59 días');
+      expect(html()).toContain('Hacen falta 40 por color y 60 días jugados.');
       expect(empty()).toBeNull();
     });
 
     it('shouldExplainAPersistenceFailureWithTheSignedDifferencesOfBothHalves', async () => {
       await open(TRAJECTORY.persistence);
-      expect(html()).toContain('+25 pp en la primera y +5 pp en la segunda');
-      expect(html()).toContain('el criterio exige al menos 10 pp en ambas');
+      expect(html()).toContain('era de +25 puntos de % y en la segunda de +5');
+      expect(html()).toContain('se pide al menos 10 en las dos');
     });
 
     it('shouldMarkInsuficienteWhenTheHistoryIsTooShort', async () => {
       await open(TRAJECTORY.short);
       expect(html()).toContain('Aún pocos datos');
-      expect(html()).toContain('cubre 59 días; el criterio exige al menos 60');
+      expect(html()).toContain('Solo hay 59 días de historial; con menos de 60 sería adivinar.');
     });
 
     it('shouldLabelTheLanguageFocusShiftSinEvaluarBecauseItHasNoEvaluation', async () => {
@@ -166,7 +166,7 @@ describe('Trajectory', () => {
       delete p['evaluations'][0].metrics.startedAt;
       p['temporalSpan'] = { startedAt: '2026-01-01T00:00:00.000Z', endedAt: '2026-09-01T00:00:00.000Z' };
       await open(p);
-      expect(html()).toContain('Ventana: 2026-01-01 → 2026-09-01');
+      expect(html()).toContain('Del 1 de enero al 1 de septiembre');
     });
 
     it('shouldSaySinFechasWhenNeitherTheEvaluationNorTheResponseHasAWindow', async () => {
@@ -174,7 +174,7 @@ describe('Trajectory', () => {
       delete p['evaluations'][0].metrics.startedAt;
       p['temporalSpan'] = null;
       await open(p);
-      expect(html()).toContain('Ventana: sin fechas');
+      expect(html()).toContain('Sin fechas');
     });
   });
 

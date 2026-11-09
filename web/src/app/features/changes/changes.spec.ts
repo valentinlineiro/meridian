@@ -156,14 +156,14 @@ describe('Changes', () => {
       expect(text('#changesFindings h2')).toBe('🔎 Descubrimientos'); // no evaluations: the events are discoveries
       expect(activity()).toContain('Actividad en la ventana');
       expect(row('Partidas jugadas')).toBe('15');
-      expect(row('% de victorias en intervalo')).toBe('60,0 %');
+      expect(row('% de victorias en este periodo')).toBe('60,0 %');
       expect(row('XP ganado')).toBe('+450');
       expect(row('Sesiones completadas')).toBe('6');
       expect(row('Tiempo invertido')).toBe('35 min');
       expect(row('Curso activo')).toBe('Spanish EN → Spanish XC');
       expect(row('Racha actual')).toBe('🔥 52');
       expect(row('Racha anterior')).toBe('45');
-      expect(row('Delta racha')).toBe('+7');
+      expect(row('Cambio en la racha')).toBe('+7');
       expect(row('Estado')).toBe('active');
       expect(el.querySelector('#changesActivity .pill')!.className).toBe('pill pill-win');
       // already stated by an evaluation: not repeated as a second representation
@@ -180,7 +180,7 @@ describe('Changes', () => {
       const titles = [...el.querySelectorAll('#changesActivity .muted')].map((d) => d.textContent);
       for (const title of ['Ajedrez', 'Idiomas', 'Racha']) expect(titles).toContain(title);
       expect(row('Racha actual')).toBe('🔥 —');
-      expect(row('Delta racha')).toBe('—');
+      expect(row('Cambio en la racha')).toBe('—');
     });
 
     it('shouldFetchWhatChangedWithSevenDayBaselineWhenNoStoredVisitTimestampExists', async () => {
@@ -615,15 +615,15 @@ describe('Changes', () => {
         streak: { baselineStreak: null, currentStreak: null, streakDelta: null, status: 'active' }, findings: [], evaluations: [] }) });
       expect(activity()).not.toContain('null');
       expect(row('Tiempo invertido')).toBe('—');
-      expect(row('% de victorias en intervalo')).toBe('—');
-      expect(row('Delta WR histórico')).toBe('—');
+      expect(row('% de victorias en este periodo')).toBe('—');
+      expect(row('Cambio en tu % de victorias')).toBe('—');
     });
   });
 
   describe('what-changed historical delta', () => {
     it('shouldRenderTheHistoricalDeltaWithItsInterval', async () => {
       await open({ wc: () => ({ ...activePayload, chess: { gamesCount: 20, intervalWinRate: 70, historicalDelta: { diff: 20, lower: -1.2, upper: 38 } } }) });
-      expect(row('Delta WR histórico')).toBe('+20,0 pp · IC95 [−1,2; +38,0] · sin evidencia suficiente');
+      expect(row('Cambio en tu % de victorias')).toBe('+20,0 puntos de % (entre −1,2 y +38,0) · sin evidencia suficiente');
     });
   });
 
@@ -648,7 +648,7 @@ describe('Changes', () => {
       expect(cards.at(-1)!.querySelector('.pill-scope')!.textContent).toBe('STREAK');
       // an evaluated finding is not repeated as an event
       expect(cards.filter((c) => c.textContent!.includes('EVENTO'))).toHaveLength(1);
-      expect(findings()).toContain('Ventana: 2026-10-01 → 2026-10-08');
+      expect(findings()).toContain('Del 1 al 8 de octubre');
     });
 
     it('shouldKeepTheDecimalCommaOfAFindingTextAsTheDomainWroteIt', async () => {
@@ -703,7 +703,7 @@ describe('Changes', () => {
       await open2({ chess: { gamesCount: 'x', intervalWinRate: 'y', historicalDelta: { diff: 'a', lower: 1, upper: 2 } },
         languages: { xpGained: 'z', sessionsCount: null, totalSessionMinutes: 'm' }, streak: { currentStreak: 'q', baselineStreak: {}, streakDelta: 'd' } });
       expect(activity()).not.toContain('NaN');
-      for (const r of ['Partidas jugadas', '% de victorias en intervalo', 'Delta WR histórico', 'XP ganado', 'Sesiones completadas', 'Tiempo invertido', 'Racha anterior', 'Delta racha']) expect(row(r)).toBe('—');
+      for (const r of ['Partidas jugadas', '% de victorias en este periodo', 'Cambio en tu % de victorias', 'XP ganado', 'Sesiones completadas', 'Tiempo invertido', 'Racha anterior', 'Cambio en la racha']) expect(row(r)).toBe('—');
       expect(row('Racha actual')).toBe('🔥 —');
       expect(row('Estado')).toBe('—');
       expect(el.querySelector('#changesActivity .pill')!.className).toBe('pill pill-loss');

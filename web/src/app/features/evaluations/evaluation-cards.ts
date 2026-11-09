@@ -54,46 +54,63 @@ const fx = (v: unknown, d = 1): string => {
 const f = (v: unknown, d = 1) => v == null ? '—' : fx(v, d);
 
 // The criteria come from the evaluation itself (e.criteria): the rule's own thresholds, never copied here.
+// Wording: plain Spanish, a real number on every reason (what there is, what is needed), "no se ve" and never "no hay".
+const sgn = (v: unknown, d = 0) => v == null ? '—' : ((v as number) > 0 ? '+' : '') + f(v, d);
 function reasonText(e: Evaluation, r: string): string {
   const id = e.id, m = e.metrics || {}, k = e.criteria || {};
-  const need = (v: unknown, unit: string) => v == null ? 'no se alcanza el criterio' : 'el criterio exige al menos ' + String(v).replace('.', ',') + unit;
+  const enough = (v: unknown) => v == null ? 'todavía no se llega al mínimo' : 'hacen falta ' + String(v).replace('.', ',');
+  const belowColor = () => 'Entre blancas y negras hay ' + f(m['diffPp']) + ' puntos de % de diferencia. ' + (k['minDiffPp'] == null ? 'Aún no llega al mínimo para darla por real.' : 'Para darla por real pedimos ' + String(k['minDiffPp']).replace('.', ',') + '.');
+  const intervalColor = () => 'Con estas partidas, la diferencia real podría estar entre ' + sgn(m['diffCiLower']) + ' y ' + sgn(m['diffCiUpper']) + ' puntos de %, es decir, también podría no existir.';
   if (id === 'CHESS_COLOR_ASYMMETRY') {
-    if (r === 'insufficient_sample') return f(m['decidedCount'], 0) + ' partidas decididas observadas; ' + need(k['minDecided'], '') + '.';
-    if (r === 'effect_below_threshold') return 'Diferencia observada entre colores: ' + f(m['diffPp']) + ' pp; ' + need(k['minDiffPp'], ' pp') + '.';
-    if (r === 'interval_includes_zero') return 'El intervalo de confianza del 95 % de la diferencia [' + f(m['diffCiLower'], 0) + ', ' + f(m['diffCiUpper'], 0) + '] pp incluye 0.';
-    if (r === 'data_unavailable') return 'Falta al menos un color con partidas decididas en la ventana.';
+    if (r === 'insufficient_sample') return 'Tienes ' + f(m['decidedCount'], 0) + ' partidas con ganador; ' + enough(k['minDecided']) + ' para fiarse.';
+    if (r === 'effect_below_threshold') return belowColor();
+    if (r === 'interval_includes_zero') return intervalColor();
+    if (r === 'data_unavailable') return 'Con alguno de los dos colores no hay partidas con ganador en este periodo.';
   }
   if (id === 'CHESS_COLOR_ASYMMETRY_LONGITUDINAL') {
-    const sg = (v: unknown) => v == null ? '—' : ((v as number) > 0 ? '+' : '') + f(v, 0);
-    if (r === 'insufficient_sample') return 'Decididas: blancas ' + f(m['whiteDecided'], 0) + ', negras ' + f(m['blackDecided'], 0) + '; días con actividad: ' + f(m['activeDays'], 0) + '. ' + (k['minDecidedPerColor'] != null && k['minActiveDays'] != null ? 'El criterio exige al menos ' + k['minDecidedPerColor'] + ' decididas por color y ' + k['minActiveDays'] + ' días con actividad.' : 'No se alcanza el criterio.');
-    if (r === 'span_too_short') return 'El historial de ajedrez cubre ' + f(m['totalDays'], 0) + ' días; ' + need(k['minSpanDays'], '') + '.';
-    if (r === 'effect_below_threshold') return 'Diferencia observada entre colores: ' + f(m['diffPp']) + ' pp; ' + need(k['minDiffPp'], ' pp') + '.';
-    if (r === 'interval_includes_zero') return 'El intervalo de confianza del 95 % de la diferencia global [' + f(m['diffCiLower'], 0) + ', ' + f(m['diffCiUpper'], 0) + '] pp incluye 0.';
-    if (r === 'persistence_not_met') return 'La diferencia no se mantiene con el mismo signo en las dos mitades del historial: ' + sg(m['h1DiffSigned']) + ' pp en la primera y ' + sg(m['h2DiffSigned']) + ' pp en la segunda (blancas − negras); ' + need(k['minEraDiffPp'], ' pp') + ' en ambas.';
-    if (r === 'data_unavailable') return 'Falta información en el historial: fechas, o algún color sin partidas decididas en alguna de las dos mitades.';
+    if (r === 'insufficient_sample') return 'Tienes ' + f(m['whiteDecided'], 0) + ' partidas con ganador con blancas y ' + f(m['blackDecided'], 0) + ' con negras, repartidas en ' + f(m['activeDays'], 0) + ' días. ' + (k['minDecidedPerColor'] != null && k['minActiveDays'] != null ? 'Hacen falta ' + k['minDecidedPerColor'] + ' por color y ' + k['minActiveDays'] + ' días jugados.' : 'Todavía no se llega al mínimo.');
+    if (r === 'span_too_short') return 'Solo hay ' + f(m['totalDays'], 0) + ' días de historial' + (k['minSpanDays'] == null ? '; todavía es pronto.' : '; con menos de ' + k['minSpanDays'] + ' sería adivinar.');
+    if (r === 'effect_below_threshold') return belowColor();
+    if (r === 'interval_includes_zero') return intervalColor();
+    if (r === 'persistence_not_met') return 'No es constante: en la primera mitad de tu historial la diferencia era de ' + sgn(m['h1DiffSigned']) + ' puntos de % y en la segunda de ' + sgn(m['h2DiffSigned']) + ' (blancas − negras)' + (k['minEraDiffPp'] == null ? '.' : '; se pide al menos ' + String(k['minEraDiffPp']).replace('.', ',') + ' en las dos.');
+    if (r === 'data_unavailable') return 'Faltan datos en tu historial: fechas, o partidas con ganador con algún color en alguna de las dos mitades.';
   }
   if (id === 'CHESS_RATING_JUMP') {
-    if (r === 'effect_below_threshold') return 'Cambio de ELO observado: ' + f(m['ratingDelta'], 0) + ' puntos en ' + f(m['games'], 0) + ' partidas entre las dos lecturas, dentro de lo habitual' + (m['bandLower'] != null ? ' (límite ' + f(m['bandLower'], 0) + ' puntos)' : m['bandUpper'] != null ? ' (límite +' + f(m['bandUpper'], 0) + ' puntos)' : '') + '.';
-    if (r === 'calibration_unavailable') return 'Cambio de ELO observado: ' + f(m['ratingDelta'], 0) + ' puntos' + (m['games'] != null ? ' en ' + f(m['games'], 0) + ' partidas entre las dos lecturas' : '') + '. Sin referencia de variación habitual todavía.';
-    if (r === 'data_unavailable') return 'No hay dos observaciones de ELO en snapshots distintos alrededor de la ventana.';
+    const d = m['ratingDelta'] as number | null, move = d == null ? 'ha cambiado' : d === 0 ? 'no ha cambiado' : d < 0 ? 'ha bajado ' + f(Math.abs(d), 0) + ' puntos' : 'ha subido ' + f(d, 0) + ' puntos';
+    const games = m['games'] != null ? ' en ' + f(m['games'], 0) + ' partidas' : '';
+    if (r === 'effect_below_threshold') { const band = m['bandLower'] ?? m['bandUpper']; return 'Tu ELO ' + move + games + '.' + (band != null ? ' Con tu historial, hasta ' + f(Math.abs(band), 0) + ' puntos entra en lo normal.' : ''); }
+    if (r === 'calibration_unavailable') return 'Tu ELO ' + move + games + '. Todavía no sabemos cuánto varía normalmente, así que no podemos decir si es un cambio grande.';
+    if (r === 'data_unavailable') return 'Falta una lectura de tu ELO antes o después de este periodo para poder comparar.';
   }
   if (id === 'LANG_XP_ACCELERATION') {
-    if (r === 'span_too_short') return 'La ventana contiene ' + f(m['intervalDays'], 0) + ' días completos (UTC)' + (m['partialDaysExcluded'] ? '; ' + m['partialDaysExcluded'] + ' parcial(es) excluido(s)' : '') + '; ' + need(k['minDays'], '') + '.';
-    if (r === 'effect_below_threshold') return 'XP diario observado: ' + f(m['ratio']) + '× la media histórica, dentro de lo habitual' + (m['bandUpper'] != null ? ' (límite ' + f(m['bandUpper']) + '×)' : '') + '.';
-    if (r === 'calibration_unavailable') return 'XP diario observado: ' + f(m['ratio']) + '× la media histórica (' + f(m['xpGained'], 0) + ' XP en ' + f(m['intervalDays'], 0) + ' días). Sin referencia de variación habitual todavía.';
-    if (r === 'data_unavailable') return (m['observedDays'] === 0 ? 'Ningún día de la ventana tiene registro de XP. ' : '') + (m['historicalRate'] > 0 ? '' : 'No hay media histórica de referencia.');
+    if (r === 'span_too_short') return 'El periodo tiene ' + f(m['intervalDays'], 0) + ' días completos' + (m['partialDaysExcluded'] ? ' (el día en curso no cuenta)' : '') + '; ' + enough(k['minDays']) + '.';
+    if (r === 'effect_below_threshold') return 'Estos días ganas ' + f(m['ratio']) + ' veces tu XP normal.' + (m['bandUpper'] != null ? ' Hasta ' + f(m['bandUpper']) + ' veces es lo habitual en ti.' : '');
+    if (r === 'calibration_unavailable') return 'Estos días ganas ' + f(m['ratio']) + ' veces tu XP normal (' + f(m['xpGained'], 0) + ' XP en ' + f(m['intervalDays'], 0) + ' días). Todavía no sabemos cuánto varía normalmente, así que no podemos decir si es mucho.';
+    if (r === 'data_unavailable') return (m['observedDays'] === 0 ? 'Ningún día del periodo tiene XP registrado. ' : '') + (m['historicalRate'] > 0 ? '' : 'Aún no tenemos suficientes días anteriores para saber cuál es tu XP normal.');
   }
-  return ({ insufficient_sample: 'Muestra insuficiente.', effect_below_threshold: 'El efecto observado no alcanza el criterio.', interval_includes_zero: 'El intervalo de confianza incluye 0.', persistence_not_met: 'El efecto no se mantiene en ambas mitades del historial.', span_too_short: 'La ventana es demasiado corta.', data_unavailable: 'Faltan datos necesarios.' } as Record<string, string>)[r] || r;
+  return ({ insufficient_sample: 'Todavía hay pocos datos.', effect_below_threshold: 'El cambio que se ve no llega al mínimo exigido.', interval_includes_zero: 'Con estos datos, la diferencia real podría ser nula.', persistence_not_met: 'No se mantiene igual en las dos mitades de tu historial.', span_too_short: 'El periodo es demasiado corto.', data_unavailable: 'Faltan datos necesarios.' } as Record<string, string>)[r] || r;
+}
+
+const MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+const day = (iso: string): { d: number; m: number } | null => { const x = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso); return x ? { d: +x[3], m: +x[2] - 1 } : null; };
+/** "2026-11-02" → "2 de noviembre"; anything that is not a date is returned as it came. */
+const longDay = (iso: string): string => { const x = day(iso); return x ? x.d + ' de ' + MONTHS[x.m] : iso; };
+/** "2026-11-02 → 2026-11-09" → "del 2 al 9 de noviembre". */
+export function humanWindow(win: string): string {
+  const [a, b] = win.split(' → ').map(day);
+  const [ia, ib] = win.split(' → ');
+  if (!a || !b) return win;
+  return a.m === b.m ? 'del ' + a.d + ' al ' + b.d + ' de ' + MONTHS[a.m] : 'del ' + longDay(ia) + ' al ' + longDay(ib);
 }
 
 function observed(id: string, m: Rec): string {
-  if (id === 'CHESS_COLOR_ASYMMETRY' && m['whiteWinRate'] != null && m['blackWinRate'] != null) return 'Blancas ' + fx(m['whiteWinRate']) + ' % · Negras ' + fx(m['blackWinRate']) + ' % (' + m['decidedCount'] + ' partidas decididas)';
-  if (id === 'CHESS_COLOR_ASYMMETRY_LONGITUDINAL' && m['whiteWinRate'] != null && m['blackWinRate'] != null) return 'Blancas ' + fx(m['whiteWinRate']) + ' % · Negras ' + fx(m['blackWinRate']) + ' % (' + m['whiteDecided'] + ' y ' + m['blackDecided'] + ' decididas' + (m['totalDays'] != null ? ', ' + m['totalDays'] + ' días' : '') + ')';
-  if (id === 'CHESS_RATING_JUMP' && m['baselineRating'] != null && m['currentRating'] != null) return 'ELO leído en snapshots: ' + m['baselineRating'] + ' → ' + m['currentRating'] + ' (' + m['gamesCount'] + ' partidas en la ventana)';
+  if (id === 'CHESS_COLOR_ASYMMETRY' && m['whiteWinRate'] != null && m['blackWinRate'] != null) return 'Blancas ' + fx(m['whiteWinRate']) + ' % · Negras ' + fx(m['blackWinRate']) + ' % (' + m['decidedCount'] + ' partidas con ganador)';
+  if (id === 'CHESS_COLOR_ASYMMETRY_LONGITUDINAL' && m['whiteWinRate'] != null && m['blackWinRate'] != null) return 'Blancas ' + fx(m['whiteWinRate']) + ' % · Negras ' + fx(m['blackWinRate']) + ' % (' + m['whiteDecided'] + ' y ' + m['blackDecided'] + ' partidas con ganador' + (m['totalDays'] != null ? ', ' + m['totalDays'] + ' días' : '') + ')';
+  if (id === 'CHESS_RATING_JUMP' && m['baselineRating'] != null && m['currentRating'] != null) return 'Tu ELO: ' + m['baselineRating'] + ' → ' + m['currentRating'] + ' (' + m['gamesCount'] + ' partidas en el periodo)';
   if (id === 'LANG_XP_ACCELERATION' && m['dailyRate'] != null) {
     // a historical rate of 0 means "no reference" (data_unavailable), not an observed 0 XP/day
-    const ref = m['historicalRate'] > 0 ? ' vs ' + fx(m['historicalRate'], 0) + ' XP por día con registro histórico' : '; no hay referencia histórica disponible';
-    return fx(m['dailyRate'], 0) + ' XP por día con registro en la ventana' + ref + ' (+' + m['xpGained'] + ' XP)';
+    const ref = m['historicalRate'] > 0 ? ' vs ' + fx(m['historicalRate'], 0) + ' XP por día en tu historial' : '; aún no hay historial con el que comparar';
+    return fx(m['dailyRate'], 0) + ' XP por día en este periodo' + ref + ' (+' + m['xpGained'] + ' XP)';
   }
   return '';
 }
@@ -106,7 +123,7 @@ function colorView(e: Evaluation, state: EvalStateName, rs: string[]): { cc: Col
   const longi = e.id === 'CHESS_COLOR_ASYMMETRY_LONGITUDINAL';
   const signed = m['whiteWinRate'] != null && m['blackWinRate'] != null ? m['whiteWinRate'] - m['blackWinRate'] : null; // white − black, signed like the interval
   for (const v of [signed, m['diffCiLower'], m['diffCiUpper']]) if (v != null) fx(v);
-  const cc = colorConclusion(signed, m['diffCiLower'], m['diffCiUpper'], { met: false, label: longi ? 'Patrón persistente (≥ ' + (k['minDiffPp'] != null ? k['minDiffPp'] : 15) + ' pp y en ambas mitades)' : 'Efecto mínimo del criterio (≥ ' + (k['minDiffPp'] != null ? k['minDiffPp'] : '—') + ' pp)' });
+  const cc = colorConclusion(signed, m['diffCiLower'], m['diffCiUpper'], { met: false, label: longi ? 'Patrón persistente (al menos ' + (k['minDiffPp'] != null ? k['minDiffPp'] : 15) + ' puntos de % y en las dos mitades)' : 'Diferencia mínima exigida (' + (k['minDiffPp'] != null ? k['minDiffPp'] : '—') + ' puntos de %)' });
   if (!cc) return null;
   return { cc, summary: cc.detectable ? 'Hay una diferencia detectable entre colores, pero no se demuestra ' + (longi ? 'un patrón persistente' : 'un efecto de la magnitud que exige el criterio') + '.' : null };
 }
@@ -127,9 +144,9 @@ export function evaluationCard(e: Evaluation, state: EvalStateName, finding: Eva
   const claim = state === 'AFIRMADO' && finding ? { claim: String(finding.claim), evidence: String(finding.evidence) } : null;
   // A7: "calibrated" only if the edge that decides this evaluation is admitted (ELO: the one of the direction of the change; XP: upper95).
   const edgeAdmitted = e.id === 'CHESS_RATING_JUMP' ? k[(m['ratingDelta'] != null && m['ratingDelta'] < 0 ? 'lower95' : 'upper95') + 'Admitted'] === 1 : k['upper95Admitted'] === 1;
-  const basis = e.kind === 'statistical' ? 'con intervalo de confianza del 95 %'
-    : k['calibratedThrough'] ? (edgeAdmitted ? 'límites de lo habitual calibrados con tu historial (hasta ' + k['calibratedThrough'] + ')' : 'sin banda calibrada todavía; datos evaluados hasta ' + k['calibratedThrough'])
-    : 'umbral fijo, sin intervalo de confianza';
+  const basis = e.kind === 'statistical' ? 'este método incluye el valor real en unas 95 de cada 100 repeticiones'
+    : k['calibratedThrough'] ? (edgeAdmitted ? 'lo habitual en ti, calculado hasta el ' + longDay(String(k['calibratedThrough'])) : 'aún no sabemos qué es habitual en ti; datos hasta el ' + longDay(String(k['calibratedThrough'])))
+    : 'regla fija, sin margen de error calculado';
   const collapsed = state === 'INSUFICIENTE' || state === 'SIN INDICIO';
   return {
     na: false, title: meta.title, state, verdict: EVAL_VERDICTS[state], scope: meta.scope,
@@ -139,7 +156,7 @@ export function evaluationCard(e: Evaluation, state: EvalStateName, finding: Eva
     color: claim ? null : cv?.cc ?? null,
     indicio: !claim && state === 'INDICIO' ? EVAL_VERDICTS[state].sentence : '',
     reasons: claim ? [] : rs.map((r) => reasonText(e, r)),
-    foot: 'Ventana: ' + win + ' · ' + basis,
+    foot: humanWindow(win).replace(/^./, (c) => c.toUpperCase()) + ' · ' + basis,
   };
 }
 

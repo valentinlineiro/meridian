@@ -116,11 +116,11 @@
   </div>
 
   <details class="methodology-disclosure" id="chessMethodology" style="margin-top:16px;margin-bottom:16px">
-    <summary style="cursor:pointer;font-weight:600;font-size:var(--fs-md);color:var(--muted)">¿Cómo sabemos esto? <span class="muted" style="font-weight:400">· Integridad epistemológica y taxonomía canónica</span></summary>
+    <summary style="cursor:pointer;font-weight:600;font-size:var(--fs-md);color:var(--muted)">¿Cómo sabemos esto?</summary>
     <div style="margin-top:10px;font-size:var(--fs-sm);line-height:1.5;color:var(--muted)">
-      <p style="margin:6px 0"><b>1. Modelo Result/Outcome hermético:</b> Cada partida clasifica su resultado en la tríada canónica (victoria, derrota o tablas) reconciliando <code>result</code> y <code>outcome</code> reportados por Duolingo. La causa de fin se asigna con taxonomía canónica exhaustiva (checkmate, resignation, timeout, stalemate, repetition, insufficient material, fifty moves) sin estados ambiguos ni inventados.</p>
-      <p style="margin:6px 0"><b>2. Segmentación de oponentes (Bot vs PvP):</b> Los rivales se clasifican deterministamente según su identificador y tipología (bots por motor: Noisy Neural, Neural, Blended, Stockfish vs jugadores humanos en PvP). Cuando una muestra es pequeña (ej. PvP o muestras n &lt; 50), se reporta explícitamente el tamaño muestral evitando inferencias apresuradas.</p>
-      <p style="margin:6px 0"><b>3. Observación de ELO y marcas temporales:</b> El ELO registrado corresponde a observaciones de sincronización contra el perfil de la fuente. Las fechas reflejan la marca canónica <code>played_at</code> (o primera observación en <code>first_seen_at</code>).</p>
+      <p style="margin:6px 0"><b>Victoria, derrota o tablas:</b> cada partida se clasifica con el resultado que da Duolingo, y la causa del final (jaque mate, abandono, tiempo, ahogado, repetición, material insuficiente, regla de las 50 jugadas) es siempre una de esas.</p>
+      <p style="margin:6px 0"><b>Bots y personas:</b> los rivales se separan por su identificador (bots como Neural o Stockfish, o jugadores reales). Cuando hay pocas partidas, como contra personas, se dice cuántas son para no sacar conclusiones con prisa.</p>
+      <p style="margin:6px 0"><b>Tu ELO y las fechas:</b> el ELO es el que Duolingo mostraba cada vez que sincronizamos, no uno calculado aquí. Las fechas son las de la partida o, si falta, la de la primera vez que la vimos.</p>
     </div>
   </details>
 </section>

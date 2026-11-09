@@ -155,11 +155,11 @@
             <div id="langObservedSynthesis" style="font-weight:700;font-size:var(--fs-lg);color:var(--text-2);margin-bottom:8px">{{ o?.synthesis ?? '—' }}</div>
             <div id="langObservedDimensions" style="display:grid;gap:8px;font-size:var(--fs-sm)">
               <div id="langCurricularProgressBlock" class="observed-dim">
-                <div style="font-weight:600;color:var(--muted)">1. Avance curricular (Δ unidades con ΔtotalUnits = 0)</div>
+                <div style="font-weight:600;color:var(--muted)">1. Unidades completadas (el curso no ha cambiado de tamaño)</div>
                 <div id="langCurricularProgressDetail" class="muted" style="margin-top:2px">{{ o?.progress ?? '—' }}</div>
               </div>
               <div id="langCourseStructureBlock" class="observed-dim">
-                <div style="font-weight:600;color:var(--muted)">2. Estructura del curso (árbol curricular)</div>
+                <div style="font-weight:600;color:var(--muted)">2. Estructura del curso</div>
                 <div id="langCourseStructureDetail" class="muted" style="margin-top:2px">{{ o?.structure ?? '—' }}</div>
               </div>
               <div id="langAccountActivityBlock" class="observed-dim">
@@ -191,7 +191,7 @@
         <!-- Bloques A y B: Intensidad y Perfil Semanal -->
         <div class="grid2" style="margin-bottom:12px">
           <div class="card" id="langIntensityCard">
-            <h2>Intensidad descriptiva · cuenta</h2>
+            <h2>XP y tiempo por sesión · cuenta</h2>
             <div id="langIntensityBody">
               @let i = intensity();
               @if (isNA(i)) { <div class="muted">{{ i }}</div> }
@@ -200,7 +200,7 @@
                   <div><div class="muted" style="font-size:var(--fs-xs);letter-spacing:.04em;text-transform:uppercase">XP / sesión</div><div style="font-size:var(--fs-h);font-weight:700">{{ i.xp }}</div><div class="muted" style="font-size:var(--fs-xs)">global · med: {{ i.xpMed }}</div></div>
                   <div style="border-left:1px solid var(--line);padding-left:8px"><div class="muted" style="font-size:var(--fs-xs);letter-spacing:.04em;text-transform:uppercase">Tiempo / sesión</div><div style="font-size:var(--fs-h);font-weight:700">{{ i.time }}</div><div class="muted" style="font-size:var(--fs-xs)">global · med: {{ i.timeMed }}</div></div>
                 </div>
-                <div class="muted" style="font-size:var(--fs-xs);line-height:1.4;border-top:1px solid var(--line);padding-top:8px">Ratios descriptivos observados entre XP y tiempo reportado. No representan eficiencia cognitiva ni velocidad de aprendizaje.</div>
+                <div class="muted" style="font-size:var(--fs-xs);line-height:1.4;border-top:1px solid var(--line);padding-top:8px">Cuánto XP ganas y cuánto dura una sesión, según Duolingo. No mide cuánto aprendes ni a qué velocidad.</div>
               }
             </div>
           </div>
@@ -222,7 +222,7 @@
 
         <!-- Bloque D: Concentración Histórica de Cursos -->
         <div class="card" id="langConcentrationCard" style="margin-bottom:12px">
-          <h2>Concentración histórica · catálogo</h2>
+          <h2>En qué cursos pones el esfuerzo · catálogo</h2>
           <div id="langConcentrationBody">
             @let hc = concentration();
             @if (isNA(hc)) { <div class="muted">{{ hc }}</div> }
@@ -239,7 +239,7 @@
 
         <!-- Bloque E: Comparabilidad Curricular Longitudinal -->
         <div class="card" id="langComparabilityCard" style="margin-bottom:12px">
-          <h2>Comparabilidad curricular longitudinal · cursos</h2>
+          <h2>Cómo avanza cada curso</h2>
           <div id="langComparabilityBody">
             @let cmp = comparability();
             @if (isNA(cmp)) { <div class="muted">{{ cmp }}</div> }
@@ -258,7 +258,7 @@
                   <div class="muted" style="font-size:var(--fs-xs);margin-top:2px">Aún no hay una segunda captura del Path de este curso para poder comparar.</div>
                 </div></div>
               }
-              <div class="muted" style="font-size:var(--fs-xs);margin-top:8px">Criterio estricto: cuando la fuente reestructura el árbol (cambio en el denominador total de unidades), no se calcula un progreso numérico para evitar atribuciones artificiales.</div>
+              <div class="muted" style="font-size:var(--fs-xs);margin-top:8px">Si Duolingo cambia el tamaño del curso (más o menos unidades), no calculamos el progreso para no inventarlo.</div>
             }
           </div>
         </div>
@@ -266,11 +266,11 @@
 
       <!-- ¿Cómo sabemos esto? (MethodologyDisclosure) -->
       <details class="methodology-disclosure" id="langMethodology" style="margin-top:16px;margin-bottom:16px">
-        <summary style="cursor:pointer;font-weight:600;font-size:var(--fs-md);color:var(--muted)">¿Cómo sabemos esto? <span class="muted" style="font-weight:400">· Marco metodológico e integridad de datos</span></summary>
+        <summary style="cursor:pointer;font-weight:600;font-size:var(--fs-md);color:var(--muted)">¿Cómo sabemos esto?</summary>
         <div style="margin-top:10px;font-size:var(--fs-sm);line-height:1.5;color:var(--muted)">
-          <p style="margin:6px 0"><b>1. Fuente canónica:</b> Registros inmutables en Cloudflare D1 capturados vía snapshots periódicos de la fuente (actividad de cuenta y progreso curricular).</p>
-          <p style="margin:6px 0"><b>2. Regla de comparabilidad curricular:</b> Se exige estrictamente <code>ΔtotalUnits = 0</code> (mismo denominador de unidades totales) entre dos observaciones temporales para computar un avance real. Si Duolingo reorganiza las secciones o añade unidades al árbol, la observación se clasifica como <i>cambio estructural</i> en lugar de progreso sintético.</p>
-          <p style="margin:6px 0"><b>3. Aislamiento de métricas de actividad:</b> Las series temporales de XP proceden de <code>xp_summaries</code> a nivel de cuenta. No se realiza atribución heurística de XP a cursos individuales para preservar la exactitud epistemológica.</p>
+          <p style="margin:6px 0"><b>De dónde sale:</b> guardamos una foto de tu cuenta cada vez que se sincroniza (actividad y progreso por curso) y nunca se modifica.</p>
+          <p style="margin:6px 0"><b>Cuándo se cuenta un avance:</b> solo si el curso tiene el mismo número de unidades en las dos fotos. Si Duolingo reorganiza o añade unidades, lo marcamos como «cambio en el curso» en lugar de inventar un progreso.</p>
+          <p style="margin:6px 0"><b>XP por curso:</b> el XP es de toda la cuenta. No lo repartimos entre cursos, porque sería una estimación.</p>
         </div>
       </details>
      </div>
