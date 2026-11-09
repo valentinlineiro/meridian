@@ -15,7 +15,7 @@
     <div style="margin-top:14px"><div class="muted" style="font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Hoy · toca un juego para empezar a escribirlo</div>
       <div id="gamesToday" class="chips">@for (c of chips(); track c.k) {<button type="button" [class]="'pill ' + (c.done ? 'pill-win' : 'pill-scope')" [attr.data-game]="c.k" (click)="quick.prefill(c.name)">{{ c.text }}</button>}</div>
     </div>
-    <div style="margin-top:14px"><app-games-quick-entry #quick (saved)="data.reload()" /><a class="btn btn-g" id="gamesExport" style="margin-top:8px" href="/api/me/linkedin-games/export.csv" download>Descargar todo en CSV</a></div>
+    <div style="margin-top:14px"><app-games-quick-entry #quick (saved)="data.reload()" /><a class="btn btn-g" id="gamesExport" style="margin-top:8px" href="/api/me/linkedin-games/export.csv" download>Descargar resultados (CSV)</a></div>
   </div>
   <div id="gamesNote" class="muted" role="status">{{ note() }}</div>
   <app-segmented groupId="gamesRange" label="Periodo de análisis" caption="Periodo" idPrefix="gr-" [options]="ranges" [value]="range()" (picked)="range.set($any($event))" />
