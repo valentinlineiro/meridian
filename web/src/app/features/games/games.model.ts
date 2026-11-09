@@ -276,3 +276,24 @@ export function lossRows(s: Summary) {
   const w = worst as { k: string; c: LossCell } | null;
   return { rows, days: DAYS.map((d) => d.slice(0, 3)), sentence: w ? `Donde más pierdes: ${gameName(w.k)} los ${DAYS[w.c.dow]} (${gpct(w.c.rate)}, ${w.c.n} partidas).` : 'Aún no hay ningún día con partidas suficientes para decir dónde pierdes más.' };
 }
+
+/** One plain sentence about the player's form (the difficulty of the days already taken out), for the period picked. */
+const formLine = (x: Game, range: Range): string => {
+  const w = formWords(x.adjusted.windows[range].pct);
+  return w === 'Aún pocos datos' ? w : w === 'a la par' ? 'Vas a tu ritmo de siempre' : `Vas ${w} de lo normal`;
+};
+export const RECENT_DOTS = 14;
+/** The first look: per game a verdict, one sentence, the last 14 results as win/loss dots and the 28-day line. */
+export function summaryRows(s: Summary, range: Range) {
+  return cardOrder(s).flatMap((k) => { try { return [row(k)]; } catch { return []; } }); // a malformed game drops its own row only
+  function row(k: string) {
+    const x = s.games[k]!, last = x.series.slice(-RECENT_DOTS) as { date: string; eff: number; roll: number }[];
+    const dots = last.map((p) => ({ win: p.eff > 1, title: fmtDate(p.date) + (p.eff > 1 ? ': mejor que la media' : ': peor que la media') }));
+    const w = dots.filter((d) => d.win).length;
+    return {
+      k, name: gameName(k), verdict: verdictOf(x), line: formLine(x, range), dots,
+      aria: dots.length ? `Últimas ${dots.length} partidas: ${w} mejores que la media y ${dots.length - w} peores.` : 'Sin partidas con media.',
+      spark: gameSpark(x.series), time: typicalTime(x.windows[range].time.median, null, null).main,
+    };
+  }
+}

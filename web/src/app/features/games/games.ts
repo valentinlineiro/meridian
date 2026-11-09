@@ -11,7 +11,7 @@ import { Section } from '../../shared/section';
 import { Segmented } from '../../shared/segmented';
 import { Stats } from '../../shared/stats';
 import { VerdictPill } from '../../shared/verdict';
-import { cardOrder, Day, defaultTrajGame, GAME_NAMES, gameCard, gameName, difficultyGrid, gamesHero, localToday, lossRows, Range, RANGES, Summary, trajectory, weekdayRows } from './games.model';
+import { cardOrder, Day, defaultTrajGame, GAME_NAMES, gameCard, gameName, difficultyGrid, gamesHero, summaryRows, localToday, lossRows, Range, RANGES, Summary, trajectory, weekdayRows } from './games.model';
 
 // Port of the LinkedIn Games tab (src/frontend.ts:489–520, src/dashboard.client.js:1787–1971).
 const orNull = <T>(o: Observable<T>) => o.pipe(catchError(() => of(null)));
@@ -67,6 +67,7 @@ export class Games {
   protected readonly week = computed(() => { const s = this.summary(); return s ? safe(() => weekdayRows(s), null) : undefined; });
   protected readonly loss = computed(() => { const s = this.summary(); return s ? safe(() => lossRows(s) ?? null, null) : undefined; });
   protected readonly diff = computed(() => { const s = this.summary(); return s ? safe(() => difficultyGrid(s) ?? null, null) : undefined; });
+  protected readonly rows = computed(() => { const s = this.summary(), range = this.range(); return s ? safe(() => summaryRows(s, range), []) : []; });
   protected readonly cards = computed(() => {
     const s = this.summary(), range = this.range();
     if (!s) return [];
