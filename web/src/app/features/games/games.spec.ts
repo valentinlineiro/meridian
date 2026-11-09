@@ -361,7 +361,7 @@ describe('Games', () => {
       await open(all());
       const byName = Object.fromEntries(cardsOf().map((c) => [nameOf(c), badgeOf(c)]));
       expect(byName['Tango'].textContent).toBe('A la baja');
-      expect(byName['Wend'].textContent).toBe('A la alza');
+      expect(byName['Wend'].textContent).toBe('Al alza');
       expect(byName['Zip'].textContent).toBe('Sin señales de cambio');
       expect(byName['Patches'].textContent).toBe('Aún pocos datos');
       expect(byName['Tango'].className).toContain('pill-warn');

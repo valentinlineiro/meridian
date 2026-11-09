@@ -46,7 +46,7 @@ export function verdictFor(e: Engine): Verdict {
   }
   switch (e.label) {
     case 'deterioro': return { state: 'confirmed', dir: 'down', label: 'A la baja', pill: 'pill pill-warn', sentence: 'Vas más lento que antes, y se ha repetido dos semanas seguidas.' };
-    case 'mejora_sostenida': return { state: 'confirmed', dir: 'up', label: 'A la alza', pill: 'pill pill-win', sentence: 'Vas más rápido que antes, y se ha repetido dos semanas seguidas.' };
+    case 'mejora_sostenida': return { state: 'confirmed', dir: 'up', label: 'Al alza', pill: 'pill pill-win', sentence: 'Vas más rápido que antes, y se ha repetido dos semanas seguidas.' };
     case 'estable': return { state: 'no-signal', dir: null, label: 'Sin señales de cambio', pill: 'pill', sentence: `No se ve ningún cambio claro en ${PERIODS[1].phrase}.` };
     default: return { state: 'few-data', dir: null, label: 'Aún pocos datos', pill: 'pill pill-draw', sentence: 'Todavía no hay historial suficiente para juzgar este juego.' };
   }

@@ -35,7 +35,7 @@ describe('words', () => {
   });
 
   it('shouldMapTheEngineLabelsToOneVocabularyWithADirection', () => {
-    expect(verdictFor({ label: 'mejora_sostenida', pending: null })).toMatchObject({ state: 'confirmed', dir: 'up', label: 'A la alza', pill: 'pill pill-win' });
+    expect(verdictFor({ label: 'mejora_sostenida', pending: null })).toMatchObject({ state: 'confirmed', dir: 'up', label: 'Al alza', pill: 'pill pill-win' });
     expect(verdictFor({ label: 'deterioro', pending: null })).toMatchObject({ state: 'confirmed', dir: 'down', label: 'A la baja', pill: 'pill pill-warn' });
     expect(verdictFor({ label: 'datos_insuficientes', pending: null })).toMatchObject({ state: 'few-data', label: 'Aún pocos datos', pill: 'pill pill-draw' });
     expect(verdictFor({ label: 'estable', pending: null })).toMatchObject({ state: 'no-signal', pill: 'pill' });
