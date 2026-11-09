@@ -21,7 +21,7 @@ export interface Game {
   n: number; best: { seconds: number; date: string }; beatStreak: { current: number; max: number };
   trend112: { rho: number | null; slopePctPer28d: number | null; n: number; days: number };
   recent28vBase56: { delta: number; nCur: number; nBase: number };
-  interpretation: Interp; series: { roll: number }[];
+  interpretation: Interp; series: { date: string; eff: number; roll: number }[];
   windows: Record<Range, Win>; trajectory: Record<Range, Bucket[]>;
   adjusted: Adjusted; losses: Losses;
 }
@@ -275,4 +275,32 @@ export function lossRows(s: Summary) {
   });
   const w = worst as { k: string; c: LossCell } | null;
   return { rows, days: DAYS.map((d) => d.slice(0, 3)), sentence: w ? `Donde más pierdes: ${gameName(w.k)} los ${DAYS[w.c.dow]} (${gpct(w.c.rate)}, ${w.c.n} partidas).` : 'Aún no hay ningún día con partidas suficientes para decir dónde pierdes más.' };
+}
+
+/** One plain sentence about the player's form (the difficulty of the days already taken out), for the period picked. */
+const formLine = (x: Game, range: Range): string => {
+  const w = formWords(x.adjusted.windows[range].pct);
+  return w === 'Aún pocos datos' ? w : w === 'a la par' ? 'Vas a tu ritmo de siempre' : `Vas ${w} de lo normal`;
+};
+export const RECENT_DOTS = 14;
+/** The line shows only the last 28 days (up to the game's last result); its scale is that of those days. */
+const recentLine = (series: { date: string; roll: number }[]) => {
+  const last = series[series.length - 1];
+  if (!last) return [];
+  const from = new Date(Date.parse(last.date + 'T00:00:00Z') - 27 * 86_400_000).toISOString().slice(0, 10);
+  return series.filter((p) => p.date >= from);
+};
+/** The first look: per game a verdict, one sentence, the last 14 results as win/loss dots and the 28-day line. */
+export function summaryRows(s: Summary, range: Range) {
+  return cardOrder(s).flatMap((k) => { try { return [row(k)]; } catch { return []; } }); // a malformed game drops its own row only
+  function row(k: string) {
+    const x = s.games[k]!, last = x.series.slice(-RECENT_DOTS);
+    const dots = last.map((p) => ({ win: p.eff > 1, title: fmtDate(p.date) + (p.eff > 1 ? ': mejor que la media' : ': peor que la media') }));
+    const w = dots.filter((d) => d.win).length;
+    return {
+      k, name: gameName(k), verdict: verdictOf(x), line: formLine(x, range), dots,
+      aria: dots.length ? `Últimas ${dots.length} partidas con media: ${w} mejores que la media y ${dots.length - w} peores.` : 'Sin partidas con media.',
+      spark: gameSpark(recentLine(x.series)), time: typicalTime(x.windows[range].time.median, null, null).main,
+    };
+  }
 }

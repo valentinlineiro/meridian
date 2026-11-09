@@ -717,4 +717,41 @@ describe('Games', () => {
       expect(el.querySelector('#cg-games-week')!.textContent).toContain('lo difícil que es cada día');
     });
   });
+  describe('first look', () => {
+    it('shouldShowOneRowPerGameWithASentenceAndTheLast14ResultsAsDots', async () => {
+      const series = Array.from({ length: 20 }, (_, i) => ({ date: `2026-10-${String(10 + i).padStart(2, '0')}`, eff: i % 4 === 0 ? 0.8 : 1.5, roll: 1.2 }));
+      await open({ zip: game({ series }), tango: game() });
+      const rows = [...el.querySelectorAll('#gamesNow .grow')];
+      expect(rows).toHaveLength(2);
+      const zip = rows.find((r) => r.textContent!.includes('Zip'))!;
+      expect(zip.textContent).toContain('Vas bastante más rápido de lo normal');
+      expect(zip.querySelectorAll('.dot')).toHaveLength(14);
+      expect(zip.querySelectorAll('.dot-l').length).toBe(3); // indexes 8, 12, 16 of the last 14 (6..19)
+      expect(zip.querySelector('.dots')!.getAttribute('aria-label')).toBe('Últimas 14 partidas con media: 11 mejores que la media y 3 peores.');
+    });
+
+    it('shouldDrawOnlyTheLast28DaysInTheLine', async () => {
+      const series = [
+        { date: '2026-09-01', eff: 1.5, roll: 100 }, // far outside the last 28 days: must not set the scale
+        ...Array.from({ length: 10 }, (_, i) => ({ date: `2026-11-${String(i + 1).padStart(2, '0')}`, eff: 1.5, roll: 1 + i })),
+      ];
+      await open({ zip: game({ series }) });
+      const pts = el.querySelector('#gamesNow polyline')!.getAttribute('points')!.split(' ');
+      expect(pts).toHaveLength(10);
+      expect(pts[0]).toBe('0.0,22.0'); // the lowest of the last 28 days sits at the bottom: the old point (100) is not in the scale
+    });
+
+    it('shouldKeepTheTablesAndChartsOneClickAwayUnderMoreDetail', async () => {
+      await open({ zip: game() });
+      const more = el.querySelector<HTMLDetailsElement>('#cg-games-more')!;
+      expect(more.open).toBe(false);
+      expect(more.querySelector('#gamesTable')).not.toBeNull();
+      expect(more.querySelector('#gamesChart')).not.toBeNull();
+    });
+
+    it('shouldDropOnlyTheRowOfAMalformedGame', async () => {
+      await open({ zip: game({ windows: {} }), tango: game() });
+      expect(el.querySelectorAll('#gamesNow .grow')).toHaveLength(1);
+    });
+  });
 });
