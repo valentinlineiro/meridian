@@ -40,9 +40,34 @@
         <tbody id="gamesDataRows">@for (r of t?.view?.rows; track $index) {<tr><th scope="row">{{ r[0] }}</th><td class="num">{{ r[1] }}</td><td class="num">{{ r[2] }}</td><td class="num">{{ r[3] }}</td></tr>}</tbody></table></div>
     </app-help>
   </app-section>
+  <app-section title="Dónde pierdes" sectionId="cg-games-loss">
+    @if (loss(); as l) {
+      <p class="muted" id="gamesLossNote">{{ l.sentence }}</p>
+      <div class="tblwrap" tabindex="0" role="region" aria-label="Derrotas por juego y día de la semana (desplazable)"><table class="gtable gloss" id="gamesLoss"><caption class="sr-only">Porcentaje de partidas en las que no le ganas a la media, por juego y día de la semana. Un guion es que hay pocas partidas.</caption>
+        <thead><tr><th scope="col">Juego</th>@for (d of l.days; track d) {<th scope="col">{{ d }}</th>}<th scope="col">Derrotas por poco</th></tr></thead>
+        <tbody>@for (r of l.rows; track r.k) {<tr><th scope="row">{{ r.name }}</th>@for (c of r.cells; track $index) {<td [class]="'num gl' + c.level" [attr.title]="c.title">{{ c.text }}</td>}<td>{{ r.near }}</td></tr>}</tbody></table></div>
+    } @else if (loss() === null) {<div class="muted">No disponible</div>}
+    <app-help label="Cómo leer este mapa">
+      <p>Cada casilla es la parte de las partidas de ese juego y día en las que tu tiempo no fue mejor que la media. Solo se muestran con 8 partidas o más. Pasa el ratón por encima para ver las derrotas y el intervalo de confianza.</p>
+      <p>«Por poco» son las derrotas en las que tu tiempo estuvo menos de un 15 % por encima de la media. Entre semana la media es mucho más rápida, así que perder un lunes no es lo mismo que perder un domingo.</p>
+    </app-help>
+  </app-section>
+  <app-section title="Dificultad de los últimos días" sectionId="cg-games-diff" [open]="false">
+    @if (diff(); as d) {
+      <p class="muted" id="gamesDiffNote">{{ d.sentence || 'Aún no hay días clasificados.' }}</p>
+      <div class="gdiff" id="gamesDiff" role="img" [attr.aria-label]="d.sentence">
+        @for (h of ['L','M','X','J','V','S','D']; track $index) {<span class="gdh" aria-hidden="true">{{ h }}</span>}
+        @for (c of d.cells; track c.date) {<span [class]="'gd gd-' + (c.level ?? 'none')" [attr.title]="c.text">{{ c.day }}</span>}
+      </div>
+    } @else if (diff() === null) {<div class="muted">No disponible</div>}
+    <app-help label="Cómo se decide">
+      <p>Un día es «duro» si la media de LinkedIn fue de las más lentas para ese juego y ese día de la semana (el tercio más lento de tu histórico), y «fácil» si fue de las más rápidas. El día entero toma el nivel que comparten más juegos; si empatan, «normal». Es solo contexto: no cambia ninguna cifra.</p>
+    </app-help>
+  </app-section>
   <app-section title="Por día de la semana" sectionId="cg-games-week" [open]="false">
     @if (week(); as w) {
       <p class="muted" id="gamesWeekNote">{{ w.sentence || 'Todos los juegos juntos, con todo tu histórico, frente a la media de cada día.' }}</p>
+      <p class="muted">Ojo: el fin de semana la media de LinkedIn es mucho más lenta, así que esta tabla refleja en parte lo difícil que es cada día y no solo cómo juegas.</p>
       <div class="tblwrap" tabindex="0" role="region" aria-label="Perfil por día de la semana (desplazable)"><table class="gtable gweek" id="gamesWeek"><caption class="sr-only">Cómo te van los juegos según el día de la semana</caption>
         <thead><tr><th scope="col">Día</th><th scope="col">Partidas</th><th scope="col">Velocidad frente a la media</th><th scope="col">Le ganas a la media</th></tr></thead>
         <tbody>@for (r of w.rows; track r.day) {<tr><th scope="row">{{ r.day }}</th><td class="num">{{ r.n }}</td><td>{{ r.speed }}</td><td class="num">{{ r.beat }}</td></tr>}</tbody></table></div>

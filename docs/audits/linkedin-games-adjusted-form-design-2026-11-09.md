@@ -1,6 +1,6 @@
 # Diseño: forma ajustada por dificultad, dificultad del día y mapa de derrotas (LinkedIn Games, 2026-11-09, rev. 1)
 
-Estado: **propuesto, pendiente de revisión.** Sin código todavía. Parte de la vista de lectura P0 y la interpretación P1 (`f77fc30`). Análisis exploratorio reproducible en `linkedin-games-adjusted-form/explore_1.py` y `explore_2.py` (leen `linkedin_games_historico_actualizado_v54.xlsx`, hoja `Historico_494`; 830 resultados, 176 días, 2026-05-17..2026-11-09; **no es una lectura de producción**).
+Estado: **aprobado e implementado** (decisión §5.1: intervalo por bootstrap; §5.2 se mantiene; §5.3: el propietario confirmó que los datos coinciden, sin lectura de producción). Parte de la vista de lectura P0 y la interpretación P1 (`f77fc30`). Análisis exploratorio reproducible en `linkedin-games-adjusted-form/explore_1.py` y `explore_2.py` (leen `linkedin_games_historico_actualizado_v54.xlsx`, hoja `Historico_494`; 830 resultados, 176 días, 2026-05-17..2026-11-09; **no es una lectura de producción**).
 
 ## 1. Problema
 El dashboard resume el rendimiento con «gana a la media» y eficiencia (`media/tiempo`). Ambas dependen de la dificultad del día, y la dificultad cambia de forma sistemática con el día de la semana. El comentario de `GameStats.ts` afirma que la eficiencia «ya normaliza la dificultad del día»; **los datos lo contradicen** (§2.2).
