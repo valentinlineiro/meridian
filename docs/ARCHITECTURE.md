@@ -58,6 +58,14 @@ web/src/app/
 - Each view tolerates a malformed or failed response on its own: a card says "No disponible" (or a dash), never a zero.
 - Product wording rules and the layout rules of the global stylesheet are guarded from the root suite
   (`tests/webCopyInvariants.test.ts`); behaviour is tested in `web/` (`npm run web:test`).
+- Design system (stable; change it only for a concrete need, see PR #130):
+  - Tokens live in the `:root` block of `web/src/styles.css`: colours (`--bg`, `--surface`, `--line`, `--muted`, `--accent`, `--ok`, `--err`, pill sets…),
+    radii (`--r-sm|md|lg|pill`) and type (`--fs-xs|sm|md|lg|xl|h|display`). No raw hex, `font-size` or `border-radius` in px outside `:root`;
+    `tests/webDesignTokens.test.ts` fails if one appears.
+  - Controls: one global rule styles `input`/`select`; contexts only set widths. `.btn` + `.btn-g` is the default button, `.btn-p` a primary action,
+    and a toggled button is `.btn[aria-pressed=true]` (never a class swap).
+  - Dialogs use `<app-modal>` (`shared/modal.ts`): Escape, backdrop click, Tab trap, initial focus and focus restore. Not native `<dialog>`
+    because jsdom has no `showModal()`. Scroll lock and `inert` are deliberately not implemented.
 
 ### Decision: Angular, through a strangler (2026-11)
 
