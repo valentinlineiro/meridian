@@ -1,6 +1,6 @@
 # Diseño: colector de LinkedIn Games (2026-11-09)
 
-Estado: borrador para revisión. Sin código. D1 y D2 resueltas el 2026-11-09 (§8). Parte del contrato `docs/contracts/2026-10-13-linkedin-games-ingestion-contract.md` (L1–L10), que ya prevé "un colector externo".
+Estado: **DESCARTADO el 2026-11-09 por el propietario.** La Fase 0 mostró que la sesión funciona una vez desde Actions y LinkedIn la revoca después (probe v3, run 42604273448), y leer de LinkedIn supone demasiada fricción y riesgo para la cuenta. Sustituye: importación por texto o tabla (contrato L11). Se conserva como registro de lo aprendido. Borrador original: Sin código. D1 y D2 resueltas el 2026-11-09 (§8). Parte del contrato `docs/contracts/2026-10-13-linkedin-games-ingestion-contract.md` (L1–L10), que ya prevé "un colector externo".
 
 ## 1. Objetivo y decisión de riesgo
 Registrar los resultados diarios sin teclearlos, con el mismo patrón que el colector de Duolingo (programado, sin intervención). El propietario eligió este camino conociendo el riesgo:

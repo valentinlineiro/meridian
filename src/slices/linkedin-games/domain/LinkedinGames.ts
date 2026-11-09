@@ -89,5 +89,5 @@ export function withGame(day: DayRecord, game: string, entry: GameEntry): DayRec
 
 // Same games (ignoring when it was captured): saving it again would only add a duplicate version.
 export const sameGames = (a: DayRecord, b: DayRecord): boolean => JSON.stringify(sortKeys(a.games)) === JSON.stringify(sortKeys(b.games));
-const sortKeys = (v: unknown): unknown =>
+export const sortKeys = (v: unknown): unknown =>
   v && typeof v === "object" && !Array.isArray(v) ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, sortKeys((v as any)[k])])) : v;

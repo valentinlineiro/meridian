@@ -5,6 +5,7 @@ import { ApiClient } from '../../core/api-client';
 import { safe } from '../../core/guard';
 import { GamesChart } from './games-chart';
 import { GamesEntryModal } from './games-entry-modal';
+import { GamesQuickEntry } from './games-quick-entry';
 import { GamesTable } from './games-table';
 import { cardOrder, Day, defaultTrajGame, GAME_NAMES, gameCard, gameName, gamesHero, localToday, Range, RANGES, Summary, trajectory } from './games.model';
 
@@ -15,7 +16,7 @@ const HERO_IDLE = { label: 'LinkedIn Games · racha actual', streak: '—', meta
 
 @Component({
   selector: 'app-games',
-  imports: [GamesChart, GamesEntryModal, GamesTable],
+  imports: [GamesChart, GamesEntryModal, GamesQuickEntry, GamesTable],
   templateUrl: './games.html',
 })
 export class Games {

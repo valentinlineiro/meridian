@@ -54,11 +54,11 @@ app.use("/api/*", async (c, next) => {
 //   GET|HEAD /login, POST /login                -> public (the login itself; POST is same-origin + throttled)
 //   write (not GET/HEAD)                        -> IMPORT_TOKEN (machine)        [except identity writes below]
 //   machine read (pending-details, pending-threats, pending-engine) -> IMPORT_TOKEN
-//   POST /api/me/sync, PUT /api/me/settings, PUT /api/me/linkedin-games, PUT /api/me/changes-anchor, POST /logout -> owner session + same-origin (CSRF)
+//   POST /api/me/sync, PUT /api/me/settings, PUT /api/me/linkedin-games, POST /api/me/linkedin-games/import, PUT /api/me/changes-anchor, POST /logout -> owner session + same-origin (CSRF)
 //   everything else, incl. HTML + unknown       -> owner session cookie (HTML -> redirect to /login, API -> 401)
 // Identity is a signed session cookie issued by /login for ADMIN_EMAIL; nothing else is trusted.
 const MACHINE_READ = new Set(["/api/chess/matches/pending-details", "/api/chess/matches/pending-threats", "/api/chess/matches/pending-engine"]);
-const IDENTITY_WRITE = new Set(["/api/me/sync", "/api/me/settings", "/api/me/linkedin-games", "/api/me/changes-anchor", "/logout"]);
+const IDENTITY_WRITE = new Set(["/api/me/sync", "/api/me/settings", "/api/me/linkedin-games", "/api/me/linkedin-games/import", "/api/me/changes-anchor", "/logout"]);
 
 const sha256 = async (s: string) => new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)));
 
