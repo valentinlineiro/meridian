@@ -176,3 +176,42 @@ describe("linkedin games manual entry over HTTP and D1", () => {
     expect(res.status).toBe(400);
   });
 });
+
+describe("linkedin games import over HTTP and D1", () => {
+  const imp = async (body: unknown, headers: Record<string, string> = {}) =>
+    worker.fetch(new Request(`${BASE}/api/me/linkedin-games/import`, { method: "POST", headers: { cookie: await cookie(), ...SAME, ...headers }, body: JSON.stringify(body) }), env);
+  const text = "P, 5, 16\nZ, 6, 12";
+  const today = new Date().toISOString().slice(0, 10);
+
+  it("shouldPreviewWithoutWritingAndThenStoreOneSnapshotOfTheDayWhenApplied", async () => {
+    const preview = await imp({ text, today });
+    expect(preview.status).toBe(200);
+    expect(await preview.json()).toMatchObject({ ok: true, applied: false, errors: [], days: [{ date: today, games: [{ game: "patches", status: "new" }, { game: "zip", status: "new" }] }] });
+    expect(rows()).toHaveLength(0);
+
+    const applied = await imp({ text, today, apply: true });
+    expect(await applied.json()).toMatchObject({ applied: true });
+    expect(rows()).toHaveLength(1);
+    expect(JSON.parse((rows()[0] as { raw_json: string }).raw_json).games.zip.score).toBe("0:06");
+    expect((await (await get(today)).json() as { day: { games: object } }).day.games).toHaveProperty("patches");
+  });
+
+  it("shouldAnswerWithLineErrorsAndWriteNothingWhenATextLineIsNotUnderstood", async () => {
+    const r = await imp({ text: "Z, 6, 12\nhola", today, apply: true });
+    expect(await r.json()).toMatchObject({ applied: false, errors: [{ line: 2 }] });
+    expect(rows()).toHaveLength(0);
+  });
+
+  it("shouldRefuseTheImportTokenAloneAndACrossSiteRequest", async () => {
+    const machine = await worker.fetch(new Request(`${BASE}/api/me/linkedin-games/import`, { method: "POST", headers: { authorization: "Bearer t", ...SAME }, body: JSON.stringify({ text, today, apply: true }) }), env);
+    expect(machine.status).toBe(401);
+    const cross = await imp({ text, today, apply: true }, { "sec-fetch-site": "cross-site" });
+    expect(cross.status).toBeGreaterThanOrEqual(400);
+    expect(rows()).toHaveLength(0);
+  });
+
+  it("shouldRejectABodyWithoutTextOrToday", async () => {
+    expect((await imp({ today })).status).toBe(400);
+    expect((await imp({ text })).status).toBe(400);
+  });
+});

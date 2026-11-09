@@ -17,6 +17,7 @@
       <div id="gamesToday" class="chips">@for (c of chips(); track c.k) {<button type="button" [class]="'pill ' + (c.done ? 'pill-win' : 'pill-scope')" [attr.data-game]="c.k" (click)="entry.open(c.k)">{{ c.text }}</button>}</div>
     </div>
   </div>
+  <app-games-quick-entry (saved)="data.reload()" />
   <div id="gamesNote" class="muted" role="status">{{ note() }}</div>
   <div class="cindex" id="gamesRange" role="group" aria-label="Periodo de análisis"><span class="muted" style="align-self:center">Periodo</span>@for (r of ranges; track r.k) {<button type="button" class="btn btn-g" [id]="'gr-' + r.k" [attr.aria-pressed]="range() === r.k" (click)="range.set(r.k)">{{ r.l }}</button>}</div>
   <details class="cgroup" id="cg-games-cmp" open><summary>Comparativa</summary>
