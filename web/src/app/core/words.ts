@@ -52,6 +52,14 @@ export function verdictFor(e: Engine): Verdict {
   }
 }
 
+/** The four epistemic states of an evaluation card, said with the same words and pills as the games verdicts. */
+export const EVAL_VERDICTS: Record<'AFIRMADO' | 'INDICIO' | 'INSUFICIENTE' | 'SIN INDICIO', Verdict> = {
+  'AFIRMADO': { state: 'confirmed', dir: null, label: 'Confirmado', pill: 'pill pill-win', sentence: '' },
+  'INDICIO': { state: 'possible', dir: null, label: 'Posible señal', pill: 'pill pill-selected', sentence: 'Se ve una señal, pero con lo que hay todavía no podemos darla por buena.' },
+  'INSUFICIENTE': { state: 'few-data', dir: null, label: 'Aún pocos datos', pill: 'pill pill-draw', sentence: 'Aún no hay datos suficientes para responder en este periodo.' },
+  'SIN INDICIO': { state: 'no-signal', dir: null, label: 'Sin señales de cambio', pill: 'pill', sentence: 'No se ve un cambio claro con este criterio. Eso no demuestra que no haya habido cambio.' },
+};
+
 export const verdictKey = (v: Verdict): string => v.dir ? `${v.state}-${v.dir}` : v.state;
 /** What needs a look comes first. */
 export const VERDICT_ORDER = ['confirmed-down', 'possible-down', 'possible-up', 'confirmed-up', 'no-signal', 'few-data'];

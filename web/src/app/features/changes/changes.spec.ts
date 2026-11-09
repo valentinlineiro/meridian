@@ -469,7 +469,7 @@ describe('Changes', () => {
     it('shouldKeepTheEvaluationsWhenTheWindowHasNoActivity', async () => {
       await open({ wc: () => quietPayload([evaluation]) });
       expect(empty()!.textContent).toMatch(/^No hay actividad registrada entre/);
-      expect(findings()).toContain('INSUFICIENTE');
+      expect(findings()).toContain('Aún pocos datos');
       expect(el.querySelector('#changesActivity')!.children.length).toBe(0);
     });
   });
@@ -479,7 +479,7 @@ describe('Changes', () => {
     const boot = async () => {
       mode = 'ok';
       await open({ wc: () => mode === 'fail' ? FAIL : mode === 'net' ? NET : mode === 'malformed' ? {} : activePayload });
-      expect(findings()).toContain('INSUFICIENTE');
+      expect(findings()).toContain('Aún pocos datos');
     };
 
     it('shouldClearFindingsAndActivityWhenTheRequestFails', async () => {
@@ -695,7 +695,7 @@ describe('Changes', () => {
       await open2({ findings: 'oops' });
       const na = [...el.querySelectorAll('#changesFindings .card')].find((c) => c.querySelector('h3')?.textContent === 'Hallazgos');
       expect(na!.textContent).toContain('No disponible');
-      expect(findings()).toContain('INSUFICIENTE'); // the evaluations still render
+      expect(findings()).toContain('Aún pocos datos'); // the evaluations still render
       expect(empty()).toBeNull(); // not a quiet window: it could not be read
     });
 
