@@ -50,17 +50,17 @@ export function chartGeometry(b: readonly Bucket[], W = DEFAULT_W) {
   template: `
     @if (g(); as c) {
       <svg class="gchart" [attr.viewBox]="c.viewBox" role="img" aria-label="Evolución de la eficiencia y del porcentaje que gana a la media, con el n de cada punto. Los mismos datos están en la tabla siguiente.">
-        <line [attr.x1]="c.L" [attr.x2]="c.xr" [attr.y1]="c.y1" [attr.y2]="c.y1" stroke="#1e2e44" stroke-width="1" stroke-dasharray="3 3" />
-        <text x="2" [attr.y]="c.hiY" fill="#8ea0b8" font-size="11">{{ c.hi }}</text><text x="2" [attr.y]="c.loY" fill="#8ea0b8" font-size="11">{{ c.lo }}</text><text x="2" [attr.y]="c.y1t" fill="#8ea0b8" font-size="11">×1</text>
-        @for (l of c.eff.lines; track $index) {<polyline [attr.points]="l" fill="none" stroke="#7aa7e6" stroke-width="1.5" />}
-        @for (p of c.eff.dots; track $index) {<circle [attr.cx]="p.cx" [attr.cy]="p.cy" r="3" fill="#7aa7e6"><title>{{ p.title }}</title></circle>}
-        <line [attr.x1]="c.L" [attr.x2]="c.xr" [attr.y1]="c.mid" [attr.y2]="c.mid" stroke="#1e2e44" stroke-width="1" stroke-dasharray="3 3" />
-        <text x="2" y="98" fill="#8ea0b8" font-size="11">100 %</text><text x="2" y="143" fill="#8ea0b8" font-size="11">0 %</text>
-        @for (l of c.beat.lines; track $index) {<polyline [attr.points]="l" fill="none" stroke="#2ea043" stroke-width="1.5" />}
-        @for (p of c.beat.dots; track $index) {<circle [attr.cx]="p.cx" [attr.cy]="p.cy" r="3" fill="#2ea043"><title>{{ p.title }}</title></circle>}
-        <line [attr.x1]="c.L" [attr.x2]="c.xr" y1="178" y2="178" stroke="#1e2e44" stroke-width="1" /><text x="2" y="176" fill="#8ea0b8" font-size="11">n</text>
-        @for (r of c.bars; track $index) {<rect [attr.x]="r.x" [attr.y]="r.y" [attr.width]="c.bw" [attr.height]="r.h" fill="#6e7a8e"><title>{{ r.title }}</title></rect>}
-        <text [attr.x]="c.L" y="192" fill="#8ea0b8" font-size="11">{{ c.first }}</text><text [attr.x]="c.xr" y="192" fill="#8ea0b8" font-size="11" text-anchor="end">{{ c.last }}</text>
+        <line [attr.x1]="c.L" [attr.x2]="c.xr" [attr.y1]="c.y1" [attr.y2]="c.y1" stroke="var(--line)" stroke-width="1" stroke-dasharray="3 3" />
+        <text x="2" [attr.y]="c.hiY" fill="var(--muted)" font-size="11">{{ c.hi }}</text><text x="2" [attr.y]="c.loY" fill="var(--muted)" font-size="11">{{ c.lo }}</text><text x="2" [attr.y]="c.y1t" fill="var(--muted)" font-size="11">×1</text>
+        @for (l of c.eff.lines; track $index) {<polyline [attr.points]="l" fill="none" stroke="var(--link)" stroke-width="1.5" />}
+        @for (p of c.eff.dots; track $index) {<circle [attr.cx]="p.cx" [attr.cy]="p.cy" r="3" fill="var(--link)"><title>{{ p.title }}</title></circle>}
+        <line [attr.x1]="c.L" [attr.x2]="c.xr" [attr.y1]="c.mid" [attr.y2]="c.mid" stroke="var(--line)" stroke-width="1" stroke-dasharray="3 3" />
+        <text x="2" y="98" fill="var(--muted)" font-size="11">100 %</text><text x="2" y="143" fill="var(--muted)" font-size="11">0 %</text>
+        @for (l of c.beat.lines; track $index) {<polyline [attr.points]="l" fill="none" stroke="var(--ok)" stroke-width="1.5" />}
+        @for (p of c.beat.dots; track $index) {<circle [attr.cx]="p.cx" [attr.cy]="p.cy" r="3" fill="var(--ok)"><title>{{ p.title }}</title></circle>}
+        <line [attr.x1]="c.L" [attr.x2]="c.xr" y1="178" y2="178" stroke="var(--line)" stroke-width="1" /><text x="2" y="176" fill="var(--muted)" font-size="11">n</text>
+        @for (r of c.bars; track $index) {<rect [attr.x]="r.x" [attr.y]="r.y" [attr.width]="c.bw" [attr.height]="r.h" fill="var(--neutral)"><title>{{ r.title }}</title></rect>}
+        <text [attr.x]="c.L" y="192" fill="var(--muted)" font-size="11">{{ c.first }}</text><text [attr.x]="c.xr" y="192" fill="var(--muted)" font-size="11" text-anchor="end">{{ c.last }}</text>
       </svg>
     } @else {
       <div class="muted">Sin observaciones con media en este periodo.</div>

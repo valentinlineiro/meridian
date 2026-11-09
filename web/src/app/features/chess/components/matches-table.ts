@@ -52,12 +52,12 @@ const CHIPS: { group: FilterGroup; label: string; options: [string, string][] }[
   selector: 'app-matches-table',
   template: `
     @let f = m.filters();
-    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px"><h2>Partidas</h2><span class="muted" style="font-size:12px" id="chessMatchesSubtitle">{{ subtitle() }}</span><a class="btn btn-g" style="font-size:11px;padding:3px 8px;margin-left:8px" href="/api/export/matches.csv" download>Exportar CSV</a></div>
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px"><h2>Partidas</h2><span class="muted" style="font-size:var(--fs-sm)" id="chessMatchesSubtitle">{{ subtitle() }}</span><a class="btn btn-g" style="font-size:var(--fs-xs);padding:3px 8px;margin-left:8px" href="/api/export/matches.csv" download>Exportar CSV</a></div>
     <div class="filters" id="matchChips">
       @for (c of chips; track c.group) {
         <div class="fgroup" role="group" [attr.aria-label]="c.label"><span class="flabel">{{ c.label }}</span>
           @for (o of c.options; track o[0]) {
-            <button type="button" [attr.data-chip]="c.group + ':' + o[0]" [class]="'btn ' + (f[c.group] === o[0] ? 'btn-p' : 'btn-g')" (click)="m.setFilter(c.group, o[0])">{{ o[1] }}</button>
+            <button type="button" [attr.data-chip]="c.group + ':' + o[0]" class="btn btn-g" [attr.aria-pressed]="f[c.group] === o[0]" (click)="m.setFilter(c.group, o[0])">{{ o[1] }}</button>
           }
         </div>
       }
@@ -85,8 +85,8 @@ const CHIPS: { group: FilterGroup; label: string; options: [string, string][] }[
         @for (r of rows(); track (r.id ?? r.date + r.opp)) {
           <tr [class.gamerow]="!!r.id" [attr.title]="r.id ? 'Ver partida' : null" (click)="r.id && m.open(r.id)">
             <td data-l="Fecha" [attr.title]="r.fullDate">{{ r.date }}</td>
-            <td data-l="Rival">@if (r.id) {<button type="button" class="rowbtn" [attr.aria-label]="'Ver partida vs ' + r.opp + ', ' + r.date" (click)="$event.stopPropagation(); m.open(r.id)">{{ r.opp }}</button>} @else {{{ r.opp }}}@if (r.seg) {<span class="pill" style="font-size:10px;margin-left:4px;opacity:.85">{{ r.seg }}</span>}</td>
-            <td data-l="Tipo"><span class="pill" [style.border-color]="r.pvp ? '#58a6ff' : null" [style.color]="r.pvp ? '#a8c8ff' : null">{{ r.type }}</span>@if (r.opening) {<span class="pill" style="font-size:10px;margin-left:4px;opacity:.75">{{ r.opening }}</span>}@if (r.phase) {<span class="pill" style="font-size:10px;margin-left:4px;opacity:.8">{{ r.phase }}</span>}</td>
+            <td data-l="Rival">@if (r.id) {<button type="button" class="rowbtn" [attr.aria-label]="'Ver partida vs ' + r.opp + ', ' + r.date" (click)="$event.stopPropagation(); m.open(r.id)">{{ r.opp }}</button>} @else {{{ r.opp }}}@if (r.seg) {<span class="pill" style="font-size:var(--fs-xs);margin-left:4px;opacity:.85">{{ r.seg }}</span>}</td>
+            <td data-l="Tipo"><span class="pill" [style.border-color]="r.pvp ? 'var(--info)' : null" [style.color]="r.pvp ? 'var(--link)' : null">{{ r.type }}</span>@if (r.opening) {<span class="pill" style="font-size:var(--fs-xs);margin-left:4px;opacity:.75">{{ r.opening }}</span>}@if (r.phase) {<span class="pill" style="font-size:var(--fs-xs);margin-left:4px;opacity:.8">{{ r.phase }}</span>}</td>
             <td data-l="ELO">{{ r.elo }}</td>
             <td data-l="Color">{{ r.color }}</td>
             <td data-l="Resultado"><span [class]="r.res.cls">{{ r.res.label }}</span></td>

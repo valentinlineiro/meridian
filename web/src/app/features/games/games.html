@@ -4,16 +4,16 @@
   <div class="hero-card" id="gamesHero">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px">
       <div>
-        <div id="gamesHeroStreakLabel" class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.05em">{{ h.label }}</div>
-        <div style="display:flex;align-items:baseline;gap:8px;margin-top:2px"><span id="gamesHeroStreak" style="font-size:28px;font-weight:800;line-height:1">{{ h.streak }}</span></div>
-        <div id="gamesHeroMeta" class="muted" style="font-size:12px;margin-top:4px">{{ h.meta }}</div>
+        <div id="gamesHeroStreakLabel" class="muted" style="font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.05em">{{ h.label }}</div>
+        <div style="display:flex;align-items:baseline;gap:8px;margin-top:2px"><span id="gamesHeroStreak" style="font-size:var(--fs-display);font-weight:800;line-height:1">{{ h.streak }}</span></div>
+        <div id="gamesHeroMeta" class="muted" style="font-size:var(--fs-sm);margin-top:4px">{{ h.meta }}</div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
         <button class="btn btn-p" type="button" id="gamesEntryOpen" (click)="entry.open()">Registrar resultado</button>
-        <span id="gamesHeroDays" class="muted" style="font-size:12px">{{ h.days }}</span>
+        <span id="gamesHeroDays" class="muted" style="font-size:var(--fs-sm)">{{ h.days }}</span>
       </div>
     </div>
-    <div style="margin-top:14px"><div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Hoy · toca un juego para registrarlo</div>
+    <div style="margin-top:14px"><div class="muted" style="font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Hoy · toca un juego para registrarlo</div>
       <div id="gamesToday" class="chips">@for (c of chips(); track c.k) {<button type="button" [class]="'pill ' + (c.done ? 'pill-win' : 'pill-scope')" [attr.data-game]="c.k" (click)="entry.open(c.k)">{{ c.text }}</button>}</div>
     </div>
   </div>
@@ -46,7 +46,7 @@
             @for (t of c.interp; track $index) {<p [class]="$first ? 'ginterp' : 'muted'">{{ t }}</p>}
             <p class="gcap">Periodo: {{ c.window }}</p>
             <dl class="gmetrics">@for (m of c.metrics; track m.l) {<div><dt>{{ m.l }}</dt><dd>{{ m.v }}</dd>@if (m.s) {<dd class="muted">{{ m.s }}</dd>}</div>}</dl>
-            <div>@if (c.spark) {<svg class="spark" viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true"><polyline [attr.points]="c.spark" fill="none" stroke="#7aa7e6" stroke-width="1.5" vector-effect="non-scaling-stroke" /></svg>}</div>
+            <div>@if (c.spark) {<svg class="spark" viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true"><polyline [attr.points]="c.spark" fill="none" stroke="var(--link)" stroke-width="1.5" vector-effect="non-scaling-stroke" /></svg>}</div>
             <p class="gcap">Mediana móvil de 28 días (suavizada)</p>
           </section>
         }

@@ -6,22 +6,22 @@
   <div class="hero-card" id="chessHero">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px">
       <div>
-        <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.05em">Ajedrez · Nivel actual</div>
+        <div class="muted" style="font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.05em">Ajedrez · Nivel actual</div>
         <div style="display:flex;align-items:baseline;gap:8px;margin-top:2px">
-          <span id="chessHeroElo" style="font-size:28px;font-weight:800;line-height:1">{{ h.elo }}</span>
-          <span id="chessHeroEloSub" class="muted" style="font-size:12px">{{ h.sub }}</span>
+          <span id="chessHeroElo" style="font-size:var(--fs-display);font-weight:800;line-height:1">{{ h.elo }}</span>
+          <span id="chessHeroEloSub" class="muted" style="font-size:var(--fs-sm)">{{ h.sub }}</span>
         </div>
-        <div id="chessHeroMeta" class="muted" style="font-size:12px;margin-top:4px">{{ h.meta }}</div>
+        <div id="chessHeroMeta" class="muted" style="font-size:var(--fs-sm);margin-top:4px">{{ h.meta }}</div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
-        <span id="chessHeroStreak" [class]="h.pill" style="font-size:12px;font-weight:600">{{ h.streak }}</span>
-        <span id="chessHeroGames" class="muted" style="font-size:12px">{{ h.games }}</span>
+        <span id="chessHeroStreak" [class]="h.pill" style="font-size:var(--fs-sm);font-weight:600">{{ h.streak }}</span>
+        <span id="chessHeroGames" class="muted" style="font-size:var(--fs-sm)">{{ h.games }}</span>
       </div>
     </div>
     <div style="margin-top:14px">
-      <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:12px;margin-bottom:6px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:var(--fs-sm);margin-bottom:6px">
         <span id="chessHeroWrLabel" style="font-weight:600">{{ h.wr }}</span>
-        <span id="chessHeroDistMeta" class="muted" style="font-size:11px">{{ h.distMeta }}</span>
+        <span id="chessHeroDistMeta" class="muted" style="font-size:var(--fs-xs)">{{ h.distMeta }}</span>
       </div>
       <div class="distribution-bar" id="chessHeroDist">
         @if (h.dist; as b) {
@@ -45,7 +45,7 @@
   <div class="card" id="formCard" style="margin-top:12px"><h2>Forma actual</h2>
     <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:10px"><span class="muted">Últimas</span>
       @for (n of [20, 50, 100]; track n) {
-        <button type="button" [id]="'b' + n" [class]="'btn ' + ((recentN() ?? 50) === n ? 'btn-p' : 'btn-g')" (click)="setRecent(n)">{{ n }}</button>
+        <button type="button" [id]="'b' + n" class="btn btn-g" [attr.aria-pressed]="(recentN() ?? 50) === n" (click)="setRecent(n)">{{ n }}</button>
       }
       <span class="muted" id="formMeta" style="margin-left:6px"></span></div>
     <div id="form">
@@ -55,13 +55,13 @@
       } @else if (f) {
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;text-align:center">
           <div>
-            <div class="muted" style="font-size:11px;letter-spacing:.04em;text-transform:uppercase">{{ f.now.head }}</div>
+            <div class="muted" style="font-size:var(--fs-xs);letter-spacing:.04em;text-transform:uppercase">{{ f.now.head }}</div>
             <div style="font-weight:700">{{ f.now.wr }}</div>
             <div class="muted">{{ f.now.detail }}</div>
-            @if (f.delta) { <div class="muted" style="margin-top:4px;font-size:11px">{{ f.delta }}</div> }
+            @if (f.delta) { <div class="muted" style="margin-top:4px;font-size:var(--fs-xs)">{{ f.delta }}</div> }
           </div>
-          <div style="border-left:1px solid #1e2e44;padding-left:8px">
-            <div class="muted" style="font-size:11px;letter-spacing:.04em;text-transform:uppercase">{{ f.before.head }}</div>
+          <div style="border-left:1px solid var(--line);padding-left:8px">
+            <div class="muted" style="font-size:var(--fs-xs);letter-spacing:.04em;text-transform:uppercase">{{ f.before.head }}</div>
             <div style="font-weight:700">{{ f.before.wr }}</div>
             <div class="muted">{{ f.before.detail }}</div>
           </div>
@@ -79,7 +79,7 @@
     <div class="grid2">
       <div class="card" id="colCard"><h2>Rendimiento por color</h2><div id="colDiff" class="muted" style="margin-bottom:8px">{{ x?.colDiff }}</div>
         <div id="col">@if (x) {@if (x.col; as g) {<m-compare [groups]="g" [total]="x.total" />} @else {<div class="muted">No disponible</div>}}</div></div>
-      <div class="card" id="oppCard"><h2>Oponentes por familia</h2><div class="muted" style="font-size:11px;margin-bottom:6px">Las diferencias por familia de oponente no aíslan la dificultad del rival.</div><div id="oppMacro" class="muted" style="margin-bottom:8px">{{ x?.oppMacro }}</div>
+      <div class="card" id="oppCard"><h2>Oponentes por familia</h2><div class="muted" style="font-size:var(--fs-xs);margin-bottom:6px">Las diferencias por familia de oponente no aíslan la dificultad del rival.</div><div id="oppMacro" class="muted" style="margin-bottom:8px">{{ x?.oppMacro }}</div>
         <div id="opp">@if (x) {@if (x.opp; as g) {<m-compare [groups]="g" [total]="x.total" />} @else {<div class="muted">No disponible</div>}}</div></div>
     </div>
   </details>
@@ -90,7 +90,7 @@
 
   <details class="cgroup" id="cg-evo" [open]="!phone" #cgEvo><summary>Evolución &amp; detalle</summary>
     <div class="grid2">
-      <div class="card" id="evoCard"><h2>Evolución · ELO</h2><div class="muted" style="font-size:11px">ELO observado en sincronizaciones</div>
+      <div class="card" id="evoCard"><h2>Evolución · ELO</h2><div class="muted" style="font-size:var(--fs-xs)">ELO observado en sincronizaciones</div>
         <div id="evo">@if (x) {@if (x.evo; as e) {<m-sparkline [points]="e.points" />} @else {<div class="muted">No disponible</div>}}</div>
         <div class="muted" id="evoNote" style="margin-top:6px">{{ x?.evo?.note }}</div></div>
       <div class="card" id="resCard"><h2>Resultados</h2>
@@ -98,11 +98,11 @@
         <div class="muted" id="lossContext" style="margin-top:8px">{{ x?.res?.loss }}</div><div class="muted" id="lossRateNote" style="margin-top:4px">{{ x?.res?.rate }}</div><div class="muted" id="drawContext" style="margin-top:4px">{{ x?.res?.draw }}</div></div>
     </div>
     <details id="eloDetails" class="card" style="margin-top:12px">
-      <summary style="cursor:pointer;font-weight:600;font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:#8ea0b8">ELO del rival <span id="eloSummaryMeta" class="muted" style="font-weight:400;text-transform:none">{{ x?.elo?.meta }}</span></summary>
+      <summary style="cursor:pointer;font-weight:600;font-size:var(--fs-md);letter-spacing:.05em;text-transform:uppercase;color:var(--muted)">ELO del rival <span id="eloSummaryMeta" class="muted" style="font-weight:400;text-transform:none">{{ x?.elo?.meta }}</span></summary>
       <div style="margin-top:12px" id="eloCard">
         <div id="elo">@if (x) {@if (x.elo; as e) {
-          <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:baseline"><span style="font-size:22px;font-weight:700">{{ e.known }} <span class="muted" style="font-size:13px;font-weight:400">con ELO</span></span><span class="muted">{{ e.share }}</span></div>
-          <div class="hist">@for (b of e.hist; track b.k) {<div class="hist-row"><span>{{ b.k }}</span><div class="bar"><i [style.width]="b.w" style="background:#58a6ff"></i></div><span style="width:36px;text-align:right">{{ b.v }}</span></div>}</div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:baseline"><span style="font-size:var(--fs-h);font-weight:700">{{ e.known }} <span class="muted" style="font-size:var(--fs-md);font-weight:400">con ELO</span></span><span class="muted">{{ e.share }}</span></div>
+          <div class="hist">@for (b of e.hist; track b.k) {<div class="hist-row"><span>{{ b.k }}</span><div class="bar"><i [style.width]="b.w" style="background:var(--info)"></i></div><span style="width:36px;text-align:right">{{ b.v }}</span></div>}</div>
         } @else {<div class="muted">No disponible</div>}}</div>
         <div class="muted" id="eloNote" style="margin-top:6px">{{ x?.elo?.note }}</div>
       </div>
@@ -110,7 +110,7 @@
   </details>
 
   <details class="cgroup" id="chessEngineProfileDetails" open #engineDetails>
-    <summary style="cursor:pointer;font-weight:600;font-size:13px;color:#8ea0b8;padding:10px 0">Perfil de juego y análisis de motor (Stockfish) ▾</summary>
+    <summary style="cursor:pointer;font-weight:600;font-size:var(--fs-md);color:var(--muted);padding:10px 0">Perfil de juego y análisis de motor (Stockfish) ▾</summary>
     <div id="chessEngineProfileContent"><app-engine-profile [profile]="profile()" [cut]="cut()" (cutChange)="setCut($event)" /></div>
   </details>
 
@@ -119,8 +119,8 @@
   </div>
 
   <details class="methodology-disclosure" id="chessMethodology" style="margin-top:16px;margin-bottom:16px">
-    <summary style="cursor:pointer;font-weight:600;font-size:13px;color:#8ea0b8">¿Cómo sabemos esto? <span class="muted" style="font-weight:400">· Integridad epistemológica y taxonomía canónica</span></summary>
-    <div style="margin-top:10px;font-size:12px;line-height:1.5;color:#8ea0b8">
+    <summary style="cursor:pointer;font-weight:600;font-size:var(--fs-md);color:var(--muted)">¿Cómo sabemos esto? <span class="muted" style="font-weight:400">· Integridad epistemológica y taxonomía canónica</span></summary>
+    <div style="margin-top:10px;font-size:var(--fs-sm);line-height:1.5;color:var(--muted)">
       <p style="margin:6px 0"><b>1. Modelo Result/Outcome hermético:</b> Cada partida clasifica su resultado en la tríada canónica (victoria, derrota o tablas) reconciliando <code>result</code> y <code>outcome</code> reportados por Duolingo. La causa de fin se asigna con taxonomía canónica exhaustiva (checkmate, resignation, timeout, stalemate, repetition, insufficient material, fifty moves) sin estados ambiguos ni inventados.</p>
       <p style="margin:6px 0"><b>2. Segmentación de oponentes (Bot vs PvP):</b> Los rivales se clasifican deterministamente según su identificador y tipología (bots por motor: Noisy Neural, Neural, Blended, Stockfish vs jugadores humanos en PvP). Cuando una muestra es pequeña (ej. PvP o muestras n &lt; 50), se reporta explícitamente el tamaño muestral evitando inferencias apresuradas.</p>
       <p style="margin:6px 0"><b>3. Observación de ELO y marcas temporales:</b> El ELO registrado corresponde a observaciones de sincronización contra el perfil de la fuente. Las fechas reflejan la marca canónica <code>played_at</code> (o primera observación en <code>first_seen_at</code>).</p>

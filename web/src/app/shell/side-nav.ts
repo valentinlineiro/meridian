@@ -35,7 +35,7 @@ const LABELS: Record<string, string> = {
       <div class="side-group">Cuenta</div>
       <button id="syncBtn" class="btn btn-p side-sync" type="button" (click)="sync.start()" [disabled]="sync.busy()"
         aria-describedby="syncScopeHint" title="Sincroniza cuentas conectadas (Duolingo). LinkedIn Games es registro manual.">{{ sync.lastSyncLabel() }}</button>
-      <div class="muted side-note" id="syncScopeHint" style="font-size:11px;margin-top:2px;line-height:1.3">Fuentes conectadas (Duolingo) · Games manual</div>
+      <div class="muted side-note" id="syncScopeHint" style="font-size:var(--fs-xs);margin-top:2px;line-height:1.3">Fuentes conectadas (Duolingo) · Games manual</div>
       <small class="muted side-note" aria-live="polite">{{ sync.note() }}</small>
       <a class="side-item" routerLink="/settings" routerLinkActive="active" ariaCurrentWhenActive="page">Configuración</a>
       <form method="post" action="/logout" style="margin:0"><button class="side-item" type="submit">Salir</button></form>

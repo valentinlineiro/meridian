@@ -13,7 +13,7 @@ const W = 520, H = 90, PAD = 10;
       <div class="muted">Sin datos</div>
     } @else if (ps.length === 1) {
       <div style="min-height:96px;display:flex;flex-direction:column;justify-content:center">
-        <div style="font-size:32px;font-weight:800;line-height:1">{{ ps[0].elo }}</div>
+        <div style="font-size:var(--fs-display);font-weight:800;line-height:1">{{ ps[0].elo }}</div>
         <div class="muted" style="margin-top:4px">Primer snapshot · {{ firstLabel() }}</div>
         <div class="muted" style="margin-top:8px;font-style:italic">La evolución aparecerá cuando haya más días de datos.</div>
       </div>
@@ -21,9 +21,9 @@ const W = 520, H = 90, PAD = 10;
       @let c = chart()!;
       <svg [attr.viewBox]="'0 0 ' + W + ' ' + H" width="100%" height="96" style="display:block">
         <path [attr.d]="c.area" fill="#1f6feb18" stroke="none" />
-        <path [attr.d]="c.line" fill="none" stroke="#58a6ff" stroke-width="1.8" stroke-linejoin="round" />
-        <text [attr.x]="PAD" y="12" fill="#8ea0b8" font-size="10">{{ c.max }}</text>
-        <text [attr.x]="PAD" [attr.y]="H - 2" fill="#8ea0b8" font-size="10">{{ c.min }}</text>
+        <path [attr.d]="c.line" fill="none" stroke="var(--info)" stroke-width="1.8" stroke-linejoin="round" />
+        <text [attr.x]="PAD" y="12" fill="var(--muted)" font-size="10">{{ c.max }}</text>
+        <text [attr.x]="PAD" [attr.y]="H - 2" fill="var(--muted)" font-size="10">{{ c.min }}</text>
       </svg>
       <div class="muted" style="display:flex;justify-content:space-between"><span>{{ ps[0].date }}</span><span>{{ ps[ps.length - 1].date }}</span></div>
     }

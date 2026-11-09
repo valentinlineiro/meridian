@@ -1,9 +1,10 @@
-import { afterNextRender, Component, computed, DestroyRef, ElementRef, inject, Injector, output, signal } from '@angular/core';
+import { Component, computed, DestroyRef, inject, output, signal } from '@angular/core';
 import { rxResource, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
 import { map } from 'rxjs';
 import { ApiClient } from '../../core/api-client';
 import { safe } from '../../core/guard';
+import { Modal } from '../../shared/modal';
 import { Day, dayLine, GAME_NAMES, localToday } from './games.model';
 
 const URL = '/api/me/linkedin-games';
@@ -15,11 +16,10 @@ interface Saved { ok?: boolean; error?: string; day?: Day | null }
  */
 @Component({
   selector: 'app-games-entry-modal',
-  host: { '(document:keydown)': 'onKey($event)' },
+  imports: [Modal],
   template: `
     @if (isOpen()) {
-      <div id="lgModal" class="modal" style="display:flex" role="dialog" aria-modal="true" aria-labelledby="lgTitle" (click)="$event.target === $event.currentTarget && close()">
-        <div class="card gamecard lgcard">
+      <app-modal modalId="lgModal" labelledby="lgTitle" initialFocus="#lgScore" cardClass="lgcard" (dismissed)="close()">
           <div class="gamehead"><b id="lgTitle">Registrar resultado</b><button class="btn btn-g" type="button" (click)="close()" aria-label="Cerrar">✕</button></div>
           <div class="muted">Lo introduces tú; no se lee nada de LinkedIn. Tiempos como M:SS.</div>
           <label for="lgGame">Juego</label>
@@ -36,8 +36,7 @@ interface Saved { ok?: boolean; error?: string; day?: Day | null }
           <div id="lgStatus" class="muted" role="status" style="margin-top:8px">{{ statusText() }}</div>
           <h3 style="margin:14px 0 4px">Registrado ese día</h3>
           <ul id="lgDay" class="lgday">@for (l of dayLines(); track $index) {<li [class.muted]="l.muted">{{ l.text }}</li>}</ul>
-        </div>
-      </div>
+      </app-modal>
     }
   `,
 })
@@ -46,10 +45,7 @@ export class GamesEntryModal {
   readonly saved = output<void>();
 
   private readonly api = inject(ApiClient);
-  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
-  private readonly injector = inject(Injector);
   private readonly destroyRef = inject(DestroyRef);
-  private opener: HTMLElement | null = null;
 
   protected readonly games = Object.entries(GAME_NAMES);
   protected readonly isOpen = signal(false);
@@ -80,18 +76,14 @@ export class GamesEntryModal {
 
   open(game?: string): void {
     if (this.isOpen()) return;
-    this.opener = document.activeElement as HTMLElement | null;
     if (game) this.game.set(game);
     if (!this.date()) this.date.set(localToday());
     this.status.set('');
     this.isOpen.set(true);
-    afterNextRender(() => this.host.querySelector<HTMLElement>('#lgScore')?.focus(), { injector: this.injector });
   }
 
   close(): void {
     this.isOpen.set(false);
-    this.opener?.focus();
-    this.opener = null;
   }
 
   protected setDate(v: string): void {
@@ -123,18 +115,6 @@ export class GamesEntryModal {
         this.status.set(e instanceof HttpErrorResponse && e.status !== 0 ? 'No se pudo guardar: ' + ((e.error as Saved | null)?.error || e.status) : 'No se pudo guardar.');
       },
     });
-  }
-
-  protected onKey(e: KeyboardEvent): void {
-    if (!this.isOpen()) return;
-    if (e.key === 'Escape') this.close();
-    else if (e.key === 'Tab') {
-      const f = [...this.host.querySelectorAll<HTMLElement>('#lgModal button:not([disabled]), #lgModal select, #lgModal input')];
-      if (!f.length) return;
-      const i = f.indexOf(document.activeElement as HTMLElement);
-      e.preventDefault();
-      f[e.shiftKey ? (i <= 0 ? f.length - 1 : i - 1) : (i === f.length - 1 ? 0 : i + 1)].focus();
-    }
   }
 
   protected val(e: Event): string { return (e.target as HTMLInputElement).value; }

@@ -20,25 +20,25 @@ const DENOMINATOR_UNKNOWN = 'Denominador: partidas guardadas en el historial (el
   template: `
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px">
       <h2 style="margin:0">Patrones observados &amp; cobertura de análisis</h2>
-      <span class="muted" style="font-size:11px">Intervalos Wilson al 95 % · Muestras explícitas (n)</span>
+      <span class="muted" style="font-size:var(--fs-xs)">Intervalos Wilson al 95 % · Muestras explícitas (n)</span>
     </div>
     <div class="grid2" id="chessPatternsGrid" style="margin-top:10px">
-      <div class="card" id="chessPatternColorCard" style="margin:0;background:#0d1522;border:1px solid #1e2e44">
-        <div style="font-weight:600;font-size:13px;color:#8ea0b8;margin-bottom:4px">Diferencia entre colores</div>
-        <div id="chessPatternColorConclusion" style="font-size:12px;margin:4px 0 8px">{{ conclusion() }}</div>
+      <div class="card" id="chessPatternColorCard" style="margin:0;background:var(--sunken);border:1px solid var(--line)">
+        <div style="font-weight:600;font-size:var(--fs-md);color:var(--muted);margin-bottom:4px">Diferencia entre colores</div>
+        <div id="chessPatternColorConclusion" style="font-size:var(--fs-sm);margin:4px 0 8px">{{ conclusion() }}</div>
         <div style="display:flex;gap:6px;flex-wrap:wrap">
-          <button class="btn btn-g" type="button" style="font-size:11px;padding:3px 8px" (click)="color.emit('white')">Blancas</button>
-          <button class="btn btn-g" type="button" style="font-size:11px;padding:3px 8px" (click)="color.emit('black')">Negras</button>
+          <button class="btn btn-g" type="button" style="font-size:var(--fs-xs);padding:3px 8px" (click)="color.emit('white')">Blancas</button>
+          <button class="btn btn-g" type="button" style="font-size:var(--fs-xs);padding:3px 8px" (click)="color.emit('black')">Negras</button>
         </div>
       </div>
-      <div class="card" id="chessPatternEngineCard" style="margin:0;background:#0d1522;border:1px solid #1e2e44">
-        <div style="font-weight:600;font-size:13px;color:#8ea0b8;margin-bottom:4px">Cobertura Stockfish</div>
-        <div id="chessEngineCoverageVal" style="font-size:16px;font-weight:700">{{ coverage().val }}</div>
-        <div id="chessEngineCoverageMeta" class="muted" style="font-size:11px;margin:4px 0 8px">{{ coverage().meta }}</div>
-        <div><button class="btn btn-g" type="button" style="font-size:11px;padding:3px 8px" (click)="engine.emit()">Ver análisis de motor ▾</button></div>
+      <div class="card" id="chessPatternEngineCard" style="margin:0;background:var(--sunken);border:1px solid var(--line)">
+        <div style="font-weight:600;font-size:var(--fs-md);color:var(--muted);margin-bottom:4px">Cobertura Stockfish</div>
+        <div id="chessEngineCoverageVal" style="font-size:var(--fs-xl);font-weight:700">{{ coverage().val }}</div>
+        <div id="chessEngineCoverageMeta" class="muted" style="font-size:var(--fs-xs);margin:4px 0 8px">{{ coverage().meta }}</div>
+        <div><button class="btn btn-g" type="button" style="font-size:var(--fs-xs);padding:3px 8px" (click)="engine.emit()">Ver análisis de motor ▾</button></div>
       </div>
     </div>
-    <div id="chessPatternSuggested" class="muted" style="font-size:11px;margin-top:10px">{{ suggested().text }}@if (suggested().game; as w) {<button type="button" class="btn btn-g btn-sm" (click)="matches.open(w.matchId)">Revisar vs {{ w.opponent || 'Rival' }} ({{ w.serious || 0 }} errores graves)</button>}</div>
+    <div id="chessPatternSuggested" class="muted" style="font-size:var(--fs-xs);margin-top:10px">{{ suggested().text }}@if (suggested().game; as w) {<button type="button" class="btn btn-g btn-sm" (click)="matches.open(w.matchId)">Revisar vs {{ w.opponent || 'Rival' }} ({{ w.serious || 0 }} errores graves)</button>}</div>
   `,
 })
 export class Patterns {

@@ -3,7 +3,7 @@
 @let a = x?.a;
 <div style="display:flex;justify-content:space-between;align-items:baseline;margin:8px 0 4px">
   <h2 style="margin:0">Tu perfil de ajedrez</h2>
-  <span class="muted" style="font-size:11px">Stockfish a profundidad 12</span>
+  <span class="muted" style="font-size:var(--fs-xs)">Stockfish a profundidad 12</span>
 </div>
 <p class="muted" id="profileContext" style="margin:0 0 8px 0">{{ x?.context ?? 'Calculado con Stockfish sobre tus partidas guardadas.' }}</p>
 <div class="kpis" id="profileKpis">
@@ -66,7 +66,7 @@
   @if (rows?.na) {<div class="muted">No disponible</div>} @else {
   @for (r of rs.slice(0, reviewShown); track r.id) {<ng-container *ngTemplateOutlet="gameTpl; context: { $implicit: r }" />}
   @if (rs.length > reviewShown) {
-    <details class="more-rows" style="margin-top:6px"><summary style="cursor:pointer;color:#8ea0b8;font-size:13px;padding:6px 0">Ver {{ rs.length - reviewShown }} partidas más</summary>
+    <details class="more-rows" style="margin-top:6px"><summary style="cursor:pointer;color:var(--muted);font-size:var(--fs-md);padding:6px 0">Ver {{ rs.length - reviewShown }} partidas más</summary>
       @for (r of rs.slice(reviewShown); track r.id) {<ng-container *ngTemplateOutlet="gameTpl; context: { $implicit: r }" />}</details>
   }}
 </ng-template>

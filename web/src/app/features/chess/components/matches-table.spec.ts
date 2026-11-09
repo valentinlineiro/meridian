@@ -82,8 +82,8 @@ describe('MatchesTable', () => {
     await click('[data-chip="color:white"]');
     expect(params(await answer())).toEqual({ limit: '50', offset: '0', color: 'white' });
     expect(svc.offset()).toBe(0);
-    expect(el.querySelector('[data-chip="color:white"]')!.className).toBe('btn btn-p');
-    expect(el.querySelector('[data-chip="color:"]')!.className).toBe('btn btn-g');
+    expect(el.querySelector('[data-chip="color:white"]')!.getAttribute('aria-pressed')).toBe('true');
+    expect(el.querySelector('[data-chip="color:"]')!.getAttribute('aria-pressed')).toBe('false');
     await click('[data-chip="type:pvp"]');
     await click('[data-chip="result:loss"]');
     expect(params(await answer())).toEqual({ limit: '50', offset: '0', color: 'white', opponentType: 'pvp', result: 'loss' });
