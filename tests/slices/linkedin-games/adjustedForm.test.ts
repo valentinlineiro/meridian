@@ -4,6 +4,7 @@ import { summarize } from "../../../src/slices/linkedin-games/domain/GameStats.t
 import type { Obs } from "../../../src/slices/linkedin-games/domain/GameAnalysis.ts";
 
 const TODAY = "2026-11-03";
+const dayNo = (d: string) => Math.floor(Date.parse(`${d}T00:00:00Z`) / 86_400_000);
 const addDays = (d: string, n: number) => new Date(Date.parse(`${d}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
 // One observation a day for `days` days ending today; the average varies with the day, the own time follows it with elasticity 0.5
 // and drifts by `drift` (log units per day).
@@ -47,23 +48,36 @@ describe("adjustedForm", () => {
     expect(adjustedForm(series(60), TODAY).elasticity).not.toBeNull();
   });
 
-  it("shouldRarelyCallATrendWhenTheWeeklyNoiseIsAutocorrelatedAndThereIsNone", () => {
-    // AR(1) weekly noise (0.5) aligned with the analysis weeks, plus daily noise; a plain weekly resampling labels ~35 % of these.
+  // AR(1) weekly noise (0.5) aligned with the analysis weeks, plus daily noise, and no trend. `gaps`: calendar weeks (0 = latest) with no results.
+  const noTrendCalls = (gaps: number[], N = 100) => {
     let seed = 7;
     const rand = () => { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; };
     const gauss = () => Math.sqrt(-2 * Math.log(rand() + 1e-12)) * Math.cos(2 * Math.PI * rand());
     let called = 0;
-    const N = 100;
     for (let s = 0; s < N; s++) {
       let u = 0;
       const o = Array.from({ length: 160 }, (_, i) => {
         if ((159 - i) % 7 === 0) u = 0.5 * u + Math.sqrt(0.75) * 0.15 * gauss();
         const avg = 20 + Math.floor(rand() * 60);
-        return { date: addDays(TODAY, i - 159), avg, score: Math.exp(1 + 0.5 * Math.log(avg) + u + 0.2 * gauss()) };
-      });
+        return { date: addDays(TODAY, i - 159), avg, score: Math.exp(1 + 0.5 * Math.log(avg) + u + 0.2 * gauss()), week: Math.floor((159 - i) / 7) };
+      }).filter((p) => !gaps.includes(p.week)).map(({ week: _w, ...p }) => p);
       if (["mejora", "deterioro"].includes(adjustedForm(o, TODAY).label)) called++;
     }
-    expect(called / N).toBeLessThan(0.15);
+    return called / N;
+  };
+
+  it("shouldRarelyCallATrendWhenTheWeeklyNoiseIsAutocorrelatedAndThereIsNone", () => {
+    expect(noTrendCalls([])).toBeLessThan(0.15); // a plain weekly resampling labels ~35 % of these
+  });
+
+  it("shouldRarelyCallATrendWhenSomeCalendarWeeksHaveNoResults", () => {
+    expect(noTrendCalls([2, 6, 7, 12])).toBeLessThan(0.15); // 12 of 16 weeks left, two of the gaps adjacent
+  });
+
+  it("shouldCountOnlyTheWeeksWithResultsAndKeepTheirCalendarPositions", () => {
+    const o = series(160, -0.006).filter((p) => { const w = Math.floor((dayNo(TODAY) - dayNo(p.date)) / 7); return w !== 3 && w !== 9; });
+    expect(adjustedForm(o, TODAY).trend!.weeks).toBe(14);
+    expect(adjustedForm(o, TODAY).label).toBe("mejora");
   });
 
   it("shouldSeeAClearTrendThroughNoise", () => {

@@ -53,7 +53,7 @@ function fit(obs: Obs[]): { a: number; b: number; resid: Map<string, number> } |
 
 // Theil-Sen of the weekly medians against the noise a series with no trend produces: the weekly medians (centred) are reshuffled in
 // blocks of consecutive weeks, so the dependence between neighbouring weeks stays inside each block, and `noise` is the 2.5-97.5 %
-// range of the slopes that come out. A trend outside it is a signal. Weeks without results are skipped, not filled.
+// range of the slopes that come out. A trend outside it is a signal. A week without results stays an empty slot of the calendar: blocks are consecutive calendar weeks and the empty slots travel with them.
 // Calibrated by simulation (design rev. 2, §3.A): with 16 weeks and blocks of 4, a series without trend gets a false label ~8 % of the
 // time for weekly dependence 0 to 0.5 and ~16 % at 0.8; a trend of 5 % per 28 days is seen ~25 % of the time. Weekly resampling
 // (blocks of 1) failed at 25-45 % false labels under dependence, and a residual bootstrap around the fitted line was too narrow.
@@ -62,20 +62,22 @@ function trendOf(obs: Obs[], resid: Map<string, number>, today: string, block: n
   if (pts.length < COVERAGE * TREND_DAYS) return null;
   const byWeek = new Map<number, number[]>();
   for (const o of pts) { const w = WEEKS - 1 - Math.floor((t - dayNo(o.date)) / 7); (byWeek.get(w) ?? byWeek.set(w, []).get(w)!).push(resid.get(o.date)!); }
-  const weeks = [...byWeek].sort((p, q) => p[0] - q[0]).map(([w, r]) => [w, median(r)] as const);
-  const n = weeks.length;
-  if (n < MIN_WEEKS) return null;
-  const xs = weeks.map((w) => w[0]), ys = weeks.map((w) => w[1]), centre = median(ys), e = ys.map((y) => y - centre);
+  // One slot per calendar week; a week without results stays empty (NaN) so a block is always consecutive weeks of the calendar.
+  const med = Array.from({ length: WEEKS }, (_, w) => (byWeek.has(w) ? median(byWeek.get(w)!) : NaN));
+  const seen = med.filter(Number.isFinite).length;
+  if (seen < MIN_WEEKS) return null;
+  const centre = median(med.filter(Number.isFinite)), e = med.map((y) => y - centre);
+  const slopeOf = (y: number[]) => { const xs: number[] = [], ys: number[] = []; y.forEach((v, i) => { if (Number.isFinite(v)) { xs.push(i); ys.push(v); } }); return theilSenSlope(xs, ys); };
   const pct = (v: number) => (Math.exp(v * 4) - 1) * 100;
-  const L = Math.min(block, n), rand = rng(1), out: number[] = [];
+  const L = Math.min(block, WEEKS), rand = rng(1), out: number[] = [];
   for (let i = 0; i < BOOTSTRAP; i++) {
     const star: number[] = [];
-    while (star.length < n) { const st = Math.floor(rand() * (n - L + 1)); for (let k = 0; k < L && star.length < n; k++) star.push(e[st + k]!); }
-    const sb = theilSenSlope(xs, star);
+    while (star.length < WEEKS) { const st = Math.floor(rand() * (WEEKS - L + 1)); for (let k = 0; k < L && star.length < WEEKS; k++) star.push(e[st + k]!); }
+    const sb = slopeOf(star);
     if (Number.isFinite(sb)) out.push(pct(sb));
   }
   if (out.length < BOOTSTRAP / 2) return null;
-  return { pctPer28d: pct(theilSenSlope(xs, ys)), noise: [percentile(out, 0.025), percentile(out, 0.975)], weeks: n };
+  return { pctPer28d: pct(slopeOf(med)), noise: [percentile(out, 0.025), percentile(out, 0.975)], weeks: seen };
 }
 
 export function adjustedForm(obs: Obs[], today: string, blockWeeks = BLOCK_WEEKS): AdjustedForm {
