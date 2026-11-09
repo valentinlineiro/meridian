@@ -19,7 +19,7 @@ Para volver a operar el Worker tras meses sin tocarlo. Solo describe lo comproba
 | Secreto | Para qué |
 |---|---|
 | `ADMIN_EMAIL` | único correo con acceso |
-| `ADMIN_PASSWORD_HASH` | `pbkdf2-sha256$iteraciones$sal$hash`. Se genera con `scripts/hash-password.mjs` (uso en su cabecera; la contraseña no pasa por argv) |
+| `ADMIN_PASSWORD_HASH` | `pbkdf2-sha256$iteraciones$sal$hash`. Se genera con `scripts/hash-password.ts` (uso en su cabecera; la contraseña no pasa por argv) |
 | `SESSION_SECRET` | firma las cookies (≥ 32 bytes). Rotarlo cierra todas las sesiones |
 | `IMPORT_TOKEN` | credencial de máquina del collector (escrituras y `pending-details`) |
 | `GITHUB_ACTIONS_TOKEN` | PAT que lanza y consulta el workflow del collector (permiso de Actions sobre el repo del colector, `SYNC_REPO`) |

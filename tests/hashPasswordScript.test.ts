@@ -3,10 +3,10 @@ import { spawnSync } from "node:child_process";
 import { pbkdf2PasswordVerifier, isWellFormedHash } from "../src/infrastructure/auth/pbkdf2PasswordVerifier.ts";
 
 const run = (input: string) =>
-  spawnSync("node", [new URL("../scripts/hash-password.mjs", import.meta.url).pathname], { input, encoding: "utf8", env: { PATH: process.env.PATH } });
+  spawnSync("node", [new URL("../scripts/hash-password.ts", import.meta.url).pathname], { input, encoding: "utf8", env: { PATH: process.env.PATH } });
 
 // The Worker secret ADMIN_PASSWORD_HASH is generated with this script and is not recoverable from Cloudflare.
-describe("scripts/hash-password.mjs", () => {
+describe("scripts/hash-password.ts", () => {
   it("shouldPrintAHashTheWorkerAcceptsWhenGivenALongPassword", async () => {
     const r = run("a-long-random-password-123");
     expect(r.status).toBe(0);
