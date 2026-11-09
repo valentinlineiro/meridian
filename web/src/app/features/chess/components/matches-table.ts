@@ -57,7 +57,7 @@ const CHIPS: { group: FilterGroup; label: string; options: [string, string][] }[
       @for (c of chips; track c.group) {
         <div class="fgroup" role="group" [attr.aria-label]="c.label"><span class="flabel">{{ c.label }}</span>
           @for (o of c.options; track o[0]) {
-            <button type="button" [attr.data-chip]="c.group + ':' + o[0]" [class]="'btn ' + (f[c.group] === o[0] ? 'btn-p' : 'btn-g')" (click)="m.setFilter(c.group, o[0])">{{ o[1] }}</button>
+            <button type="button" [attr.data-chip]="c.group + ':' + o[0]" class="btn btn-g" [attr.aria-pressed]="f[c.group] === o[0]" (click)="m.setFilter(c.group, o[0])">{{ o[1] }}</button>
           }
         </div>
       }

@@ -43,7 +43,7 @@ function threats(th: Threats | null | undefined) {
     }
     <div class="grid2">
       <div class="card" id="openingsCard"><h2>Repertorio de aperturas</h2>
-        <div id="openingsTabs" style="display:flex;gap:6px;margin-bottom:12px"><button type="button" [class]="'btn ' + (tab() === 'white' ? 'btn-p' : 'btn-g')" id="tabBtnBlancas" (click)="tab.set('white')">Blancas</button><button type="button" [class]="'btn ' + (tab() === 'black' ? 'btn-p' : 'btn-g')" id="tabBtnNegras" (click)="tab.set('black')">Negras</button></div>
+        <div id="openingsTabs" style="display:flex;gap:6px;margin-bottom:12px"><button type="button" class="btn btn-g" [attr.aria-pressed]="tab() === 'white'" id="tabBtnBlancas" (click)="tab.set('white')">Blancas</button><button type="button" class="btn btn-g" [attr.aria-pressed]="tab() === 'black'" id="tabBtnNegras" (click)="tab.set('black')">Negras</button></div>
         @let op = openingsView();
         <div id="openingsWhite" [hidden]="tab() !== 'white'">@if (op) {<m-compare [groups]="op.white" [total]="total()" [cap]="shown" noun="aperturas" />} @else if (op === null) {<div class="muted">No disponible</div>}</div>
         <div id="openingsBlack" [hidden]="tab() !== 'black'">@if (op) {<m-compare [groups]="op.black" [total]="total()" [cap]="shown" noun="aperturas" />} @else if (op === null) {<div class="muted">No disponible</div>}</div>

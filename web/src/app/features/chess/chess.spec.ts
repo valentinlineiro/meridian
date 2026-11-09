@@ -226,7 +226,7 @@ describe('Chess', () => {
       expect(form).toContain('Anteriores · 50');
       expect(form).not.toMatch(/score vs anteriores|vs\s+hist/); // the delta is against the earlier games, and only for the win rate
       expect(form).toContain('50,0 % [40–70] WR');
-      expect(t.el().querySelector('#b50')!.className).toBe('btn btn-p');
+      expect(t.el().querySelector('#b50')!.getAttribute('aria-pressed')).toBe('true');
     });
 
     it('shouldShowTheLaterRecentWindowWhenAnEarlierOneAnswersLast', async () => {
@@ -243,8 +243,8 @@ describe('Chess', () => {
       later.flush({ limit: 100, games: 100, wins: 90, losses: 10, draws: 0, winRate: 0.9, scoreRate: 0.9, before: { games: 0, wins: 0, losses: 0, draws: 0, winRate: null } });
       await t.tick();
       expect(t.text('form')).toContain('Últimas 100');
-      expect(t.el().querySelector('#b100')!.className).toBe('btn btn-p');
-      expect(t.el().querySelector('#b20')!.className).toBe('btn btn-g');
+      expect(t.el().querySelector('#b100')!.getAttribute('aria-pressed')).toBe('true');
+      expect(t.el().querySelector('#b20')!.getAttribute('aria-pressed')).toBe('false');
       expect(t.text('chessHeroWrLabel')).toContain('50,0 %'); // the hero is historical and does not follow the window
     });
 
@@ -372,7 +372,7 @@ describe('Chess', () => {
       t.el().querySelector<HTMLButtonElement>('#tabBtnNegras')!.click();
       await t.tick();
       expect(t.el().querySelector<HTMLElement>('#openingsBlack')!.hidden).toBe(false);
-      expect(t.el().querySelector('#tabBtnNegras')!.className).toBe('btn btn-p');
+      expect(t.el().querySelector('#tabBtnNegras')!.getAttribute('aria-pressed')).toBe('true');
       expect(t.text('openingsBlack')).toContain('Siciliana');
       expect(t.text('openingsPop')).toBe('Hidratadas: 5 / 100 partidas');
       t.el().querySelector<HTMLButtonElement>('#btnAllMatches')!.click();

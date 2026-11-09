@@ -142,9 +142,9 @@ function bodyView(b: Body, w: Win) {
           </div>
           @if (v.header.markNote) {<div class="muted" style="font-size:var(--fs-xs);margin-top:6px">Para marcar como visto, elige «Desde última visita»: esta ventana no cubre todo lo que no has visto.</div>}
           <div class="filters" style="margin-top:12px;margin-bottom:0">
-            <button type="button" class="btn" [class.btn-on]="v.header.is7d" [class.btn-g]="!v.header.is7d" (click)="choose(7)">Últimos 7 días</button>
-            <button type="button" class="btn" [class.btn-on]="v.header.is30d" [class.btn-g]="!v.header.is30d" (click)="choose(30)">Últimos 30 días</button>
-            <button type="button" class="btn" [class.btn-on]="v.header.visit" [class.btn-g]="!v.header.visit" (click)="choose(0)">Desde última visita</button>
+            <button type="button" class="btn btn-g" [attr.aria-pressed]="v.header.is7d" (click)="choose(7)">Últimos 7 días</button>
+            <button type="button" class="btn btn-g" [attr.aria-pressed]="v.header.is30d" (click)="choose(30)">Últimos 30 días</button>
+            <button type="button" class="btn btn-g" [attr.aria-pressed]="v.header.visit" (click)="choose(0)">Desde última visita</button>
           </div>
         </div>
       }</div>

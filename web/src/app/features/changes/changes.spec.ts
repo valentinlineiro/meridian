@@ -188,8 +188,8 @@ describe('Changes', () => {
       expect(server.whatChanged).toEqual([{ since: iso(7 * DAY), until: iso(0) }]);
       expect(header()).toContain('Marcar como visto');
       for (const b of ['Últimos 7 días', 'Últimos 30 días', 'Desde última visita']) expect(button(b)).toBeDefined();
-      expect(button('Desde última visita').className).toBe('btn btn-on');
-      expect(button('Últimos 7 días').className).toBe('btn btn-g');
+      expect(button('Desde última visita').getAttribute('aria-pressed')).toBe('true');
+      expect(button('Últimos 7 días').getAttribute('aria-pressed')).toBe('false');
     });
   });
 
@@ -268,7 +268,7 @@ describe('Changes', () => {
       await settle();
       expect(server.puts).toEqual([iso(0)]);
       expect(server.whatChanged.at(-1)).toEqual({ since: iso(0), until: new Date(NOW + 1000).toISOString() }); // since == now: until moves one second on
-      expect(button('Desde última visita').className).toBe('btn btn-on');
+      expect(button('Desde última visita').getAttribute('aria-pressed')).toBe('true');
     });
 
     it('shouldOfferMarkingOnlyWhenTheWindowCoversEverythingNotYetSeen', async () => {
@@ -438,8 +438,8 @@ describe('Changes', () => {
       await click('Últimos 30 días'); // the same choice again asks again (legacy setChangesInterval)
       expect(server.anchorReads).toBe(1);
       expect(server.whatChanged.map((w) => w.since)).toEqual([iso(7 * DAY), iso(7 * DAY), iso(30 * DAY), iso(30 * DAY)]);
-      expect(button('Últimos 30 días').className).toBe('btn btn-on');
-      expect(button('Desde última visita').className).toBe('btn btn-g');
+      expect(button('Últimos 30 días').getAttribute('aria-pressed')).toBe('true');
+      expect(button('Desde última visita').getAttribute('aria-pressed')).toBe('false');
       expect(header()).toContain('Mostrando cambios entre 2026-09-08 12:00 UTC y 2026-10-08 12:00 UTC');
     });
 

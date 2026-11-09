@@ -35,7 +35,7 @@
               <div class="muted" style="font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.05em">Curso seleccionado</div>
               <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
                 <span id="langCourseFlag" style="font-size:var(--fs-h)">{{ h?.flag }}</span>
-                <select id="langCourseSelect" aria-label="Curso seleccionado" (change)="select($any($event.target).value)" style="flex:1 1 0;min-width:0;max-width:100%;text-overflow:ellipsis;background:var(--sunken);color:var(--text-2);border:1px solid var(--line);border-radius:var(--r-md);padding:4px 8px;font-size:var(--fs-xl);font-weight:700">
+                <select id="langCourseSelect" aria-label="Curso seleccionado" (change)="select($any($event.target).value)" style="flex:1 1 0;min-width:0;max-width:100%;text-overflow:ellipsis;font-size:var(--fs-xl);font-weight:700">
                   @for (op of h?.options ?? []; track op.id) { <option [value]="op.id" [selected]="op.id === selected()">{{ op.label }}</option> }
                 </select>
               </div>
