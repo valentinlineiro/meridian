@@ -3,7 +3,7 @@ import { NgTemplateOutlet } from '@angular/common';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { ApiClient } from '../../core/api-client';
 import { list, safe } from '../../core/guard';
-import { EvalFinding, Evaluation, EvaluationCards } from '../../shared/evaluation-cards.component';
+import { EvalFinding, Evaluation, EvaluationCards } from '../evaluations/evaluation-cards.component';
 
 // Port of the Trayectoria tab (src/frontend.ts:478–485, src/dashboard.client.js:1667–1688 and fetchTrajectory :2008–2048).
 

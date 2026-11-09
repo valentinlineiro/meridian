@@ -6,7 +6,7 @@ import { RouterTestingHarness } from '@angular/router/testing';
 import { routes } from '../../app.routes';
 import { BROWSER_LOCATION } from '../../core/api-client';
 import { legacyRedirect } from '../../core/legacy-url';
-import { CHANGES } from '../../shared/evaluation-fixtures';
+import { CHANGES } from '../evaluations/evaluation-fixtures';
 import { Changes } from './changes.component';
 
 // Port of tests/frontendWhatChanged.test.ts, tests/frontendVisitAnchor.test.ts and the What Changed cases of

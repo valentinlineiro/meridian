@@ -3,7 +3,7 @@ import angular from 'angular-eslint';
 
 export default tseslint.config(
   // evaluation-fixtures.ts es generado (web/scripts/evaluation-fixtures.gen.ts)
-  { ignores: ['dist/**', '.angular/**', 'src/app/shared/evaluation-fixtures.ts'] },
+  { ignores: ['dist/**', '.angular/**', 'src/app/features/evaluations/evaluation-fixtures.ts'] },
   {
     files: ['src/**/*.ts'],
     extends: [...tseslint.configs.recommended, ...angular.configs.tsRecommended],

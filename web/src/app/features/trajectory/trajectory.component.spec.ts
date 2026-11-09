@@ -1,7 +1,7 @@
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { TRAJECTORY } from '../../shared/evaluation-fixtures';
+import { TRAJECTORY } from '../evaluations/evaluation-fixtures';
 import { Trajectory } from './trajectory.component';
 
 // Port of tests/frontendTrajectory.test.ts, tests/frontendTrajectoryEvaluations.test.ts and the trajectory cases of
