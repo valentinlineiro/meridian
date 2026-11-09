@@ -28,7 +28,9 @@ const game = (o: Record<string, any> = {}) => ({
   series: [{ date: '2026-10-01', eff: 1.2, roll: 1.2 }, { date: '2026-10-02', eff: 1.1, roll: 1.15 }],
   firstDate: '2026-05-17',
   windows: { '7': win(), '28': win28(), '90': win({ prev: null, delta: null }), all: win({ prev: null, delta: null }) },
-  trajectory: { '7': traj, '28': traj, '90': traj, all: traj }, ...o,
+  trajectory: { '7': traj, '28': traj, '90': traj, all: traj },
+  adjusted: { label: 'sin_cambio', elasticity: 0.5, n: 57, windows: { '7': { pct: 5, n: 6 }, '28': { pct: 12.4, n: 28 }, '90': { pct: -1, n: 57 }, all: { pct: null, n: 3 } }, trend: { pctPer28d: -4, noise: [-9, 2], weeks: 12 } },
+  losses: { cells: [0, 1, 2, 3, 4, 5, 6].map((dow) => ({ dow, n: dow === 6 ? 3 : 10, losses: dow === 0 ? 7 : 1, rate: dow === 0 ? 0.7 : 0.1, lo: 0.4, hi: 0.9 })), losses: 12, near: 3 }, ...o,
 });
 const summaryOf = (games: Record<string, unknown>, o: Record<string, unknown> = {}) =>
   ({ ok: true, summary: { days: 170, from: '2026-05-17', to: '2026-11-03', playStreak: { current: 48, max: 122 }, games, ...o } });
@@ -141,6 +143,8 @@ describe('Games', () => {
       expect(cards.map(nameOf).sort()).toEqual(['Tango', 'Zip']);
       expect(cards[0].querySelectorAll('.gcap')[0].textContent).toContain('Cifras de las últimas 4 semanas');
       expect(factsOf(cards[0])).toEqual([
+        'Forma, descontando la dificultad | bastante más rápido | de lo que pedía la dificultad de esos días',
+        'Tendencia, descontando la dificultad | Sin señales de cambio',
         'Velocidad frente a la media | un poco más rápido',
         'Le ganas a la media | 18 de 28 días',
         'Tiempo normal | 0:52 | suele estar entre 0:43 y 1:04',
@@ -657,6 +661,60 @@ describe('Games', () => {
       expect(block.querySelector('table')!.getAttribute('aria-describedby')).toBe('gamesDataCaption');
       expect(block.querySelectorAll('thead th[scope="col"]')).toHaveLength(4);
       expect(el.querySelector('#gamesChart svg')!.getAttribute('aria-label')).toContain('Los mismos datos están en la tabla siguiente.');
+    });
+  });
+  describe('adjusted form, loss map and difficulty', () => {
+    it('shouldShowTheFormWithoutTheDifficultyAndItsTrendInTheSameVerdictWords', async () => {
+      await open({ zip: game({ adjusted: { ...game().adjusted, label: 'mejora' } }) });
+      const card = el.querySelector('.gcard')!.textContent!;
+      expect(card).toContain('Forma, descontando la dificultad');
+      expect(card).toContain('bastante más rápido');
+      expect(card).toContain('Al alza');
+      expect(card).toContain('entre −9 % y +2 %'); // the figures live in "Cómo se calcula"
+      expect(card).toContain('Forma de este periodo: +12 % (n=28)');
+    });
+
+    it('shouldSayFewDataWhenThereIsNoFit', async () => {
+      const none = { label: 'pocos_datos', elasticity: null, n: 40, windows: game().adjusted.windows, trend: null };
+      await open({ zip: game({ adjusted: { ...none, windows: { '7': { pct: null, n: 0 }, '28': { pct: null, n: 0 }, '90': { pct: null, n: 0 }, all: { pct: null, n: 0 } } } }) });
+      expect(el.querySelector('.gcard')!.textContent).toContain('Aún pocos datos');
+    });
+
+    it('shouldNameTheWorstWeekdayOnlyWhenItHasEnoughGames', async () => {
+      await open({ queens: game() });
+      expect(text('gamesLossNote')).toBe('Donde más pierdes: Queens los lunes (70 %, 10 partidas).');
+      const cells = [...el.querySelectorAll('#gamesLoss tbody td')].map((c) => c.textContent!.trim());
+      expect(cells[0]).toBe('70 %');
+      expect(cells[6]).toBe('—'); // Sunday has 3 games
+      expect(cells[7]).toBe('25 % por poco');
+    });
+
+    it('shouldStillNameTheWorstWeekdayWhenEveryRateIsLow', async () => {
+      const calm = game({ losses: { cells: [0, 1, 2, 3, 4, 5, 6].map((dow) => ({ dow, n: 10, losses: dow === 3 ? 2 : 1, rate: dow === 3 ? 0.2 : 0.1, lo: 0.02, hi: 0.4 })), losses: 8, near: 0 } });
+      await open({ zip: calm });
+      expect(text('gamesLossNote')).toBe('Donde más pierdes: Zip los jueves (20 %, 10 partidas).');
+    });
+
+    it('shouldSayThereIsNotEnoughWhenNoWeekdayHasEightGames', async () => {
+      const few = game({ losses: { cells: [0, 1, 2, 3, 4, 5, 6].map((dow) => ({ dow, n: 7, losses: 3, rate: 3 / 7, lo: 0.1, hi: 0.8 })), losses: 21, near: 0 } });
+      await open({ zip: few });
+      expect(text('gamesLossNote')).toContain('Aún no hay ningún día');
+    });
+
+    it('shouldDrawTheLastFourWeeksOfDifficultyMondayFirst', async () => {
+      const difficulty = [{ date: '2026-11-02', level: 'duro' }, { date: '2026-11-03', level: 'facil' }];
+      await open({ zip: game() }, undefined, { difficulty });
+      const cells = [...el.querySelectorAll('#gamesDiff .gd')];
+      expect(cells).toHaveLength(28);
+      expect(cells[21].className).toContain('gd-duro'); // Monday 2 Nov is the first day of the last week
+      expect(cells[22].className).toContain('gd-facil');
+      expect(cells[0].className).toContain('gd-none');
+      expect(text('gamesDiffNote')).toBe('En estas 4 semanas: 1 días fáciles, 0 normales y 1 duros.');
+    });
+
+    it('shouldWarnThatTheWeekdayTableMixesInTheDifficultyOfTheDay', async () => {
+      await open({ zip: game() }, undefined, { weekdays: [{ dow: 0, n: 20, beat: { rate: 0.75 }, eff: { median: 1.2 } }] });
+      expect(el.querySelector('#cg-games-week')!.textContent).toContain('lo difícil que es cada día');
     });
   });
 });

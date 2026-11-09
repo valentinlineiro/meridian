@@ -2,11 +2,12 @@ import { beats, block, dayNo, efficiencyOf as eff, median, trajectory, windows, 
 import { arrow28, candidate, publish, type Arrow, type Label, type Reason } from "./GameInterpretation.ts";
 import type { DayRecord } from "./LinkedinGames.ts";
 import { NOISE_BANDS, type Band, type GameBands, type NoiseBands } from "./NoiseBands.ts";
+import { adjustedForm, dayLevels, dowOf, lossMap, type AdjustedForm, type Level, type LossMap } from "./AdjustedForm.ts";
 import { recent28vBase56, trend112, type Recent28vBase56, type Trend112 } from "./GameTrend.ts";
 
 // Read-side metrics over the recorded days (design: docs/audits/linkedin-games-read-view-design-2026-11-03.md).
-// Efficiency = the day's published average over the player's time: above 1 is faster than the average, and it already
-// normalises the difficulty of the day.
+// Efficiency = the day's published average over the player's time: above 1 is faster than the average. It only partly
+// normalises the difficulty of the day (the own time moves less than the average: see `adjusted`, AdjustedForm.ts).
 export const WINDOW_DAYS = 28; // four whole weeks: cancels the weekend effect when two windows are compared
 const DAY_MS = 86_400_000;
 const addDays = (date: string, n: number) => new Date(Date.parse(`${date}T00:00:00Z`) + n * DAY_MS).toISOString().slice(0, 10);
@@ -42,6 +43,8 @@ export interface GameSummary {
   recent28vBase56: Recent28vBase56 | null;
   interpretation: Interpretation;
   trajectory: Record<RangeKey, Bucket[]>;
+  adjusted: AdjustedForm;
+  losses: LossMap;
 }
 /** Monday = 0 … Sunday = 6: how all the games together went on that weekday, over the whole history. */
 export interface Weekday { dow: number; n: number; beat: BeatBlock; eff: EffBlock }
@@ -51,6 +54,7 @@ export interface Summary {
   to: string | null;
   playStreak: Streak;
   weekdays: Weekday[];
+  difficulty: Array<{ date: string; level: Level }>;
   games: Record<string, GameSummary>;
 }
 
@@ -97,6 +101,8 @@ function gameSummary(game: string, obs: Obs[], today: string, noise: NoiseBands)
     recent28vBase56: recent,
     interpretation: { label: published.label, reason: published.reason, candidate: now.label, previousCandidate: before.label, pending: published.pending, bands, calibratedThrough: bands ? noise.calibratedThrough : null },
     trajectory: trajectory(obs, today),
+    adjusted: adjustedForm(obs, today),
+    losses: lossMap(obs),
     series: withAvg.map((o) => ({
       date: o.date,
       eff: eff(o),
@@ -105,7 +111,6 @@ function gameSummary(game: string, obs: Obs[], today: string, noise: NoiseBands)
   };
 }
 
-const dowOf = (date: string): number => (new Date(`${date}T00:00:00Z`).getUTCDay() + 6) % 7;
 function weekdays(obs: Obs[]): Weekday[] {
   return Array.from({ length: 7 }, (_, dow) => {
     const mine = obs.filter((o) => dowOf(o.date) === dow), b = block(mine);
@@ -133,6 +138,7 @@ export function summarize(days: DayRecord[], today: string, noise: NoiseBands = 
     to: played[played.length - 1]?.date ?? null,
     playStreak: streak(played, today),
     weekdays: weekdays([...byGame.values()].flat()),
+    difficulty: dayLevels([...byGame.values()]),
     games: Object.fromEntries([...byGame].map(([g, obs]) => [g, gameSummary(g, obs, today, noise)])),
   };
 }

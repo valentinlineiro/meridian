@@ -63,3 +63,22 @@ export const EVAL_VERDICTS: Record<'AFIRMADO' | 'INDICIO' | 'INSUFICIENTE' | 'SI
 export const verdictKey = (v: Verdict): string => v.dir ? `${v.state}-${v.dir}` : v.state;
 /** What needs a look comes first. */
 export const VERDICT_ORDER = ['confirmed-down', 'possible-down', 'possible-up', 'confirmed-up', 'no-signal', 'few-data'];
+
+/** How far ahead of (or behind) what the day's difficulty asked for, in words (pct > 0 is faster); the percent stays in "Cómo se calcula". */
+const FORM_TIERS: [upTo: number, phrase: [faster: string, slower: string]][] = [[10, ['algo más rápido', 'algo más lento']], [20, ['bastante más rápido', 'bastante más lento']]];
+export const formWords = (pct: number | null): string => {
+  if (pct == null) return 'Aún pocos datos';
+  if (Math.abs(pct) < 3) return 'a la par';
+  const [faster, slower] = FORM_TIERS.find(([upTo]) => Math.abs(pct) < upTo)?.[1] ?? ['mucho más rápido', 'mucho más lento'];
+  return pct > 0 ? faster : slower;
+};
+
+/** The trend of the difficulty-adjusted form, in the same verdict vocabulary (the interval, not two weeks, is its rule). */
+export function formVerdict(label: string): Verdict {
+  switch (label) {
+    case 'mejora': return { state: 'confirmed', dir: 'up', label: 'Al alza', pill: 'pill pill-win', sentence: 'Teniendo en cuenta lo difícil que era cada día, vas cada vez más rápido.' };
+    case 'deterioro': return { state: 'confirmed', dir: 'down', label: 'A la baja', pill: 'pill pill-warn', sentence: 'Teniendo en cuenta lo difícil que era cada día, vas cada vez más lento.' };
+    case 'sin_cambio': return { state: 'no-signal', dir: null, label: 'Sin señales de cambio', pill: 'pill', sentence: 'Con la dificultad en cuenta no se ve un cambio claro.' };
+    default: return { state: 'few-data', dir: null, label: 'Aún pocos datos', pill: 'pill pill-draw', sentence: 'Aún no hay historial suficiente para ajustar por dificultad.' };
+  }
+}

@@ -1,7 +1,7 @@
 // Port of the LinkedIn Games view builders (src/dashboard.client.js:1787–1943). Pure: the range is a parameter, not a global.
 // Nothing here is computed beyond formatting: labels, bands and arrows come from the server's contract.
 import { fmtClock, fmtDate } from '../../core/format';
-import { beatDays, PERIODS, PeriodKey, speedWords, typicalTime, Verdict, verdictFor, verdictKey, VERDICT_ORDER } from '../../core/words';
+import { beatDays, formVerdict, formWords, PERIODS, PeriodKey, speedWords, typicalTime, Verdict, verdictFor, verdictKey, VERDICT_ORDER } from '../../core/words';
 
 export type Range = PeriodKey;
 export type Label = 'mejora_sostenida' | 'estable' | 'deterioro' | 'datos_insuficientes';
@@ -23,9 +23,17 @@ export interface Game {
   recent28vBase56: { delta: number; nCur: number; nBase: number };
   interpretation: Interp; series: { roll: number }[];
   windows: Record<Range, Win>; trajectory: Record<Range, Bucket[]>;
+  adjusted: Adjusted; losses: Losses;
 }
+export interface Adjusted {
+  label: 'mejora' | 'deterioro' | 'sin_cambio' | 'pocos_datos'; elasticity: number | null; n: number;
+  windows: Record<Range, { pct: number | null; n: number }>; trend: { pctPer28d: number; noise: [number, number]; weeks: number } | null;
+}
+export interface LossCell { dow: number; n: number; losses: number; rate: number | null; lo: number | null; hi: number | null }
+export interface Losses { cells: LossCell[]; losses: number; near: number }
+export type Level = 'facil' | 'normal' | 'duro';
 export interface Weekday { dow: number; n: number; beat: { rate: number | null }; eff: { median: number | null } }
-export interface Summary { weekdays?: Weekday[]; days: number; from: string | null; to: string | null; playStreak?: { current: number; max: number } | null; games: Record<string, Game> }
+export interface Summary { weekdays?: Weekday[]; difficulty?: { date: string; level: Level }[]; days: number; from: string | null; to: string | null; playStreak?: { current: number; max: number } | null; games: Record<string, Game> }
 export interface Day { games?: Record<string, { score?: string | null; avg?: string | null; number?: number | null }> }
 
 export const GAME_NAMES: Record<string, string> = { zip: 'Zip', tango: 'Tango', queens: 'Queens', mini_sudoku: 'Mini Sudoku', patches: 'Patches', wend: 'Wend' };
@@ -141,6 +149,7 @@ export function weekdayRows(s: Summary) {
   const best = ok[0], weak = ok[ok.length - 1];
   const sentence = ok.length >= 2 && best.eff.median! > weak.eff.median!
     ? `Tu mejor día frente a la media es el ${DAYS[best.dow]}; el más flojo, el ${DAYS[weak.dow]}.` : '';
+  // The average itself is slower on weekends, so part of this table is the difficulty of the day, not the player.
   return { rows, sentence };
 }
 
@@ -151,6 +160,23 @@ export function gameSpark(series: { roll: number }[]): string {
   return v.map((y, i) => (i / (v.length - 1) * 100).toFixed(1) + ',' + (22 - (y - lo) / r * 20).toFixed(1)).join(' ');
 }
 
+/** The player's form with the difficulty of the days taken out: the number first, then its trend with the same verdict words. */
+function formStats(x: Game, range: Range): { l: string; v: string; s?: string }[] {
+  const a = x.adjusted, w = a.windows[range], v = formVerdict(a.label);
+  return [
+    { l: 'Forma, descontando la dificultad', v: formWords(w.pct), s: w.pct == null ? undefined : 'de lo que pedía la dificultad de esos días' },
+    { l: 'Tendencia, descontando la dificultad', v: v.label },
+  ];
+}
+function formLines(x: Game, range: Range): string[] {
+  const a = x.adjusted;
+  if (a.elasticity == null) return ['Descontar la dificultad necesita al menos 60 resultados con media de este juego (hay ' + a.n + ').'];
+  return [
+    'Forma descontando la dificultad: tu tiempo se compara con el que cabía esperar según la media de ese día, con tu propia historia (n=' + a.n + '). Forma de este periodo: ' + (a.windows[range].pct == null ? '—' : gsigned(a.windows[range].pct, ' %') + ' (n=' + a.windows[range].n + ')') + '. Cuando la media sube un 10 %, tu tiempo sube un ' + gnum(a.elasticity * 10, 1) + ' %.',
+    a.trend ? 'Tendencia: tu tiempo cambia ' + gsigned(a.trend.pctPer28d, ' %') + ' cada 4 semanas (con ruido solo, este juego daría entre ' + gsigned(a.trend.noise[0], ' %') + ' y ' + gsigned(a.trend.noise[1], ' %') + '), con la pendiente de los últimos 112 días y ' + a.trend.weeks + ' semanas. El ruido sale de barajar bloques de 4 semanas seguidas, que conservan que una semana se parece a la anterior.' : 'Tendencia: faltan resultados en los últimos 112 días (hacen falta al menos 68 y 10 semanas con datos).',
+  ];
+}
+
 export function gameCard(k: string, x: Game, s: Summary, range: Range) {
   const w = x.windows[range], e = w.delta && w.delta.effRel, v = verdictOf(x), t = typicalTime(w.time.median, w.time.p25, w.time.p75);
   const dl = e && e.value != null ? gsigned(e.value * 100, ' %') + ' vs periodo previo (n=' + e.nCur + '/' + e.nPrev + ')' : 'sin periodo previo comparable';
@@ -159,6 +185,7 @@ export function gameCard(k: string, x: Game, s: Summary, range: Range) {
     period: RANGE_NAMES[range],
     // What is read first: words, a time, a count of days.
     stats: [
+      ...formStats(x, range),
       { l: 'Velocidad frente a la media', v: speedWords(w.eff.median) },
       { l: 'Le ganas a la media', v: beatDays(w.beat.k, w.beat.nBeat) },
       { l: 'Tiempo normal', v: t.main, s: t.range },
@@ -167,7 +194,7 @@ export function gameCard(k: string, x: Game, s: Summary, range: Range) {
     ],
     // The formulas and fine print: the engine's own sentences and the figures behind every word above.
     how: {
-      lines: interpretationLines(x),
+      lines: [...interpretationLines(x), ...formLines(x, range)],
       metrics: [
         { l: 'Eficiencia', v: w.eff.median == null ? '—' : '×' + gnum(w.eff.median, 2), s: w.eff.median == null ? '' : 'n=' + w.eff.nEff + ' · ' + dl },
         { l: 'Gana a la media', v: w.beat.rate == null ? '—' : gpct(w.beat.rate), s: w.beat.rate == null ? '' : 'n=' + w.beat.nBeat },
@@ -211,4 +238,41 @@ export function trajectory(s: Summary, game: string, range: Range) {
     rows: b.map((p) => [(weekly ? 'Semana del ' : '') + p.start, p.eff == null ? '—' : effText(p.eff), p.beat == null ? '—' : gpct(p.beat), String(p.n)]),
     note: 'Cifras de ' + RANGE_NAMES[range] + ', un punto por ' + (weekly ? 'semana (lunes)' : 'día') + ', sin suavizar. Línea azul: cuánto más rápido que la media vas (la línea de puntos es la media). Línea verde: la parte de los días que le ganas a la media. Barras: partidas de cada ' + (weekly ? 'semana' : 'día') + '; un hueco es un periodo sin partidas.',
   };
+}
+
+const LEVEL_TEXT: Record<Level, string> = { facil: 'fácil', normal: 'normal', duro: 'duro' };
+/** Last four whole weeks (Monday first) up to the last recorded day; a day without a level is a blank cell. */
+export function difficultyGrid(s: Summary) {
+  const list = s.difficulty ?? [];
+  if (!list.length) return undefined;
+  const by = new Map(list.map((d) => [d.date, d.level]));
+  const last = new Date(list[list.length - 1].date + 'T00:00:00Z');
+  const monday = new Date(last.getTime() - ((last.getUTCDay() + 6) % 7) * 86_400_000 - 21 * 86_400_000);
+  const cells = Array.from({ length: 28 }, (_, i) => {
+    const d = new Date(monday.getTime() + i * 86_400_000), iso = d.toISOString().slice(0, 10), level = by.get(iso) ?? null;
+    return { date: iso, day: d.getUTCDate(), level, text: level ? fmtDate(iso) + ': día ' + LEVEL_TEXT[level] : fmtDate(iso) + ': sin clasificar' };
+  });
+  const rated = cells.filter((c) => c.level);
+  const hard = rated.filter((c) => c.level === 'duro').length, easy = rated.filter((c) => c.level === 'facil').length;
+  return { cells, sentence: rated.length ? `En estas 4 semanas: ${easy} días fáciles, ${rated.length - easy - hard} normales y ${hard} duros.` : '' };
+}
+
+/** A weekday with fewer results than this is not coloured nor named. */
+export const MIN_LOSS_CELL = 8;
+export function lossRows(s: Summary) {
+  const keys = Object.keys(s.games).filter((k) => s.games[k].losses);
+  if (!keys.length) return undefined;
+  let worst: { k: string; c: LossCell } | null = null;
+  const rows = keys.map((k) => {
+    const l = s.games[k].losses;
+    for (const c of l.cells) if (c.n >= MIN_LOSS_CELL && (!worst || c.rate! > worst.c.rate!)) worst = { k, c };
+    return {
+      k, name: gameName(k), near: l.losses ? Math.round(l.near / l.losses * 100) + ' % por poco' : 'sin derrotas',
+      cells: l.cells.map((c) => c.n >= MIN_LOSS_CELL
+        ? { text: gpct(c.rate), n: c.n, level: c.rate! >= 0.5 ? 3 : c.rate! >= 0.25 ? 2 : c.rate! > 0 ? 1 : 0, title: c.losses + ' derrotas de ' + c.n + ' (entre el ' + Math.round(c.lo! * 100) + ' % y el ' + Math.round(c.hi! * 100) + ' %)' }
+        : { text: '—', n: c.n, level: -1, title: 'Aún pocos datos (' + c.n + ')' }),
+    };
+  });
+  const w = worst as { k: string; c: LossCell } | null;
+  return { rows, days: DAYS.map((d) => d.slice(0, 3)), sentence: w ? `Donde más pierdes: ${gameName(w.k)} los ${DAYS[w.c.dow]} (${gpct(w.c.rate)}, ${w.c.n} partidas).` : 'Aún no hay ningún día con partidas suficientes para decir dónde pierdes más.' };
 }
