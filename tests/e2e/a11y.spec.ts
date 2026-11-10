@@ -3,7 +3,7 @@ import AxeBuilder from '@axe-core/playwright';
 
 // Rutas principales: sin violaciones WCAG 2 A/AA detectables automáticamente.
 // No sustituye a una revisión manual.
-const ROUTES = ['/overview', '/trajectory', '/changes', '/games', '/chess', '/languages', '/profile', '/settings'];
+const ROUTES = ['/overview', '/trajectory', '/changes', '/games', '/games/queens', '/chess', '/languages', '/profile', '/settings'];
 
 test.describe('Accesibilidad (axe)', () => {
   test.beforeEach(async ({ page }) => {

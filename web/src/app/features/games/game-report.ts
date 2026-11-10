@@ -45,6 +45,7 @@ export class GameReport {
   protected readonly traj = computed(() => safe(() => trajectory(this.summary(), this.game(), '90'), null));
   protected readonly evidence = computed(() => safe(() => evidenceLines(this.x()), [] as string[]));
 
+  protected count = (n: number, one: string) => `${n} ${one}${n === 1 ? '' : 's'}`;
   protected pct = (r: number) => Math.round(r * 100) + ' %';
   protected short = (d: string) => d.slice(8, 10) + '/' + d.slice(5, 7);
 }

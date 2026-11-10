@@ -244,3 +244,7 @@ a.grow{color:inherit}a.grow:hover{background:var(--hover);text-decoration:none}
 .wkbeat i{display:block;width:100%;max-width:26px;min-height:2px;background:var(--ok);border-radius:var(--r-sm) var(--r-sm) 0 0}.wkbeat span{font-size:var(--fs-xs);color:var(--muted)}
 .wkbeat [data-complete=false] i{background:transparent;border:1px dashed var(--line-strong)}
 .gtable tr[data-selected=true]>td{background:var(--selected)}
+@media(max-width:760px){.grow-h a{display:inline-flex;align-items:center;min-height:44px}} /* the game name is a link: a touch target on phones */
+.gr-day{display:grid;grid-template-columns:5.5rem minmax(0,1fr);gap:2px 10px;align-items:center;padding:6px 0;font-size:var(--fs-md)}.gr-day .gr-txt{grid-column:2;color:var(--text-2)}
+@media(min-width:761px){.gr-day{grid-template-columns:5.5rem minmax(0,1fr) 17rem}.gr-day .gr-txt{grid-column:auto;text-align:right}}
+@media(max-width:760px){#gameReportLevel thead{display:none}} /* the stacked cells carry their own labels */

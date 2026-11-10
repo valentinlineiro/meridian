@@ -26,10 +26,10 @@
 
   <p style="margin:16px 0 4px"><b>Por día de la semana</b> <span class="muted">— partidas en las que no le ganas a la media</span></p>
   @if (weekdays(); as d) {
-    <div class="prof" id="gameReportWeekdays">
+    <div class="gr-days" id="gameReportWeekdays">
       @for (r of d.rows; track r.day) {
-        <div class="prof-bar"><span>{{ r.day }}</span><div class="bar"><i [class]="r.stands ? 'bar-hot' : 'bar-err'" [style.width.%]="r.enough && r.rate !== null ? r.rate * 100 : 0"></i></div>
-          <b>@if (r.enough && r.rate !== null) {{{ pct(r.rate) }} · {{ r.losses }} derrotas, {{ r.wins }} victorias@if (r.stands) { · destaca}} @else {— · pocas partidas (n = {{ r.n }})}</b></div>
+        <div class="gr-day"><span>{{ r.day }}</span><div class="bar"><i [class]="r.stands ? 'bar-hot' : 'bar-err'" [style.width.%]="r.enough && r.rate !== null ? r.rate * 100 : 0"></i></div>
+          <span class="gr-txt">@if (r.enough && r.rate !== null) {<b>{{ pct(r.rate) }}</b> · {{ count(r.losses, 'derrota') }}, {{ count(r.wins, 'victoria') }}@if (r.stands) { · <b>destaca</b>}} @else {— · pocas partidas (n = {{ r.n }})}</span></div>
       }
     </div>
     <p class="muted" id="gameReportWeekdaysWindow">Ventana fija: todo el histórico. «Destaca» es que el límite inferior del intervalo de derrotas de ese día supera la tasa de derrotas del juego.</p>

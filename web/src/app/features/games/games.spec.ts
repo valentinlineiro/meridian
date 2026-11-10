@@ -84,6 +84,16 @@ describe('Games', () => {
     http = TestBed.inject(HttpTestingController);
   });
 
+  describe('the list links to each report', () => {
+    it('shouldLinkEachGameRowToItsReport', async () => {
+      await open({ queens: game(), zip: game() });
+      const links = [...el.querySelectorAll('#gamesNow .grow-h a')];
+      expect(links.map((a) => a.getAttribute('href')).sort()).toEqual(['/games/queens', '/games/zip']);
+      expect(links.map((a) => a.getAttribute('aria-label')).sort()).toEqual(['Informe de Queens', 'Informe de Zip']);
+      expect(links.map((a) => a.textContent!.trim()).sort()).toEqual(['Queens', 'Zip']); // the visible name is the link
+    });
+  });
+
   describe('report mode (/games/:game)', () => {
     const openReport = async (games: Record<string, unknown> | Body, key = 'queens') => {
       fixture = TestBed.createComponent(Games);
