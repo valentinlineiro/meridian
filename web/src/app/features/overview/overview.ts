@@ -22,7 +22,6 @@ interface OverviewData {
 
 const NA = 'No disponible';
 const orNull = <T>(o: Observable<T>) => o.pipe(catchError(() => of(null)));
-const newest = (isos: (string | null | undefined)[]) => isos.filter((v): v is string => !!v).sort().pop() ?? null;
 const chip = (iso: string | null, now: number) => iso ? { text: 'datos de ' + relDate(iso, now), stale: isStale(iso, now) } : null;
 
 function view(d: OverviewData, now: number) {
@@ -33,8 +32,9 @@ function view(d: OverviewData, now: number) {
   const c = chessRow({ recent: d.recent, summary: d.stats, timeline: d.timeline, matches: d.matches, syncedAt: chessSynced, now });
   const spark = sparkPoints(snaps.filter((s) => s.elo != null).slice(-30).map((s) => s.elo!));
 
-  // The XP rows know when they were written; the catalogue's date is only the fallback.
-  const xpSynced = newest(d.summaries?.map((r) => r.updatedAt) ?? []) ?? d.langs?.updatedAt ?? null;
+  // The sync time is the catalogue's. The XP rows' own updatedAt is only "when that day last CHANGED" (a row is rewritten only if it differs),
+  // so on a quiet stretch it would make fresh data look old.
+  const xpSynced = d.langs?.updatedAt ?? null;
   const w = d.summaries ? xpWeek(d.summaries, xpSynced, now) : null;
   const old = isStale(d.langs?.updatedAt, now);
   const streak = d.langs?.streak;
