@@ -26,7 +26,7 @@
           <div class="grow-h"><b>{{ r.name }}</b><app-verdict [verdict]="r.verdict" /></div>
           <p class="grow-line" title="Frente a tu ritmo habitual, teniendo en cuenta lo difícil que era cada día"><span class="grow-tag">Tu ritmo</span>{{ r.line }}</p>
           <div class="grow-viz">
-            <span class="grow-tag">Vs. media</span><span class="dots" role="img" [attr.aria-label]="r.aria" title="Verde: mejor que la media de LinkedIn ese día. Rojo: peor. Solo cuentan las partidas con media">@for (d of r.dots; track $index) {<i [class]="d.win ? 'dot dot-w' : 'dot dot-l'" [attr.title]="d.title"></i>}</span>
+            <span class="grow-dots"><span class="grow-tag">Vs. media</span><span class="dots" role="img" [attr.aria-label]="r.aria" title="Verde: mejor que la media de LinkedIn ese día. Rojo: peor. Solo cuentan las partidas con media">@for (d of r.dots; track $index) {<i [class]="d.win ? 'dot dot-w' : 'dot dot-l'" [attr.title]="d.title"></i>}</span></span>
             @if (r.spark) {<svg class="spark" viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true"><polyline [attr.points]="r.spark" fill="none" stroke="var(--link)" stroke-width="1.5" vector-effect="non-scaling-stroke" /></svg>}
           </div>
           <span class="muted grow-t">{{ r.time }}</span>
@@ -42,7 +42,7 @@
       <p class="loss-note" id="gamesLossNote">{{ l.sentence }}</p>
       <div class="tblwrap" tabindex="0" role="region" aria-label="Derrotas por juego y día de la semana (desplazable)"><table class="gtable gloss" id="gamesLoss"><caption class="sr-only">Porcentaje de partidas en las que no le ganas a la media, por juego y día de la semana. Un guion es que hay pocas partidas.</caption>
         <thead><tr><th scope="col">Juego</th>@for (d of l.days; track d) {<th scope="col">{{ d }}</th>}</tr></thead>
-        <tbody>@for (r of l.rows; track r.k) {<tr><th scope="row">{{ r.name }}</th>@for (c of r.cells; track $index) {<td [class]="'num gl' + c.level" [attr.title]="c.title">{{ c.text }}@if (c.level >= 0) {<small class="gl-n">{{ c.n }}</small>}</td>}</tr>}</tbody></table></div>
+        <tbody>@for (r of l.rows; track r.k) {<tr><th scope="row">{{ r.name }}</th>@for (c of r.cells; track $index) {<td [class]="'num gl' + c.level" [attr.title]="c.title">{{ c.text }}@if (c.level >= 0) {<small class="gl-n">{{ c.n }}<span class="sr-only"> partidas</span></small>}</td>}</tr>}</tbody></table></div>
       <p class="muted" id="gamesLossNear">Derrotas por poco: @for (r of l.rows; track r.k) {{{ r.name }} {{ r.near }}@if (!$last) {; }}.</p>
     } @else if (loss() === null) {<div class="muted">No disponible</div>}
     <app-help label="Cómo leer este mapa">
