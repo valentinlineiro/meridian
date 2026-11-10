@@ -1,5 +1,6 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, input, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
+import { RouterLink } from '@angular/router';
 import { catchError, forkJoin, Observable, of } from 'rxjs';
 import { ApiClient } from '../../core/api-client';
 import { safe } from '../../core/guard';
@@ -20,14 +21,18 @@ const HERO_IDLE = { label: 'LinkedIn Games · racha actual', streak: '—', meta
 
 @Component({
   selector: 'app-games',
-  imports: [GamesChart, GamesQuickEntry, GamesTable, Help, Section, Segmented, Stats, VerdictPill],
+  imports: [GamesChart, GamesQuickEntry, GamesTable, Help, RouterLink, Section, Segmented, Stats, VerdictPill],
   templateUrl: './games.html',
 })
 export class Games {
+  /** The `:game` route param (absent on /games): with it the view is the report of that game. */
+  readonly game = input<string>();
+
   private readonly api = inject(ApiClient);
 
   protected readonly ranges = RANGES;
   protected readonly range = signal<Range>('28');
+  protected readonly gameName = gameName;
   /** The game the user picked for the chart; one that is not in the summary falls back to the most observed. */
   protected readonly trajPick = signal<string | null>(null);
 

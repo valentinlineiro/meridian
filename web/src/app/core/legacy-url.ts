@@ -1,6 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { CanMatchFn, Router, UrlSegment } from '@angular/router';
 import { BROWSER_LOCATION } from './api-client';
+import { GAME_NAMES } from './words';
 
 const TABS = ['overview', 'games', 'chess', 'changes', 'profile', 'trajectory', 'settings'];
 
@@ -18,7 +19,8 @@ export function legacyRedirect(pathname: string, hash: string, search: string): 
   const [seg = '', ...rest] = target.trim().replace(/^\//, '').replace(/^#/, '').replace(/^\//, '').split('/');
   const sub = rest.join('/').trim() || null;
   const courseId = seg === 'languages' ? sub || course : seg.startsWith('DUOLINGO_') ? seg : null;
-  const canonical = TABS.includes(seg) ? '/' + seg
+  const gameKey = seg === 'games' && sub && sub in GAME_NAMES ? sub : null; // /games/:game is the same route as /games
+  const canonical = TABS.includes(seg) ? '/' + seg + (gameKey ? '/' + gameKey : '')
     : courseId ? '/languages/' + encodeURIComponent(courseId)
     : seg === 'languages' ? '/languages'
     : '/overview';

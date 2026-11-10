@@ -1,4 +1,8 @@
 <section id="gamesTab">
+  @if (game(); as g) {
+    <a routerLink="/games" class="muted">← Todos los juegos</a>
+    <h1>{{ gameName(g) }}</h1>
+  } @else {
   <h1 class="sr-only">LinkedIn Games</h1>
   @let h = hero();
   <div class="hero-card" id="gamesHero">
@@ -119,4 +123,5 @@
     </div>
   </app-section>
   </app-section>
+  }
 </section>
