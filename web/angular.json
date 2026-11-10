@@ -17,6 +17,7 @@
             "tsConfig": "tsconfig.app.json",
             "outputPath": "dist",
             "baseHref": "/",
+            "assets": [{ "glob": "**/*", "input": "public" }],
             "styles": ["src/styles.css"]
           },
           "configurations": {

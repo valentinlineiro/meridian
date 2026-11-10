@@ -11,7 +11,7 @@ const files = (d: string): string[] =>
 describe('web design tokens', () => {
   const offenders = (re: RegExp) =>
     files('web/src').flatMap((f) => {
-      const text = readFileSync(f, 'utf8').replace(/:root\s*\{[^}]*\}/, '');
+      const text = readFileSync(f, 'utf8').replace(/:root\s*\{[^}]*\}/, '').replace(/<meta name="theme-color"[^>]*>/, ''); // theme-color cannot take var(): tests/pwa.test.ts pins it to --bg
       return [...text.matchAll(re)].map((m) => `${f}: ${m[0]}`);
     });
 

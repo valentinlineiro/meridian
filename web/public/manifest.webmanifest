@@ -1,0 +1,17 @@
+{
+  "id": "/",
+  "name": "Meridian",
+  "short_name": "Meridian",
+  "description": "Panel de rendimiento: ajedrez, idiomas y LinkedIn Games",
+  "lang": "es",
+  "start_url": "/overview",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0e141c",
+  "theme_color": "#0e141c",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

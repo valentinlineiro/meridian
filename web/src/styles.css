@@ -226,3 +226,6 @@ a.side-item{text-decoration:none}a.side-item:hover{text-decoration:none}
 .loss-note{margin:0 0 8px;padding:8px 12px;border-left:3px solid var(--warn-line);background:var(--warn-bg);color:var(--warn-fg);border-radius:var(--r-sm)}.gl-n{display:block;font-size:var(--fs-xs);font-weight:400;opacity:.7}
 .grow-dots{display:inline-flex;align-items:center;gap:8px}
 .grow-tag{white-space:nowrap}
+
+/* notch / home bar when installed (viewport-fit=cover); ponytail: one body padding, the sticky header still sticks at 0 */
+body{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
