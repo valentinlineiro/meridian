@@ -267,7 +267,7 @@ export function lossRows(s: Summary) {
     const l = s.games[k].losses;
     for (const c of l.cells) if (c.n >= MIN_LOSS_CELL && (!worst || c.rate! > worst.c.rate!)) worst = { k, c };
     return {
-      k, name: gameName(k), near: l.losses ? Math.round(l.near / l.losses * 100) + ' % por poco' : 'sin derrotas',
+      k, name: gameName(k), near: l.losses ? Math.round(l.near / l.losses * 100) + ' %' : 'sin derrotas',
       cells: l.cells.map((c) => c.n >= MIN_LOSS_CELL
         ? { text: gpct(c.rate), n: c.n, level: c.rate! >= 0.5 ? 3 : c.rate! >= 0.25 ? 2 : c.rate! > 0 ? 1 : 0, title: c.losses + ' derrotas de ' + c.n + ' (entre el ' + Math.round(c.lo! * 100) + ' % y el ' + Math.round(c.hi! * 100) + ' %)' }
         : { text: '—', n: c.n, level: -1, title: 'Aún pocos datos (' + c.n + ')' }),

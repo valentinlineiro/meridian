@@ -687,7 +687,7 @@ describe('Games', () => {
       expect(cells[0]).toBe('70 %10 partidas'); // rate + sample size
       expect(cells[6]).toBe('—'); // Sunday has 3 games
       expect(cells.length).toBe(7);
-      expect(text('gamesLossNear')).toBe('Derrotas por poco: Queens 25 % por poco.');
+      expect(text('gamesLossNear')).toBe('Derrotas por poco: Queens 25 %.');
     });
 
     it('shouldStillNameTheWorstWeekdayWhenEveryRateIsLow', async () => {
