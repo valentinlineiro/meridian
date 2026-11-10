@@ -280,7 +280,7 @@ const HTML_HEADERS = {
   "x-frame-options": "DENY",
   "referrer-policy": "same-origin",
   "content-security-policy":
-    "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; form-action 'self'; base-uri 'self'; frame-ancestors 'none'",
+    "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; manifest-src 'self'; worker-src 'self'; form-action 'self'; base-uri 'self'; frame-ancestors 'none'",
 } as const;
 app.get("*", async (c) => {
   if (!isHtmlPath(c.req.path)) return c.notFound(); // an unknown /api/* route stays a JSON 404
@@ -293,6 +293,7 @@ app.get("*", async (c) => {
   const asset = await c.env.ASSETS.fetch(new Request(url, c.req.raw));
   const file = new Response(asset.body, asset); // copy: fetched headers are immutable
   file.headers.set("x-content-type-options", "nosniff");
+  if (url.pathname === "/sw.js") file.headers.set("cache-control", "no-cache"); // the worker must be re-checked on every visit, or a bad one sticks
   return file;
 });
 

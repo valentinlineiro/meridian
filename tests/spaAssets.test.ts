@@ -8,6 +8,7 @@ const FILES: Record<string, [string, string]> = {
   "/": ['<!doctype html><base href="/"><app-root></app-root>', "text/html"],
   "/main-XYZ.js": ["console.log(1)", "text/javascript"],
   "/styles-XYZ.css": ["body{}", "text/css"],
+  "/sw.js": ["self.skipWaiting()", "text/javascript"],
 };
 const requested: string[] = [];
 const ASSETS = {
@@ -24,7 +25,7 @@ const get = (path: string, w: { fetch: (r: Request, e: Env) => Response | Promis
   w.fetch(new Request("https://stats.example.com" + path, { redirect: "manual" }), env);
 
 const ANGULAR_CSP =
-  "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; form-action 'self'; base-uri 'self'; frame-ancestors 'none'";
+  "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; manifest-src 'self'; worker-src 'self'; form-action 'self'; base-uri 'self'; frame-ancestors 'none'";
 const CANONICAL = [
   "/", "/index.html", "/overview", "/overview/", "/chess", "/chess/", "/languages", "/languages/", "/languages/DUOLINGO_ES",
   "/changes", "/trajectory", "/profile", "/games", "/games/", "/settings",
@@ -112,6 +113,15 @@ describe("Angular frontend at the root", () => {
       expect(res.headers.get("x-content-type-options")).toBe("nosniff");
     },
   );
+
+  it("shouldRevalidateServiceWorkerOnEveryVisit", async () => {
+    expect((await get("/sw.js")).headers.get("cache-control")).toBe("no-cache");
+    expect((await get("/main-XYZ.js")).headers.get("cache-control")).toBeNull();
+  });
+
+  it.each(["/manifest.webmanifest", "/icons/icon-192.png", "/sw.js"])("shouldKeepPwaFilesBehindTheSession %s", async (path) => {
+    expect((await get(path, worker)).status).toBe(303); // hence crossorigin="use-credentials" on the manifest link
+  });
 
   it("shouldReturn404WhenAssetWithExtensionIsMissing", async () => {
     requested.length = 0;
