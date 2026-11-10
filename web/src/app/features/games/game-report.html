@@ -1,0 +1,72 @@
+<div class="hero-card" id="gameReportHero">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
+    <div class="muted" style="font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.05em">Informe individual · {{ rangeName() }}</div>
+    @if (verdict(); as v) {<app-verdict [verdict]="v" />}
+  </div>
+  @if (sentence().length) {<p class="grow-line" id="gameReportSentence">{{ sentence().join('. ') }}.</p>}
+  <app-help label="Cómo se calcula">@for (l of how(); track $index) {<p>{{ l }}</p>}</app-help>
+</div>
+
+<app-section title="Regularidad" sectionId="gameReportRegularity">
+  <div id="gameReportRange">
+    @if (nr(); as r) {
+      <p style="margin:0 0 4px"><b>Tu rango normal</b> <span class="muted">(la mitad central de tus partidas, {{ rangeName() }}, n = {{ r.n }})</span></p>
+      <div class="gr-big">{{ r.low }} – {{ r.high }}</div>
+      <div class="muted">mediana {{ r.median }} · mejor de siempre {{ r.best.time }} ({{ fmtDate(r.best.date) }})</div>
+    } @else {<p class="muted">Aún pocos datos en este periodo.</p>}
+  </div>
+
+  <p style="margin:16px 0 4px"><b>Semana a semana</b> <span class="muted">— días que le ganas a la media (%)</span></p>
+  @if (weekly(); as w) {
+    <div class="wkbeat" id="gameReportWeeks">
+      @for (b of w.weeks; track b.start) {<div [attr.data-complete]="b.complete"><span>{{ b.beat === null ? '—' : pct(b.beat).replace(' %', '') }}</span><i [style.height.px]="(b.beat ?? 0) * 70"></i><span>{{ short(b.start) }}</span></div>}
+    </div>
+    <p class="muted" id="gameReportWeeksWindow">Ventana fija: últimos 90 días, una barra por semana. Las barras discontinuas son semanas incompletas.</p>
+  } @else {<p class="muted" id="gameReportWeeksWindow">No disponible</p>}
+
+  <p style="margin:16px 0 4px"><b>Por día de la semana</b> <span class="muted">— partidas en las que no le ganas a la media</span></p>
+  @if (weekdays(); as d) {
+    <div class="gr-days" id="gameReportWeekdays">
+      @for (r of d.rows; track r.day) {
+        <div class="gr-day"><span>{{ r.day }}</span><div class="bar"><i [class]="r.stands ? 'bar-hot' : 'bar-err'" [style.width.%]="r.enough && r.rate !== null ? r.rate * 100 : 0"></i></div>
+          <span class="gr-txt">@if (r.enough && r.rate !== null) {<b>{{ pct(r.rate) }}</b> · {{ count(r.losses, 'derrota') }}, {{ count(r.wins, 'victoria') }}@if (r.stands) { · <b>destaca</b>}} @else {— · pocas partidas (n = {{ r.n }})}</span></div>
+      }
+    </div>
+    <p class="muted" id="gameReportWeekdaysWindow">Ventana fija: todo el histórico. «Destaca» es que el límite inferior del intervalo de derrotas de ese día supera la tasa de derrotas del juego.</p>
+    <p class="muted" id="gameReportWeekdaysNote">Entre semana la media es mucho más rápida, así que perder un lunes no es lo mismo que perder un domingo.</p>
+  } @else {<p class="muted" id="gameReportWeekdaysWindow">No disponible</p>}
+
+  @if (streak(); as st) {
+    <p id="gameReportStreak" style="margin:16px 0 0"><b>Días seguidos mejor que la media</b> · actual @if (st.now === '—') {sin racha activa@if (st.stale) { ({{ st.stale }})}} @else {{{ st.now }}} · máxima {{ st.max }}</p>
+  }
+</app-section>
+
+<app-section title="Nivel" sectionId="gameReportLevelSection">
+  @if (level(); as rows) {
+    <div class="tblwrap" tabindex="0" role="region" aria-label="Nivel por periodo (desplazable)">
+      <table class="gtable gweek gstack" id="gameReportLevel"><caption class="sr-only">Nivel por periodo</caption>
+        <thead><tr><th scope="col">Periodo</th><th scope="col">Tiempo normal</th><th scope="col">Rango normal</th><th scope="col">Velocidad frente a la media</th><th scope="col">Le ganas a la media</th></tr></thead>
+        <tbody>@for (r of rows; track r.range) {<tr [attr.data-selected]="r.range === range()"><td><b>{{ r.label }}</b></td><td class="num" data-l="Tiempo normal">{{ r.median }}</td><td class="num" data-l="Rango normal">{{ r.band }}</td><td class="num" data-l="Velocidad">{{ r.speed }}</td><td class="num" data-l="Le ganas a la media">{{ r.beat }}</td></tr>}</tbody></table>
+    </div>
+  } @else {<p class="muted" id="gameReportLevel">No disponible</p>}
+</app-section>
+
+@if (!few()) {
+  <app-section title="Evolución" sectionId="gameReportEvolution">
+    @if (traj(); as t) {
+      <div class="card"><app-games-chart [buckets]="t.buckets" /></div>
+      <p class="muted">{{ t.note }}</p>
+      <app-help label="Ver los datos del gráfico (tabla)">
+        <div class="tblwrap" tabindex="0" role="region" aria-label="Datos del gráfico (desplazable)"><table class="gtable"><caption class="sr-only">{{ t.caption }}</caption><thead><tr><th scope="col">Periodo</th><th scope="col">Velocidad (veces la media)</th><th scope="col">Le ganas a la media</th><th scope="col">Partidas</th></tr></thead>
+          <tbody>@for (r of t.rows; track $index) {<tr><th scope="row">{{ r[0] }}</th><td class="num">{{ r[1] }}</td><td class="num">{{ r[2] }}</td><td class="num">{{ r[3] }}</td></tr>}</tbody></table></div>
+      </app-help>
+    } @else {<p class="muted">No disponible</p>}
+    @if (facts(); as f) {<div id="gameReportFacts"><app-stats [items]="f" /></div>}
+  </app-section>
+}
+
+<app-section title="Qué sabemos y qué no" sectionId="gameReportEvidence">
+  <p class="muted" style="margin:0 0 4px"><b style="color:var(--text)">Evidencia</b> (lo que muestran los datos)</p>
+  <ul style="margin:0 0 10px;padding-left:18px">@for (l of evidence(); track $index) {<li>{{ l }}</li>}</ul>
+  <p class="muted" style="margin:0"><b style="color:var(--text)">Límite de lo medible</b>: solo se guarda el tiempo total de cada partida, sin errores ni pasos intermedios, así que los datos no permiten decir por qué tardas más o menos.</p>
+</app-section>

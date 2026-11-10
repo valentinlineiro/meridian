@@ -22,6 +22,36 @@ describe('App routes', () => {
     expect(harness.routeNativeElement?.querySelector('#langTab')).not.toBeNull();
   });
 
+  it('shouldKeepTheGameKeyWhenOpeningAGamesDeepLink', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/games/queens');
+    expect(TestBed.inject(Router).url).toBe('/games/queens');
+    expect(harness.routeNativeElement?.querySelector('#gamesTab')).not.toBeNull();
+  });
+
+  it('shouldRedirectToGamesWhenTheGameKeyIsUnknown', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/overview'); // the first navigation belongs to the legacy-URL guard; this one exercises the route itself
+    await harness.navigateByUrl('/games/nope');
+    expect(TestBed.inject(Router).url).toBe('/games');
+  });
+
+  it('shouldReuseTheGamesViewWhenMovingFromTheListToAReport', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/games');
+    const before = harness.routeNativeElement;
+    await harness.navigateByUrl('/games/queens');
+    expect(harness.routeNativeElement).toBe(before); // the same component instance: the summary is not read again
+  });
+
+  it('shouldTitleTheRouteWithTheGameName', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/games/queens');
+    expect(document.title).toBe('Queens · LinkedIn Games · Meridian');
+    await harness.navigateByUrl('/games');
+    expect(document.title).toBe('LinkedIn Games · Meridian');
+  });
+
   // tests/dashboardRoutes shouldServeDashboardWhenRequestingTabPath /profile (client side): the path stays, the chess view opens.
   it('shouldKeepTheProfilePathAndOpenTheChessView', async () => {
     const harness = await RouterTestingHarness.create();

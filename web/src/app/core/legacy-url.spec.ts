@@ -24,6 +24,10 @@ describe('legacyRedirect', () => {
     ['/', '#/languages/DUOLINGO_XB_EN', '', '/languages/DUOLINGO_XB_EN'],
     ['/', '#chess', '', '/chess'],
     ['/', '#/games', '', '/games'],
+    ['/', '#/games/queens', '', '/games/queens'],
+    ['/', '#games/mini_sudoku', '', '/games/mini_sudoku'],
+    ['/games/nope', '', '', '/games'],
+    ['/games/queens/extra', '', '', '/games'],
   ])('shouldRedirectHashRouteToCanonicalPath %s %s %s', (path, hash, search, expected) => {
     expect(legacyRedirect(path, hash, search)).toBe(expected);
   });
@@ -33,7 +37,7 @@ describe('legacyRedirect', () => {
     expect(legacyRedirect('/', '', '?course=X')).toBe('/overview');
   });
 
-  it.each([['/'], ['/overview'], ['/languages'], ['/languages/DUOLINGO_ES'], ['/trajectory'], ['/settings']])(
+  it.each([['/'], ['/overview'], ['/languages'], ['/languages/DUOLINGO_ES'], ['/trajectory'], ['/settings'], ['/games'], ['/games/queens'], ['/games/mini_sudoku']])(
     'shouldNotRedirectWhenAlreadyCanonical %s',
     (path) => expect(legacyRedirect(path, '', '')).toBeNull(),
   );
@@ -57,6 +61,9 @@ describe('legacy URL at app start', () => {
   });
   it('shouldLeaveCanonicalUrlAloneWhenThereIsNoLegacyPart', async () => {
     expect(await start('', '', '/chess')).toBe('/chess');
+  });
+  it('shouldKeepTheGameKeyOnAPageLoadOfAGameReport', async () => {
+    expect(await start('', '', '/games/queens')).toBe('/games/queens');
   });
   it('shouldRedirectOnlyTheFirstNavigation', async () => {
     await start('#/chess', '', '/');

@@ -1,6 +1,7 @@
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting, TestRequest } from '@angular/common/http/testing';
+import { provideRouter } from '@angular/router';
 import { Games } from './games';
 import { chartGeometry } from './games-chart';
 import { speedWords } from '../../core/words';
@@ -79,8 +80,63 @@ describe('Games', () => {
   const sortBy = (k: string) => click('#gth-' + k + ' button');
 
   beforeEach(() => {
-    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])] });
     http = TestBed.inject(HttpTestingController);
+  });
+
+  describe('the list links to each report', () => {
+    it('shouldLinkEachGameRowToItsReport', async () => {
+      await open({ queens: game(), zip: game() });
+      const links = [...el.querySelectorAll('#gamesNow .grow-h a')];
+      expect(links.map((a) => a.getAttribute('href')).sort()).toEqual(['/games/queens', '/games/zip']);
+      expect(links.map((a) => a.getAttribute('aria-label')).sort()).toEqual(['Informe de Queens', 'Informe de Zip']);
+      expect(links.map((a) => a.textContent!.trim()).sort()).toEqual(['Queens', 'Zip']); // the visible name is the link
+    });
+  });
+
+  describe('report mode (/games/:game)', () => {
+    const openReport = async (games: Record<string, unknown> | Body, key = 'queens') => {
+      fixture = TestBed.createComponent(Games);
+      el = fixture.nativeElement;
+      fixture.componentRef.setInput('game', key);
+      await tick();
+      await answer(games === FAIL ? games : summaryOf(games as Record<string, unknown>));
+      return el;
+    };
+
+    it('shouldShowTheReportOfTheGameInsteadOfTheListWhenTheRouteHasAGame', async () => {
+      await openReport({ queens: game(), zip: game() });
+      expect(el.querySelector('h1')!.textContent).toBe('Queens');
+      expect(el.querySelector('app-game-report')).not.toBeNull();
+      expect(el.querySelector('#gamesList')).toBeNull(); // not the list of games
+      expect(el.querySelector('a[href="/games"]')!.textContent).toContain('Todos los juegos');
+      expect(el.querySelector('a.gr-back')).not.toBeNull(); // the class that gives it a 44px touch target on phones
+    });
+
+    it('shouldSayThereAreNoGamesYetWhenTheKeyIsValidButTheSummaryHasNoSuchGame', async () => {
+      await openReport({ zip: game() }, 'queens');
+      expect(el.querySelector('h1')!.textContent).toBe('Queens');
+      expect(el.textContent).toContain('Aún sin partidas registradas de Queens');
+      expect(el.querySelector('app-game-report')).toBeNull();
+    });
+
+    it('shouldSayNoDisponibleWhenTheSummaryFailsInReportMode', async () => {
+      await openReport(FAIL);
+      expect(el.querySelector('h1')!.textContent).toBe('Queens');
+      expect(el.textContent).toContain('No disponible');
+      expect(el.querySelector('app-game-report')).toBeNull();
+    });
+
+    it('shouldNotRequestTheSummaryAgainWhenTheGameChangesOrThePeriodChanges', async () => {
+      await openReport({ queens: game(), zip: game() });
+      fixture.componentRef.setInput('game', 'zip');
+      await tick();
+      el.querySelector<HTMLButtonElement>('#gr-7')!.click();
+      await tick();
+      expect(pending()).toHaveLength(0);
+      http.verify();
+      expect(el.querySelector('h1')!.textContent).toBe('Zip');
+    });
   });
 
   describe('games tab: a stale manual log is not a zero streak', () => {

@@ -18,7 +18,7 @@ export interface Interp {
   bands: { '28': [number, number]; '28v56': [number, number]; rho112: [number, number] } | null;
 }
 export interface Game {
-  n: number; best: { seconds: number; date: string }; beatStreak: { current: number; max: number };
+  n: number; firstDate?: string; best: { seconds: number; date: string }; beatStreak: { current: number; max: number };
   trend112: { rho: number | null; slopePctPer28d: number | null; n: number; days: number };
   recent28vBase56: { delta: number; nCur: number; nBase: number };
   interpretation: Interp; series: { date: string; eff: number; roll: number }[];
@@ -59,8 +59,8 @@ export const LABEL_TEXT: Record<Label, string> = { mejora_sostenida: 'Mejora sos
 /** A manual log has no broken streak: with no record for 2+ days the run is 0 because nothing was recorded. */
 const streakActive = (x: Game, s: Summary) => x.beatStreak.current > 0 || !!(s.playStreak && s.playStreak.current > 0);
 /** The run, or "—": a stale log is said once (hero, tooltip), not in every row. */
-const gbeatStreak = (x: Game, s: Summary) => streakActive(x, s) ? gdays(x.beatStreak.current) : '—';
-const staleTitle = (x: Game, s: Summary) => !streakActive(x, s) && s.to ? 'Sin registro desde ' + fmtDate(s.to) : null;
+export const gbeatStreak = (x: Game, s: Summary) => streakActive(x, s) ? gdays(x.beatStreak.current) : '—';
+export const staleTitle = (x: Game, s: Summary) => !streakActive(x, s) && s.to ? 'Sin registro desde ' + fmtDate(s.to) : null;
 
 export function interpretationLines(x: Game): string[] {
   const i = x.interpretation, b = i.bands, t = x.trend112, r = x.recent28vBase56, out: string[] = [];
