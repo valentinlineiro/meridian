@@ -107,7 +107,7 @@
     </details>
   </app-section>
 
-  <app-section sectionId="chessEngineProfileDetails" title="Perfil de juego y análisis de motor (Stockfish)" #engineDetails>
+  <app-section sectionId="chessEngineProfileDetails" title="Perfil de juego y análisis de motor (Stockfish)" [open]="!phone" #engineDetails>
     <div id="chessEngineProfileContent"><app-engine-profile [profile]="profile()" [cut]="cut()" (cutChange)="setCut($event)" /></div>
   </app-section>
 

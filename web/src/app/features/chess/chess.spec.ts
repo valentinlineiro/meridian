@@ -132,6 +132,24 @@ describe('Chess', () => {
     });
   });
 
+  describe('layout on a phone', () => {
+    const phone = (matches: boolean) => vi.stubGlobal('matchMedia', () => ({ matches }));
+    afterEach(() => vi.unstubAllGlobals());
+    const isOpen = (id: string) => (t.el().querySelector('#' + id) as HTMLDetailsElement).open;
+
+    it('shouldStartWithOnlyTheFirstBlockOpenOnAPhone', async () => {
+      phone(true);
+      await t.open();
+      expect(['cg-comp', 'cg-open', 'cg-evo', 'chessEngineProfileDetails'].map(isOpen)).toEqual([true, false, false, false]);
+    });
+
+    it('shouldKeepEveryBlockOpenOnADesktop', async () => {
+      phone(false);
+      await t.open();
+      expect(['cg-comp', 'cg-open', 'cg-evo', 'chessEngineProfileDetails'].every(isOpen)).toBe(true);
+    });
+  });
+
   describe('hero', () => {
     it('shouldSayTheEloChangeIsAgainstTheFirstSnapshot', async () => {
       await t.open();
