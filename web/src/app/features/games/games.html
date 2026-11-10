@@ -24,9 +24,9 @@
       @for (r of rows(); track r.k) {
         <div class="grow card">
           <div class="grow-h"><b>{{ r.name }}</b><app-verdict [verdict]="r.verdict" /></div>
-          <p class="grow-line" title="Frente a tu ritmo habitual, teniendo en cuenta lo difícil que era cada día">{{ r.line }}</p>
+          <p class="grow-line" title="Frente a tu ritmo habitual, teniendo en cuenta lo difícil que era cada día"><span class="grow-tag">Tu ritmo</span>{{ r.line }}</p>
           <div class="grow-viz">
-            <span class="dots" role="img" [attr.aria-label]="r.aria" title="Verde: mejor que la media de LinkedIn ese día. Rojo: peor. Solo cuentan las partidas con media">@for (d of r.dots; track $index) {<i [class]="d.win ? 'dot dot-w' : 'dot dot-l'" [attr.title]="d.title"></i>}</span>
+            <span class="grow-tag">Vs. media</span><span class="dots" role="img" [attr.aria-label]="r.aria" title="Verde: mejor que la media de LinkedIn ese día. Rojo: peor. Solo cuentan las partidas con media">@for (d of r.dots; track $index) {<i [class]="d.win ? 'dot dot-w' : 'dot dot-l'" [attr.title]="d.title"></i>}</span>
             @if (r.spark) {<svg class="spark" viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true"><polyline [attr.points]="r.spark" fill="none" stroke="var(--link)" stroke-width="1.5" vector-effect="non-scaling-stroke" /></svg>}
           </div>
           <span class="muted grow-t">{{ r.time }}</span>
@@ -39,13 +39,14 @@
   </app-section>
   <app-section title="Dónde pierdes" sectionId="cg-games-loss">
     @if (loss(); as l) {
-      <p class="muted" id="gamesLossNote">{{ l.sentence }}</p>
+      <p class="loss-note" id="gamesLossNote">{{ l.sentence }}</p>
       <div class="tblwrap" tabindex="0" role="region" aria-label="Derrotas por juego y día de la semana (desplazable)"><table class="gtable gloss" id="gamesLoss"><caption class="sr-only">Porcentaje de partidas en las que no le ganas a la media, por juego y día de la semana. Un guion es que hay pocas partidas.</caption>
-        <thead><tr><th scope="col">Juego</th>@for (d of l.days; track d) {<th scope="col">{{ d }}</th>}<th scope="col">Derrotas por poco</th></tr></thead>
-        <tbody>@for (r of l.rows; track r.k) {<tr><th scope="row">{{ r.name }}</th>@for (c of r.cells; track $index) {<td [class]="'num gl' + c.level" [attr.title]="c.title">{{ c.text }}</td>}<td>{{ r.near }}</td></tr>}</tbody></table></div>
+        <thead><tr><th scope="col">Juego</th>@for (d of l.days; track d) {<th scope="col">{{ d }}</th>}</tr></thead>
+        <tbody>@for (r of l.rows; track r.k) {<tr><th scope="row">{{ r.name }}</th>@for (c of r.cells; track $index) {<td [class]="'num gl' + c.level" [attr.title]="c.title">{{ c.text }}@if (c.level >= 0) {<small class="gl-n">{{ c.n }}</small>}</td>}</tr>}</tbody></table></div>
+      <p class="muted" id="gamesLossNear">Derrotas por poco: @for (r of l.rows; track r.k) {{{ r.name }} {{ r.near }}@if (!$last) {; }}.</p>
     } @else if (loss() === null) {<div class="muted">No disponible</div>}
     <app-help label="Cómo leer este mapa">
-      <p>Cada casilla es la parte de las partidas de ese juego y día en las que tu tiempo no fue mejor que la media. Solo se muestran con 8 partidas o más. Pasa el ratón por encima para ver las derrotas y el intervalo de confianza.</p>
+      <p>Cada casilla es la parte de las partidas de ese juego y día en las que tu tiempo no fue mejor que la media. Solo se muestran con 8 partidas o más. El número pequeño es cuántas partidas hay detrás. Pasa el ratón por encima para ver las derrotas y el intervalo de confianza.</p>
       <p>«Por poco» son las derrotas en las que tu tiempo estuvo menos de un 15 % por encima de la media. Entre semana la media es mucho más rápida, así que perder un lunes no es lo mismo que perder un domingo.</p>
     </app-help>
   </app-section>

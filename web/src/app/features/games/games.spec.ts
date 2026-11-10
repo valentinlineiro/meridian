@@ -684,9 +684,10 @@ describe('Games', () => {
       await open({ queens: game() });
       expect(text('gamesLossNote')).toBe('Donde más pierdes: Queens los lunes (70 %, 10 partidas).');
       const cells = [...el.querySelectorAll('#gamesLoss tbody td')].map((c) => c.textContent!.trim());
-      expect(cells[0]).toBe('70 %');
+      expect(cells[0]).toBe('70 %10'); // rate + sample size
       expect(cells[6]).toBe('—'); // Sunday has 3 games
-      expect(cells[7]).toBe('25 % por poco');
+      expect(cells.length).toBe(7);
+      expect(text('gamesLossNear')).toBe('Derrotas por poco: Queens 25 % por poco.');
     });
 
     it('shouldStillNameTheWorstWeekdayWhenEveryRateIsLow', async () => {
