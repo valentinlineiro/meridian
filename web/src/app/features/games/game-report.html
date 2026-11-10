@@ -19,7 +19,7 @@
   <p style="margin:16px 0 4px"><b>Semana a semana</b> <span class="muted">— días que le ganas a la media (%)</span></p>
   @if (weekly(); as w) {
     <div class="wkbeat" id="gameReportWeeks">
-      @for (b of w.weeks; track b.start) {<div [attr.data-complete]="b.complete"><span>{{ b.beat == null ? '—' : pct(b.beat).replace(' %', '') }}</span><i [style.height.px]="(b.beat ?? 0) * 70"></i><span>{{ short(b.start) }}</span></div>}
+      @for (b of w.weeks; track b.start) {<div [attr.data-complete]="b.complete"><span>{{ b.beat === null ? '—' : pct(b.beat).replace(' %', '') }}</span><i [style.height.px]="(b.beat ?? 0) * 70"></i><span>{{ short(b.start) }}</span></div>}
     </div>
     <p class="muted" id="gameReportWeeksWindow">Ventana fija: últimos 90 días, una barra por semana. Las barras discontinuas son semanas incompletas.</p>
   } @else {<p class="muted" id="gameReportWeeksWindow">No disponible</p>}
@@ -28,8 +28,8 @@
   @if (weekdays(); as d) {
     <div class="prof" id="gameReportWeekdays">
       @for (r of d.rows; track r.day) {
-        <div class="prof-bar"><span>{{ r.day }}</span><div class="bar"><i [class]="r.stands ? 'bar-hot' : 'bar-err'" [style.width.%]="r.enough && r.rate != null ? r.rate * 100 : 0"></i></div>
-          <b>@if (r.enough && r.rate != null) {{{ pct(r.rate) }} · {{ r.losses }} derrotas, {{ r.wins }} victorias@if (r.stands) { · destaca}} @else {— · pocas partidas (n = {{ r.n }})}</b></div>
+        <div class="prof-bar"><span>{{ r.day }}</span><div class="bar"><i [class]="r.stands ? 'bar-hot' : 'bar-err'" [style.width.%]="r.enough && r.rate !== null ? r.rate * 100 : 0"></i></div>
+          <b>@if (r.enough && r.rate !== null) {{{ pct(r.rate) }} · {{ r.losses }} derrotas, {{ r.wins }} victorias@if (r.stands) { · destaca}} @else {— · pocas partidas (n = {{ r.n }})}</b></div>
       }
     </div>
     <p class="muted" id="gameReportWeekdaysWindow">Ventana fija: todo el histórico. «Destaca» es que el límite inferior del intervalo de derrotas de ese día supera la tasa de derrotas del juego.</p>
