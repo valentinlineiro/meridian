@@ -227,5 +227,7 @@ a.side-item{text-decoration:none}a.side-item:hover{text-decoration:none}
 .grow-dots{display:inline-flex;align-items:center;gap:8px}
 .grow-tag{white-space:nowrap}
 
-/* notch / home bar when installed (viewport-fit=cover); ponytail: one body padding, the sticky header still sticks at 0 */
+/* notch / home bar when installed (viewport-fit=cover): the body reserves the insets, the sticky bars stick below the top one */
 body{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+header{top:env(safe-area-inset-top)}
+.side{top:calc(76px + env(safe-area-inset-top))}
