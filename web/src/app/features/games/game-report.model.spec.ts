@@ -1,5 +1,5 @@
-import { MIN_WEEK_N, normalRange, reportSentence, weekdayReport, weeklyBeat } from './game-report.model';
-import type { Game } from './games.model';
+import { evidenceLines, evolutionFacts, levelRows, MIN_WEEK_N, normalRange, reportSentence, weekdayReport, weeklyBeat } from './game-report.model';
+import { interpretationLines, type Game } from './games.model';
 
 // Synthetic fixtures: only the fields the report reads.
 const cell = (dow: number, n: number, losses: number, lo: number | null = null, hi: number | null = null) => ({ dow, n, losses, rate: n ? losses / n : null, lo, hi });
@@ -92,5 +92,79 @@ describe('reportSentence: facts only, each with its condition', () => {
   it('shouldSayNothingWithoutABeatRate', () => {
     const g = game({ windows: { '28': { time: { median: null, p25: null, p75: null, nTime: 0 }, beat: { rate: null, k: 0, nBeat: 0 } } } });
     expect(reportSentence(g, '28')).toEqual([]);
+  });
+});
+
+// A whole synthetic game for the level, evolution and evidence blocks.
+const win = (median: number, nBeat: number, k: number) => ({
+  time: { median, p25: 36.75, p75: 52, nTime: nBeat }, eff: { median: 2.0375, nEff: nBeat }, beat: { rate: k / nBeat, k, nBeat },
+});
+const BANDS = { '28': [-0.2776, 0.3829], '28v56': [-0.2423, 0.3495], rho112: [-0.1512, 0.1652] };
+const full = (o: Record<string, unknown> = {}) => ({
+  firstDate: '2026-05-17', n: 177,
+  windows: { '7': win(43, 7, 6), '28': win(43, 28, 24), '90': win(43, 89, 75), all: win(46, 177, 146) },
+  adjusted: { label: 'sin_cambio', elasticity: .35, n: 177, windows: { '7': { pct: 5.96, n: 7 }, '28': { pct: 6.09, n: 28 }, '90': { pct: 8.1, n: 89 }, all: { pct: 0, n: 177 } }, trend: { pctPer28d: .3, noise: [-4.7, 4.06], weeks: 16 } },
+  recent28vBase56: { delta: -0.0676, nCur: 28, nBase: 55 },
+  trend112: { rho: .058, slopePctPer28d: 2.32, n: 111, days: 112 },
+  interpretation: { label: 'estable', reason: null, pending: null, calibratedThrough: '2026-11-03', bands: BANDS },
+  best: { seconds: 19, date: '2026-09-28' }, beatStreak: { current: 1, max: 13 },
+  trajectory: { '90': [] }, losses: { losses: 0, near: 0, cells: [] },
+  ...o,
+}) as unknown as Game;
+
+describe('levelRows: the same figures for 7 days, 4 weeks, 3 months and all', () => {
+  it('shouldGiveOneRowPerPeriodWithTheLabelOfThePeriod', () => {
+    const rows = levelRows(full());
+    expect(rows.map((r) => [r.range, r.label])).toEqual([['7', 'Semana'], ['28', '4 semanas'], ['90', '3 meses'], ['all', 'Todo']]);
+    expect(rows[1]).toEqual({ range: '28', label: '4 semanas', median: '0:43', band: '0:37–0:52', speed: '×2,04', beat: '24 de 28 (86 %)' });
+  });
+  it('shouldNeverPrintAZeroForAPeriodWithoutResults', () => {
+    const empty = { time: { median: null, p25: null, p75: null, nTime: 0 }, eff: { median: null, nEff: 0 }, beat: { rate: null, k: 0, nBeat: 0 } };
+    expect(levelRows(full({ windows: { '7': empty, '28': empty, '90': empty, all: empty } }))[0]).toMatchObject({ median: '—', band: '—', speed: '—', beat: '—' });
+  });
+});
+
+describe('evolutionFacts: an estimate is not a detectable change', () => {
+  it('shouldTakeTheAdjustedFormFromTheLabelThatIsAlreadyPublished', () => {
+    expect(evolutionFacts(full(), '28').adjusted).toMatchObject({ value: '+6 %', detectable: false, note: 'sin cambio detectable · ruido −5 % a +4 %' });
+    const up = full(); (up as unknown as { adjusted: { label: string } }).adjusted.label = 'mejora';
+    expect(evolutionFacts(up, '28').adjusted).toMatchObject({ detectable: true, note: expect.stringContaining('mejora detectable') });
+    const few = full(); (few as unknown as { adjusted: { label: string; trend: null } }).adjusted.label = 'pocos_datos'; (few as unknown as { adjusted: { trend: null } }).adjusted.trend = null;
+    expect(evolutionFacts(few, '28').adjusted).toMatchObject({ detectable: null, note: 'aún pocos datos' });
+  });
+  it('shouldCompareTheLast28DaysWithTheBandOfTheGame', () => {
+    expect(evolutionFacts(full(), '28').recent).toEqual({ title: 'Últimos 28 días frente a los 56 anteriores', value: '−7 %', detectable: false, note: 'dentro del ruido de este juego (−24 % a +35 %)' });
+    const out = evolutionFacts(full({ recent28vBase56: { delta: -0.3, nCur: 28, nBase: 55 } }), '28').recent;
+    expect(out).toMatchObject({ value: '−30 %', detectable: true, note: 'fuera del ruido de este juego (−24 % a +35 %)' });
+  });
+  it('shouldSayThereAreNoCalibratedLimitsInsteadOfJudging', () => {
+    const g = full({ interpretation: { label: 'datos_insuficientes', reason: 'sin_calibracion', pending: null, calibratedThrough: null, bands: null } });
+    expect(evolutionFacts(g, '28').recent).toMatchObject({ detectable: null, note: 'sin límites calibrados' });
+    expect(evolutionFacts(g, '28').trend).toMatchObject({ detectable: null, note: expect.stringContaining('sin límites calibrados') });
+  });
+  it('shouldCallATrendDetectableOnlyWhenRhoIsBeyondItsLimitWithTheSameSignedSlope', () => {
+    expect(evolutionFacts(full(), '28').trend).toEqual({ title: 'Tendencia a 112 días', value: '+2,3 % cada 4 semanas', detectable: false, note: 'estimada · sin cambio detectable · n = 111' });
+    expect(evolutionFacts(full({ trend112: { rho: .3, slopePctPer28d: 4, n: 111, days: 112 } }), '28').trend).toMatchObject({ detectable: true, note: 'estimada · detectable · n = 111' });
+    expect(evolutionFacts(full({ trend112: { rho: .3, slopePctPer28d: -4, n: 111, days: 112 } }), '28').trend).toMatchObject({ detectable: false }); // the server needs both to agree
+    expect(evolutionFacts(full({ trend112: { rho: -.3, slopePctPer28d: -4, n: 111, days: 112 } }), '28').trend).toMatchObject({ value: '−4,0 % cada 4 semanas', detectable: true });
+  });
+});
+
+describe('evidenceLines: what the data show, and nothing they do not', () => {
+  it('shouldStartWithTheCountSinceTheFirstResultAndKeepTheInterpretationLines', () => {
+    const g = full();
+    const lines = evidenceLines(g);
+    expect(lines[0]).toBe('146 de 177 días mejor que la media (82 %), desde el 17 may 2026');
+    for (const l of interpretationLines(g)) expect(lines).toContain(l);
+  });
+  it('shouldSaySomethingIsMissingInsteadOfNoChangeWhenThereIsTooLittleData', () => {
+    const g = full({ interpretation: { label: 'datos_insuficientes', reason: 'cobertura_insuficiente', pending: null, calibratedThrough: '2026-11-03', bands: BANDS } });
+    const lines = evidenceLines(g);
+    for (const l of interpretationLines(g)) expect(lines).toContain(l);
+    expect(lines.join(' ')).toContain('Faltan observaciones');
+    expect(lines.join(' ')).not.toMatch(/sin cambio|Ninguna señal supera/i);
+  });
+  it('shouldOmitTheDateWhenTheFirstResultIsUnknown', () => {
+    expect(evidenceLines(full({ firstDate: undefined }))[0]).toBe('146 de 177 días mejor que la media (82 %)');
   });
 });

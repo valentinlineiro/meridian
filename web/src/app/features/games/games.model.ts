@@ -18,7 +18,7 @@ export interface Interp {
   bands: { '28': [number, number]; '28v56': [number, number]; rho112: [number, number] } | null;
 }
 export interface Game {
-  n: number; best: { seconds: number; date: string }; beatStreak: { current: number; max: number };
+  n: number; firstDate?: string; best: { seconds: number; date: string }; beatStreak: { current: number; max: number };
   trend112: { rho: number | null; slopePctPer28d: number | null; n: number; days: number };
   recent28vBase56: { delta: number; nCur: number; nBase: number };
   interpretation: Interp; series: { date: string; eff: number; roll: number }[];

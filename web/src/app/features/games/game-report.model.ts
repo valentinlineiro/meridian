@@ -1,7 +1,8 @@
 // What the report of ONE game says, as pure functions of the server's summary of that game. Nothing is computed that the contract does
 // not carry: a window with nothing to say says nothing, and every claim keeps its condition.
-import { fmtClock } from '../../core/format';
-import { Game, MIN_LOSS_CELL, Range, RANGE_NAMES } from './games.model';
+import { fmtClock, fmtDate } from '../../core/format';
+import { PERIODS } from '../../core/words';
+import { beatText, effText, Game, interpretationLines, MIN_LOSS_CELL, Range, RANGE_NAMES } from './games.model';
 
 /** A week with at least this many results counts as complete in the report: a presentation convention, not a statistical threshold. */
 export const MIN_WEEK_N = 5;
@@ -10,6 +11,8 @@ const DAYS = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', '
 const DAYS_PLURAL = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábados', 'domingos'];
 const pct = (r: number) => Math.round(r * 100) + ' %';
 const clock = (s: number) => fmtClock(Math.round(s));
+/** Signed number with the typographic minus, decimal comma. */
+const signed = (v: number, d = 0) => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(d).replace('.', ',');
 const list = (a: string[]) => (a.length > 1 ? a.slice(0, -1).join(', ') + ' y ' + a[a.length - 1] : a[0]!);
 
 /** The middle half of the results of a period (P25–P75), its median, the best time ever and the n behind them; null with no median. */
@@ -58,4 +61,60 @@ export function reportSentence(x: Game, range: Range): string[] {
   const days = weekdayReport(x).standing;
   if (days.length) out.push('Se pierde más ' + list(days.map((d) => 'los ' + d)));
   return out;
+}
+
+/** The same figures for 7 days, 4 weeks, 3 months and all: a period without results prints a dash, never a zero. */
+export function levelRows(x: Game): { range: Range; label: string; median: string; band: string; speed: string; beat: string }[] {
+  return PERIODS.map(({ k, l }) => {
+    const w = x.windows[k], t = w.time;
+    return {
+      range: k, label: l,
+      median: t.median == null ? '—' : clock(t.median),
+      band: t.p25 == null || t.p75 == null ? '—' : `${clock(t.p25)}–${clock(t.p75)}`,
+      speed: effText(w.eff.median),
+      beat: w.beat.rate == null ? '—' : `${w.beat.k} de ${w.beat.nBeat} (${beatText(w.beat.rate)})`,
+    };
+  });
+}
+
+export interface Fact { title: string; value: string; note: string; detectable: boolean | null }
+const ADJUSTED_NOTE: Record<string, string> = { sin_cambio: 'sin cambio detectable', mejora: 'mejora detectable', deterioro: 'deterioro detectable' };
+
+/**
+ * Three measures of change, each saying whether it is DETECTABLE or only an estimate. "Detectable" is a plain comparison with the band
+ * the server sends (the adjusted form uses the label it already published); null = it cannot be judged.
+ */
+export function evolutionFacts(x: Game, range: Range): { adjusted: Fact; recent: Fact; trend: Fact } {
+  const a = x.adjusted, pctA = a.windows[range].pct, bands = x.interpretation.bands;
+  const noise = a.trend ? ` · ruido ${signed(a.trend.noise[0])} % a ${signed(a.trend.noise[1])} %` : '';
+  const adjusted: Fact = {
+    title: 'Forma descontando la dificultad', value: pctA == null ? '—' : `${signed(pctA)} %`,
+    note: a.label in ADJUSTED_NOTE ? ADJUSTED_NOTE[a.label] + noise : 'aún pocos datos',
+    detectable: a.label === 'mejora' || a.label === 'deterioro' ? true : a.label === 'sin_cambio' ? false : null,
+  };
+
+  const r = x.recent28vBase56, b = bands?.['28v56'];
+  const span = b ? `(${signed(b[0] * 100)} % a ${signed(b[1] * 100)} %)` : '';
+  const inside = r && b ? r.delta >= b[0] && r.delta <= b[1] : null;
+  const recent: Fact = {
+    title: 'Últimos 28 días frente a los 56 anteriores', value: r ? `${signed(r.delta * 100)} %` : '—',
+    note: !r ? 'aún pocos datos' : !b ? 'sin límites calibrados' : `${inside ? 'dentro' : 'fuera'} del ruido de este juego ${span}`,
+    detectable: inside == null ? null : !inside,
+  };
+
+  const t = x.trend112, rb = bands?.rho112, slope = t?.slopePctPer28d ?? null;
+  const detect = t && rb && slope != null && t.rho != null ? (t.rho > rb[1] && slope > 0) || (t.rho < rb[0] && slope < 0) : null;
+  const trend: Fact = {
+    title: 'Tendencia a 112 días', value: slope == null ? '—' : `${signed(slope, 1)} % cada 4 semanas`,
+    note: !t || slope == null ? 'aún pocos datos' : `estimada · ${!rb ? 'sin límites calibrados' : detect ? 'detectable' : 'sin cambio detectable'} · n = ${t.n}`,
+    detectable: detect,
+  };
+  return { adjusted, recent, trend };
+}
+
+/** What the data show: the count since the first result, then the lines the server's own interpretation already gives (also what is missing). */
+export function evidenceLines(x: Game): string[] {
+  const b = x.windows.all.beat;
+  const count = b.rate == null ? [] : [`${b.k} de ${b.nBeat} días mejor que la media (${beatText(b.rate)})` + (x.firstDate ? `, desde el ${fmtDate(x.firstDate)}` : '')];
+  return [...count, ...interpretationLines(x)];
 }
