@@ -113,9 +113,10 @@ export function chessRow(i: {
 
 // ── LinkedIn Games ───────────────────────────────────────────────────────────────────────────────────────────────────────────
 /** What needs a look first across the games (the order of the Games view), counted by the same verdict words. */
-export function gamesRow(s: GamesSummaryIn): { verdict: Verdict | null; name: string | null; line: string; streak: string } {
+/** `link` goes to the report of the game behind the verdict when that verdict says something, and to /games when nothing stands out. */
+export function gamesRow(s: GamesSummaryIn): { verdict: Verdict | null; name: string | null; link: string; line: string; streak: string } {
   const keys = attentionOrder(s.games);
-  if (!keys.length) return { verdict: null, name: null, line: 'Sin partidas registradas aún', streak: '' };
+  if (!keys.length) return { verdict: null, name: null, link: '/games', line: 'Sin partidas registradas aún', streak: '' };
   const vs = keys.map((k) => verdictFor(s.games[k]!.interpretation));
   const head = vs[0]!.state === 'confirmed' || vs[0]!.state === 'possible';
   const rest = head ? vs.slice(1) : vs; // the head is said once, not counted again
@@ -126,6 +127,7 @@ export function gamesRow(s: GamesSummaryIn): { verdict: Verdict | null; name: st
   return {
     verdict: vs[0]!,
     name: gameName(keys[0]!),
+    link: head ? `/games/${keys[0]}` : '/games',
     line: [...(head ? [`${gameName(keys[0]!)}: ${vs[0]!.label}`] : []), ...counts].join(' · '),
     streak: cur > 0 ? `Racha: ${gdays(cur)} ${cur === 1 ? 'seguido' : 'seguidos'}` : s.to ? `Sin registro desde ${fmtDate(s.to)} · registro manual` : '',
   };

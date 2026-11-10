@@ -30,7 +30,7 @@
       <span class="grow-t" aria-hidden="true">›</span>
     </a>
 
-    <a class="grow card" id="overviewGamesRow" routerLink="/games">
+    <a class="grow card" id="overviewGamesRow" [routerLink]="g?.link ?? '/games'">
       <div class="grow-h"><b>LinkedIn Games</b>@if (g?.verdict; as vd) {<app-verdict [verdict]="vd" />}<span class="grow-tag">registro manual</span></div>
       <div>
         <p class="grow-line" id="overviewGamesLine">{{ g?.line ?? '—' }}</p>

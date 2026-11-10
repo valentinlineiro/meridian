@@ -55,7 +55,7 @@ function view(d: OverviewData, now: number) {
       bars, aria: 'XP de los últimos 7 días completos: ' + bars.map((b) => `${b.letter} ${b.xp}`).join(', '),
       freshChip: syncChip(xpSynced, now),
     },
-    games: { line: d.games ? g?.line ?? NA : NA, verdict: g?.verdict ?? null, streak: g?.streak ?? '' },
+    games: { line: d.games ? g?.line ?? NA : NA, verdict: g?.verdict ?? null, streak: g?.streak ?? '', link: g?.link ?? '/games' },
   };
 }
 
