@@ -7,7 +7,7 @@ import { StatsService } from '../../core/stats.service';
 import { es, Langs, XpDay } from '../../core/courses';
 import { relDate, sparkPoints } from '../../core/format';
 import { VerdictPill } from '../../shared/verdict';
-import { chessRow, ChessRecentIn, ChessSummaryIn, gamesRow, GamesSummaryIn, headline, isStale, TimelineIn, xpLine, xpWeek } from './overview.model';
+import { chessRow, ChessRecentIn, ChessSummaryIn, gamesRow, GamesSummaryIn, headline, isStale, syncChip, TimelineIn, xpLine, xpWeek } from './overview.model';
 
 /**
  * Hoy: how you are doing against your own normal, one row per domain. The rows come from overview.model.ts; totals live in each domain's view.
@@ -22,14 +22,13 @@ interface OverviewData {
 
 const NA = 'No disponible';
 const orNull = <T>(o: Observable<T>) => o.pipe(catchError(() => of(null)));
-const chip = (iso: string | null, now: number) => iso ? { text: 'datos de ' + relDate(iso, now), stale: isStale(iso, now) } : null;
 
 function view(d: OverviewData, now: number) {
   const today = new Date(now).toISOString().slice(0, 10);
 
   const snaps = d.timeline?.snapshots ?? [];
   const chessSynced = snaps[snaps.length - 1]?.createdAt ?? null;
-  const c = chessRow({ recent: d.recent, summary: d.stats, timeline: d.timeline, matches: d.matches, syncedAt: chessSynced, now });
+  const c = chessRow({ recent: d.recent, summary: d.stats, timeline: d.timeline, matches: d.matches, now });
   const spark = sparkPoints(snaps.filter((s) => s.elo != null).slice(-30).map((s) => s.elo!));
 
   // The sync time is the catalogue's. The XP rows' own updatedAt is only "when that day last CHANGED" (a row is rewritten only if it differs),
@@ -48,13 +47,13 @@ function view(d: OverviewData, now: number) {
 
   return {
     headline: headline([{ name: 'Ajedrez', verdict: c.verdict }, { name: g?.name ?? 'Games', verdict: g?.verdict ?? null }]),
-    chess: { ...c, form: c.form ?? NA, spark, freshChip: chip(chessSynced, now) },
+    chess: { ...c, form: c.form ?? NA, spark, freshChip: syncChip(chessSynced, now) },
     lang: {
       line: !d.summaries ? NA : !w || w.state === 'none' ? 'Sin sincronizar todavía'
         : w.state === 'stale' ? `Sin datos nuevos desde hace ${w.ageDays} ${w.ageDays === 1 ? 'día' : 'días'} · no se compara con tu media` : xpLine(w, today),
       streak: streak == null ? '' : old ? `Racha de Duolingo: ${es(Number(streak))} días (dato de hace ${relDate(d.langs!.updatedAt!, now).replace(/^hace /, '')})` : `🔥 Racha de Duolingo: ${es(Number(streak))} días`,
       bars, aria: 'XP de los últimos 7 días completos: ' + bars.map((b) => `${b.letter} ${b.xp}`).join(', '),
-      freshChip: chip(xpSynced, now),
+      freshChip: syncChip(xpSynced, now),
     },
     games: { line: d.games ? g?.line ?? NA : NA, verdict: g?.verdict ?? null, streak: g?.streak ?? '' },
   };

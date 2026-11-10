@@ -119,7 +119,7 @@ describe('Overview', () => {
       expect(el.querySelector('#overviewLangRow')!.textContent).not.toContain('0 XP');
       expect(text(el, 'overviewLangStreak')).toBe('Racha de Duolingo: 108 días (dato de hace 32d)');
       expect(el.querySelector('#overviewLangRow .pill-win')).toBeNull();
-      expect(el.querySelector('#overviewLangRow .pill-warn')!.textContent).toContain('hace 32d');
+      expect(el.querySelector('#overviewLangRow .pill-warn')!.textContent).toContain('hace 32 días');
     });
 
     it('shouldUseTheSyncTimeNotTheLastXpChangeWhenTheRowsAreOlder', async () => {
@@ -145,7 +145,7 @@ describe('Overview', () => {
     it('shouldFlagTheChessDataAsOldWhenTheLastReadingIsOlderThanTwoDays', async () => {
       const api = fullApi();
       (api['/api/stats/bundle'] as { timeline: object }).timeline = { snapshots: [{ createdAt: iso(40 * DAY), elo: 850 }, { createdAt: iso(5 * DAY), elo: 900 }] };
-      expect(text(await open(api), 'overviewChessFresh')).toBe('datos de hace 5d');
+      expect(text(await open(api), 'overviewChessFresh')).toBe('datos de hace 5 días');
     });
 
     it('shouldReadEachStatsRouteWhenTheBundleFails', async () => {
