@@ -1,6 +1,6 @@
 <section id="gamesTab">
   @if (game(); as g) {
-    <a routerLink="/games" class="muted">← Todos los juegos</a>
+    <a routerLink="/games" class="muted gr-back">← Todos los juegos</a>
     <h1>{{ gameName(g) }}</h1>
     @if (summary() === null) {
       <div class="muted" role="alert">No disponible</div>

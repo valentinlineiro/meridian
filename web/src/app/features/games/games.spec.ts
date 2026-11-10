@@ -110,6 +110,7 @@ describe('Games', () => {
       expect(el.querySelector('app-game-report')).not.toBeNull();
       expect(el.querySelector('#gamesList')).toBeNull(); // not the list of games
       expect(el.querySelector('a[href="/games"]')!.textContent).toContain('Todos los juegos');
+      expect(el.querySelector('a.gr-back')).not.toBeNull(); // the class that gives it a 44px touch target on phones
     });
 
     it('shouldSayThereAreNoGamesYetWhenTheKeyIsValidButTheSummaryHasNoSuchGame', async () => {

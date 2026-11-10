@@ -12,7 +12,7 @@
     @if (nr(); as r) {
       <p style="margin:0 0 4px"><b>Tu rango normal</b> <span class="muted">(la mitad central de tus partidas, {{ rangeName() }}, n = {{ r.n }})</span></p>
       <div class="gr-big">{{ r.low }} – {{ r.high }}</div>
-      <div class="muted">mediana {{ r.median }} · mejor {{ r.best.time }} ({{ fmtDate(r.best.date) }})</div>
+      <div class="muted">mediana {{ r.median }} · mejor de siempre {{ r.best.time }} ({{ fmtDate(r.best.date) }})</div>
     } @else {<p class="muted">Aún pocos datos en este periodo.</p>}
   </div>
 
@@ -36,7 +36,9 @@
     <p class="muted" id="gameReportWeekdaysNote">Entre semana la media es mucho más rápida, así que perder un lunes no es lo mismo que perder un domingo.</p>
   } @else {<p class="muted" id="gameReportWeekdaysWindow">No disponible</p>}
 
-  <p id="gameReportStreak" style="margin:16px 0 0"><b>Días seguidos mejor que la media</b> · actual {{ gdays(x().beatStreak.current) }} · máxima {{ gdays(x().beatStreak.max) }}</p>
+  @if (streak(); as st) {
+    <p id="gameReportStreak" style="margin:16px 0 0"><b>Días seguidos mejor que la media</b> · actual @if (st.now === '—') {sin racha activa@if (st.stale) { ({{ st.stale }})}} @else {{{ st.now }}} · máxima {{ st.max }}</p>
+  }
 </app-section>
 
 <app-section title="Nivel" sectionId="gameReportLevelSection">

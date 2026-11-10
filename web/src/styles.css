@@ -248,3 +248,4 @@ a.grow{color:inherit}a.grow:hover{background:var(--hover);text-decoration:none}
 .gr-day{display:grid;grid-template-columns:5.5rem minmax(0,1fr);gap:2px 10px;align-items:center;padding:6px 0;font-size:var(--fs-md)}.gr-day .gr-txt{grid-column:2;color:var(--text-2)}
 @media(min-width:761px){.gr-day{grid-template-columns:5.5rem minmax(0,1fr) 17rem}.gr-day .gr-txt{grid-column:auto;text-align:right}}
 @media(max-width:760px){#gameReportLevel thead{display:none}} /* the stacked cells carry their own labels */
+@media(max-width:760px){.gr-back{display:inline-flex;align-items:center;min-height:44px}} /* the way back from a report: a touch target on phones */

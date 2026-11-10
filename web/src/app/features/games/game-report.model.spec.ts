@@ -126,16 +126,16 @@ describe('levelRows: the same figures for 7 days, 4 weeks, 3 months and all', ()
 
 describe('evolutionFacts: an estimate is not a detectable change', () => {
   it('shouldTakeTheAdjustedFormFromTheLabelThatIsAlreadyPublished', () => {
-    expect(evolutionFacts(full(), '28').adjusted).toMatchObject({ value: '+6 %', detectable: false, note: 'sin cambio detectable · ruido −5 % a +4 %' });
+    expect(evolutionFacts(full(), '28').adjusted).toMatchObject({ value: '+6 %', detectable: false, note: 'sin cambio detectable · ruido −5 % a +4 % · las últimas 4 semanas · n = 28' });
     const up = full(); (up as unknown as { adjusted: { label: string } }).adjusted.label = 'mejora';
-    expect(evolutionFacts(up, '28').adjusted).toMatchObject({ detectable: true, note: expect.stringContaining('mejora detectable') });
+    expect(evolutionFacts(up, '28').adjusted).toMatchObject({ detectable: true, note: expect.stringContaining('mejora detectable · ruido') });
     const few = full(); (few as unknown as { adjusted: { label: string; trend: null } }).adjusted.label = 'pocos_datos'; (few as unknown as { adjusted: { trend: null } }).adjusted.trend = null;
     expect(evolutionFacts(few, '28').adjusted).toMatchObject({ detectable: null, note: 'aún pocos datos' });
   });
   it('shouldCompareTheLast28DaysWithTheBandOfTheGame', () => {
-    expect(evolutionFacts(full(), '28').recent).toEqual({ title: 'Últimos 28 días frente a los 56 anteriores', value: '−7 %', detectable: false, note: 'dentro del ruido de este juego (−24 % a +35 %)' });
+    expect(evolutionFacts(full(), '28').recent).toEqual({ title: 'Últimos 28 días frente a los 56 anteriores', value: '−7 %', detectable: false, note: 'dentro del ruido de este juego (−24 % a +35 %) · n = 28 y 55' });
     const out = evolutionFacts(full({ recent28vBase56: { delta: -0.3, nCur: 28, nBase: 55 } }), '28').recent;
-    expect(out).toMatchObject({ value: '−30 %', detectable: true, note: 'fuera del ruido de este juego (−24 % a +35 %)' });
+    expect(out).toMatchObject({ value: '−30 %', detectable: true, note: 'fuera del ruido de este juego (−24 % a +35 %) · n = 28 y 55' });
   });
   it('shouldSayThereAreNoCalibratedLimitsInsteadOfJudging', () => {
     const g = full({ interpretation: { label: 'datos_insuficientes', reason: 'sin_calibracion', pending: null, calibratedThrough: null, bands: null } });

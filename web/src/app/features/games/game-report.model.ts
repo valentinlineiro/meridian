@@ -89,7 +89,7 @@ export function evolutionFacts(x: Game, range: Range): { adjusted: Fact; recent:
   const noise = a.trend ? ` · ruido ${signed(a.trend.noise[0])} % a ${signed(a.trend.noise[1])} %` : '';
   const adjusted: Fact = {
     title: 'Forma descontando la dificultad', value: pctA == null ? '—' : `${signed(pctA)} %`,
-    note: a.label in ADJUSTED_NOTE ? ADJUSTED_NOTE[a.label] + noise : 'aún pocos datos',
+    note: a.label in ADJUSTED_NOTE ? `${ADJUSTED_NOTE[a.label]}${noise} · ${RANGE_NAMES[range]} · n = ${a.windows[range].n}` : 'aún pocos datos',
     detectable: a.label === 'mejora' || a.label === 'deterioro' ? true : a.label === 'sin_cambio' ? false : null,
   };
 
@@ -98,7 +98,7 @@ export function evolutionFacts(x: Game, range: Range): { adjusted: Fact; recent:
   const inside = r && b ? r.delta >= b[0] && r.delta <= b[1] : null;
   const recent: Fact = {
     title: 'Últimos 28 días frente a los 56 anteriores', value: r ? `${signed(r.delta * 100)} %` : '—',
-    note: !r ? 'aún pocos datos' : !b ? 'sin límites calibrados' : `${inside ? 'dentro' : 'fuera'} del ruido de este juego ${span}`,
+    note: !r ? 'aún pocos datos' : !b ? 'sin límites calibrados' : `${inside ? 'dentro' : 'fuera'} del ruido de este juego ${span} · n = ${r.nCur} y ${r.nBase}`,
     detectable: inside == null ? null : !inside,
   };
 

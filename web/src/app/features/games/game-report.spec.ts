@@ -53,7 +53,7 @@ describe('GameReport', () => {
       const t = text('gameReportRange');
       expect(t).toContain('0:37 – 0:52');
       expect(t).toContain('mediana 0:43');
-      expect(t).toContain('mejor 0:19');
+      expect(t).toContain('mejor de siempre 0:19');
       expect(t).toContain('n = 28');
     });
     it('shouldDrawEachWeekWithItsValueAndMarkTheIncompleteOnes', async () => {
@@ -85,6 +85,14 @@ describe('GameReport', () => {
       expect(rows[5]).toContain('9 derrotas, 1 victoria');
       expect(rows[5]).not.toContain('1 victorias');
     });
+    it('shouldNotPrintAZeroStreakWhenTheManualLogIsStale', async () => {
+      const stale = { ...summary({ queens: queens({ beatStreak: { current: 0, max: 13 } }) }), playStreak: { current: 0, max: 13 }, to: '2026-11-03' } as unknown as Summary;
+      await open(stale);
+      expect(text('gameReportStreak')).toContain('sin racha activa');
+      expect(text('gameReportStreak')).toContain('Sin registro desde 3 nov 2026');
+      expect(text('gameReportStreak')).toContain('máxima 13 días');
+      expect(text('gameReportStreak')).not.toMatch(/actual 0/);
+    });
     it('shouldGiveTheStreaks', async () => {
       await open(summary({ queens: queens() }));
       expect(text('gameReportStreak')).toContain('actual 1 día');
@@ -107,8 +115,8 @@ describe('GameReport', () => {
       expect(el.querySelector('#gameReportEvolution app-help table')).not.toBeNull();
       const t = text('gameReportFacts');
       expect(t).toContain('Forma descontando la dificultad');
-      expect(t).toContain('sin cambio detectable · ruido −5 % a +4 %');
-      expect(t).toContain('dentro del ruido de este juego (−24 % a +35 %)');
+      expect(t).toContain('sin cambio detectable · ruido −5 % a +4 % · las últimas 4 semanas · n = 28');
+      expect(t).toContain('dentro del ruido de este juego (−24 % a +35 %) · n = 28 y 55');
       expect(t).toContain('estimada · sin cambio detectable · n = 111');
     });
     it('shouldDegradeOnlyTheEvolutionBlockWhenTheTrajectoryIsMalformed', async () => {

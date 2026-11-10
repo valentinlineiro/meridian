@@ -8,7 +8,7 @@ import { Stats } from '../../shared/stats';
 import { VerdictPill } from '../../shared/verdict';
 import { evidenceLines, evolutionFacts, levelRows, normalRange, reportSentence, weekdayReport, weeklyBeat } from './game-report.model';
 import { GamesChart } from './games-chart';
-import { gdays, interpretationLines, Range, RANGE_NAMES, Summary, trajectory } from './games.model';
+import { gbeatStreak, gdays, interpretationLines, Range, RANGE_NAMES, staleTitle, Summary, trajectory } from './games.model';
 
 /**
  * The report of one game: regularity first, then level, evolution and what the data do and do not say. Every block is built on its own
@@ -43,6 +43,8 @@ export class GameReport {
   }, null));
   /** The weekly (90-day) trajectory the chart draws; null when it cannot be read. */
   protected readonly traj = computed(() => safe(() => trajectory(this.summary(), this.game(), '90'), null));
+  /** The run of days beating the average, as the list says it: a stale manual log is "sin racha activa", never a zero. */
+  protected readonly streak = computed(() => safe(() => ({ now: gbeatStreak(this.x(), this.summary()), stale: staleTitle(this.x(), this.summary()), max: gdays(this.x().beatStreak.max) }), null));
   protected readonly evidence = computed(() => safe(() => evidenceLines(this.x()), [] as string[]));
 
   protected count = (n: number, one: string) => `${n} ${one}${n === 1 ? '' : 's'}`;
