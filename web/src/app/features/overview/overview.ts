@@ -47,7 +47,7 @@ function view(d: OverviewData, now: number) {
   try { g = d.games ? gamesRow(d.games) : null; } catch { g = null; } // a malformed summary is unavailable, not an empty log
 
   return {
-    headline: headline([{ name: 'Ajedrez', verdict: c.verdict }, { name: 'Games', verdict: g?.verdict ?? null }]),
+    headline: headline([{ name: 'Ajedrez', verdict: c.verdict }, { name: g?.name ?? 'Games', verdict: g?.verdict ?? null }]),
     chess: { ...c, form: c.form ?? NA, spark, freshChip: chip(chessSynced, now) },
     lang: {
       line: !d.summaries ? NA : !w || w.state === 'none' ? 'Sin sincronizar todavía'

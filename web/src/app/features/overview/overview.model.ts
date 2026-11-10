@@ -103,9 +103,9 @@ export function chessRow(i: {
 
 // ── LinkedIn Games ───────────────────────────────────────────────────────────────────────────────────────────────────────────
 /** What needs a look first across the games (the order of the Games view), counted by the same verdict words. */
-export function gamesRow(s: GamesSummaryIn): { verdict: Verdict | null; line: string; streak: string } {
+export function gamesRow(s: GamesSummaryIn): { verdict: Verdict | null; name: string | null; line: string; streak: string } {
   const keys = attentionOrder(s.games);
-  if (!keys.length) return { verdict: null, line: 'Sin partidas registradas aún', streak: '' };
+  if (!keys.length) return { verdict: null, name: null, line: 'Sin partidas registradas aún', streak: '' };
   const vs = keys.map((k) => verdictFor(s.games[k]!.interpretation));
   const head = vs[0]!.state === 'confirmed' || vs[0]!.state === 'possible';
   const rest = head ? vs.slice(1) : vs; // the head is said once, not counted again
@@ -115,16 +115,17 @@ export function gamesRow(s: GamesSummaryIn): { verdict: Verdict | null; line: st
   const cur = s.playStreak?.current ?? 0;
   return {
     verdict: vs[0]!,
+    name: gameName(keys[0]!),
     line: [...(head ? [`${gameName(keys[0]!)}: ${vs[0]!.label}`] : []), ...counts].join(' · '),
     streak: cur > 0 ? `Racha: ${gdays(cur)} ${cur === 1 ? 'seguido' : 'seguidos'}` : s.to ? `Sin registro desde ${fmtDate(s.to)} · registro manual` : '',
   };
 }
 
 // ── The page ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-/** The one sentence at the top: only verdicts that say something, worst first; never a claim the rows do not make. */
+/** The one sentence at the top: only verdicts that say something, worst first, each with the subject that originates it ("Tango: a la baja"); never a claim the rows do not make. */
 export function headline(rows: { name: string; verdict: Verdict | null }[]): string {
   const said = rows.filter((r) => r.verdict && (r.verdict.state === 'confirmed' || r.verdict.state === 'possible'))
     .sort((a, b) => VERDICT_ORDER.indexOf(verdictKey(a.verdict!)) - VERDICT_ORDER.indexOf(verdictKey(b.verdict!)));
-  if (said.length) return said.map((r) => `${r.verdict!.label} en ${r.name}`).join(' · ');
+  if (said.length) return said.map((r) => `${r.name}: ${r.verdict!.label.toLowerCase()}`).join(' · ');
   return rows.some((r) => r.verdict?.state === 'no-signal') ? 'Sin cambios claros respecto a tu ritmo.' : 'Aún no hay datos suficientes para valorar tu ritmo.';
 }

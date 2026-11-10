@@ -76,7 +76,7 @@ describe('Overview', () => {
 
   it('shouldSayHowYouAreDoingInOneRowPerDomainWhenEverythingAnswers', async () => {
     const el = await open(fullApi());
-    expect(text(el, 'overviewHeadline')).toBe('A la baja en Games · Posible subida en Ajedrez');
+    expect(text(el, 'overviewHeadline')).toBe('Tango: a la baja · Ajedrez: posible subida');
 
     expect(el.querySelector('#overviewChessRow .pill')!.textContent).toBe('Posible subida');
     expect(text(el, 'overviewChessForm')).toMatch(/^Últimas 50 partidas \(desde el .+\): 60,0 % de victorias · \+6,0 puntos de % \(entre \+1,0 y \+11,0\) frente a las anteriores$/);

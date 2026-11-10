@@ -147,6 +147,7 @@ describe('gamesRow: what needs a look first across the games', () => {
   it('shouldHeadWithTheWorstVerdictAndCountTheRest', () => {
     const r = gamesRow(sum({ zip: g('mejora_sostenida'), tango: g('deterioro'), queens: g('estable'), patches: g('datos_insuficientes') }));
     expect(r!.verdict).toMatchObject({ state: 'confirmed', dir: 'down' });
+    expect(r!.name).toBe('Tango'); // the game that originates the verdict
     expect(r!.line).toBe('Tango: A la baja · 1 al alza · 1 sin señales de cambio · 1 con pocos datos'); // the others, not the head again
   });
   it('shouldRankAPossibleFallAboveAConfirmedRise', () => {
@@ -167,7 +168,7 @@ describe('gamesRow: what needs a look first across the games', () => {
     expect(gamesRow(sum({ zip: g('estable') }, { playStreak: { current: 0, max: 9 }, to: '2026-11-03' }))!.streak).toBe('Sin registro desde 3 nov 2026 · registro manual');
   });
   it('shouldSayTheLogIsEmptyAndGiveNoVerdict', () => {
-    expect(gamesRow(sum({}))).toEqual({ verdict: null, line: 'Sin partidas registradas aún', streak: '' });
+    expect(gamesRow(sum({}))).toEqual({ verdict: null, name: null, line: 'Sin partidas registradas aún', streak: '' });
   });
 });
 
@@ -175,7 +176,7 @@ describe('headline', () => {
   const v = (state: string, dir: 'up' | 'down' | null, label: string) => ({ state, dir, label, pill: '', sentence: '' }) as never;
   it('shouldNameWhatNeedsALookWorstFirst', () => {
     expect(headline([{ name: 'Ajedrez', verdict: v('possible', 'up', 'Posible subida') }, { name: 'Games', verdict: v('confirmed', 'down', 'A la baja') }]))
-      .toBe('A la baja en Games · Posible subida en Ajedrez');
+      .toBe('Games: a la baja · Ajedrez: posible subida');
   });
   it('shouldSayNoClearChangeWhenNothingStandsOut', () => {
     expect(headline([{ name: 'Ajedrez', verdict: v('no-signal', null, 'x') }, { name: 'Games', verdict: v('few-data', null, 'y') }])).toBe('Sin cambios claros respecto a tu ritmo.');
