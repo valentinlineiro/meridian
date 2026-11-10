@@ -1,4 +1,4 @@
-import { beatDays, PERIODS, speedWords, typicalTime, verdictFor, VERDICT_ORDER } from './words';
+import { beatDays, intervalVerdict, PERIODS, speedWords, typicalTime, verdictFor, VERDICT_ORDER } from './words';
 
 describe('words', () => {
   it('shouldPutARatioInTheRightPlainSpeedPhrase', () => {
@@ -50,5 +50,24 @@ describe('words', () => {
 
   it('shouldListWhatNeedsAttentionFirst', () => {
     expect(VERDICT_ORDER).toEqual(['confirmed-down', 'possible-down', 'possible-up', 'confirmed-up', 'no-signal', 'few-data']);
+  });
+
+  describe('intervalVerdict (one observation window against a baseline, with its 95% interval)', () => {
+    it('shouldSayPossibleRiseWhenTheIntervalIsAboveZero', () => {
+      expect(intervalVerdict({ diff: 6, lower: 1, upper: 11 })).toMatchObject({ state: 'possible', dir: 'up', label: 'Posible subida', pill: 'pill pill-selected' });
+    });
+    it('shouldSayPossibleFallWhenTheIntervalIsBelowZero', () => {
+      expect(intervalVerdict({ diff: -6, lower: -11, upper: -1 })).toMatchObject({ state: 'possible', dir: 'down', label: 'Posible bajada' });
+    });
+    it('shouldSayNoSignalWhenTheIntervalIncludesZero', () => {
+      for (const d of [{ diff: 6, lower: -8, upper: 20 }, { diff: 0, lower: 0, upper: 3 }, { diff: 2, lower: -3, upper: 0 }])
+        expect(intervalVerdict(d)).toMatchObject({ state: 'no-signal', dir: null, label: 'Sin señales de cambio' });
+    });
+    it('shouldSayFewDataWhenThereIsNoDelta', () => {
+      expect(intervalVerdict(null)).toMatchObject({ state: 'few-data', dir: null, label: 'Aún pocos datos' });
+    });
+    it('shouldNeverConfirmBecauseNoPersistenceRuleIsApplied', () => {
+      for (const d of [{ diff: 30, lower: 20, upper: 40 }, { diff: -30, lower: -40, upper: -20 }, null]) expect(intervalVerdict(d).state).not.toBe('confirmed');
+    });
   });
 });

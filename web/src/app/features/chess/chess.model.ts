@@ -44,7 +44,7 @@ export const pc0 = (v: number) => Math.round(v) + ' %';
 export const fmt = (n: unknown) => n == null ? '—' : String(n);
 /** Signed integer with the typographic minus: +100, −40, 0. */
 export const signedInt = (n: number) => (n > 0 ? '+' : '') + String(n).replace('-', '−');
-export const scaleDelta = (d: Delta | null | undefined, k: number): Delta | null => d ? { diff: d.diff * k, lower: d.lower * k, upper: d.upper * k } : null;
+export { scaleDelta } from '../../core/format';
 
 /** '1 derrota', '3 derrotas' */
 export const streakWord = (n: number | null | undefined, kind: string | null | undefined): string => {

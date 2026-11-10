@@ -1,4 +1,5 @@
 export interface Delta { diff: number; lower: number; upper: number }
+export const scaleDelta = (d: Delta | null | undefined, k: number): Delta | null => d ? { diff: d.diff * k, lower: d.lower * k, upper: d.upper * k } : null;
 
 const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 
@@ -13,9 +14,9 @@ export const fmtDate = (d: string | null | undefined): string => {
   return m ? `${Number(m[3])} ${MONTHS[Number(m[2]) - 1]} ${m[1]}` : String(d);
 };
 
-export const relDate = (iso: string): string => {
+export const relDate = (iso: string, now = Date.now()): string => {
   if (!iso) return '—';
-  const days = Math.floor((Date.now() - new Date(iso).getTime()) / 864e5);
+  const days = Math.floor((now - new Date(iso).getTime()) / 864e5);
   return days <= 0 ? 'hoy' : days === 1 ? 'ayer' : `hace ${days}d`;
 };
 
@@ -65,3 +66,10 @@ export const colorConclusion = (diff: number | null | undefined, lo: number | nu
 
 /** Seconds as m:ss (a time on a clock, not a duration in words). */
 export const fmtClock = (s: number): string => Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+
+/** Polyline points (viewBox 0 0 100 24) of a series, or '' with fewer than two values. */
+export function sparkPoints(v: number[]): string {
+  if (v.length < 2) return '';
+  const lo = Math.min(...v), hi = Math.max(...v), r = (hi - lo) || 1;
+  return v.map((y, i) => (i / (v.length - 1) * 100).toFixed(1) + ',' + (22 - (y - lo) / r * 20).toFixed(1)).join(' ');
+}

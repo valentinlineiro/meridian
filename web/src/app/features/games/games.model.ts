@@ -1,7 +1,7 @@
 // Port of the LinkedIn Games view builders (src/dashboard.client.js:1787–1943). Pure: the range is a parameter, not a global.
 // Nothing here is computed beyond formatting: labels, bands and arrows come from the server's contract.
-import { fmtClock, fmtDate } from '../../core/format';
-import { beatDays, formVerdict, formWords, PERIODS, PeriodKey, speedWords, typicalTime, Verdict, verdictFor, verdictKey, VERDICT_ORDER } from '../../core/words';
+import { fmtClock, fmtDate, sparkPoints } from '../../core/format';
+import { attentionOrder, beatDays, formVerdict, GAME_NAMES, gameName, gdays, formWords, PERIODS, PeriodKey, speedWords, typicalTime, Verdict, verdictFor, verdictKey, VERDICT_ORDER } from '../../core/words';
 
 export type Range = PeriodKey;
 export type Label = 'mejora_sostenida' | 'estable' | 'deterioro' | 'datos_insuficientes';
@@ -36,8 +36,7 @@ export interface Weekday { dow: number; n: number; beat: { rate: number | null }
 export interface Summary { weekdays?: Weekday[]; difficulty?: { date: string; level: Level }[]; days: number; from: string | null; to: string | null; playStreak?: { current: number; max: number } | null; games: Record<string, Game> }
 export interface Day { games?: Record<string, { score?: string | null; avg?: string | null; number?: number | null }> }
 
-export const GAME_NAMES: Record<string, string> = { zip: 'Zip', tango: 'Tango', queens: 'Queens', mini_sudoku: 'Mini Sudoku', patches: 'Patches', wend: 'Wend' };
-export const gameName = (k: string): string => GAME_NAMES[k] || k;
+export { GAME_NAMES, gameName, gdays };
 export const RANGES: { k: Range; l: string }[] = PERIODS.map(({ k, l }) => ({ k, l }));
 export const RANGE_NAMES = Object.fromEntries(PERIODS.map((p) => [p.k, p.phrase])) as Record<Range, string>;
 
@@ -45,7 +44,6 @@ export const RANGE_NAMES = Object.fromEntries(PERIODS.map((p) => [p.k, p.phrase]
 export const localToday = (): string => new Date().toLocaleDateString('sv-SE');
 
 const gnum = (v: number | null, d: number) => v == null ? '—' : v.toLocaleString('es-ES', { maximumFractionDigits: d });
-export const gdays = (n: number) => n + (n === 1 ? ' día' : ' días');
 const gpct = (r: number | null) => r == null ? '—' : Math.round(r * 100) + ' %';
 /** Typographic minus, as in the rest of the UI (changes, chess). */
 const minus = (s: string) => s.replace('-', '−');
@@ -154,11 +152,7 @@ export function weekdayRows(s: Summary) {
 }
 
 /** Polyline points of the 28-day rolling median, or '' with fewer than two points. */
-export function gameSpark(series: { roll: number }[]): string {
-  const v = series.map((p) => p.roll); if (v.length < 2) return '';
-  const lo = Math.min(...v), hi = Math.max(...v), r = (hi - lo) || 1;
-  return v.map((y, i) => (i / (v.length - 1) * 100).toFixed(1) + ',' + (22 - (y - lo) / r * 20).toFixed(1)).join(' ');
-}
+export const gameSpark = (series: { roll: number }[]): string => sparkPoints(series.map((p) => p.roll));
 
 /** The player's form with the difficulty of the days taken out: the number first, then its trend with the same verdict words. */
 function formStats(x: Game, range: Range): { l: string; v: string; s?: string }[] {
@@ -207,10 +201,7 @@ export function gameCard(k: string, x: Game, s: Summary, range: Range) {
 }
 export type GameCard = ReturnType<typeof gameCard>;
 /** Cards in verdict order: what needs a look first. A game without a readable verdict goes last. */
-export const cardOrder = (s: Summary): string[] => {
-  const rank = (k: string) => { try { return VERDICT_ORDER.indexOf(verdictKey(verdictOf(s.games[k]!))); } catch { return 99; } };
-  return Object.keys(s.games).sort((a, b) => (rank(a) < 0 ? 98 : rank(a)) - (rank(b) < 0 ? 98 : rank(b)));
-};
+export const cardOrder = (s: Summary): string[] => attentionOrder(s.games);
 
 /** Port of gamesStreakView (src/dashboard.client.js:828) for the hero. */
 export function gamesHero(s: Summary) {
