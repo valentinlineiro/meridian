@@ -1,17 +1,19 @@
 import { Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { SideNav } from './side-nav';
+import { TabBar } from './tab-bar';
 import { StatsService } from '../core/stats.service';
 
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet, SideNav],
+  imports: [RouterOutlet, SideNav, TabBar],
   template: `
     <header><div class="h-left"><p class="brand">Meridian</p>@if (stats.chessUpdated(); as m) {<small id="syncMeta">{{ m }}</small>}</div></header>
     <main class="shell">
       <nav app-side-nav></nav>
       <div class="content"><router-outlet /></div>
     </main>
+    <app-tab-bar />
   `,
 })
 export class Shell {

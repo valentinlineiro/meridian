@@ -1,30 +1,20 @@
-import { Component, computed, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { NavigationEnd, Router, RouterLink, RouterLinkActive } from '@angular/router';
-import { filter } from 'rxjs';
+import { Component, inject } from '@angular/core';
+import { RouterLink, RouterLinkActive } from '@angular/router';
 import { SyncService } from '../core/sync.service';
+import { currentSection } from './section';
 
-// Groups and items exactly as the legacy side nav (src/frontend.ts:15-35).
+// The sidebar of the desktop layout; phones use the tab bar (tab-bar.ts). Groups and items as the legacy side nav (src/frontend.ts:15-35).
 const GROUPS = [
   { label: 'Resumen', items: [{ path: 'overview', label: 'Hoy' }, { path: 'changes', label: 'Qué cambió' }, { path: 'trajectory', label: 'Trayectoria' }] },
   { label: 'Dominios', items: [{ path: 'chess', label: 'Ajedrez' }, { path: 'languages', label: 'Idiomas' }, { path: 'games', label: 'LinkedIn Games' }] },
 ];
-const LABELS: Record<string, string> = {
-  ...Object.fromEntries(GROUPS.flatMap((g) => g.items.map((i) => [i.path, i.label]))),
-  profile: 'Ajedrez', // the player profile belongs to chess, as on the legacy page
-  settings: 'Configuración',
-};
-
 // Attribute selector: the host is the <nav class="side"> itself, so the .shell grid and sticky rules apply as in legacy.
 @Component({
   selector: 'nav[app-side-nav]',
   imports: [RouterLink, RouterLinkActive],
   host: { class: 'side', 'aria-label': 'Secciones' },
   template: `
-    <button class="side-toggle" type="button" (click)="open.set(!open())" [attr.aria-expanded]="open()" aria-controls="sideMenu">
-      <span>{{ current() }}</span><span aria-hidden="true">▾</span>
-    </button>
-    <div class="side-menu" id="sideMenu" [class.open]="open()">
+    <div class="side-menu" id="sideMenu">
       @for (group of groups; track group.label) {
         <div class="side-group">{{ group.label }}</div>
         @for (item of group.items; track item.path) {
@@ -45,16 +35,6 @@ const LABELS: Record<string, string> = {
 export class SideNav {
   protected readonly sync = inject(SyncService);
   protected readonly groups = GROUPS;
-  protected readonly open = signal(false);
   /** First path segment; /profile has no entry of its own: it marks Ajedrez, as on the legacy page. */
-  protected readonly section = signal('');
-  protected readonly current = computed(() => LABELS[this.section()] ?? 'Hoy');
-
-  constructor() {
-    const router = inject(Router);
-    router.events.pipe(filter((e) => e instanceof NavigationEnd), takeUntilDestroyed()).subscribe(() => {
-      this.open.set(false);
-      this.section.set(router.url.split(/[/?#]/)[1] ?? '');
-    });
-  }
+  protected readonly section = currentSection();
 }
