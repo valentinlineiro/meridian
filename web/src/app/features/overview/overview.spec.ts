@@ -122,10 +122,13 @@ describe('Overview', () => {
       expect(el.querySelector('#overviewLangRow .pill-warn')!.textContent).toContain('hace 32d');
     });
 
-    it('shouldTrustTheXpRowsOwnSyncTimeOverTheCatalogueOne', async () => {
-      const api = fullApi(); // the catalogue says fresh, the XP rows say they were written 10 days ago
-      api['/api/languages/xp'] = { summaries: [...xpRows(7, 1, 271, { updatedAt: iso(10 * DAY) })] };
-      expect(text(await open(api), 'overviewLangXp')).toBe('Sin datos nuevos desde hace 10 días · no se compara con tu media');
+    it('shouldUseTheSyncTimeNotTheLastXpChangeWhenTheRowsAreOlder', async () => {
+      // a quiet stretch: the sync is fresh, the newest XP row was last written 10 days ago (rows are only rewritten when they change)
+      const api = fullApi();
+      api['/api/languages/xp'] = { summaries: [...xpRows(7, 1, 271, { updatedAt: iso(10 * DAY) }), ...xpRows(35, 8, 343, { updatedAt: iso(10 * DAY) })] };
+      const el = await open(api);
+      expect(text(el, 'overviewLangXp')).toMatch(/^Últimos 7 días completos \(hasta ayer\): 1897 XP/);
+      expect(text(el, 'overviewLangFresh')).toBe('datos de hoy');
     });
 
     it('shouldSayTheyAreNotSyncedWhenThereIsNoSyncDate', async () => {

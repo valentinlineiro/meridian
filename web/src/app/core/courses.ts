@@ -7,7 +7,7 @@ export interface Langs {
   totalXp?: number | null; streak?: number | null; currentCourseId?: string | null; updatedAt?: string | null; createdAt?: string | null;
   totalXpObservedAt?: string | null; streakObservedAt?: string | null; courses?: Course[];
 }
-export interface XpDay { date: string | number; gainedXp?: number | null; numSessions?: number | null; totalSessionTime?: number | null; updatedAt?: string | null }
+export interface XpDay { date: string | number; gainedXp?: number | null; numSessions?: number | null; totalSessionTime?: number | null }
 export interface Section {
   sectionId?: string | null; sectionIndex?: number | string | null; type?: string | null; cefrLevel?: string | null; cefrSublevel?: string | number | null;
   completedUnits?: number | null; totalUnits?: number | null; lastSeenAt?: string | null;

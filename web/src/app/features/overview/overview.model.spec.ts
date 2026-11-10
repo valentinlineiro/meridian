@@ -179,7 +179,7 @@ describe('headline', () => {
       .toBe('Games: a la baja · Ajedrez: posible subida');
   });
   it('shouldSayNoClearChangeWhenNothingStandsOut', () => {
-    expect(headline([{ name: 'Ajedrez', verdict: v('no-signal', null, 'x') }, { name: 'Games', verdict: v('few-data', null, 'y') }])).toBe('Sin cambios claros respecto a tu ritmo.');
+    expect(headline([{ name: 'Ajedrez', verdict: v('no-signal', null, 'x') }, { name: 'Games', verdict: v('few-data', null, 'y') }])).toBe('Sin cambios claros en tus resultados recientes.');
   });
   it('shouldNotPretendWhenThereIsNoVerdictAtAll', () => {
     expect(headline([{ name: 'Ajedrez', verdict: null }, { name: 'Games', verdict: v('few-data', null, 'y') }])).toBe('Aún no hay datos suficientes para valorar tu ritmo.');

@@ -127,5 +127,5 @@ export function headline(rows: { name: string; verdict: Verdict | null }[]): str
   const said = rows.filter((r) => r.verdict && (r.verdict.state === 'confirmed' || r.verdict.state === 'possible'))
     .sort((a, b) => VERDICT_ORDER.indexOf(verdictKey(a.verdict!)) - VERDICT_ORDER.indexOf(verdictKey(b.verdict!)));
   if (said.length) return said.map((r) => `${r.name}: ${r.verdict!.label.toLowerCase()}`).join(' · ');
-  return rows.some((r) => r.verdict?.state === 'no-signal') ? 'Sin cambios claros respecto a tu ritmo.' : 'Aún no hay datos suficientes para valorar tu ritmo.';
+  return rows.some((r) => r.verdict?.state === 'no-signal') ? 'Sin cambios claros en tus resultados recientes.' : 'Aún no hay datos suficientes para valorar tu ritmo.';
 }
