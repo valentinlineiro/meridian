@@ -1,122 +1,43 @@
-<!-- Port of src/frontend.ts <section id="overviewTab">. Until the data answers, the legacy placeholders ("—") show; never 0. -->
 @let d = v();
 <section id="overviewTab">
   <div class="hero-card" id="overviewHero">
-    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-      <div>
-        <h1>Tu actividad</h1>
-        <div class="muted" style="font-size:var(--fs-sm);margin-top:2px" id="overviewSyncMeta">{{ d?.syncMeta ?? 'Pulso unificado y verificado por dominio' }}</div>
-      </div>
-      <span style="display:flex;align-items:center;gap:6px;max-width:100%"><span id="overviewStreak" class="pill" [class.pill-win]="d ? d.streakWin : true" style="font-size:var(--fs-md);font-weight:700;white-space:normal;max-width:100%">{{ d?.streak ?? 'Duolingo · 🔥 —' }}</span></span>
-    </div>
+    <h1>Hoy</h1>
+    <p class="grow-line" id="overviewHeadline">{{ d?.headline ?? '—' }}</p>
+    <p class="muted">Cómo vas frente a tu propio ritmo. Los totales de siempre están en cada sección.</p>
   </div>
 
-  <h2 style="margin:18px 0 10px">Estado por dominio</h2>
-  <div class="grid3" id="overviewDomainsGrid">
-    <div class="card" id="overviewLangCard">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <h3 style="margin:0">Idiomas</h3>
-        <button type="button" class="btn btn-g" routerLink="/languages" style="font-size:var(--fs-sm);padding:4px 10px">Ver Idiomas →</button>
-      </div>
+  @let c = d?.chess;
+  @let l = d?.lang;
+  @let g = d?.games;
+  <div class="grows">
+    <a class="grow card" id="overviewChessRow" routerLink="/chess">
+      <div class="grow-h"><b>Ajedrez</b>@if (c?.verdict; as vd) {<app-verdict [verdict]="vd" />}@if (c?.freshChip; as f) {<span id="overviewChessFresh" class="pill" [class.pill-warn]="f.stale">{{ f.text }}</span>}</div>
       <div>
-        <div style="display:flex;justify-content:space-between;align-items:center"><div class="muted" style="font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.05em">Curso seleccionado</div><span class="pill pill-scope">CURSO</span></div>
-        <div id="overviewLangActiveCourse" style="font-size:var(--fs-h);font-weight:700;margin-top:2px">{{ d ? d.lang.flag + d.lang.name + (d.lang.pair ? ' ' : '') : '—' }}@if (d?.lang?.pair) {<span class="muted" style="font-size:var(--fs-sm);font-weight:400">{{ d!.lang.pair }}</span>}</div>
-        <div id="overviewLangSourceCourse" class="muted" style="font-size:var(--fs-xs);margin-top:2px">{{ d?.lang?.source }}</div>
+        <p class="grow-line" id="overviewChessForm">{{ c?.form ?? '—' }}</p>
+        <p class="muted" id="overviewChessElo">{{ c?.elo }}</p>
       </div>
-      <div style="margin-top:10px">
-        <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:var(--fs-sm);margin-bottom:4px">
-          <span class="muted">Progreso curricular</span>
-          <span id="overviewLangUnits" style="font-weight:600">{{ d?.lang?.units ?? '—' }}</span>
-        </div>
-        <div class="progress-bar"><div id="overviewLangProgressBar" [style.width.%]="d?.lang?.progress ?? 0"></div></div>
-      </div>
-      <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center">
-        <span class="muted" style="font-size:var(--fs-sm)">Todos los cursos <span class="pill pill-scope">CUENTA</span></span>
-        <span id="overviewLangCatalogXp" class="pill" style="font-weight:700">{{ d?.lang?.catalog ?? '—' }}</span>
-      </div>
-    </div>
+      <div class="grow-viz">@if (c?.spark; as sp) {<svg class="spark" viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true"><polyline [attr.points]="sp" fill="none" stroke="var(--link)" stroke-width="1.5" vector-effect="non-scaling-stroke" /></svg>}</div>
+      <span class="grow-t" aria-hidden="true">›</span>
+    </a>
 
-    <div class="card" id="overviewChessCard">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <h3 style="margin:0">Ajedrez</h3>
-        <button type="button" class="btn btn-g" routerLink="/chess" style="font-size:var(--fs-sm);padding:4px 10px">Ver Ajedrez →</button>
-      </div>
+    <a class="grow card" id="overviewLangRow" routerLink="/languages">
+      <div class="grow-h"><b>Idiomas</b><span class="grow-tag">toda la cuenta</span>@if (l?.freshChip; as f) {<span id="overviewLangFresh" class="pill" [class.pill-warn]="f.stale">{{ f.text }}</span>}</div>
       <div>
-        <div class="muted" style="font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.05em">ELO observado</div>
-        <div id="overviewChessElo" style="font-size:var(--fs-display);font-weight:800;line-height:1.2">{{ d?.chess?.elo ?? '—' }}</div>
-        <div id="overviewChessEloMeta" class="muted" style="font-size:var(--fs-xs);margin-top:2px">{{ d?.chess?.eloMeta }}</div>
+        <p class="grow-line" id="overviewLangXp">{{ l?.line ?? '—' }}</p>
+        <p class="muted" id="overviewLangStreak">{{ l?.streak }}</p>
       </div>
-      <div style="margin-top:10px">
-        <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:var(--fs-sm);margin-bottom:4px">
-          <span class="muted" id="overviewChessWrLabel">{{ d?.chess?.wrLabel ?? '% de victorias (historial completo, todos los rivales)' }}</span>
-          <span id="overviewChessWrMeta" class="muted" style="font-size:var(--fs-xs)">{{ d?.chess?.wrMeta ?? '—' }}</span>
-        </div>
-        <div class="distribution-bar" id="overviewChessDist">
-          @if (d?.chess?.dist; as b) {
-            <i class="bar-win" [style.width.%]="b.wP" [title]="'Victorias: ' + b.w"></i>
-            <i class="bar-loss" [style.width.%]="b.lP" [title]="'Derrotas: ' + b.l"></i>
-            <i class="bar-draw" [style.width.%]="b.dP" [title]="'Tablas: ' + b.d"></i>
-          }
-        </div>
-      </div>
-      <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center">
-        <span class="muted" style="font-size:var(--fs-sm)">Histórico</span>
-        <span id="overviewChessHistorical" class="muted" style="font-size:var(--fs-sm)">{{ d?.chess?.historical ?? '—' }}</span>
-      </div>
-    </div>
+      <div class="grow-viz">@if (l?.bars?.length) {<div class="wk" role="img" [attr.aria-label]="l?.aria">@for (b of l!.bars; track $index) {<div><i [style.height.px]="b.h"></i><span>{{ b.letter }}</span></div>}</div>}</div>
+      <span class="grow-t" aria-hidden="true">›</span>
+    </a>
 
-    <div class="card" id="overviewGamesCard">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <h3 style="margin:0">LinkedIn Games</h3>
-        <button type="button" class="btn btn-g" routerLink="/games" style="font-size:var(--fs-sm);padding:4px 10px">Ver LinkedIn Games →</button>
-      </div>
+    <a class="grow card" id="overviewGamesRow" routerLink="/games">
+      <div class="grow-h"><b>LinkedIn Games</b>@if (g?.verdict; as vd) {<app-verdict [verdict]="vd" />}<span class="grow-tag">registro manual</span></div>
       <div>
-        <div id="overviewGamesStreakLabel" class="muted" style="font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.05em">{{ d?.games?.label ?? 'Racha actual' }}</div>
-        <div id="overviewGamesStreak" style="font-weight:800;line-height:1.2" [style.font-size.px]="d?.games?.small ? 16 : 24">{{ d?.games?.value ?? '—' }}</div>
-        <div id="overviewGamesMeta" class="muted" style="font-size:var(--fs-xs);margin-top:2px">{{ d?.games?.meta }}</div>
+        <p class="grow-line" id="overviewGamesLine">{{ g?.line ?? '—' }}</p>
+        <p class="muted" id="overviewGamesStreak">{{ g?.streak }}</p>
       </div>
-      <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center">
-        <span class="muted" style="font-size:var(--fs-sm)">Registro <span class="pill pill-scope">MANUAL</span></span>
-        <span id="overviewGamesHistorical" class="muted" style="font-size:var(--fs-sm)">{{ d?.games?.historical ?? '—' }}</span>
-      </div>
-    </div>
-  </div>
-
-  <h2 style="margin:18px 0 10px">Tu semana</h2>
-  <div class="grid3">
-    <div class="card" id="overviewLangWeekCard">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
-        <div>
-          <h3 style="margin:0">Cuenta · últimos 7 días <span class="pill pill-scope">CUENTA</span></h3>
-          <div class="muted" style="font-size:var(--fs-xs);margin-top:2px">Actividad global registrada en la cuenta</div>
-        </div>
-        <span id="overviewLangWeekSummary" class="muted" style="font-size:var(--fs-xs);white-space:nowrap">{{ d?.week?.lang?.summary ?? '—' }}</span>
-      </div>
-      <div class="activity-strip" id="overviewLangWeek"><ng-container [ngTemplateOutlet]="strip" [ngTemplateOutletContext]="{ $implicit: d?.week?.lang?.cells }" /></div>
-    </div>
-    <div class="card" id="overviewChessWeekCard">
-      <div style="display:flex;justify-content:space-between;align-items:baseline">
-        <h3 style="margin:0">Ajedrez · últimos 7 días</h3>
-        <span id="overviewChessWeekSummary" class="muted" style="font-size:var(--fs-xs)">{{ d?.week?.chess?.summary ?? '—' }}</span>
-      </div>
-      <div class="activity-strip" id="overviewChessWeek"><ng-container [ngTemplateOutlet]="strip" [ngTemplateOutletContext]="{ $implicit: d?.week?.chess?.cells }" /></div>
-    </div>
-    <div class="card" id="overviewGamesWeekCard">
-      <div style="display:flex;justify-content:space-between;align-items:baseline">
-        <h3 style="margin:0">Games · últimos 7 días <span class="pill pill-scope">MANUAL</span></h3>
-        <span id="overviewGamesWeekSummary" class="muted" style="font-size:var(--fs-xs)">{{ d?.week?.games?.summary ?? '—' }}</span>
-      </div>
-      <div class="activity-strip" id="overviewGamesWeek"><ng-container [ngTemplateOutlet]="strip" [ngTemplateOutletContext]="{ $implicit: d?.week?.games?.cells }" /></div>
-    </div>
+      <span></span>
+      <span class="grow-t" aria-hidden="true">›</span>
+    </a>
   </div>
 </section>
-
-<ng-template #strip let-cells>
-  @for (c of cells ?? []; track c.date) {
-    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px" [title]="c.title">
-      <span class="muted" style="font-size:var(--fs-xs)">{{ c.letter }}</span>
-      <div style="width:20px;height:20px;border-radius:50%" [style.background]="c.color"></div>
-      <span class="muted" style="font-size:var(--fs-xs)">{{ c.label }}</span>
-    </div>
-  }
-</ng-template>

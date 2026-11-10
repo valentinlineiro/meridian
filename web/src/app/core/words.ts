@@ -60,6 +60,17 @@ export const EVAL_VERDICTS: Record<'AFIRMADO' | 'INDICIO' | 'INSUFICIENTE' | 'SI
   'SIN INDICIO': { state: 'no-signal', dir: null, label: 'Sin señales de cambio', pill: 'pill', sentence: 'No se ve un cambio claro con este criterio. Eso no demuestra que no haya habido cambio.' },
 };
 
+/**
+ * One window against its baseline, judged by the 95% interval of the difference alone: an interval that excludes zero is a POSSIBLE change,
+ * never a confirmed one (no persistence rule has been applied to it); no baseline is "few data".
+ */
+export function intervalVerdict(d: { diff: number; lower: number; upper: number } | null): Verdict {
+  if (!d) return { state: 'few-data', dir: null, label: 'Aún pocos datos', pill: 'pill pill-draw', sentence: 'Todavía no hay partidas anteriores con las que comparar.' };
+  if (d.lower > 0) return { state: 'possible', dir: 'up', label: 'Posible subida', pill: 'pill pill-selected', sentence: 'Hay indicio de que vas mejor que antes, pero aún no lo damos por confirmado.' };
+  if (d.upper < 0) return { state: 'possible', dir: 'down', label: 'Posible bajada', pill: 'pill pill-selected', sentence: 'Hay indicio de que vas peor que antes, pero aún no lo damos por confirmado.' };
+  return { state: 'no-signal', dir: null, label: 'Sin señales de cambio', pill: 'pill', sentence: 'No se ve un cambio claro frente a tus partidas anteriores. Eso no demuestra que no lo haya.' };
+}
+
 export const verdictKey = (v: Verdict): string => v.dir ? `${v.state}-${v.dir}` : v.state;
 /** What needs a look comes first. */
 export const VERDICT_ORDER = ['confirmed-down', 'possible-down', 'possible-up', 'confirmed-up', 'no-signal', 'few-data'];
@@ -82,3 +93,13 @@ export function formVerdict(label: string): Verdict {
     default: return { state: 'few-data', dir: null, label: 'Aún pocos datos', pill: 'pill pill-draw', sentence: 'Aún no hay historial suficiente para ajustar por dificultad.' };
   }
 }
+
+export const GAME_NAMES: Record<string, string> = { zip: 'Zip', tango: 'Tango', queens: 'Queens', mini_sudoku: 'Mini Sudoku', patches: 'Patches', wend: 'Wend' };
+export const gameName = (k: string): string => GAME_NAMES[k] || k;
+export const gdays = (n: number) => n + (n === 1 ? ' día' : ' días');
+
+/** The game keys in verdict order: what needs a look first. A game without a readable verdict goes last. */
+export const attentionOrder = (games: Record<string, { interpretation: Engine }>): string[] => {
+  const rank = (k: string) => { try { return VERDICT_ORDER.indexOf(verdictKey(verdictFor(games[k]!.interpretation))); } catch { return 99; } };
+  return Object.keys(games).sort((a, b) => (rank(a) < 0 ? 98 : rank(a)) - (rank(b) < 0 ? 98 : rank(b)));
+};
