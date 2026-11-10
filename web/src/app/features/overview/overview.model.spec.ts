@@ -1,4 +1,4 @@
-import { chessRow, eloChange, gamesRow, GamesSummaryIn, headline, isStale, windowStart, xpWeek, xpLine } from './overview.model';
+import { chessRow, eloChange, gamesRow, GamesSummaryIn, headline, isStale, syncChip, windowStart, xpWeek, xpLine } from './overview.model';
 // minimal summaries: only what the Overview reads of each game
 
 // "Now" is 2026-11-10 09:00 UTC (a Tuesday). Every date below is relative to it.
@@ -16,6 +16,33 @@ describe('isStale: the sync is older than two days', () => {
   });
   it('shouldNotBeStaleWhenThereIsNoDate', () => {
     expect(isStale(null, NOW)).toBe(false);
+  });
+});
+
+// Local calendar days: "ayer" is the previous calendar day even when it was less than 24 hours ago.
+describe('syncChip: when the data was synced, in calendar days', () => {
+  const at = (day: number, h: number, min = 0) => new Date(2026, 10, day, h, min).toISOString(); // 10 nov 2026 local = today
+  const now = new Date(2026, 10, 10, 10, 0).getTime();
+  it('shouldSayTodayForTheSameCalendarDay', () => {
+    expect(syncChip(at(10, 0, 30), now)).toEqual({ text: 'datos de hoy', stale: false });
+  });
+  it('shouldSayYesterdayForTheCalendarDayBeforeEvenWhenItWasLessThan24HoursAgo', () => {
+    expect(syncChip(at(9, 23, 30), now)).toEqual({ text: 'datos de ayer', stale: false }); // 10.5 hours ago, but yesterday
+    expect(syncChip(at(9, 10, 1), now)).toEqual({ text: 'datos de ayer', stale: false });
+  });
+  it('shouldCountCalendarDaysWhenOlder', () => {
+    expect(syncChip(at(8, 12), now)).toEqual({ text: 'datos de hace 2 días', stale: false });
+    expect(syncChip(at(5, 12), now)).toEqual({ text: 'datos de hace 5 días', stale: true });
+  });
+  it('shouldKeepTheFreshnessRuleOfTwoDaysUntouched', () => {
+    expect(syncChip(new Date(now - 2 * 864e5).toISOString(), now)?.stale).toBe(false);
+    expect(syncChip(new Date(now - 2 * 864e5 - 60_000).toISOString(), now)?.stale).toBe(true);
+  });
+  it('shouldSayTodayForATimestampInTheFuture', () => {
+    expect(syncChip(at(10, 23), now)?.text).toBe('datos de hoy'); // clock skew
+  });
+  it('shouldSayNothingWithoutADate', () => {
+    expect(syncChip(null, now)).toBeNull();
   });
 });
 
@@ -103,7 +130,7 @@ describe('chessRow', () => {
   const recent = (delta: { diff: number; lower: number; upper: number } | null, games = 50) =>
     ({ limit: 50, games, decided: games, winRate: 0.6, delta, before: delta ? { games: 100 } : null });
   const matches = Array.from({ length: 60 }, (_, i) => ({ played_at: Math.floor((NOW - i * DAY) / 1000) })); // newest first
-  const base = { summary: { currentElo: 900 }, timeline: { snapshots: [{ createdAt: iso(40), elo: 850 }, { createdAt: iso(0), elo: 900 }] }, matches, syncedAt: iso(0), now: NOW };
+  const base = { summary: { currentElo: 900 }, timeline: { snapshots: [{ createdAt: iso(40), elo: 850 }, { createdAt: iso(0), elo: 900 }] }, matches, now: NOW };
 
   it('shouldSayThePeriodTheWindowCovers', () => {
     const r = chessRow({ ...base, recent: recent({ diff: 0.06, lower: 0.01, upper: 0.11 }) });
@@ -133,10 +160,6 @@ describe('chessRow', () => {
   });
   it('shouldGiveOnlyTheEloWhenThereIsNoChangeToDate', () => {
     expect(chessRow({ ...base, timeline: { snapshots: [{ createdAt: iso(0), elo: 900 }] }, recent: recent(null) }).elo).toBe('ELO 900');
-  });
-  it('shouldFlagTheDataAsOldAfterTwoDays', () => {
-    expect(chessRow({ ...base, syncedAt: iso(5), recent: recent(null) }).fresh).toEqual({ text: 'hace 5d', stale: true });
-    expect(chessRow({ ...base, recent: recent(null) }).fresh).toEqual({ text: 'hoy', stale: false });
   });
 });
 

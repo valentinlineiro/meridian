@@ -1,6 +1,6 @@
 // What Hoy says, as pure functions of what the API answered. Nothing is computed that the contracts do not support: a window with no
 // baseline says so, data older than two days is said to be old (never read as zero), and no number is invented.
-import { Delta, fmtDate, fmtDelta, pc1, relDate, scaleDelta } from '../../core/format';
+import { Delta, fmtDate, fmtDelta, pc1, scaleDelta } from '../../core/format';
 import { es, toDay, XpDay } from '../../core/courses';
 import { attentionOrder, gameName, gdays, intervalVerdict, Verdict, VERDICT_ORDER, verdictFor, verdictKey } from '../../core/words';
 
@@ -17,6 +17,17 @@ const DAY = 864e5;
 /** The app's one rule for "this data is old". */
 export const STALE_AFTER_DAYS = 2;
 export const isStale = (iso: string | null | undefined, now: number): boolean => !!iso && now - Date.parse(iso) > STALE_AFTER_DAYS * DAY;
+
+/**
+ * When the data was synced, in the reader's calendar days (not 24-hour spans: yesterday evening is "ayer", not "hoy"). Says nothing about how far
+ * the complete days reach; the freshness rule (more than two days) is isStale's.
+ */
+export function syncChip(iso: string | null | undefined, now: number): { text: string; stale: boolean } | null {
+  if (!iso) return null;
+  const t = new Date(iso), n = new Date(now);
+  const days = Math.max(0, Math.round((Date.UTC(n.getFullYear(), n.getMonth(), n.getDate()) - Date.UTC(t.getFullYear(), t.getMonth(), t.getDate())) / DAY));
+  return { text: 'datos de ' + (days === 0 ? 'hoy' : days === 1 ? 'ayer' : `hace ${days} días`), stale: isStale(iso, now) };
+}
 
 const shift = (date: string, days: number) => new Date(Date.parse(date + 'T00:00:00Z') + days * DAY).toISOString().slice(0, 10);
 /** '3 nov' within the current year, '3 nov 2025' otherwise. */
@@ -89,7 +100,7 @@ function chessForm(r: ChessRecentIn, since: string | null, now = Date.now()): st
 }
 
 export function chessRow(i: {
-  recent: ChessRecentIn | null; summary: ChessSummaryIn | null; timeline: TimelineIn | null; matches: { played_at?: number | null }[] | null; syncedAt: string | null; now: number;
+  recent: ChessRecentIn | null; summary: ChessSummaryIn | null; timeline: TimelineIn | null; matches: { played_at?: number | null }[] | null; now: number;
 }) {
   const r = i.recent, since = r?.games ? windowStart(i.matches ?? [], r.games) : null;
   const elo = i.summary?.currentElo ?? i.summary?.latestElo ?? null, ch = elo != null ? eloChange(i.timeline?.snapshots ?? [], i.now) : null;
@@ -97,7 +108,6 @@ export function chessRow(i: {
     verdict: r ? intervalVerdict(scaleDelta(r.delta, 100)) : null,
     form: r ? chessForm(r, since, i.now) : null,
     elo: elo != null ? `ELO ${elo}` + (ch ? ` (${sign(ch.diff)} desde el ${shortDate(ch.since, i.now)})` : '') : null,
-    fresh: i.syncedAt ? { text: relDate(i.syncedAt, i.now), stale: isStale(i.syncedAt, i.now) } : null,
   };
 }
 
