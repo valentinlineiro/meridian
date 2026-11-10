@@ -18,6 +18,8 @@ const SYNC_MAX_FAILS = 3;
 const SYNC_MAX_WAIT_MS = 15 * 60 * 1000;
 const STATUS_FAILED = 'No se pudo consultar el estado de la sincronización.';
 const RUN_FAILED = 'Sincronización fallida. Inténtalo de nuevo.';
+// 502 + SYNC_UNAVAILABLE: the server could not reach the collector's workflow (e.g. GitHub refused its token). Retrying will not help, and the daily run is unaffected.
+const MANUAL_UNAVAILABLE = 'No se pudo iniciar la sincronización manual. La recogida automática sigue programada diariamente.';
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 interface SyncStatus { status: string; conclusion?: string | null }
@@ -60,6 +62,7 @@ export class SyncService {
     } catch (e) {
       // Status 0 / timeout: the request never got an answer. Any other status is an answer; 409 = a run is already going, follow it.
       if (!(e instanceof HttpErrorResponse) || e.status === 0) return this.idle('Sincronizar', 'No se pudo iniciar la sincronización.');
+      if (e.status === 502 && e.error?.code === 'SYNC_UNAVAILABLE') return this.idle('Sincronizar', MANUAL_UNAVAILABLE);
       if (e.status === 409) runId = e.error?.runId;
     }
     if (!runId) return this.idle('Sincronizar', RUN_FAILED);
