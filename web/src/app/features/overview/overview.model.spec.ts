@@ -77,6 +77,11 @@ describe('xpWeek: the last seven complete days against the four weeks before', (
     expect(w).toEqual({ state: 'stale', ageDays: 32 });
   });
 
+  it('shouldCountTheStaleAgeInCalendarDaysLikeTheSyncChip', () => {
+    const synced = iso(32, DAY / 2); // 32.5 elapsed days: 32 elapsed, but 33 calendar days ago
+    expect(xpWeek(rows(60, 33, () => 100), synced, NOW)).toEqual({ state: 'stale', ageDays: 33 });
+  });
+
   it('shouldSayNothingWhenThereAreNoRowsOrNoSyncDate', () => {
     expect(xpWeek([], syncedToday, NOW)).toEqual({ state: 'none' });
     expect(xpWeek(rows(7, 1, () => 5), null, NOW)).toEqual({ state: 'none' });

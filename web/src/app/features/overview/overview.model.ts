@@ -18,14 +18,19 @@ const DAY = 864e5;
 export const STALE_AFTER_DAYS = 2;
 export const isStale = (iso: string | null | undefined, now: number): boolean => !!iso && now - Date.parse(iso) > STALE_AFTER_DAYS * DAY;
 
+/** Whole calendar days (reader's local dates) between a timestamp and now: the one way the app counts "hace N días". */
+const calendarDaysAgo = (iso: string, now: number): number => {
+  const t = new Date(iso), n = new Date(now);
+  return Math.max(0, Math.round((Date.UTC(n.getFullYear(), n.getMonth(), n.getDate()) - Date.UTC(t.getFullYear(), t.getMonth(), t.getDate())) / DAY));
+};
+
 /**
  * When the data was synced, in the reader's calendar days (not 24-hour spans: yesterday evening is "ayer", not "hoy"). Says nothing about how far
  * the complete days reach; the freshness rule (more than two days) is isStale's.
  */
 export function syncChip(iso: string | null | undefined, now: number): { text: string; stale: boolean } | null {
   if (!iso) return null;
-  const t = new Date(iso), n = new Date(now);
-  const days = Math.max(0, Math.round((Date.UTC(n.getFullYear(), n.getMonth(), n.getDate()) - Date.UTC(t.getFullYear(), t.getMonth(), t.getDate())) / DAY));
+  const days = calendarDaysAgo(iso, now);
   return { text: 'datos de ' + (days === 0 ? 'hoy' : days === 1 ? 'ayer' : `hace ${days} días`), stale: isStale(iso, now) };
 }
 
@@ -47,7 +52,7 @@ export type XpWeek =
  */
 export function xpWeek(rows: XpDay[], syncedAt: string | null | undefined, now: number): XpWeek {
   if (!syncedAt) return { state: 'none' };
-  if (isStale(syncedAt, now)) return { state: 'stale', ageDays: Math.floor((now - Date.parse(syncedAt)) / DAY) };
+  if (isStale(syncedAt, now)) return { state: 'stale', ageDays: calendarDaysAgo(syncedAt, now) };
   if (!rows.length) return { state: 'none' };
   const byDay = new Map<string, XpDay>();
   for (const r of rows) if (!byDay.has(toDay(r.date))) byDay.set(toDay(r.date), r);
