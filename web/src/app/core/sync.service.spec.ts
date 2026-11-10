@@ -132,6 +132,26 @@ describe('SyncService', () => {
       expect(sync.note()).toBe('Sincronización fallida. Inténtalo de nuevo.');
     });
 
+    it('shouldSayTheManualSyncCouldNotStartWhenGithubRefusesTheServer', async () => {
+      const sync = TestBed.inject(SyncService);
+      sync.start();
+      await drive(sync, (r) => r.flush({ ok: false, code: 'SYNC_UNAVAILABLE', error: 'github responded 401' }, { status: 502, statusText: 'Bad Gateway' }));
+      expect(sync.note()).toBe('No se pudo iniciar la sincronización manual. La recogida automática sigue programada diariamente.');
+      expect(sync.note()).not.toContain('401'); // no internals
+      expect(sync.lastSyncLabel()).toBe('Sincronizar');
+      expect(sync.busy()).toBe(false);
+      expect(localStorage.getItem('meridian.syncRun')).toBeNull();
+    });
+
+    it('shouldKeepTheGenericMessageForAnyOtherServerError', async () => {
+      for (const [status, body] of [[502, { ok: false, error: 'bad gateway' }], [500, { ok: false, code: 'SYNC_UNAVAILABLE' }], [503, { ok: false, code: 'SYNC_NOT_CONFIGURED' }]] as const) {
+        const sync = TestBed.runInInjectionContext(() => new SyncService());
+        sync.start();
+        await drive(sync, (r) => r.flush(body, { status, statusText: 'x' }));
+        expect(sync.note()).toBe('Sincronización fallida. Inténtalo de nuevo.');
+      }
+    });
+
     it('shouldNotTreatALongRunAsAFailure', async () => {
       const sync = TestBed.inject(SyncService);
       const notes: string[] = [];
