@@ -42,7 +42,7 @@ describe('Overview', () => {
     localStorage.clear();
     TestBed.configureTestingModule({
       providers: [
-        provideRouter([{ path: 'overview', component: Overview }, { path: ':other', component: Elsewhere }]),
+        provideRouter([{ path: 'overview', component: Overview }, { path: 'games/:game', component: Elsewhere }, { path: ':other', component: Elsewhere }]),
         provideHttpClient(),
         provideHttpClientTesting(),
       ],
@@ -195,9 +195,19 @@ describe('Overview', () => {
   it('shouldLinkEachRowToItsViewWhenClicked', async () => {
     const el = await open(fullApi());
     const rows = [...el.querySelectorAll<HTMLAnchorElement>('a.grow')];
-    expect(rows.map((a) => a.getAttribute('href'))).toEqual(['/chess', '/languages', '/games']);
+    expect(rows.map((a) => a.getAttribute('href'))).toEqual(['/chess', '/languages', '/games/tango']); // Tango is the game behind the verdict
     rows[2].click();
     await harness.fixture.whenStable();
-    expect(TestBed.inject(Router).url).toBe('/games');
+    expect(TestBed.inject(Router).url).toBe('/games/tango');
+  });
+
+  it('shouldLinkTheGamesRowToGamesWhenNoGameSaysAnything', async () => {
+    const quiet = { ...fullApi(), '/api/me/linkedin-games/summary': { summary: { days: 57, from: '2026-09-01', to: utcDay(0), playStreak: { current: 12, max: 20 }, games: { zip: game('estable'), tango: game('estable') } } } };
+    expect((await open(quiet)).querySelector('#overviewGamesRow')!.getAttribute('href')).toBe('/games');
+  });
+
+  it('shouldLinkTheGamesRowToGamesWhenTheSummaryFailed', async () => {
+    const el = await open({ ...fullApi(), '/api/me/linkedin-games/summary': FAIL });
+    expect(el.querySelector('#overviewGamesRow')!.getAttribute('href')).toBe('/games');
   });
 });

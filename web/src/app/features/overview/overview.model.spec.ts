@@ -182,6 +182,15 @@ describe('gamesRow: what needs a look first across the games', () => {
     const r = gamesRow(sum({ zip: g('estable'), tango: g('estable'), queens: g('datos_insuficientes') }));
     expect(r!.line).toBe('2 sin señales de cambio · 1 con pocos datos');
   });
+  it('shouldLinkToTheReportOfTheGameBehindTheVerdict', () => {
+    expect(gamesRow(sum({ zip: g('mejora_sostenida'), tango: g('deterioro'), queens: g('estable') }))!.link).toBe('/games/tango');
+    expect(gamesRow(sum({ zip: g('estable'), tango: g('estable', 'deterioro') }))!.link).toBe('/games/tango'); // a possible fall also says something
+    expect(gamesRow(sum({ zip: g('estable'), mini_sudoku: g('mejora_sostenida') }))!.link).toBe('/games/mini_sudoku');
+  });
+  it('shouldLinkToGamesWhenNoGameSaysAnything', () => {
+    expect(gamesRow(sum({ zip: g('estable'), tango: g('estable'), queens: g('datos_insuficientes') }))!.link).toBe('/games');
+    expect(gamesRow(sum({ zip: g('datos_insuficientes') }))!.link).toBe('/games');
+  });
   it('shouldSayFewDataWhenNoGameHasHistory', () => {
     expect(gamesRow(sum({ zip: g('datos_insuficientes') }))!.verdict).toMatchObject({ state: 'few-data' });
   });
@@ -191,7 +200,7 @@ describe('gamesRow: what needs a look first across the games', () => {
     expect(gamesRow(sum({ zip: g('estable') }, { playStreak: { current: 0, max: 9 }, to: '2026-11-03' }))!.streak).toBe('Sin registro desde 3 nov 2026 · registro manual');
   });
   it('shouldSayTheLogIsEmptyAndGiveNoVerdict', () => {
-    expect(gamesRow(sum({}))).toEqual({ verdict: null, name: null, line: 'Sin partidas registradas aún', streak: '' });
+    expect(gamesRow(sum({}))).toEqual({ verdict: null, name: null, link: '/games', line: 'Sin partidas registradas aún', streak: '' });
   });
 });
 
