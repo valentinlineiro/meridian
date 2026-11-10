@@ -69,11 +69,10 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px soli
 .empty{padding:28px;text-align:center;color:var(--muted);border:1px dashed var(--line-strong);border-radius:var(--r-lg);margin-top:8px}
 .shell{max-width:1360px;display:grid;grid-template-columns:190px minmax(0,1fr);gap:24px;align-items:start}
 .side{position:sticky;top:76px}.content{min-width:0}
-.side-toggle{display:none}
 .side-group{font-size:var(--fs-xs);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:16px 0 4px;padding:0 10px}.side-group:first-child{margin-top:0}
 .side-item{display:block;width:100%;text-align:left;background:none;border:0;border-left:3px solid transparent;border-radius:0 var(--r-md) var(--r-md) 0;color:var(--text-2);padding:8px 10px;font-size:var(--fs-lg);cursor:pointer}
 .side-item:hover{background:var(--hover)}.side-item.active{background:var(--selected);border-left-color:var(--accent);color:var(--on-accent);font-weight:600}
-@media(max-width:760px){.shell{display:block}.side{position:static;margin-bottom:12px}.side-toggle{display:flex;justify-content:space-between;width:100%;background:var(--line);color:var(--text);border:1px solid var(--line-strong);border-radius:var(--r-md);padding:10px 12px;font-size:var(--fs-lg);font-weight:600;cursor:pointer}.side-menu{display:none;margin-top:6px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);padding:8px 0}.side-menu.open{display:block}}
+@media(max-width:760px){.shell{display:block}.side{display:none}} /* phones: the tab bar is the navigation */
 .hero-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:20px;margin-bottom:16px}
 .activity-strip{display:flex;gap:8px;justify-content:space-between;margin:12px 0}
 .progress-bar{height:10px;background:var(--line);border-radius:var(--r-pill);overflow:hidden}
@@ -146,8 +145,7 @@ a.side-item{text-decoration:none}a.side-item:hover{text-decoration:none}
 }
 /* touch targets and legible small text on phones (ponytail: attribute selectors catch the inline 10-11px styles without editing each one) */
 @media(max-width:760px){
- .btn,.side-toggle,select,.filters input,summary{min-height:44px}.btn{min-width:44px}
- .side-menu a,.side-menu button{min-height:44px;display:flex;align-items:center}
+ .btn,select,.filters input,summary{min-height:44px}.btn{min-width:44px}
  a[href="/settings"]{display:inline-block;padding:14px 8px}
  .pill,.kpi .kl,.kpi small,.flabel,[style*="font-size:var(--fs-xs)"]{font-size:var(--fs-sm)!important}
  .muted{font-size:var(--fs-md)!important}
@@ -227,9 +225,11 @@ a.side-item{text-decoration:none}a.side-item:hover{text-decoration:none}
 .grow-dots{display:inline-flex;align-items:center;gap:8px}
 .grow-tag{white-space:nowrap}
 
-/* notch / home bar when installed (viewport-fit=cover): the body reserves the insets, the sticky bars stick below the top one */
-body{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
-header{top:env(safe-area-inset-top)}
+/* notch / system bars when installed (viewport-fit=cover): the header owns the top inset (its own background covers it, nothing scrolls behind),
+   the body keeps the sides, the tab bar owns the bottom one */
+body{padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
+header{padding-top:calc(14px + env(safe-area-inset-top))}
+@media(max-width:480px){header{padding-top:calc(10px + env(safe-area-inset-top))}}
 .side{top:calc(76px + env(safe-area-inset-top))}
 
 /* Hoy: each row is one link to its view; the week of XP is seven small bars */
@@ -249,3 +249,23 @@ a.grow{color:inherit}a.grow:hover{background:var(--hover);text-decoration:none}
 @media(min-width:761px){.gr-day{grid-template-columns:5.5rem minmax(0,1fr) 17rem}.gr-day .gr-txt{grid-column:auto;text-align:right}}
 @media(max-width:760px){#gameReportLevel thead{display:none}} /* the stacked cells carry their own labels */
 @media(max-width:760px){.gr-back{display:inline-flex;align-items:center;min-height:44px}} /* the way back from a report: a touch target on phones */
+
+/* Barra inferior (móvil): cuatro secciones y «Más», y la hoja con lo secundario */
+app-tab-bar{display:none}
+@media(max-width:760px){
+ app-tab-bar{display:block}
+ main{padding-bottom:calc(80px + env(safe-area-inset-bottom))}
+ .tabbar{position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;background:var(--surface);border-top:1px solid var(--line-strong);padding:0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+ .tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:56px;padding:6px 2px;background:none;border:0;border-top:3px solid transparent;color:var(--muted);font:inherit;font-size:var(--fs-xs);font-weight:600;cursor:pointer;text-decoration:none}
+ .tab:hover{background:var(--hover);text-decoration:none}
+ .tab.active{color:var(--on-accent);border-top-color:var(--accent);background:var(--selected)}
+ .tab svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+ .tab:focus-visible,.sheet a:focus-visible,.sheet button:focus-visible{outline:2px solid var(--link);outline-offset:-2px}
+ .scrim{position:fixed;inset:0;z-index:30;border:0;padding:0;background:rgba(5,10,18,.6)}
+ .sheet{position:fixed;left:0;right:0;bottom:calc(56px + env(safe-area-inset-bottom));z-index:35;background:var(--surface);border-top:1px solid var(--line-strong);border-radius:var(--r-lg) var(--r-lg) 0 0;padding:8px 0 4px;max-height:calc(100vh - 140px);overflow-y:auto}
+ .sheet a,.sheet .row{display:flex;align-items:center;width:100%;min-height:48px;padding:0 18px;background:none;border:0;color:var(--text-2);font:inherit;font-size:var(--fs-xl);text-align:left;cursor:pointer;text-decoration:none}
+ .sheet hr{border:0;border-top:1px solid var(--line);margin:4px 0}
+ .sheet .sync{display:block;margin:6px 18px 2px;width:calc(100% - 36px)}
+ .sheet .hint{display:block;margin:4px 18px 6px}.sheet .hint:empty{display:none}
+ .sheet form{margin:0}
+}

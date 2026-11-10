@@ -33,7 +33,6 @@ describe('SideNav', () => {
     expect(item(el, 'Ajedrez').classList).toContain('active');
     expect(item(el, 'Ajedrez').getAttribute('aria-current')).toBe('page');
     expect(item(el, 'Hoy').classList).not.toContain('active');
-    expect(el.querySelector('.side-toggle')?.textContent).toContain('Ajedrez');
     expect([...el.querySelectorAll('.side-group')].map((g) => g.textContent)).toEqual(['Resumen', 'Dominios', 'Cuenta']);
     expect(item(el, 'Configuración').getAttribute('href')).toBe('/settings');
     expect(el.querySelector('form[method="post"][action="/logout"] button[type="submit"]')?.textContent).toBe('Salir');
@@ -64,7 +63,6 @@ describe('SideNav', () => {
     expect(item(el, 'Hoy').classList).not.toContain('active');
     expect(item(el, 'Hoy').getAttribute('aria-current')).toBeNull();
     expect(el.querySelectorAll('.side-item.active')).toHaveLength(1);
-    expect(el.querySelector('.side-toggle')?.textContent).toContain('Ajedrez');
   });
 
   it('shouldDisableSyncButtonWhileSyncing', async () => {
@@ -79,17 +77,10 @@ describe('SideNav', () => {
     expect(button.textContent?.trim()).toBe('Iniciando…');
   });
 
-  it('shouldToggleTheMobileMenuWhenToggleIsPressed', async () => {
+  it('shouldNotHaveTheMobileDropdownAnymoreBecauseTheTabBarReplacesIt', async () => {
     const el = await render('/overview');
-    const toggle = el.querySelector<HTMLButtonElement>('.side-toggle')!;
-    toggle.click();
-    TestBed.tick();
-    expect(toggle.getAttribute('aria-expanded')).toBe('true');
-    expect(el.querySelector('.side-menu')?.classList).toContain('open');
-
-    await TestBed.inject(Router).navigateByUrl('/games');
-    TestBed.tick();
-    expect(toggle.getAttribute('aria-expanded')).toBe('false');
-    expect(el.querySelector('.side-menu')?.classList).not.toContain('open');
+    expect(el.querySelector('.side-toggle')).toBeNull();
+    expect(el.querySelector('.side-menu')).not.toBeNull(); // the desktop sidebar keeps its items
+    expect(item(el, 'Hoy').getAttribute('href')).toBe('/overview');
   });
 });
