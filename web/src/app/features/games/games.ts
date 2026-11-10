@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 import { catchError, forkJoin, Observable, of } from 'rxjs';
 import { ApiClient } from '../../core/api-client';
 import { safe } from '../../core/guard';
+import { GameReport } from './game-report';
 import { GamesChart } from './games-chart';
 import { GamesQuickEntry } from './games-quick-entry';
 import { GamesTable } from './games-table';
@@ -21,7 +22,7 @@ const HERO_IDLE = { label: 'LinkedIn Games · racha actual', streak: '—', meta
 
 @Component({
   selector: 'app-games',
-  imports: [GamesChart, GamesQuickEntry, GamesTable, Help, RouterLink, Section, Segmented, Stats, VerdictPill],
+  imports: [GameReport, GamesChart, GamesQuickEntry, GamesTable, Help, RouterLink, Section, Segmented, Stats, VerdictPill],
   templateUrl: './games.html',
 })
 export class Games {

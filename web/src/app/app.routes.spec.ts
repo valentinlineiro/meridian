@@ -36,6 +36,14 @@ describe('App routes', () => {
     expect(TestBed.inject(Router).url).toBe('/games');
   });
 
+  it('shouldReuseTheGamesViewWhenMovingFromTheListToAReport', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/games');
+    const before = harness.routeNativeElement;
+    await harness.navigateByUrl('/games/queens');
+    expect(harness.routeNativeElement).toBe(before); // the same component instance: the summary is not read again
+  });
+
   it('shouldTitleTheRouteWithTheGameName', async () => {
     const harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/games/queens');

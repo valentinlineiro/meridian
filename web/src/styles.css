@@ -237,3 +237,10 @@ a.grow{color:inherit}a.grow:hover{background:var(--hover);text-decoration:none}
 .wk{display:flex;align-items:flex-end;gap:4px}.wk>div{display:flex;flex-direction:column;align-items:center;gap:2px}
 .wk i{display:block;width:12px;background:var(--info);border-radius:var(--r-sm) var(--r-sm) 0 0}.wk span{font-size:var(--fs-xs);color:var(--muted)}
 @media(min-width:761px){a.grow{grid-template-columns:minmax(0,1.1fr) minmax(0,1.4fr) 12rem 1.5rem}} /* the rows of Hoy share one grid: the visual differs per row but the text column must not move */
+
+/* Informe de un juego: la tira semanal, la cifra grande y la fila del periodo elegido */
+.gr-big{font-size:var(--fs-display);font-weight:800;line-height:1.1}
+.wkbeat{display:flex;align-items:flex-end;gap:4px;height:104px}.wkbeat>div{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:3px}
+.wkbeat i{display:block;width:100%;max-width:26px;min-height:2px;background:var(--ok);border-radius:var(--r-sm) var(--r-sm) 0 0}.wkbeat span{font-size:var(--fs-xs);color:var(--muted)}
+.wkbeat [data-complete=false] i{background:transparent;border:1px dashed var(--line-strong)}
+.gtable tr[data-selected=true]>td{background:var(--selected)}

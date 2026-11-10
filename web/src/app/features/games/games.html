@@ -2,6 +2,16 @@
   @if (game(); as g) {
     <a routerLink="/games" class="muted">← Todos los juegos</a>
     <h1>{{ gameName(g) }}</h1>
+    @if (summary() === null) {
+      <div class="muted" role="alert">No disponible</div>
+    } @else if (summary(); as s) {
+      @if (s.games[g]) {
+        <app-segmented groupId="gamesRange" label="Periodo de análisis" caption="Periodo" idPrefix="gr-" [options]="ranges" [value]="range()" (picked)="range.set($any($event))" />
+        <app-game-report [summary]="s" [game]="g" [range]="range()" />
+      } @else {
+        <p class="muted">Aún sin partidas registradas de {{ gameName(g) }}.</p>
+      }
+    }
   } @else {
   <h1 class="sr-only">LinkedIn Games</h1>
   @let h = hero();
