@@ -154,7 +154,7 @@ a.side-item{text-decoration:none}a.side-item:hover{text-decoration:none}
  input,select{font-size:var(--fs-xl)!important}
 }
 
-.cindex{display:flex;gap:6px;overflow-x:auto;margin:12px 0 0;padding-bottom:2px}.cindex .btn{white-space:nowrap;flex:0 0 auto}
+.cindex{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 0;padding-bottom:2px}.cindex .btn{white-space:nowrap;flex:0 0 auto}
 .cgroup{margin-top:14px}.cgroup>summary{cursor:pointer;margin:18px 0 10px;font-size:var(--fs-lg);font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center}
 .cgroup,#allMatchesCard{scroll-margin-top:76px}
 .cgroup>summary{list-style:none}.cgroup>summary::before{content:"▸";margin-right:8px}.cgroup[open]>summary::before{content:"▾"}
