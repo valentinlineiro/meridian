@@ -1,5 +1,5 @@
 import { json } from "./import.ts";
-import { mapErrorToResponse } from "./errors.ts";
+import { logInternalError, mapErrorToResponse } from "./errors.ts";
 import { requestSyncUseCase, getSyncStatusUseCase } from "../application/syncUseCases.ts";
 import { createGithubActionsTrigger } from "../infrastructure/github/githubActionsTrigger.ts";
 import { resolveProviderUserId } from "../db/users.ts";
@@ -27,7 +27,10 @@ async function respond(run: () => Promise<unknown>): Promise<Response> {
   try {
     return json({ ok: true, ...(await run() as object) });
   } catch (e) {
-    return mapErrorToResponse(e) ?? json({ ok: false, error: "internal error" }, 500);
+    const mapped = mapErrorToResponse(e);
+    if (mapped) return mapped;
+    logInternalError(e);
+    return json({ ok: false, error: "internal error" }, 500);
   }
 }
 

@@ -26,8 +26,16 @@ export function mapErrorToResponse(e: unknown): Response | null {
   return null;
 }
 
+/** Name and message only (never the request or its data): the response stays opaque, the log says why. */
+export function logInternalError(e: unknown): void {
+  const name = e instanceof Error ? e.name : typeof e;
+  const message = e instanceof Error ? e.message : String(e);
+  console.error(JSON.stringify({ event: "internal_error", name, message: message.slice(0, 300) }));
+}
+
 export function mapError(c: Context<any>, err: unknown): Response {
   const mapped = mapErrorToResponse(err);
   if (mapped) return mapped;
+  logInternalError(err);
   return c.json({ ok: false, error: "internal error" }, 500);
 }
