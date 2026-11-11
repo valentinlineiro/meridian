@@ -30,7 +30,7 @@ function rowView(m: MatchRow) {
     id: m.ply_count != null && m.match_id ? m.match_id : null, // only a game with stored moves opens in the viewer
     date: formatMatchDate(m.played_at, m.first_seen_at),
     fullDate: at ? at.toLocaleString('es-ES') : null,
-    opp: (m.opponent_name || '—') + (seg ? ' ' : ''), seg,
+    opp: (m.opponent_name || '—') + (seg ? ' ' : ''), named: !!m.opponent_name, seg,
     type: t === 'bot' ? 'Bot' : t === 'pvp' ? 'PvP' : t || '—', pvp: t === 'pvp',
     opening: m.opening_family_label && m.opening_family !== 'unclassified' ? m.opening_family_label : '',
     phase: m.phase_key && m.phase_key !== 'unknown' ? PHASES[m.phase_key] || m.phase_key : '',
@@ -83,7 +83,7 @@ const CHIPS: { group: FilterGroup; label: string; options: { k: string; l: strin
         @for (r of rows(); track (r.id ?? r.date + r.opp)) {
           <tr [class.gamerow]="!!r.id" [attr.title]="r.id ? 'Ver partida' : null" (click)="r.id && m.open(r.id)">
             <td data-l="Fecha" [attr.title]="r.fullDate">{{ r.date }}</td>
-            <td data-l="Rival">@if (r.id) {<button type="button" class="rowbtn" [attr.aria-label]="'Ver partida vs ' + r.opp + ', ' + r.date" (click)="$event.stopPropagation(); m.open(r.id)">{{ r.opp }}</button>} @else {{{ r.opp }}}@if (r.seg) {<span class="pill" style="font-size:var(--fs-xs);margin-left:4px;opacity:.85">{{ r.seg }}</span>}</td>
+            <td data-l="Rival">@if (r.id) {<button type="button" class="rowbtn" [attr.aria-label]="(r.named ? 'Ver partida vs ' + r.opp : 'Ver partida') + ', ' + r.date" (click)="$event.stopPropagation(); m.open(r.id)">{{ r.opp }}</button>} @else {{{ r.opp }}}@if (r.seg) {<span class="pill" style="font-size:var(--fs-xs);margin-left:4px;opacity:.85">{{ r.seg }}</span>}</td>
             <td data-l="Tipo"><span class="pill" [style.border-color]="r.pvp ? 'var(--info)' : null" [style.color]="r.pvp ? 'var(--link)' : null">{{ r.type }}</span>@if (r.opening) {<span class="pill" style="font-size:var(--fs-xs);margin-left:4px;opacity:.75">{{ r.opening }}</span>}@if (r.phase) {<span class="pill" style="font-size:var(--fs-xs);margin-left:4px;opacity:.8">{{ r.phase }}</span>}</td>
             <td data-l="ELO">{{ r.elo }}</td>
             <td data-l="Color">{{ r.color }}</td>

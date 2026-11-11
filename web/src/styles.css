@@ -348,4 +348,4 @@ app-tab-bar{display:none}
 /* same phone bump as the [style*="font-size:var(--fs-xs)"] rule above, which no longer matches a class */
 @media(max-width:760px){.u-fs-xs{font-size:var(--fs-sm)!important}}
 @media(max-width:760px){.muted.u-fs-xs,.muted.u-fs-sm{font-size:var(--fs-md)!important}} /* keeps the phone .muted rule winning over former inline font-sizes */
-@media(max-width:760px){#goalInput{min-height:44px}a.btn{display:inline-flex;align-items:center;justify-content:center}} /* 44px touch targets on phones: goal input, link-buttons */
+@media(max-width:760px){.rowbtn{min-height:44px;min-width:44px}#goalInput{min-height:44px}a.btn{display:inline-flex;align-items:center;justify-content:center}} /* 44px touch targets on phones: row buttons, goal input, link-buttons */
