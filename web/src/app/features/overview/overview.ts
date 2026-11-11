@@ -7,7 +7,8 @@ import { StatsService } from '../../core/stats.service';
 import { es, Langs, XpDay } from '../../core/courses';
 import { relDate, sparkPoints } from '../../core/format';
 import { VerdictPill } from '../../shared/verdict';
-import { chessRow, ChessRecentIn, ChessSummaryIn, gamesRow, GamesSummaryIn, headline, isStale, syncChip, TimelineIn, xpLine, xpWeek } from './overview.model';
+import { chessRow, ChessRecentIn, ChessSummaryIn, gamesRow, GamesSummaryIn, headline, syncChip, TimelineIn } from './overview.model';
+import { isStale, xpWeek, xpWeekLine } from '../../core/xp-week';
 
 /**
  * Hoy: how you are doing against your own normal, one row per domain. The rows come from overview.model.ts; totals live in each domain's view.
@@ -49,8 +50,7 @@ function view(d: OverviewData, now: number) {
     headline: headline([{ name: 'Ajedrez', verdict: c.verdict }, { name: g?.name ?? 'Games', verdict: g?.verdict ?? null }]),
     chess: { ...c, form: c.form ?? NA, spark, freshChip: syncChip(chessSynced, now) },
     lang: {
-      line: !d.summaries ? NA : !w || w.state === 'none' ? 'Sin sincronizar todavía'
-        : w.state === 'stale' ? `Sin datos nuevos desde hace ${w.ageDays} ${w.ageDays === 1 ? 'día' : 'días'} · no se compara con tu media` : xpLine(w, today),
+      line: !d.summaries ? NA : !w ? 'Sin sincronizar todavía' : xpWeekLine(w, today),
       streak: streak == null ? '' : old ? `Racha de Duolingo: ${es(Number(streak))} días (dato de hace ${relDate(d.langs!.updatedAt!, now).replace(/^hace /, '')})` : `🔥 Racha de Duolingo: ${es(Number(streak))} días`,
       bars, aria: 'XP de los últimos 7 días completos: ' + bars.map((b) => `${b.letter} ${b.xp}`).join(', '),
       freshChip: syncChip(xpSynced, now),

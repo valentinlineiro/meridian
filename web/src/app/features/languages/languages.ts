@@ -10,7 +10,7 @@ import { list, safe } from '../../core/guard';
 import { CourseDetailView } from './course-detail';
 import {
   account, accountActivity, activityToday, Analytics, comparability, concentration, courseList, Detail, hero, intensity, LangData, legacyAccount, LegacyLang,
-  Load, NA, observed, progress, timeline, week, weekdays,
+  Load, NA, observed, pace, progress, timeline, week, weekdays,
 } from './languages.view';
 
 // Port of loadLanguagesDashboard/selectCourse/showCourseDetail (src/dashboard.client.js:298–419, 1143–1179).
@@ -65,6 +65,7 @@ export class Languages {
     return { ...safe(() => account(d), { xp: '—', streak: '—', courses: '—', gap: '' }), ...safe(() => accountActivity(d), { days: '—', daysSub: '', sync: NA }) };
   });
   protected readonly week = computed(() => { const d = this.d(); return d && safe(() => week(d), { cells: [], summary: NA, goal: NA }); });
+  protected readonly pace = computed(() => { const d = this.d(); return d && safe(() => pace(d), null); });
   protected readonly courses = computed(() => { const d = this.d(); return d && safe(() => courseList(d, this.selected(), this.detail()), NA); });
   protected readonly observed = computed(() => {
     const d = this.d();

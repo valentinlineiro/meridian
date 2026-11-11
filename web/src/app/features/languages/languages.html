@@ -91,6 +91,7 @@
             </div>
           }
         </div>
+        @if (pace(); as line) { <div id="langPaceLine" class="muted" style="margin-top:10px;font-size:var(--fs-sm)">{{ line }}</div> }
         <div id="langGoalRow" style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:10px;font-size:var(--fs-sm)">
           <span id="langGoalToday" class="muted">{{ w?.goal }}</span>
           <a routerLink="/settings">Configurar</a>

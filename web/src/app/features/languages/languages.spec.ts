@@ -559,6 +559,22 @@ describe('Languages', () => {
       expect(limits.compareDocumentPosition(q('#langCourseHero')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     });
 
+    describe('the week against your own pace (same rule as Hoy)', () => {
+      const rows = (from: number, to: number, xp: number) => Array.from({ length: from - to + 1 }, (_, i) => ({ date: utcDay(from - i), gainedXp: xp, numSessions: 1, totalSessionTime: 0 }));
+      const history = [...rows(7, 1, 300), ...rows(35, 8, 100)];
+
+      it('shouldSayTheCompleteSevenDaysAgainstThePrecedingFourWeeks', async () => {
+        await open('/languages', langApi({ '/api/languages/xp': { summaries: history } }));
+        expect(text('langPaceLine')).toBe('Últimos 7 días completos (hasta ayer): 2100 XP · media de las 4 semanas anteriores: 700 XP por semana (+200 %)');
+      });
+
+      it('shouldSayTheDataIsOldInsteadOfComparingWhenTheSyncIsOlderThanTwoDays', async () => {
+        const langs = { ...langsBody(), updatedAt: iso(5 * DAY) };
+        await open('/languages', langApi({ '/api/languages': langs, '/api/languages/xp': { summaries: history } }));
+        expect(text('langPaceLine')).toBe('Sin datos nuevos desde hace 5 días · no se compara con tu media');
+      });
+    });
+
     it('shouldLabelTheCefrCardAsCurricularUnitsNotProficiency', async () => { // tests/uxPhase0.test.ts
       await open();
       q('#langCoursesList details[open] button')!.click();

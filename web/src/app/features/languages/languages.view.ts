@@ -1,4 +1,5 @@
 import { fmtDate, pc1, relDate } from '../../core/format';
+import { xpWeek, xpWeekLine } from '../../core/xp-week';
 import { activeDaysSub, activeDaysText, Course, CourseDetail, courseProgress, es, flag, Langs, lastSevenDays, Section, toDay, xpText, XpDay } from '../../core/courses';
 import { list } from '../../core/guard';
 import { goalColor, goalSummary } from './goal-summary';
@@ -119,6 +120,11 @@ export function legacyAccount(l: LegacyLang) {
     daysSub: activeDaysSub(s.length ? s[0].date : null),
     sync: 'Sincronizado ' + relDate(l.createdAt || '') + ' · Actividad hasta ' + (lastIso ? fmtDate(lastIso) : '—') + (lastSync ? ' · Path ' + relDate(lastSync) : ''),
   };
+}
+
+/** The complete last seven days against the four weeks before: the rule Hoy uses (core/xp-week). Null while the XP rows are unknown. */
+export function pace(d: LangData, now = Date.now()): string | null {
+  return d.xp ? xpWeekLine(xpWeek(d.xp, d.langs.updatedAt, now), new Date(now).toISOString().slice(0, 10)) : null;
 }
 
 export interface DayCell { date: string; letter: string; color: string; label: string; title: string }
