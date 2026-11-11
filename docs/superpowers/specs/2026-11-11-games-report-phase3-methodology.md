@@ -36,7 +36,7 @@ Las ventanas de regularidad son múltiplos de 7 días (8 semanas cada una): una 
 ### 3.1 Supuestos declarados (intercambiabilidad)
 
 - **H_A (día de la semana).** Sin asociación día–resultado, los resultados de los días **registrados de una misma semana natural** son intercambiables entre esos días.
-- **H_B (orden temporal).** Sin cambio en el tiempo, las **semanas completas** son bloques intercambiables entre sí.
+- **H_B (orden temporal), condicionada a la máscara.** Sin cambio en el tiempo, las semanas **que comparten exactamente la misma máscara de días registrados** son bloques intercambiables entre sí. No se afirma nada de intercambiabilidad entre semanas con máscaras distintas, ni sobre el lugar de una semana con máscara única.
 
 Son **supuestos**, no hechos. H_A falla si el hábito de registro depende del día (§8). H_B falla con autocorrelación semanal fuerte o estacionalidad larga; la simulación mide cuánto (§4) y el límite queda escrito en §8. **Nada de esto garantiza el 5 %**: lo garantiza, con esos supuestos, la nula conjunta de §3.2 y lo comprueba la validación de §4.
 
@@ -47,7 +47,7 @@ Se elimina el emparejamiento de réplicas de A y B de la rev. 2, que suponía in
 1. **A:** dentro de cada semana natural, permutar los valores entre los días registrados de esa semana.
 2. **B:** permutar las semanas como bloques, **solo entre semanas con la misma máscara de días registrados** (rev. 4). Una semana con una máscara única no se mueve. Intercambiar semanas «del mismo tamaño» pero con ausencias distintas añadía un supuesto sobre el patrón de ausencias que no estaba validado; con la máscara idéntica, lo que se intercambia es comparable. A solo reparte entre los días registrados de cada semana y **la máscara no se mueve**.
 
-A y B **conmutan** (A actúa dentro de cada fila, B reordena filas), así que el orden de aplicación no importa. `J` conserva el multiconjunto de resultados de cada semana y destruye tanto la asociación día–resultado como el orden temporal: es la hipótesis nula «sin estructura» completa.
+A y B **conmutan** (A actúa dentro de cada fila, B reordena filas), así que el orden de aplicación no importa. `J` conserva el multiconjunto de resultados de cada semana y la máscara de cada semana. Destruye la asociación día–resultado (dentro de cada semana, entre sus días registrados) y destruye el orden temporal **solo dentro de los grupos de semanas intercambiables**, es decir, las que comparten máscara. Una semana con máscara única conserva su lugar. Con semanas completas (una sola máscara) el orden queda destruido por completo; con muchas máscaras distintas la nula conserva parte del orden real, y el efecto es menos resolución y menos potencia (§4.1), no más falsos hallazgos: la validez se apoya en H_B condicionada a la máscara. Es la hipótesis nula «sin estructura» **condicionada a la máscara de ausencias observada**.
 
 ### 3.3 Cálculo (reproducible, exacto)
 
@@ -56,7 +56,7 @@ Por juego, con `R = 1000` réplicas de `J` y una semilla registrada. Se forma el
 1. Para cada dimensión `k` y cada elemento `i` del conjunto: `p_k(i) = #{j : s_k(j) ≥ s_k(i)} / (R + 1)`. La dependencia entre dimensiones queda dentro de cada elemento, no se supone.
 2. `U(i) = min_k p_k(i)`.
 3. **p ajustado** = `#{i : U(i) ≤ U(datos)} / (R + 1)`.
-4. **Hay hallazgo** si `p ajustado ≤ α`, es decir, si los datos están entre los `⌊α (R + 1)⌋` menores `U` del conjunto (con R = 1000 y α = 0,05: **50**). Es un **estadístico de orden finito** sobre el conjunto, sin interpolar entre valores. La dimensión del hallazgo es la de menor `p` y, para el día de la semana, se anota el día y el signo.
+4. **Hay hallazgo** si `p ajustado ≤ α`, es decir, si los datos están entre los `⌊α (R + 1)⌋` menores `U` del conjunto (con R = 1000 y α = 0,05: **50**). Es un **estadístico de orden finito** sobre el conjunto, sin interpolar entre valores. **Los empates hacen el contraste conservador:** la condición operativa es contar *todos* los `i` con `U(i) ≤ U(datos)`, incluidos los empatados con los datos; no se desempata de forma artificial para asignar un puesto entre los 50 primeros. Con empates (p-valores discretos, o estadísticos iguales a 0 por dimensión no evaluable) el p ajustado sube, nunca baja. La dimensión del hallazgo es la de menor `p` y, para el día de la semana, se anota el día y el signo.
 
 Este es el p-valor de permutación exacto con el «+1» de los datos incluidos (max-T de un solo paso, Westfall–Young, con permutaciones compartidas): **si H_A y H_B se cumplen, la probabilidad de hallazgo bajo la nula global es ≤ α exactamente**, no aproximadamente. Con una estructura real en una dimensión, el control sobre la *otra* no está garantizado y se mide por simulación (§4).
 
