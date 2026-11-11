@@ -45,7 +45,7 @@ Son **supuestos**, no hechos. H_A falla si el hábito de registro depende del d�
 Se elimina el emparejamiento de réplicas de A y B de la rev. 2, que suponía independencia entre ambas fuentes. En su lugar, **cada réplica aplica las dos permutaciones a la vez** (la transformación conjunta `J`):
 
 1. **A:** dentro de cada semana natural, permutar los valores entre los días registrados de esa semana.
-2. **B:** permutar las semanas completas como bloques. Semanas incompletas (inicio, fin, huecos): solo se intercambian con semanas del mismo tamaño; A solo reparte entre los días presentes.
+2. **B:** permutar las semanas como bloques, **solo entre semanas con la misma máscara de días registrados** (rev. 4). Una semana con una máscara única no se mueve. Intercambiar semanas «del mismo tamaño» pero con ausencias distintas añadía un supuesto sobre el patrón de ausencias que no estaba validado; con la máscara idéntica, lo que se intercambia es comparable. A solo reparte entre los días registrados de cada semana y **la máscara no se mueve**.
 
 A y B **conmutan** (A actúa dentro de cada fila, B reordena filas), así que el orden de aplicación no importa. `J` conserva el multiconjunto de resultados de cada semana y destruye tanto la asociación día–resultado como el orden temporal: es la hipótesis nula «sin estructura» completa.
 
@@ -108,9 +108,34 @@ Ninguna celda con verdad nula tiene el límite inferior por encima del 5 %: **la
 | W4 martes sembrado | 0,7 % en regularidad | 65,0 % [63,7; 66,3] |
 | W6 dispersión | 0,3 % en día | 42,7 % [41,3; 44,1] |
 
-La corrección **reduce a la mitad el falso hallazgo y cuesta unos 10 puntos de potencia** (un martes sembrado pasa de 73 % a 65 %). **Ningún escenario probado superó el 5 % con α = 0,05, así que no hay un caso real en el que la corrección haya tenido que rescatar nada**: queda caracterizada su consecuencia, no su necesidad. Si en la validación con datos reales una celda falla el criterio, se aplica una sola vez, con semillas nuevas; si falla otra vez, esa dimensión no entra en la primera entrega. No se afina sobre los mismos datos.
+La corrección **reduce a la mitad el falso hallazgo y cuesta unos 10 puntos de potencia** (un martes sembrado pasa de 73 % a 65 %). **Ningún escenario sintético superó el 5 % con α = 0,05: la corrección no está validada como solución a un fallo observado, ni se presenta como necesaria.** Es una medida de contingencia cuya consecuencia está caracterizada. **Regla de activación (solo sobre escenarios sintéticos):** si en una nueva validación sintética una celda con verdad nula tiene el límite inferior por encima del 5 %, se aplica α = 0,025 **una sola vez** y se vuelve a validar con una semilla nueva; si sigue fallando, esa dimensión no entra en la primera entrega. No se afina sobre los mismos datos.
+
+**Con datos reales no se activa nada de esto.** No se conoce la verdad de cada dimensión, así que no se pueden clasificar falsos positivos ni aplicar este criterio: la comprobación con datos reales se limita a lo de abajo (estabilidad temporal, coherencia con el veredicto, datos escasos y la plausibilidad de los supuestos).
 
 **Qué significa «detecta».** Efectos grandes (martes −0,5 en log-eficiencia; el ruido pasa de 0,5 a 0,8). Una asociación semanal de rango 0,6, casi el doble de la observada en Queens (≈ 0,33), solo se detecta el 32 %; con la real sería menos. El bloque dirá «ninguna desviación destacable» la mayoría de las veces, y es correcto.
+
+### 4.1 Patrones de ausencia (semanas incompletas y huecos)
+
+La simulación principal solo tiene semanas completas; los datos reales tienen huecos. `sim_absence.py` repite el procedimiento con días sin registrar y con la regla de §3.2 (A reparte entre los días registrados con la máscara fija; B intercambia solo semanas con **la misma máscara**). Los estadísticos ignoran los días sin registrar: en el día de la semana solo compiten los días con ≥ 8 resultados, y cada ventana de regularidad necesita ≥ 20 resultados (si no, la dimensión no se evalúa). 2.000 conjuntos por escenario, `R = 1000`, α = 0,05, mismos flujos de semillas independientes (`results_absence_a0.05.json`):
+
+| Escenario | Máscaras distintas (de 24 semanas) | Falso hallazgo [IC 95 %] | Potencia [IC 95 %] |
+|---|---|---|---|
+| C0 semanas completas, ruido (control) | 1 | 5,0 % [4,1; 6,0] | — |
+| M1 faltan días al azar (15 %), ruido | 12,5 | 4,3 % [3,5; 5,3] | — |
+| M2 fines de semana a menudo sin registrar, ruido | 8,8 | 4,7 % [3,8; 5,7] | — |
+| **M3 las derrotas a menudo no se registran (ausencia informativa), ruido** | 10,4 | **5,5 % [4,5; 6,5]** | — |
+| M4 el registro decae en las últimas 8 semanas, ruido | 11,9 | 4,0 % [3,2; 5,0] | — |
+| M1 + asociación día–resultado (rango 0,6) | 12,5 | 1,7 % [1,2; 2,3] en regularidad | 31,3 % [29,3; 33,4] |
+| M1 + dispersión 0,5 → 0,8 | 12,5 | 1,5 % [1,1; 2,1] en día | 25,8 % [23,9; 27,8] |
+| M2 + asociación día–resultado (rango 0,6) | 8,8 | 3,3 % [2,6; 4,2] en regularidad | **13,2 % [11,7; 14,7]** |
+
+Lectura, sin adornos:
+
+- **El criterio de §4 se cumple:** ninguna celda con verdad nula tiene el límite inferior por encima del 5 %. Las ausencias aleatorias o por hábito (M1, M2, M4) no inflan el error.
+- **El punto débil es la ausencia informativa (M3):** el punto estimado es 5,5 % [4,5; 6,5]. No incumple el criterio (el límite inferior es 4,5 %), pero tampoco permite descartar un exceso pequeño. Es el caso esperado: si el resultado decide si se registra, los días ya no son intercambiables y ninguna permutación lo arregla. **Queda declarado como límite**, no como resuelto: el bloque habla de lo registrado, no de lo jugado.
+- **La potencia cae con las ausencias:** con la regla de la misma máscara, una semana con máscara única no se mueve, así que la nula tiene menos resolución. La regularidad baja de ≈ 52 % a ≈ 26 %; la asociación con el día cae a 13 % cuando faltan los fines de semana (justo los días más extremos). Con huecos, «ninguna desviación destacable» será aún más frecuente.
+- **El control completo (C0) sigue en 5,0 %** [4,1; 6,0], coherente con el 4,6 % de las 5.000 simulaciones principales.
+- Este escenario de ausencias **no se repite a 5.000 conjuntos** ni con α = 0,025: no hace falta para el criterio, y la corrección sigue siendo una contingencia no necesaria (§4).
 
 **Con datos reales** (cuando haya permiso) se añade:
 
@@ -136,14 +161,14 @@ La corrección **reduce a la mitad el falso hallazgo y cuesta unos 10 puntos de 
 1. **Dos dimensiones, día y regularidad, y la tendencia fuera** (§2, §3.6). Es un cambio respecto a lo aprobado en principio; lo motiva la simulación. (sí)
 2. **Nula conjunta única `J = A∘B` con p-valor de permutación exacto (estadístico de orden sobre `R + 1`)** (§3.2–§3.3), con los supuestos H_A y H_B declarados. (aprobada en la revisión 3 con la precisión del orden finito, ya incorporada)
 3. **Identidad concreta (día y signo) en la estabilidad** (§3.4). (ya aprobado)
-4. **Validación de §4:** procedimiento completo por conjunto sintético, 5.000 conjuntos por escenario, intervalos de Wilson, criterio de aceptación fijado de antemano, flujos de semillas independientes y una sola corrección `α = 0,025` caracterizada por simulación; si vuelve a fallar con datos reales, la dimensión no entra. (sí)
+4. **Validación de §4:** procedimiento completo por conjunto sintético, 5.000 conjuntos por escenario, intervalos de Wilson, criterio de aceptación fijado de antemano, flujos de semillas independientes y una sola corrección `α = 0,025` caracterizada por simulación, **activable solo sobre escenarios sintéticos** (no se aplica ni se decide con datos reales), y escenarios con patrones de ausencia con la regla de la misma máscara (§4.1, el punto débil es la ausencia informativa, declarado). (sí)
 5. **Lenguaje de «asociación»**, no de «efecto» (§1). (sí)
 
 ## 8. Riesgos conocidos
 
 - **Potencia baja:** con 177 días lo normal es que casi nada supere el umbral. Es correcto y se dice; no se baja el umbral para fabricar hallazgos.
 - **Autocorrelación entre semanas:** con ρ = 0,6 y 0,9 simulados no hay inflación (4,3 %); una estacionalidad más larga (p. ej. mensual) o dependencias de otra forma no están probadas. Límite declarado.
-- **Día registrado ≠ día jugado:** el registro es manual; un hábito de anotar ciertos días puede parecer una asociación con el día de la semana. Los huecos se tratan como ausencia, no como cero.
+- **Día registrado ≠ día jugado:** el registro es manual; un hábito de anotar ciertos días puede parecer una asociación con el día de la semana. Los huecos se tratan como ausencia, no como cero. Si el *resultado* decide si se registra (p. ej. no anotar las derrotas), los días dejan de ser intercambiables y el error puede superar algo el 5 % (5,5 % [4,5; 6,5] en la simulación M3): límite declarado.
 - **Los datos sintéticos no son los reales:** la simulación valida el procedimiento, no que los datos reales cumplan H_A y H_B. Eso solo se puede mirar con los datos reales y con prudencia.
 - **Control débil:** el max-T de un solo paso controla el error bajo la nula global; con una estructura real en una dimensión, el error en la otra se mide por simulación (W1/W3: 2,7 %), no se demuestra en general.
 - **Umbrales caducan:** igual que `noise-bands.json`, hay que recalibrar cuando cambie la población o pase tiempo (`calibratedThrough`).

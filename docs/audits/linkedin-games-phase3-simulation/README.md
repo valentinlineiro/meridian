@@ -6,6 +6,8 @@ Solo datos sintéticos: **no lee producción**. Comprueba que el procedimiento d
     python3 sim.py 5000 1000 0.05 20261111   # la propuesta (día de la semana + regularidad); escribe results_a0.05.json
     python3 sim.py 5000 1000 0.025 424242    # la corrección pre-registrada, con otra semilla; escribe results_a0.025.json
 
+    python3 sim_absence.py 2000 1000 0.05 20261111   # semanas con huecos (regla de la misma máscara); escribe results_absence_a0.05.json
+
 Requiere `numpy`. ~1,5 min cada una (4 procesos). Cada resultado lleva el intervalo de Wilson al 95 %. Dos flujos de semillas independientes: uno para los conjuntos de datos y otro para las
 réplicas de permutación. Cada conjunto ejecuta el procedimiento completo (sus propias réplicas, su propio umbral).
 

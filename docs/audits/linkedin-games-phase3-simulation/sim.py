@@ -69,7 +69,7 @@ def wilson(k, n, z=1.96):
     d = 1 + z * z / n
     c = (p + z * z / (2 * n)) / d
     h = z * np.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / d
-    return [round(float(c - h), 4), round(float(c + h), 4)]
+    return [round(max(0.0, float(c - h)), 4), round(min(1.0, float(c + h)), 4)]
 
 
 def run_world(args):
