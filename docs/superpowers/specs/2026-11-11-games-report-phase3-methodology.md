@@ -66,7 +66,7 @@ Un hallazgo se publica solo si **el mismo aspecto y el mismo signo** estaban tam
 
 ### 3.5 Artefacto
 
-`diagnosis-thresholds.json`: por juego y dimensión, los `R` estadísticos de las réplicas ordenados (de los que salen `p` y el orden exacto de §3.3), más `calibratedThrough`, `R`, semillas y versión del script. Lo genera un script offline (`docs/audits/…`) y se copia tal cual: nunca se edita a mano ni se recalcula en el servidor.
+`diagnosis-thresholds.json`: por juego, las `R` réplicas conjuntas `(día, regularidad)` tal como se generaron (los pares, **no** dos listas ordenadas: `U` necesita los dos valores de cada réplica a la vez; de ellos salen `p` y el orden exacto de §3.3), más `calibratedThrough`, `R`, semillas y versión del script. Lo genera un script offline (`docs/audits/…`) y se copia tal cual: nunca se edita a mano ni se recalcula en el servidor.
 
 ### 3.6 Por qué la tendencia no compite (cambio de la rev. 3)
 
