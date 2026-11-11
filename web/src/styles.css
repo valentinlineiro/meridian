@@ -269,3 +269,5 @@ app-tab-bar{display:none}
  .sheet .hint{display:block;margin:4px 18px 6px}.sheet .hint:empty{display:none}
  .sheet form{margin:0}
 }
+.course-select{font-size:var(--fs-xl);font-weight:700}
+@media(max-width:760px){#langCourseFlag{display:none}.course-select{font-weight:500;padding:8px 4px 8px 8px}} /* the option text already carries the flag; the whole width goes to the course name */
