@@ -1,0 +1,181 @@
+{
+ "calibratedThrough": "2026-11-11",
+ "games": {
+  "mini_sudoku": {
+   "observations_with_average": 178,
+   "weeks": 27,
+   "first": "2026-05-17",
+   "last": "2026-11-11",
+   "evaluable": {
+    "weekday": false,
+    "regularity": true,
+    "weekdayReason": "sin_derrotas_suficientes",
+    "losses": 3
+   },
+   "status": "calibrado",
+   "today": {
+    "p_adjusted": 0.13686313686313686,
+    "p": [
+     1.0,
+     0.13686313686313686
+    ],
+    "observed": [
+     0.0,
+     0.09887415902925628
+    ],
+    "finding": null
+   },
+   "stability": {
+    "cuts": 11,
+    "cuts_with_raw_finding": 1,
+    "cuts_with_published_finding": 0,
+    "changes_of_published_finding": 0
+   }
+  },
+  "patches": {
+   "observations_with_average": 178,
+   "weeks": 27,
+   "first": "2026-05-17",
+   "last": "2026-11-11",
+   "evaluable": {
+    "weekday": true,
+    "regularity": true,
+    "weekdayReason": null,
+    "losses": 23
+   },
+   "status": "calibrado",
+   "today": {
+    "p_adjusted": 0.4825174825174825,
+    "p": [
+     0.5804195804195804,
+     0.2757242757242757
+    ],
+    "observed": [
+     0.10155574762316336,
+     0.17431010743902542
+    ],
+    "finding": null
+   },
+   "stability": {
+    "cuts": 16,
+    "cuts_with_raw_finding": 0,
+    "cuts_with_published_finding": 0,
+    "changes_of_published_finding": 0
+   }
+  },
+  "queens": {
+   "observations_with_average": 178,
+   "weeks": 27,
+   "first": "2026-05-17",
+   "last": "2026-11-11",
+   "evaluable": {
+    "weekday": true,
+    "regularity": true,
+    "weekdayReason": null,
+    "losses": 31
+   },
+   "status": "calibrado",
+   "today": {
+    "p_adjusted": 0.001998001998001998,
+    "p": [
+     0.000999000999000999,
+     0.6553446553446554
+    ],
+    "observed": [
+     0.36430423509075194,
+     0.05014150999864586
+    ],
+    "finding": {
+     "dimension": "weekday",
+     "sign": 1,
+     "day": "lunes"
+    }
+   },
+   "stability": {
+    "cuts": 17,
+    "cuts_with_raw_finding": 15,
+    "cuts_with_published_finding": 12,
+    "changes_of_published_finding": 3
+   }
+  },
+  "tango": {
+   "observations_with_average": 65,
+   "weeks": 10,
+   "first": "2026-09-07",
+   "last": "2026-11-11",
+   "evaluable": {
+    "weekday": true,
+    "regularity": false,
+    "weekdayReason": null,
+    "losses": 22
+   },
+   "status": "calibrado",
+   "today": {
+    "p_adjusted": 0.04795204795204795,
+    "p": [
+     0.04795204795204795,
+     1.0
+    ],
+    "observed": [
+     0.3615384615384615,
+     0.0
+    ],
+    "finding": {
+     "dimension": "weekday",
+     "sign": 1,
+     "day": "lunes"
+    }
+   },
+   "stability": {
+    "cuts": 1,
+    "cuts_with_raw_finding": 1,
+    "cuts_with_published_finding": 0,
+    "changes_of_published_finding": 0
+   }
+  },
+  "wend": {
+   "observations_with_average": 65,
+   "weeks": 10,
+   "first": "2026-09-07",
+   "last": "2026-11-11",
+   "evaluable": {
+    "weekday": false,
+    "regularity": false,
+    "weekdayReason": "sin_derrotas_suficientes",
+    "losses": 0
+   },
+   "status": "datos_insuficientes"
+  },
+  "zip": {
+   "observations_with_average": 178,
+   "weeks": 27,
+   "first": "2026-05-17",
+   "last": "2026-11-11",
+   "evaluable": {
+    "weekday": true,
+    "regularity": true,
+    "weekdayReason": null,
+    "losses": 28
+   },
+   "status": "calibrado",
+   "today": {
+    "p_adjusted": 0.27372627372627373,
+    "p": [
+     0.3886113886113886,
+     0.16983016983016982
+    ],
+    "observed": [
+     0.11884183232497839,
+     0.20915504982392086
+    ],
+    "finding": null
+   },
+   "stability": {
+    "cuts": 17,
+    "cuts_with_raw_finding": 0,
+    "cuts_with_published_finding": 0,
+    "changes_of_published_finding": 0
+   }
+  }
+ }
+}
