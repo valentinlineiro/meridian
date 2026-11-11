@@ -3,6 +3,7 @@ import { arrow28, candidate, publish, type Arrow, type Label, type Reason } from
 import type { DayRecord } from "./LinkedinGames.ts";
 import { NOISE_BANDS, type Band, type GameBands, type NoiseBands } from "./NoiseBands.ts";
 import { adjustedForm, dayLevels, dowOf, lossMap, type AdjustedForm, type Level, type LossMap } from "./AdjustedForm.ts";
+import { diagnose, DIAGNOSIS_THRESHOLDS, type Diagnosis, type DiagnosisThresholds } from "./GameDiagnosis.ts";
 import { effSpread, outliers, savings, weekly, type EffSpread, type Outliers, type Savings, type WeekPoint } from "./GameReportStats.ts";
 import { recent28vBase56, trend112, type Recent28vBase56, type Trend112 } from "./GameTrend.ts";
 
@@ -50,6 +51,7 @@ export interface GameSummary {
   savings: Savings | null;
   effSpread: EffSpread | null;
   outliers: Outliers;
+  diagnosis: Diagnosis; // report phase 3 (GameDiagnosis.ts): what stands out, from the offline calibration
 }
 /** Monday = 0 … Sunday = 6: how all the games together went on that weekday, over the whole history. */
 export interface Weekday { dow: number; n: number; beat: BeatBlock; eff: EffBlock }
@@ -79,7 +81,7 @@ function streak(days: Array<{ date: string; ok: boolean }>, today: string): Stre
   return { current: last && dayNo(today) - dayNo(last.date) <= 1 ? run : 0, max, maxDate };
 }
 
-function gameSummary(game: string, obs: Obs[], today: string, noise: NoiseBands): GameSummary {
+function gameSummary(game: string, obs: Obs[], today: string, noise: NoiseBands, to: string, thresholds: DiagnosisThresholds): GameSummary {
   const t = dayNo(today);
   const withAvg = obs.filter((o) => o.avg !== null);
   const inWindow = (list: Obs[], from: number, to: number) => list.filter((o) => dayNo(o.date) > t - from && dayNo(o.date) <= t - to);
@@ -112,6 +114,7 @@ function gameSummary(game: string, obs: Obs[], today: string, noise: NoiseBands)
     savings: savings(obs),
     effSpread: effSpread(obs),
     outliers: outliers(obs),
+    diagnosis: diagnose(game, obs, to, today, thresholds),
     series: withAvg.map((o) => ({
       date: o.date,
       eff: eff(o),
@@ -128,7 +131,7 @@ function weekdays(obs: Obs[]): Weekday[] {
 }
 
 // `days` holds the current version of each date, ascending. `today` is the player's calendar date.
-export function summarize(days: DayRecord[], today: string, noise: NoiseBands = NOISE_BANDS): Summary {
+export function summarize(days: DayRecord[], today: string, noise: NoiseBands = NOISE_BANDS, thresholds: DiagnosisThresholds = DIAGNOSIS_THRESHOLDS): Summary {
   const byGame = new Map<string, Obs[]>();
   const played: Array<{ date: string; ok: boolean }> = [];
   for (const d of days) {
@@ -148,6 +151,6 @@ export function summarize(days: DayRecord[], today: string, noise: NoiseBands = 
     playStreak: streak(played, today),
     weekdays: weekdays([...byGame.values()].flat()),
     difficulty: dayLevels([...byGame.values()]),
-    games: Object.fromEntries([...byGame].map(([g, obs]) => [g, gameSummary(g, obs, today, noise)])),
+    games: Object.fromEntries([...byGame].map(([g, obs]) => [g, gameSummary(g, obs, today, noise, played[played.length - 1]!.date, thresholds)])),
   };
 }

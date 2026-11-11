@@ -15,7 +15,7 @@ Se guardaron fuera del repositorio; aquí solo hay agregados. `calibratedThrough
 | Queens, Zip, Patches | 178 | 31 / 28 / 23 | sí | sí | calibrado |
 | Mini Sudoku | 178 | **3** | **no: sin derrotas suficientes** | sí | calibrado (solo regularidad) |
 | Tango | 65 | 22 | sí | no (menos de 112 días) | calibrado (solo día) |
-| Wend | 65 | **0** | **no: sin derrotas suficientes** | no | **datos insuficientes** (fuera del artefacto) |
+| Wend | 65 | **0** | **no: sin derrotas suficientes** | no | **sin dimensiones evaluables**: se **conserva en el artefacto** (sin réplicas) con su motivo; no es «sin calibración» |
 
 ## 2. Resultado de hoy
 
@@ -28,7 +28,7 @@ Se guardaron fuera del repositorio; aquí solo hay agregados. `calibratedThrough
 | Zip | 0,389 | 0,170 | 0,274 | ninguno |
 | Mini Sudoku | — (sin derrotas suficientes) | 0,137 | 0,137 | ninguno |
 | Patches | 0,580 | 0,276 | 0,483 | ninguno |
-| Wend | — | — | — | sin datos suficientes para ninguna dimensión |
+| Wend | — | — | — | ninguna dimensión evaluable (0 derrotas; menos de 112 días) |
 
 ## 3. Estabilidad de la regla en el histórico
 
@@ -48,7 +48,8 @@ Queens es estable (lunes casi siempre). Tango solo tiene **un** corte: **no se p
 
 1. **Error de selección del día (corregido).** Los días no evaluables (`NaN`) se sustituían por `-1` y luego `abs()`, con lo que recibían una desviación de 1 y podían ganar la selección: con un día por debajo de `MIN_CELL`, el hallazgo podía atribuirse a un día no evaluable. Reproducido (el sábado, con 3 resultados, era el elegido) y corregido; el autotest incluye ese caso y que un día con < 8 resultados nunca sea elegido. **No cambia el resultado actual**: la exportación tiene ≥ 9 resultados por día en todos los juegos.
 2. **Estabilidad entre domingos consecutivos.** `publish()` exige que exista el corte de exactamente 7 días antes y que coincida; hay un test con un hueco de semana y con un cambio de día (lunes → viernes).
-3. **Derrotas mínimas** (10) aplicadas como condición de evaluabilidad, con su motivo.
+3. **Derrotas mínimas** (10) aplicadas como condición de evaluabilidad, con su motivo. En el servidor se exigen **en cada corte** (también el de hace una semana), no solo en la calibración.
+4. **Wend se conserva en el artefacto** aunque ninguna dimensión sea evaluable (revisión de #164).
 
 ## 5. Decisiones ya fijadas para la entrega 2 (no implementadas aquí)
 
