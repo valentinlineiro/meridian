@@ -1,17 +1,21 @@
-# Calibración de la fase 3 — informe (2026-11-11)
+# Calibración de la fase 3 — informe (2026-11-11, rev. tras la revisión de #163)
 
 Entrega 1 de 3 de la metodología (`docs/superpowers/specs/2026-11-11-games-report-phase3-methodology.md`, §6). **No toca el servidor ni la interfaz.**
 Datos: exportación de solo lectura (`GET /api/me/linkedin-games/export.csv`, sesión del propietario, 2026-11-11): 843 filas, 6 juegos, 2026-05-17 a 2026-11-11.
-Los datos se guardaron fuera del repositorio; aquí solo hay agregados. `calibratedThrough = 2026-11-11`, `R = 1000`, α = 0,05, entropía 20261112.
+Se guardaron fuera del repositorio; aquí solo hay agregados. `calibratedThrough = 2026-11-11`, `R = 1000`, α = 0,05, entropía 20261112, artefacto versión 2.
 
-## 1. Qué juegos se pueden evaluar
+## 1. Evaluabilidad (dos condiciones distintas para el día)
 
-| Juego | Observaciones con media | Semanas | Día de la semana | Regularidad |
-|---|---|---|---|---|
-| Mini Sudoku, Patches, Queens, Zip | 178 | 27 | sí | sí |
-| Tango, Wend | 65 | 10 | sí (9-10 partidas por día) | **no** (necesita 112 días) |
+- **Día de la semana:** (a) al menos un día con ≥ 8 resultados (`MIN_CELL`), **y** (b) ≥ 10 derrotas en total (`MIN_LOSSES`). Es una condición de evaluabilidad, **no** una garantía de potencia. Si falla, el artefacto lo anota con su motivo (`sin_derrotas_suficientes` o `sin_dias_con_partidas_suficientes`) para que el informe diga «Sin derrotas suficientes para contrastar el día», **no** «ninguna desviación destacable».
+- **Regularidad:** 112 días de histórico con ≥ 20 resultados en cada ventana de 56 días.
+- Mínimo para calibrar un juego: 60 observaciones con media (`MIN_FIT`) y al menos una dimensión evaluable.
 
-Mínimo para calibrar: 60 observaciones con media (`MIN_FIT`) y al menos una dimensión evaluable. Los seis lo cumplen.
+| Juego | Observaciones con media | Derrotas | Día | Regularidad | Estado |
+|---|---|---|---|---|---|
+| Queens, Zip, Patches | 178 | 31 / 28 / 23 | sí | sí | calibrado |
+| Mini Sudoku | 178 | **3** | **no: sin derrotas suficientes** | sí | calibrado (solo regularidad) |
+| Tango | 65 | 22 | sí | no (menos de 112 días) | calibrado (solo día) |
+| Wend | 65 | **0** | **no: sin derrotas suficientes** | no | **datos insuficientes** (fuera del artefacto) |
 
 ## 2. Resultado de hoy
 
@@ -19,39 +23,46 @@ Mínimo para calibrar: 60 observaciones con media (`MIN_FIT`) y al menos una dim
 
 | Juego | p (día) | p (regularidad) | p ajustado | Hallazgo |
 |---|---|---|---|---|
-| Queens | 0,001 | 0,655 | **0,002** | día: **lunes**, más derrotas que su tasa global (14 de 26) |
-| Tango | 0,048 | no evaluable | **0,048** | día: lunes, más derrotas (7 de 10), **en el límite** |
+| Queens | 0,001 | 0,655 | **0,002** | día: **lunes**, más derrotas que su tasa global |
+| Tango | 0,048 | — | **0,048** | día: lunes, más derrotas, **en el límite** |
 | Zip | 0,389 | 0,170 | 0,274 | ninguno |
-| Mini Sudoku | 0,980 | 0,137 | 0,151 | ninguno |
+| Mini Sudoku | — (sin derrotas suficientes) | 0,137 | 0,137 | ninguno |
 | Patches | 0,580 | 0,276 | 0,483 | ninguno |
-| Wend | 1,000 | no evaluable | 1,000 | ninguno |
+| Wend | — | — | — | sin datos suficientes para ninguna dimensión |
 
 ## 3. Estabilidad de la regla en el histórico
 
-Se aplicó la regla cada domingo con al menos 60 observaciones (con 500 réplicas por corte, semillas distintas) y se contó el hallazgo «publicable»
-(el mismo aspecto, signo y día una semana antes, §3.4).
+La regla se aplicó cada domingo con al menos 60 observaciones y alguna dimensión evaluable (500 réplicas por corte, semillas distintas). Un hallazgo es publicable si **el corte de exactamente 7 días antes** tenía el mismo (aspecto, signo y, para el día, el mismo día). Un hueco de una semana entre cortes impide publicar.
 
 | Juego | Cortes | Con hallazgo bruto | Publicable | Cambios del hallazgo publicable |
 |---|---|---|---|---|
 | Queens | 17 | 15 | 12 | 3 |
-| Zip, Mini Sudoku, Patches | 17 | 0 | 0 | 0 |
-| Tango, Wend | 1 | 1 / 0 | 0 | 0 |
+| Zip | 17 | 0 | 0 | 0 |
+| Patches | 16 | 0 | 0 | 0 |
+| Mini Sudoku | 11 | 1 | 0 | 0 |
+| Tango | 1 | 1 | 0 | 0 |
 
-Queens es estable (lunes casi siempre). Tango solo tiene **un** corte con datos suficientes: **no se puede publicar nada todavía** (la regla exige el mismo hallazgo una semana antes). Los cortes de un mismo juego no son independientes.
+Queens es estable (lunes casi siempre). Tango solo tiene **un** corte: **no se puede publicar nada todavía**. Los cortes de un mismo juego no son independientes.
 
-## 4. Lo que los datos reales enseñan y la metodología no decía
+## 4. Correcciones de esta revisión (hallazgos de la revisión de #163)
 
-1. **Wend no tiene ninguna derrota** (0 de 65) y **Mini Sudoku tiene 3 de 178**. En ellos la dimensión «día» (tasa de derrotas) es informativamente vacía: nunca podrá detectar nada. Hoy sale «ninguna desviación destacable», que sería **engañoso**: debería decir «sin derrotas suficientes para contrastar el día». Propuesta para la entrega 2 (a aprobar): exigir un mínimo de derrotas totales (p. ej. ≥ 10) para evaluar el día y, si no, decirlo.
-2. **Tango está en el borde** (p = 0,048) con 65 observaciones: un hallazgo así, con una sola semana de histórico, no es fiable aunque pase el umbral. La regla de estabilidad lo contiene; conviene no relajarla.
-3. **La nula depende de los datos**: las réplicas se generan permutando los datos reales (conservan sus resultados y su máscara), así que el artefacto es válido para esta exportación y se degrada al llegar datos nuevos. Hay que fijar en la entrega 2 una caducidad (p. ej. recalibrar cada 4 semanas o al cambiar el número de semanas) y qué muestra el informe cuando está caducado. Es la misma limitación que `noise-bands.json` (`calibratedThrough`), más acusada aquí.
-4. **«Próximo aspecto a observar»**: el corte mínimo de `u` no se ha fijado. Con estos datos, `1 − p` por encima de 0,8 lo cumplirían Mini Sudoku (regularidad, p = 0,137) y Zip (regularidad, p = 0,170), ambos sin hallazgo. Es una decisión de presentación, no estadística: **se propone, no se fija**.
+1. **Error de selección del día (corregido).** Los días no evaluables (`NaN`) se sustituían por `-1` y luego `abs()`, con lo que recibían una desviación de 1 y podían ganar la selección: con un día por debajo de `MIN_CELL`, el hallazgo podía atribuirse a un día no evaluable. Reproducido (el sábado, con 3 resultados, era el elegido) y corregido; el autotest incluye ese caso y que un día con < 8 resultados nunca sea elegido. **No cambia el resultado actual**: la exportación tiene ≥ 9 resultados por día en todos los juegos.
+2. **Estabilidad entre domingos consecutivos.** `publish()` exige que exista el corte de exactamente 7 días antes y que coincida; hay un test con un hueco de semana y con un cambio de día (lunes → viernes).
+3. **Derrotas mínimas** (10) aplicadas como condición de evaluabilidad, con su motivo.
 
-## 5. Qué no se ha hecho
+## 5. Decisiones ya fijadas para la entrega 2 (no implementadas aquí)
 
-- No se ha comprobado la coherencia con la etiqueta del veredicto (necesita el resumen del servidor; es parte de la entrega 2).
-- La potencia y el error de tipo I se validaron con datos sintéticos (simulaciones), **no** con estos datos: con datos reales no se conoce la verdad de cada dimensión.
-- El artefacto no se ha integrado en ninguna parte: nada lo lee todavía.
+- **Derrotas insuficientes:** el día no se evalúa y el texto es «Sin derrotas suficientes para contrastar el día». Se mantiene aparte el mínimo de resultados por día.
+- **Caducidad: 28 días** desde `calibratedThrough`. Pasado ese plazo se **ocultan** los hallazgos y el bloque, con el mensaje «Calibración caducada; pendiente de actualizar». No se dejan hallazgos antiguos con una simple advertencia.
+- **«Próximo aspecto a observar»:** `1 − p ≥ 0,8`, tratado como pista exploratoria (no como hallazgo ni como probabilidad de que exista un efecto). La interfaz debe distinguir claramente «observar» de «destaca». Con estos datos lo cumpliría Zip (regularidad, p = 0,170).
+- El mínimo de 10 derrotas es evaluabilidad, no potencia; la estabilidad temporal sigue siendo necesaria para publicar.
 
-## 6. Reproducir
+## 6. Qué no se ha hecho
+
+- Coherencia con la etiqueta del veredicto (necesita el resumen del servidor: entrega 2).
+- Error de tipo I con estos datos: con datos reales no se conoce la verdad de cada dimensión; se validó con simulaciones.
+- Nada lee todavía el artefacto.
+
+## 7. Reproducir
 
 `calibrate.py --selftest` (sin datos personales) y, con la exportación del propietario, `calibrate.py EXPORT.csv SALIDA`. Es determinista; el resultado debe coincidir con los ficheros de esta carpeta.

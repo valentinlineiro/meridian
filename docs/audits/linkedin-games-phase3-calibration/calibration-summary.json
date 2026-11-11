@@ -7,25 +7,27 @@
    "first": "2026-05-17",
    "last": "2026-11-11",
    "evaluable": {
-    "weekday": true,
-    "regularity": true
+    "weekday": false,
+    "regularity": true,
+    "weekdayReason": "sin_derrotas_suficientes",
+    "losses": 3
    },
    "status": "calibrado",
    "today": {
-    "p_adjusted": 0.15084915084915085,
+    "p_adjusted": 0.13686313686313686,
     "p": [
-     0.98001998001998,
+     1.0,
      0.13686313686313686
     ],
     "observed": [
-     0.02314606741573034,
+     0.0,
      0.09887415902925628
     ],
     "finding": null
    },
    "stability": {
-    "cuts": 17,
-    "cuts_with_raw_finding": 0,
+    "cuts": 11,
+    "cuts_with_raw_finding": 1,
     "cuts_with_published_finding": 0,
     "changes_of_published_finding": 0
    }
@@ -37,7 +39,9 @@
    "last": "2026-11-11",
    "evaluable": {
     "weekday": true,
-    "regularity": true
+    "regularity": true,
+    "weekdayReason": null,
+    "losses": 23
    },
    "status": "calibrado",
    "today": {
@@ -53,7 +57,7 @@
     "finding": null
    },
    "stability": {
-    "cuts": 17,
+    "cuts": 16,
     "cuts_with_raw_finding": 0,
     "cuts_with_published_finding": 0,
     "changes_of_published_finding": 0
@@ -66,7 +70,9 @@
    "last": "2026-11-11",
    "evaluable": {
     "weekday": true,
-    "regularity": true
+    "regularity": true,
+    "weekdayReason": null,
+    "losses": 31
    },
    "status": "calibrado",
    "today": {
@@ -99,7 +105,9 @@
    "last": "2026-11-11",
    "evaluable": {
     "weekday": true,
-    "regularity": false
+    "regularity": false,
+    "weekdayReason": null,
+    "losses": 22
    },
    "status": "calibrado",
    "today": {
@@ -131,28 +139,12 @@
    "first": "2026-09-07",
    "last": "2026-11-11",
    "evaluable": {
-    "weekday": true,
-    "regularity": false
+    "weekday": false,
+    "regularity": false,
+    "weekdayReason": "sin_derrotas_suficientes",
+    "losses": 0
    },
-   "status": "calibrado",
-   "today": {
-    "p_adjusted": 1.0,
-    "p": [
-     1.0,
-     1.0
-    ],
-    "observed": [
-     0.0,
-     0.0
-    ],
-    "finding": null
-   },
-   "stability": {
-    "cuts": 1,
-    "cuts_with_raw_finding": 0,
-    "cuts_with_published_finding": 0,
-    "changes_of_published_finding": 0
-   }
+   "status": "datos_insuficientes"
   },
   "zip": {
    "observations_with_average": 178,
@@ -161,7 +153,9 @@
    "last": "2026-11-11",
    "evaluable": {
     "weekday": true,
-    "regularity": true
+    "regularity": true,
+    "weekdayReason": null,
+    "losses": 28
    },
    "status": "calibrado",
    "today": {
