@@ -162,3 +162,26 @@ export function extraLines(x: Game): string[] {
   }
   return out;
 }
+
+export interface DiagnosisBlock { stale: boolean; highlights: { kind: 'fortaleza' | 'debilidad'; text: string }[]; watch: { text: string; unconfirmed: boolean } | null; notes: string[] }
+const NOT_TESTED: Record<string, string> = { sin_derrotas_suficientes: 'Sin derrotas suficientes para contrastar el día', historial_insuficiente: 'Historial insuficiente para contrastar la regularidad' };
+
+/**
+ * "Qué destaca": the server's published findings worded as an ASSOCIATION (never a cause), a separate exploratory "para observar", and
+ * why a dimension could not be tested. Expired calibration shows only that; no diagnosis (null) hides the block. Does not touch the verdict.
+ */
+export function diagnosisBlock(x: Game): DiagnosisBlock | null {
+  const d = x.diagnosis;
+  if (!d || d.status === 'sin_calibracion') return null;
+  if (d.status === 'caducada') return { stale: true, highlights: [], watch: null, notes: ['Calibración caducada; pendiente de actualizar'] };
+  const cells = x.losses?.cells ?? [];
+  const highlights = d.findings.map((f) => {
+    if (f.dimension === 'regularity') return { kind: f.kind, text: `Tus tiempos se han vuelto ${f.sign > 0 ? 'menos' : 'más'} regulares en las últimas 8 semanas (${x.n} partidas en total)` };
+    const c = cells.find((k) => k.dow === f.dow);
+    return { kind: f.kind, text: `${f.dow == null ? 'Un día' : 'Los ' + DAYS_PLURAL[f.dow]} se pierde ${f.sign > 0 ? 'más' : 'menos'} que el resto de la semana (${c?.losses ?? 0} ${c?.losses === 1 ? 'derrota' : 'derrotas'} en ${c?.n ?? 0} partidas)` };
+  });
+  const w = d.watch;
+  const watch = w ? { unconfirmed: w.unconfirmed, text: w.dimension === 'weekday' ? `Para observar: una posible asociación con el día de la semana${w.unconfirmed ? ', aún sin confirmar' : ''}` : `Para observar: una posible variación de la regularidad de tus tiempos${w.unconfirmed ? ', aún sin confirmar' : ''}` } : null;
+  const notes = Object.values(d.dimensions ?? {}).flatMap((s) => (!s.evaluable && s.reason && NOT_TESTED[s.reason] ? [NOT_TESTED[s.reason]!] : []));
+  return { stale: false, highlights, watch, notes };
+}

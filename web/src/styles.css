@@ -273,3 +273,4 @@ app-tab-bar{display:none}
 @media(max-width:760px){#langCourseFlag{display:none}.course-select{font-weight:500;padding:8px 4px 8px 8px}} /* the option text already carries the flag; the whole width goes to the course name */
 .wkbeat>div{min-width:0}
 @media(max-width:760px){.wkbeat>div:nth-child(even)>span:last-child{visibility:hidden}} /* 13 weeks do not fit at 390 px with every date label: the bars shrink, a date every other week */
+.hl{margin:0 0 6px;padding-left:10px;border-left:3px solid var(--line-strong)}.hl[data-kind=debilidad]{border-color:var(--orange)}.hl[data-kind=fortaleza]{border-color:var(--ok)}
