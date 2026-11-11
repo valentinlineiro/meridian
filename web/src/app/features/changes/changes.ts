@@ -132,30 +132,30 @@ function bodyView(b: Body, w: Win) {
   template: `
     @let v = view();
     <section id="changesTab">
-      <div id="changesHeader" style="margin-bottom:16px">@if (v) {
-        <div class="hero-card" style="margin-bottom:12px">
-          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+      <div class="u-mb-16" id="changesHeader">@if (v) {
+        <div class="hero-card u-mb-12">
+          <div class="u-d-flex u-jc-space-between u-ai-center u-wrap-wrap u-gap-8">
             <div>
               <h1>¿Qué ha cambiado?</h1>
-              <div class="muted" style="font-size:var(--fs-sm);margin-top:2px">{{ v.header.sub }}</div>
+              <div class="muted u-fs-sm u-mt-2">{{ v.header.sub }}</div>
             </div>
             @if (v.header.canMark) {<button type="button" class="btn btn-p" id="btnMarkSeen" [disabled]="saving()" (click)="markSeen()">{{ markFailed() ? 'No se pudo guardar; reintenta' : 'Marcar como visto' }}</button>}
           </div>
-          @if (v.header.markNote) {<div class="muted" style="font-size:var(--fs-xs);margin-top:6px">Para marcar como visto, elige «Desde última visita»: esta ventana no cubre todo lo que no has visto.</div>}
-          <app-segmented style="display:block;margin-top:12px" label="Periodo" [options]="windows" [value]="v.header.visit ? '0' : v.header.is7d ? '7' : v.header.is30d ? '30' : ''" (picked)="choose($event === '7' ? 7 : $event === '30' ? 30 : 0)" />
+          @if (v.header.markNote) {<div class="muted u-fs-xs u-mt-6">Para marcar como visto, elige «Desde última visita»: esta ventana no cubre todo lo que no has visto.</div>}
+          <app-segmented class="u-d-block u-mt-12" label="Periodo" [options]="windows" [value]="v.header.visit ? '0' : v.header.is7d ? '7' : v.header.is30d ? '30' : ''" (picked)="choose($event === '7' ? 7 : $event === '30' ? 30 : 0)" />
         </div>
       }</div>
       @let b = v?.body;
       @if (b?.empty) {<div id="changesEmpty" class="empty">{{ b!.empty }}</div>}
-      <div id="changesFindings" style="margin-bottom:16px">@if (b?.findings; as f) {
+      <div class="u-mb-16" id="changesFindings">@if (b?.findings; as f) {
         @if (f === 'na') {<ng-container *ngTemplateOutlet="na; context: { $implicit: 'Evaluaciones' }" />} @else {
-          <h2 style="margin:18px 0 10px">{{ f.head }}</h2>
-          @if (f.legend) {<div class="muted" style="font-size:var(--fs-sm);margin-bottom:10px">Qué se observó, con qué criterio y qué no se puede afirmar todavía.</div>}
+          <h2 class="u-m-18-0-10">{{ f.head }}</h2>
+          @if (f.legend) {<div class="muted u-fs-sm u-mb-10">Qué se observó, con qué criterio y qué no se puede afirmar todavía.</div>}
           @if (f.evalsNa) {<ng-container *ngTemplateOutlet="na; context: { $implicit: 'Evaluaciones' }" />}
           @if (f.evals.length) {<m-evaluation-cards [evaluations]="f.evals" [findingFor]="f.findingFor" [win]="f.win" />}
           @for (e of f.events; track $index) {
             @if ('na' in e) {<ng-container *ngTemplateOutlet="na; context: { $implicit: e.title }" />} @else {
-              <div class="card" style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><h3 style="margin:0">{{ e.title }}</h3><span><span class="pill pill-win">EVENTO</span>&ngsp;<span class="pill pill-scope">{{ e.category }}</span></span></div><div style="font-size:var(--fs-md);font-weight:600;color:var(--text-2);margin-bottom:6px">{{ e.claim }}</div><div class="muted" style="font-size:var(--fs-sm)"><strong>Evidencia:</strong> {{ e.evidence }}</div></div>
+              <div class="card u-mb-10"><div class="u-d-flex u-jc-space-between u-ai-center u-mb-6"><h3 class="u-m-0">{{ e.title }}</h3><span><span class="pill pill-win">EVENTO</span>&ngsp;<span class="pill pill-scope">{{ e.category }}</span></span></div><div class="u-fs-md u-fwt-600 u-c-text-2 u-mb-6">{{ e.claim }}</div><div class="muted u-fs-sm"><strong>Evidencia:</strong> {{ e.evidence }}</div></div>
             }
           }
           @if (f.findingsNa) {<ng-container *ngTemplateOutlet="na; context: { $implicit: 'Hallazgos' }" />}
@@ -164,11 +164,11 @@ function bodyView(b: Body, w: Win) {
       <div id="changesActivity">@if (b?.activity; as a) {
         <div class="card">
           <h2>Actividad en la ventana</h2>
-          @if (a === 'na') {<div class="muted" style="font-size:var(--fs-sm)">No disponible</div>} @else {
-            <div class="muted" style="font-size:var(--fs-sm);margin-bottom:10px">Datos que contextualizan las evaluaciones.</div>
+          @if (a === 'na') {<div class="muted u-fs-sm">No disponible</div>} @else {
+            <div class="muted u-fs-sm u-mb-10">Datos que contextualizan las evaluaciones.</div>
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px">
               @for (k of a; track k.title) {
-                <div><div class="muted" style="font-size:var(--fs-xs);letter-spacing:.05em;text-transform:uppercase;margin-bottom:4px">{{ k.title }}</div>
+                <div><div class="muted u-fs-xs u-ls-p05em u-tt-uppercase u-mb-4">{{ k.title }}</div>
                   @for (r of k.rows; track r.label) {
                     <div class="row"><span class="muted">{{ r.label }}</span>@if (r.pill) {<span [class]="r.pill">{{ r.value }}</span>} @else {<b>{{ r.value }}</b>}</div>
                   }
@@ -179,7 +179,7 @@ function bodyView(b: Body, w: Win) {
         </div>
       }</div>
     </section>
-    <ng-template #na let-title><div class="card" style="margin-bottom:10px"><h3 style="margin:0">{{ title }}</h3><div class="muted" style="font-size:var(--fs-sm);margin-top:6px">No disponible</div></div></ng-template>
+    <ng-template #na let-title><div class="card u-mb-10"><h3 class="u-m-0">{{ title }}</h3><div class="muted u-fs-sm u-mt-6">No disponible</div></div></ng-template>
   `,
 })
 export class Changes {

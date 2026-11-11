@@ -180,22 +180,22 @@ export function evaluationCards(evals: readonly unknown[], findingFor: (e: Evalu
   template: `
     <ng-template #body let-c>
       @if (c.finding) {
-        <div style="font-size:var(--fs-md);font-weight:600;color:var(--text-2);margin-bottom:6px">{{ c.finding.claim }}</div>
-        <div class="muted" style="font-size:var(--fs-sm)"><strong>Evidencia:</strong> {{ c.finding.evidence }}</div>
+        <div class="u-fs-md u-fwt-600 u-c-text-2 u-mb-6">{{ c.finding.claim }}</div>
+        <div class="muted u-fs-sm"><strong>Evidencia:</strong> {{ c.finding.evidence }}</div>
       } @else {
-        @if (c.observed) {<div style="font-size:var(--fs-md);color:var(--text-2);margin-bottom:4px"><strong>Observado:</strong> {{ c.observed }}</div>}
-        @if (c.color; as cc) {<div class="evcolor" style="font-size:var(--fs-sm);color:var(--text-2);margin-bottom:4px">{{ cc.line1 }}<br>{{ cc.line2 }}</div>}
-        @if (c.indicio) {<div style="font-size:var(--fs-md);font-weight:600;color:var(--text-2);margin-bottom:4px">{{ c.indicio }}</div>}
+        @if (c.observed) {<div class="u-fs-md u-c-text-2 u-mb-4"><strong>Observado:</strong> {{ c.observed }}</div>}
+        @if (c.color; as cc) {<div class="evcolor u-fs-sm u-c-text-2 u-mb-4">{{ cc.line1 }}<br>{{ cc.line2 }}</div>}
+        @if (c.indicio) {<div class="u-fs-md u-fwt-600 u-c-text-2 u-mb-4">{{ c.indicio }}</div>}
         <ul class="muted" style="font-size:var(--fs-sm);margin:0;padding-left:18px">@for (r of c.reasons; track $index) {<li>{{ r }}</li>}</ul>
       }
     </ng-template>
     @for (c of cards(); track $index) {
       @if (c.na) {
-        <div class="card" style="margin-bottom:10px"><h3 style="margin:0">{{ c.title }}</h3><div class="muted" style="font-size:var(--fs-sm);margin-top:6px">No disponible</div></div>
+        <div class="card u-mb-10"><h3 class="u-m-0">{{ c.title }}</h3><div class="muted u-fs-sm u-mt-6">No disponible</div></div>
       } @else if (c.collapsed) {
-        <details class="card evcard" style="margin-bottom:10px"><summary><span class="evhead"><h3 style="margin:0">{{ c.title }}</h3><app-verdict [verdict]="c.verdict" /></span><span class="muted evmsg">{{ c.summary }}</span></summary><div style="margin-top:8px"><span class="pill pill-scope">{{ c.scope }}</span></div><div style="margin-top:8px"><ng-container *ngTemplateOutlet="body; context: { $implicit: c }" /></div><div class="muted" style="font-size:var(--fs-xs);margin-top:6px">{{ c.foot }}</div></details>
+        <details class="card evcard u-mb-10"><summary><span class="evhead"><h3 class="u-m-0">{{ c.title }}</h3><app-verdict [verdict]="c.verdict" /></span><span class="muted evmsg">{{ c.summary }}</span></summary><div class="u-mt-8"><span class="pill pill-scope">{{ c.scope }}</span></div><div class="u-mt-8"><ng-container *ngTemplateOutlet="body; context: { $implicit: c }" /></div><div class="muted u-fs-xs u-mt-6">{{ c.foot }}</div></details>
       } @else {
-        <div class="card" style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px"><h3 style="margin:0">{{ c.title }}</h3><span><app-verdict [verdict]="c.verdict" />&ngsp;<span class="pill pill-scope">{{ c.scope }}</span></span></div><ng-container *ngTemplateOutlet="body; context: { $implicit: c }" /><div class="muted" style="font-size:var(--fs-xs);margin-top:6px">{{ c.foot }}</div></div>
+        <div class="card u-mb-10"><div class="u-d-flex u-jc-space-between u-ai-center u-gap-8 u-mb-6"><h3 class="u-m-0">{{ c.title }}</h3><span><app-verdict [verdict]="c.verdict" />&ngsp;<span class="pill pill-scope">{{ c.scope }}</span></span></div><ng-container *ngTemplateOutlet="body; context: { $implicit: c }" /><div class="muted u-fs-xs u-mt-6">{{ c.foot }}</div></div>
       }
     }
   `,

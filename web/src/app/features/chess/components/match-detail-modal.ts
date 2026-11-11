@@ -29,11 +29,11 @@ const MISSING = 'No hay partida completa guardada para esta partida.';
           <div id="gErr" class="muted">{{ error() }}</div>
           @if (game(); as g) {
             @let n = ply();
-            <div id="gBody" style="display:block">
+            <div class="u-d-block" id="gBody">
               <div class="gamegrid"><m-chess-board id="gBoard" [fen]="n ? g.plies[n - 1].fen : g.startFen" [flip]="g.userColor === 'black'" />
                 <div id="gMoves" class="moves">@for (p of g.plies; track $index; let i = $index) {@if (i % 2 === 0) {<span class="muted">{{ i / 2 + 1 }}.</span>{{ ' ' }}}<a href="#" class="gm" [class.on]="i + 1 === n" (click)="go($event, i + 1)" (keydown.space)="go($event, i + 1)">{{ p.san }}</a>{{ ' ' }}}</div></div>
-              <div id="gMissed" class="muted" style="margin-top:8px">@for (k of g.missedPlies ?? []; track k) {<div><a href="#" (click)="go($event, k - 1)" (keydown.space)="go($event, k - 1)">Jugada {{ k }} ({{ g.plies[k - 1]?.san ?? '' }}): el rival tenía mate en 1 y lo jugó</a></div>}</div>
-              <div id="gErrors" class="muted" style="margin-top:8px">
+              <div id="gMissed" class="muted u-mt-8">@for (k of g.missedPlies ?? []; track k) {<div><a href="#" (click)="go($event, k - 1)" (keydown.space)="go($event, k - 1)">Jugada {{ k }} ({{ g.plies[k - 1]?.san ?? '' }}): el rival tenía mate en 1 y lo jugó</a></div>}</div>
+              <div id="gErrors" class="muted u-mt-8">
                 @if (g.engineSummary; as sm) {<div>Según el motor: {{ sm.serious }} errores graves en {{ sm.moves }} jugadas tuyas{{ sm.acpl === null || sm.acpl === undefined ? '' : ' · pérdida media ' + round(sm.acpl) + ' cp' }}</div>}
                 @for (x of g.engineWorst ?? []; track x.ply) {<div><a href="#" (click)="go($event, x.ply - 1)" (keydown.space)="go($event, x.ply - 1)">Jugada {{ x.ply }} ({{ g.plies[x.ply - 1]?.san ?? '' }}): pierdes {{ x.loss }} cp; el motor prefería {{ x.bestSan || x.best }}</a></div>}
               </div>

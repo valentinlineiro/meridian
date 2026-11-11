@@ -38,19 +38,19 @@ function row(g: Group, total: number) {
     } @else {
       @for (r of rs.slice(0, shown()); track $index) { <ng-container *ngTemplateOutlet="rowTpl; context: { $implicit: r }" /> }
       @if (rs.length > shown()) {
-        <details class="more-rows" style="margin-top:6px"><summary style="cursor:pointer;color:var(--muted);font-size:var(--fs-md);padding:6px 0">Ver {{ rs.length - shown() }} {{ noun() }} más</summary>
+        <details class="more-rows u-mt-6"><summary style="cursor:pointer;color:var(--muted);font-size:var(--fs-md);padding:6px 0">Ver {{ rs.length - shown() }} {{ noun() }} más</summary>
           @for (r of rs.slice(shown()); track $index) { <ng-container *ngTemplateOutlet="rowTpl; context: { $implicit: r }" /> }
         </details>
       }
     }
     <ng-template #rowTpl let-r>
-      <div class="row"><div style="flex:1">
-        <div style="display:flex;justify-content:space-between;align-items:baseline"><b>{{ r.label }}</b><span class="muted">{{ r.games }}</span></div>
-        <div class="bar" style="margin-top:6px;display:flex"><i class="bar-win" [style.width.%]="r.w"></i><i class="bar-loss" [style.width.%]="r.l"></i><i class="bar-draw" [style.width.%]="r.d"></i></div>
-        <div class="muted" style="margin-top:4px;display:flex;gap:10px;flex-wrap:wrap"><span>{{ r.win }}</span><span>{{ r.score }}</span><span>{{ r.basis }}</span></div>
+      <div class="row"><div class="u-flex-1">
+        <div class="u-d-flex u-jc-space-between u-ai-baseline"><b>{{ r.label }}</b><span class="muted">{{ r.games }}</span></div>
+        <div class="bar u-mt-6 u-d-flex"><i class="bar-win" [style.width.%]="r.w"></i><i class="bar-loss" [style.width.%]="r.l"></i><i class="bar-draw" [style.width.%]="r.d"></i></div>
+        <div class="muted u-mt-4 u-d-flex u-gap-10 u-wrap-wrap"><span>{{ r.win }}</span><span>{{ r.score }}</span><span>{{ r.basis }}</span></div>
         @if (r.disc; as x) {
-          @if (x.none) { <div class="muted" style="margin-top:4px">Sin desconexiones en esta fase</div> }
-          @else { <div class="muted" style="margin-top:4px;display:flex;gap:10px;flex-wrap:wrap"><span>{{ x.a }}</span><span>{{ x.b }}</span></div> }
+          @if (x.none) { <div class="muted u-mt-4">Sin desconexiones en esta fase</div> }
+          @else { <div class="muted u-mt-4 u-d-flex u-gap-10 u-wrap-wrap"><span>{{ x.a }}</span><span>{{ x.b }}</span></div> }
         }
       </div></div>
     </ng-template>

@@ -11,7 +11,7 @@ const FOCUSABLE = 'button:not([disabled]), a[href], input:not([disabled]), selec
   host: { '(document:keydown)': 'onKey($event)' },
   template: `
     <!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events -- Escape is handled on the document -->
-    <div class="modal" style="display:flex" role="dialog" aria-modal="true" [attr.id]="modalId()" [attr.aria-labelledby]="labelledby()"
+    <div class="modal u-d-flex" role="dialog" aria-modal="true" [attr.id]="modalId()" [attr.aria-labelledby]="labelledby()"
          (click)="$event.target === $event.currentTarget && dismissed.emit()">
       <div [class]="'card gamecard ' + cardClass()"><ng-content /></div>
     </div>

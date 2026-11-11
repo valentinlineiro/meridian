@@ -32,14 +32,14 @@ function threats(th: Threats | null | undefined) {
   imports: [Compare, Segmented],
   template: `
     @if (mates(); as m) {
-      <div class="card" id="matesCard" style="display:block"><h2>Cómo terminan tus mates</h2>
+      <div class="card u-d-block" id="matesCard"><h2>Cómo terminan tus mates</h2>
         <div class="grid2"><div><div class="muted">Dados</div><div id="matesGiven">@for (x of m.given; track $index) {<div class="row"><b>{{ x.label }}</b><span class="muted">{{ x.games }}</span></div>} @empty {<div class="muted">Ninguno</div>}</div></div>
           <div><div class="muted">Recibidos</div><div id="matesReceived">@for (x of m.received; track $index) {<div class="row"><b>{{ x.label }}</b><span class="muted">{{ x.games }}</span></div>} @empty {<div class="muted">Ninguno</div>}</div></div></div>
-        <div class="muted" id="matesNote" style="margin-top:8px">{{ m.note }}</div></div>
+        <div class="muted u-mt-8" id="matesNote">{{ m.note }}</div></div>
     }
     @if (threats(); as t) {
-      <div class="card" id="threatsCard" style="display:block"><h2>Amenazas de mate</h2><div id="threatsMain">{{ t.main }}</div><div class="muted" id="threatsPhases" style="margin-top:8px">{{ t.phases }}</div><div class="muted" id="threatsTrend" style="margin-top:4px">{{ t.trend }}</div><div class="muted" id="threatsNote" style="margin-top:8px">{{ t.note }}</div>
-        @if (t.missed > 0) {<button class="btn btn-g" id="threatsMissedBtn" type="button" (click)="matches.toggleMissed()" style="margin-top:8px;display:inline-block">{{ matches.missedOnly() ? 'Quitar el filtro de mates no vistos' : 'Ver partidas donde no viste el mate (' + t.missed + ')' }}</button>}
+      <div class="card u-d-block" id="threatsCard"><h2>Amenazas de mate</h2><div id="threatsMain">{{ t.main }}</div><div class="muted u-mt-8" id="threatsPhases">{{ t.phases }}</div><div class="muted u-mt-4" id="threatsTrend">{{ t.trend }}</div><div class="muted u-mt-8" id="threatsNote">{{ t.note }}</div>
+        @if (t.missed > 0) {<button class="btn btn-g u-mt-8 u-d-inline-block" id="threatsMissedBtn" type="button" (click)="matches.toggleMissed()">{{ matches.missedOnly() ? 'Quitar el filtro de mates no vistos' : 'Ver partidas donde no viste el mate (' + t.missed + ')' }}</button>}
       </div>
     }
     <div class="grid2">
@@ -48,11 +48,11 @@ function threats(th: Threats | null | undefined) {
         @let op = openingsView();
         <div id="openingsWhite" [hidden]="tab() !== 'white'">@if (op) {<m-compare [groups]="op.white" [total]="total()" [cap]="shown" noun="aperturas" />} @else if (op === null) {<div class="muted">No disponible</div>}</div>
         <div id="openingsBlack" [hidden]="tab() !== 'black'">@if (op) {<m-compare [groups]="op.black" [total]="total()" [cap]="shown" noun="aperturas" />} @else if (op === null) {<div class="muted">No disponible</div>}</div>
-        <div class="muted" id="openingsPop" style="margin-top:8px">{{ op?.pop }}</div></div>
-      <div class="card" id="phasesCard"><h2>Fases de partida</h2><div class="muted" style="margin-bottom:8px">La fase es aquella en la que terminó la partida, no cómo juegas esa fase. Una desconexión corta la partida donde estuviera: por eso se muestran aparte.</div>
+        <div class="muted u-mt-8" id="openingsPop">{{ op?.pop }}</div></div>
+      <div class="card" id="phasesCard"><h2>Fases de partida</h2><div class="muted u-mb-8">La fase es aquella en la que terminó la partida, no cómo juegas esa fase. Una desconexión corta la partida donde estuviera: por eso se muestran aparte.</div>
         @let ph = phasesView();
         <div id="phasesBody">@if (ph) {<m-compare [groups]="ph.groups" [total]="total()" />} @else if (ph === null) {<div class="muted">No disponible</div>}</div>
-        <div class="muted" id="phasesMeta" style="margin-top:8px">{{ ph?.meta }}</div></div>
+        <div class="muted u-mt-8" id="phasesMeta">{{ ph?.meta }}</div></div>
     </div>
   `,
 })
