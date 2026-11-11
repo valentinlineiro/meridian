@@ -1,0 +1,15 @@
+# Meridian — Code ownership
+# Primary maintainer
+* @valentinlineiro
+
+# Backend and database
+/src/ @valentinlineiro
+/migrations/ @valentinlineiro
+
+# Angular frontend
+/web/ @valentinlineiro
+/web/package.json @valentinlineiro
+
+# Root dependency manifests
+/package.json @valentinlineiro
+/package-lock.json @valentinlineiro
