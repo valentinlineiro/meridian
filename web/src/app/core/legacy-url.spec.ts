@@ -32,6 +32,15 @@ describe('legacyRedirect', () => {
     expect(legacyRedirect(path, hash, search)).toBe(expected);
   });
 
+  it.each([['/nope'], ['/a/b'], ['/index.htm']])('shouldLeaveAnUnknownPlainPathAloneSoItCanShowNotFound %s', (path) => {
+    expect(legacyRedirect(path, '', '')).toBeNull();
+  });
+
+  it('shouldStillSendAnUnknownHashRouteToOverview', () => {
+    expect(legacyRedirect('/', '#/nope', '')).toBe('/overview');
+    expect(legacyRedirect('/nope', '#/x', '')).toBe('/overview');
+  });
+
   it('shouldRedirectCourseQueryToPath', () => {
     expect(legacyRedirect('/languages', '', '?course=X')).toBe('/languages/X');
     expect(legacyRedirect('/', '', '?course=X')).toBe('/overview');
