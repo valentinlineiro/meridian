@@ -67,7 +67,7 @@
       <div class="tblwrap" tabindex="0" role="region" aria-label="Semanas en segundos (desplazable)">
         <table class="gtable" id="gameReportSeconds"><caption class="sr-only">Semana a semana en segundos</caption>
           <thead><tr><th scope="col">Semana del</th><th scope="col">Tu mediana</th><th scope="col">Media publicada</th><th scope="col">Velocidad</th><th scope="col">Partidas</th></tr></thead>
-          <tbody>@for (r of w; track r.start) {<tr><th scope="row">{{ fmtDate(r.start) }}@if (!r.complete) { <span class="muted">(incompleta)</span>}</th><td class="num">{{ r.own }}</td><td class="num">{{ r.ref }}</td><td class="num">{{ r.speed }}</td><td class="num">{{ r.n }}</td></tr>}</tbody></table>
+          <tbody>@for (r of w; track r.start) {<tr><th scope="row">{{ fmtDate(r.start) }}@if (!r.complete) {&ngsp;<span class="muted">(incompleta)</span>}</th><td class="num">{{ r.own }}</td><td class="num">{{ r.ref }}</td><td class="num">{{ r.speed }}</td><td class="num">{{ r.n }}</td></tr>}</tbody></table>
       </div>
       <p class="muted">Últimas 8 semanas. La media publicada de LinkedIn varía con el día de la semana y con quién juega: no es una vara neutra.</p>
     }
