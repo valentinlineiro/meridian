@@ -1,0 +1,44 @@
+{
+ "datasets": 1000,
+ "replicates": 1000,
+ "alpha": 0.05,
+ "weeks": 25,
+ "results": {
+  "W0 global null: iid noise": {
+   "any": 0.046,
+   "weekday": 0.008,
+   "regularity": 0.016,
+   "trend": 0.022
+  },
+  "W1 weekday association only (span 0.6)": {
+   "any": 0.33,
+   "weekday": 0.288,
+   "regularity": 0.02,
+   "trend": 0.022
+  },
+  "W2 autocorrelated weeks only (sd .25, rho .6)": {
+   "any": 0.103,
+   "weekday": 0.004,
+   "regularity": 0.014,
+   "trend": 0.085
+  },
+  "W3 weekday + autocorrelated weeks": {
+   "any": 0.35,
+   "weekday": 0.267,
+   "regularity": 0.011,
+   "trend": 0.072
+  },
+  "W4 planted: one weekday (Tue) -0.5": {
+   "any": 0.727,
+   "weekday": 0.712,
+   "regularity": 0.005,
+   "trend": 0.01
+  },
+  "W5 planted: trend +0.02 log/week": {
+   "any": 0.148,
+   "weekday": 0.01,
+   "regularity": 0.022,
+   "trend": 0.116
+  }
+ }
+}
