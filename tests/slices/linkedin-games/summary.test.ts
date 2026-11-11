@@ -51,7 +51,7 @@ describe("summarize", () => {
 
   it("shouldBreakTheDayStreakWhenADateIsMissing", () => {
     const days = [...run("zip", "2026-10-20", 5, () => entry(10, 20)), ...run("zip", TODAY, 3, () => entry(10, 20))];
-    expect(summarize(days, TODAY).playStreak).toEqual({ current: 3, max: 5 });
+    expect(summarize(days, TODAY).playStreak).toEqual({ current: 3, max: 5, maxDate: "2026-10-20" });
   });
 
   it("shouldKeepTheStreakAliveWhenLastDateIsYesterdayAndDropItWhenOlder", () => {
@@ -64,13 +64,13 @@ describe("summarize", () => {
   it("shouldBreakTheGameStreakWhenADayHasNoAvgOrDoesNotBeatIt", () => {
     const days = run("zip", TODAY, 6, (i) => (i === 2 ? entry(10) : i === 4 ? entry(30, 20) : entry(10, 20)));
     const z = summarize(days, TODAY).games.zip!;
-    expect(z.beatStreak).toEqual({ current: 1, max: 2 });
+    expect(z.beatStreak).toEqual({ current: 1, max: 2, maxDate: "2026-10-30" });
   });
 
   it("shouldBreakTheGameStreakWhenThatGameWasNotRecordedOnADayOthersWere", () => {
     const days = [day("2026-11-01", { zip: entry(10, 20) }), day("2026-11-02", { tango: entry(10, 20) }), day(TODAY, { zip: entry(10, 20) })];
-    expect(summarize(days, TODAY).games.zip!.beatStreak).toEqual({ current: 1, max: 1 });
-    expect(summarize(days, TODAY).playStreak).toEqual({ current: 3, max: 3 });
+    expect(summarize(days, TODAY).games.zip!.beatStreak).toEqual({ current: 1, max: 1, maxDate: "2026-11-01" });
+    expect(summarize(days, TODAY).playStreak).toEqual({ current: 3, max: 3, maxDate: "2026-11-03" });
   });
 
   it("shouldReportChangeAgainstThePreviousWindowWhenBothWindowsHaveData", () => {
