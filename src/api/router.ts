@@ -17,7 +17,7 @@ import { handleSyncRequest, handleSyncStatus } from "./sync.ts";
 import { handleSaveMatchDetail, handleGetMatchDetail, handleGetPendingMatchDetails, handleGetPendingThreats, handlePostMateThreats, handleGetPendingEngine, handlePostEngineEval } from "./chessDetail.ts";
 import { handleGetLanguages, handleGetLanguageCourse, handleGetLanguageXp } from "./languages.ts";
 import { handleGetLanguagesAnalytics } from "./languagesAnalytics.ts";
-import { mapErrorToResponse, mapError } from "./errors.ts";
+import { logInternalError, mapErrorToResponse, mapError } from "./errors.ts";
 import { importPayloadSchema, envSchema, whatChangedQuerySchema, trajectoryQuerySchema } from "./schemas.ts";
 import { createD1WhatChangedAdapter } from "../infrastructure/d1/d1WhatChangedAdapter.ts";
 import { getWhatChangedUseCase } from "../application/getWhatChangedUseCase.ts";
@@ -301,6 +301,7 @@ app.get("*", async (c) => {
 export const onFailure = (e: Error) => {
   const mapped = mapErrorToResponse(e);
   if (mapped) return mapped;
+  logInternalError(e);
   return json({ ok: false, error: "internal error" }, 500);
 };
 export const onNotFound = () => json({ ok: false, error: "not found" }, 404);
