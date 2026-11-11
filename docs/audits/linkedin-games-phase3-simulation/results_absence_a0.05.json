@@ -1,0 +1,166 @@
+{
+ "datasets_per_scenario": 2000,
+ "replicates": 1000,
+ "alpha": 0.05,
+ "entropy": 20261111,
+ "weeks": 24,
+ "results": {
+  "C0 complete weeks, pure noise (control)": {
+   "any": [
+    0.05,
+    [
+     0.0413,
+     0.0604
+    ]
+   ],
+   "false_in_null_dimension": [
+    0.05,
+    [
+     0.0413,
+     0.0604
+    ]
+   ],
+   "distinct_masks_per_dataset": 1.0
+  },
+  "M1 missing at random (15 %), pure noise": {
+   "any": [
+    0.0435,
+    [
+     0.0354,
+     0.0533
+    ]
+   ],
+   "false_in_null_dimension": [
+    0.0435,
+    [
+     0.0354,
+     0.0533
+    ]
+   ],
+   "distinct_masks_per_dataset": 12.5
+  },
+  "M1 + weekday association (range 0.6)": {
+   "any": [
+    0.3295,
+    [
+     0.3092,
+     0.3504
+    ]
+   ],
+   "false_in_null_dimension": [
+    0.0165,
+    [
+     0.0118,
+     0.0231
+    ]
+   ],
+   "distinct_masks_per_dataset": 12.5,
+   "power": [
+    0.313,
+    [
+     0.2931,
+     0.3337
+    ]
+   ]
+  },
+  "M1 + planted: noise 0.5 -> 0.8 in the last 8 weeks": {
+   "any": [
+    0.273,
+    [
+     0.2539,
+     0.2929
+    ]
+   ],
+   "false_in_null_dimension": [
+    0.015,
+    [
+     0.0105,
+     0.0213
+    ]
+   ],
+   "distinct_masks_per_dataset": 12.5,
+   "power": [
+    0.258,
+    [
+     0.2393,
+     0.2776
+    ]
+   ]
+  },
+  "M2 weekends often not logged, pure noise": {
+   "any": [
+    0.0465,
+    [
+     0.0381,
+     0.0566
+    ]
+   ],
+   "false_in_null_dimension": [
+    0.0465,
+    [
+     0.0381,
+     0.0566
+    ]
+   ],
+   "distinct_masks_per_dataset": 8.8
+  },
+  "M2 + weekday association (range 0.6)": {
+   "any": [
+    0.1645,
+    [
+     0.1489,
+     0.1814
+    ]
+   ],
+   "false_in_null_dimension": [
+    0.033,
+    [
+     0.026,
+     0.0418
+    ]
+   ],
+   "distinct_masks_per_dataset": 8.8,
+   "power": [
+    0.1315,
+    [
+     0.1174,
+     0.147
+    ]
+   ]
+  },
+  "M3 losses often not logged (informative), pure noise": {
+   "any": [
+    0.0545,
+    [
+     0.0454,
+     0.0653
+    ]
+   ],
+   "false_in_null_dimension": [
+    0.0545,
+    [
+     0.0454,
+     0.0653
+    ]
+   ],
+   "distinct_masks_per_dataset": 10.4
+  },
+  "M4 logging fades in the last 8 weeks, pure noise": {
+   "any": [
+    0.04,
+    [
+     0.0323,
+     0.0495
+    ]
+   ],
+   "false_in_null_dimension": [
+    0.04,
+    [
+     0.0323,
+     0.0495
+    ]
+   ],
+   "distinct_masks_per_dataset": 11.9
+  }
+ }
+}

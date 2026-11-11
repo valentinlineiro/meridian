@@ -1,0 +1,153 @@
+{
+ "datasets_per_world": 5000,
+ "replicates": 1000,
+ "alpha": 0.025,
+ "entropy": 424242,
+ "weeks": 24,
+ "dimensions": [
+  "weekday",
+  "regularity"
+ ],
+ "results": {
+  "W0 pure noise (global null)": {
+   "any": [
+    0.0224,
+    [
+     0.0187,
+     0.0269
+    ]
+   ],
+   "false_in_null_dimension": [
+    0.0224,
+    [
+     0.0187,
+     0.0269
+    ]
+   ]
+  },
+  "W1 weekday association only (range 0.6)": {
+   "any": [
+    0.2306,
+    [
+     0.2191,
+     0.2425
+    ]
+   ],
+   "false_in_null_dimension": [
+    0.0154,
+    [
+     0.0123,
+     0.0192
+    ]
+   ],
+   "power": [
+    0.2152,
+    [
+     0.204,
+     0.2268
+    ]
+   ]
+  },
+  "W2 autocorrelated weeks (sd .25, rho .6)": {
+   "any": [
+    0.022,
+    [
+     0.0183,
+     0.0264
+    ]
+   ],
+   "false_in_null_dimension": [
+    0.022,
+    [
+     0.0183,
+     0.0264
+    ]
+   ]
+  },
+  "W3 weekday association + autocorrelated weeks": {
+   "any": [
+    0.2126,
+    [
+     0.2015,
+     0.2242
+    ]
+   ],
+   "false_in_null_dimension": [
+    0.014,
+    [
+     0.0111,
+     0.0176
+    ]
+   ],
+   "power": [
+    0.1986,
+    [
+     0.1878,
+     0.2099
+    ]
+   ]
+  },
+  "W4 planted: Tuesday -0.5": {
+   "any": [
+    0.6568,
+    [
+     0.6435,
+     0.6698
+    ]
+   ],
+   "false_in_null_dimension": [
+    0.007,
+    [
+     0.005,
+     0.0097
+    ]
+   ],
+   "power": [
+    0.6498,
+    [
+     0.6365,
+     0.6629
+    ]
+   ]
+  },
+  "W6 planted: noise 0.5 -> 0.8 in the last 8 weeks": {
+   "any": [
+    0.4302,
+    [
+     0.4165,
+     0.444
+    ]
+   ],
+   "false_in_null_dimension": [
+    0.0034,
+    [
+     0.0021,
+     0.0054
+    ]
+   ],
+   "power": [
+    0.4268,
+    [
+     0.4132,
+     0.4406
+    ]
+   ]
+  },
+  "W7 stress: strongly autocorrelated weeks (sd .4, rho .9)": {
+   "any": [
+    0.0222,
+    [
+     0.0185,
+     0.0267
+    ]
+   ],
+   "false_in_null_dimension": [
+    0.0222,
+    [
+     0.0185,
+     0.0267
+    ]
+   ]
+  }
+ }
+}
