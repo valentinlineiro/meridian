@@ -47,6 +47,15 @@ describe('MatchesTable', () => {
     expect(text('chessMatchesSubtitle')).toBe('Partidas recientes (1 mostradas)');
   });
 
+  it('shouldShowTheBotSegmentInsteadOfADashWhenTheOpponentHasNoName', async () => {
+    await answer({ rows: [row({ opponent_name: null, opponent_segment: 'noisy_neural' }), row({ opponent_name: null, opponent_segment: 'unknown' }), row({ opponent_name: 'Bot 8', opponent_segment: 'neural' })], total: 3 });
+    const cell = (i: number) => el.querySelectorAll('#mb tr')[i]!.querySelector('td[data-l="Rival"]')!;
+    expect(cell(0).textContent!.trim()).toBe('Noisy Neural'); // once: no second pill with the same text
+    expect(cell(0).querySelector('.pill')).toBeNull();
+    expect(cell(1).textContent!.trim()).toBe('—');
+    expect(cell(2).textContent!.replace(/\s+/g, ' ').trim()).toBe('Bot 8 Neural');
+  });
+
   it('shouldNotAnnounceAnUnknownOpponentAsVsDash', async () => {
     await answer({ rows: [row({ opponent_name: null }), row({ opponent_name: 'Bot 8' })], total: 2 });
     const [a, b] = [...el.querySelectorAll('#mb tr')].map((tr) => tr.querySelector('button.rowbtn')!.getAttribute('aria-label')!);
