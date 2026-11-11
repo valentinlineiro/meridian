@@ -37,7 +37,7 @@
   } @else {<p class="muted" id="gameReportWeekdaysWindow">No disponible</p>}
 
   @if (streak(); as st) {
-    <p id="gameReportStreak" style="margin:16px 0 0"><b>Días seguidos mejor que la media</b> · actual @if (st.now === '—') {sin racha activa@if (st.stale) { ({{ st.stale }})}} @else {{{ st.now }}} · máxima {{ st.max }}</p>
+    <p id="gameReportStreak" style="margin:16px 0 0"><b>Días seguidos mejor que la media</b> · actual @if (st.now === '—') {sin racha activa@if (st.stale) { ({{ st.stale }})}} @else {{{ st.now }}} · máxima {{ st.max }}@if (st.maxDate) { (hasta el {{ fmtDate(st.maxDate) }})}</p>
   }
 </app-section>
 
@@ -62,6 +62,16 @@
       </app-help>
     } @else {<p class="muted">No disponible</p>}
     @if (facts(); as f) {<div id="gameReportFacts"><app-stats [items]="f" /></div>}
+    @if (seconds(); as w) {
+      <p style="margin:16px 0 4px"><b>Semana a semana en segundos</b> <span class="muted">— tu mediana frente a la media publicada</span></p>
+      <div class="tblwrap" tabindex="0" role="region" aria-label="Semanas en segundos (desplazable)">
+        <table class="gtable" id="gameReportSeconds"><caption class="sr-only">Semana a semana en segundos</caption>
+          <thead><tr><th scope="col">Semana del</th><th scope="col">Tu mediana</th><th scope="col">Media publicada</th><th scope="col">Velocidad</th><th scope="col">Partidas</th></tr></thead>
+          <tbody>@for (r of w; track r.start) {<tr><th scope="row">{{ fmtDate(r.start) }}@if (!r.complete) { <span class="muted">(incompleta)</span>}</th><td class="num">{{ r.own }}</td><td class="num">{{ r.ref }}</td><td class="num">{{ r.speed }}</td><td class="num">{{ r.n }}</td></tr>}</tbody></table>
+      </div>
+      <p class="muted">Últimas 8 semanas. La media publicada de LinkedIn varía con el día de la semana y con quién juega: no es una vara neutra.</p>
+    }
+    @if (extras().length) {<ul id="gameReportExtras" style="margin:12px 0 0;padding-left:18px">@for (l of extras(); track $index) {<li>{{ l }}</li>}</ul>}
   </app-section>
 }
 

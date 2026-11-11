@@ -118,3 +118,47 @@ export function evidenceLines(x: Game): string[] {
   const count = b.rate == null ? [] : [`${b.k} de ${b.nBeat} días mejor que la media (${beatText(b.rate)})` + (x.firstDate ? `, desde el ${fmtDate(x.firstDate)}` : '')];
   return [...count, ...interpretationLines(x)];
 }
+
+const WEEKS_SHOWN = 8;
+/** The last weeks in seconds, newest first: the player's median time next to the published average's, and the speed that gives. */
+export function secondsWeeks(x: Game): { start: string; own: string; ref: string; speed: string; n: number; complete: boolean }[] | null {
+  const w = x.weekly;
+  if (!w?.length) return null;
+  return [...w].sort((a, b) => b.weekStart.localeCompare(a.weekStart)).slice(0, WEEKS_SHOWN).map((k) => ({
+    start: k.weekStart, own: clock(k.medianSec), ref: k.medianAvgSec == null ? '—' : clock(k.medianAvgSec), speed: effText(k.medianEff), n: k.n, complete: k.n >= MIN_WEEK_N,
+  }));
+}
+
+/** A span of seconds for a sentence: seconds under two minutes, minutes under two hours, else hours with one decimal. */
+const span = (s: number) => { const r = Math.round(Math.abs(s)); return r < 120 ? `${r} s` : r < 7200 ? `${Math.round(r / 60)} min` : `${(r / 3600).toFixed(1).replace('.', ',')} h`; };
+const MAX_LISTED = 5;
+const times = (v: number) => '×' + v.toFixed(2).replace('.', ',');
+const dates = (d: { date: string }[]) => d.slice(-MAX_LISTED).map((o) => fmtDate(o.date)).join(', ');
+
+/**
+ * Savings against the published average, the spread of speed and the outlier days, as statements that carry their n. The outliers are a
+ * statistical convention, never a diagnosis; a missing field is a missing line.
+ */
+export function extraLines(x: Game): string[] {
+  const out: string[] = [];
+  const s = x.savings;
+  if (s) {
+    const verb = (v: number) => (v >= 0 ? 'ahorras' : 'pierdes');
+    out.push(`Frente a la media de LinkedIn: ${verb(s.medianSec)} ${span(s.medianSec)} en la partida mediana (n = ${s.n}); acumulado, ${verb(s.totalSec)} ${span(s.totalSec)} en ${s.n} partidas (suma histórica, sin descontar la dificultad)`);
+  }
+  const p = x.effSpread;
+  if (p) out.push(`Amplitud de la velocidad: de ${times(p.p25)} a ${times(p.p75)} la media en la mitad central de tus partidas (P75/P25 = ${p.ratio.toFixed(1).replace('.', ',')}; n = ${p.n})`);
+  const o = x.outliers;
+  if (o) {
+    if (o.n < o.minN) out.push(`Días atípicos: aún pocos datos (n = ${o.n}; hacen falta ${o.minN})`);
+    else if (!o.good.length && !o.bad.length) out.push(`Días atípicos por velocidad: ninguno en ${o.n} partidas (convención estadística, no diagnóstico)`);
+    else {
+      const parts = [
+        o.good.length ? `${o.good.length} muy ${o.good.length === 1 ? 'bueno' : 'buenos'} (${o.good.length > MAX_LISTED ? `los ${MAX_LISTED} más recientes: ` : ''}${dates(o.good)})` : '',
+        o.bad.length ? `${o.bad.length} muy ${o.bad.length === 1 ? 'flojo' : 'flojos'} (${o.bad.length > MAX_LISTED ? `los ${MAX_LISTED} más recientes: ` : ''}${dates(o.bad)})` : '',
+      ].filter(Boolean);
+      out.push(`Días atípicos por velocidad (convención estadística, no calibrada con estos datos): ${parts.join(' y ')}`);
+    }
+  }
+  return out;
+}
