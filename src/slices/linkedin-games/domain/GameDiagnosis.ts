@@ -7,6 +7,7 @@ import { dowOf, MIN_CELL, MIN_FIT } from "./AdjustedForm.ts";
 // generated into diagnosis-thresholds.json; never edited by hand, never recalculated here). The statistics mirror calibrate.py.
 export const MAX_AGE_DAYS = 28;   // a calibration older than this hides the whole block (it is never shown with a mere warning)
 export const WATCH_P = 0.2;       // "next aspect to watch": 1 - p >= 0.8, an exploratory hint, not a finding
+const MIN_LOSSES = 10;            // total losses needed to test the weekday, at every cut (an evaluability condition, not a guarantee of power)
 const MIN_WINDOW = 20;            // results needed in each 56-day window to compare the spread
 const WINDOW = 56;
 const DIMS = ["weekday", "regularity"] as const;
@@ -43,7 +44,8 @@ export function parseDiagnosisThresholds(a: unknown): DiagnosisThresholds {
   for (const [g, v] of Object.entries(x.games)) {
     const e = v?.evaluable;
     if (!e || typeof e.weekday !== "boolean" || typeof e.regularity !== "boolean") throw new Error(`diagnosis-thresholds.json: ${g}.evaluable`);
-    if (!Array.isArray(v.replicates) || v.replicates.length !== R) throw new Error(`diagnosis-thresholds.json: ${g} must carry ${R} replicates`);
+    const nothingToTest = !e.weekday && !e.regularity; // a game kept only to say why (e.g. no losses): it carries no replicates
+    if (!Array.isArray(v.replicates) || (v.replicates.length !== R && !(nothingToTest && v.replicates.length === 0))) throw new Error(`diagnosis-thresholds.json: ${g} must carry ${R} replicates`);
     v.replicates.forEach((p, i) => { if (!Array.isArray(p) || p.length !== 2) throw new Error(`diagnosis-thresholds.json: ${g}.replicates[${i}] is not a pair`); p.forEach((n, k) => num(n, `${g}.replicates[${i}][${k}]`)); });
   }
   return { ...(x as DiagnosisThresholds), replicates: R, alpha };
@@ -119,11 +121,12 @@ function cutAt(g: GameThresholds, obs: Obs[], to: string, alpha: number): Cut {
   const s = diagnosisStats(obs, to);
   // A cut with fewer than MIN_FIT results with an average is not a cut at all (as in the calibration): nothing at it can confirm a finding.
   const enough = obs.filter((o) => o.date <= to && o.avg !== null).length >= MIN_FIT;
-  const testable: [boolean, boolean] = [enough && g.evaluable.weekday && s.weekday !== null, enough && g.evaluable.regularity && s.regularity !== null];
+  const lossesOk = s.losses >= MIN_LOSSES; // also at the cut a week earlier: with fewer losses it cannot confirm a weekday finding
+  const testable: [boolean, boolean] = [enough && lossesOk && g.evaluable.weekday && s.weekday !== null, enough && g.evaluable.regularity && s.regularity !== null];
   const stat: [number, number] = [r6(s.weekday?.stat ?? 0), r6(s.regularity?.stat ?? 0)];
   const { p, adjusted } = adjust(stat, g.replicates, testable);
   const reasons: Cut["reasons"] = [
-    testable[0] ? null : !enough ? "datos_insuficientes" : g.evaluable.weekday ? "sin_dias_con_partidas_suficientes" : g.evaluable.weekdayReason ?? "no_evaluable",
+    testable[0] ? null : !enough ? "datos_insuficientes" : !g.evaluable.weekday ? g.evaluable.weekdayReason ?? "no_evaluable" : !lossesOk ? "sin_derrotas_suficientes" : "sin_dias_con_partidas_suficientes",
     testable[1] ? null : !enough ? "datos_insuficientes" : "historial_insuficiente",
   ];
   const raw: Finding[] = [];

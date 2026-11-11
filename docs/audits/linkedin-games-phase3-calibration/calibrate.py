@@ -112,8 +112,12 @@ def calibrate(games, r=R, entropy=ENTROPY):
         n_obs = int(np.sum(~np.isnan(x)))
         ev = evaluable(x, to_idx)
         entry = {"observations_with_average": n_obs, "weeks": int(x.shape[0]), "first": rows[0][0].isoformat(), "last": rows[-1][0].isoformat(), "evaluable": ev}
-        if n_obs < MIN_FIT or not (ev["weekday"] or ev["regularity"]):
-            entry["status"] = "datos_insuficientes"; summary[g] = entry; continue
+        if n_obs < MIN_FIT:
+            entry["status"] = "datos_insuficientes"; summary[g] = entry; continue      # not calibrated at all: left out of the artefact
+        if not (ev["weekday"] or ev["regularity"]):
+            # Calibrated, but nothing can be tested: KEPT in the artefact (no replicates) so the report can say why, not "no calibration".
+            artefact[g] = {"evaluable": ev, "replicates": []}
+            entry["status"] = "sin_dimensiones_evaluables"; summary[g] = entry; continue
         res, rep = test(x, to_idx, np.random.default_rng(np.random.SeedSequence([entropy, gi, 0])), ev, r)
         artefact[g] = {"evaluable": ev, "replicates": np.round(rep, 6).tolist()}
         entry.update(status="calibrado", today=res)
@@ -156,17 +160,21 @@ def selftest():
     rows = ["fecha,juego,miseg,mediaseg"]
     for i in range(200):
         d = start + timedelta(days=i)
-        for g, drop in (("alpha", 0.0), ("beta", 0.0), ("tiny", 0.0)):
+        for g, drop in (("alpha", 0.0), ("beta", 0.0), ("tiny", 0.0), ("calm", 0.0)):
             if g == "tiny" and i > 40: continue
+            if g == "calm" and i < 130: continue                      # 70 days, never a loss: enough observations, nothing to test
             if rng.random() < drop: continue
             avg = 40 + 10 * (d.weekday() >= 4)
-            rows.append(f"{d},{g},{max(5, round(avg * float(np.exp(rng.normal(0, .4)) / 1.5)))},{avg}")
+            score = 5 if g == "calm" else max(5, round(avg * float(np.exp(rng.normal(0, .4)) / 1.5)))
+            rows.append(f"{d},{g},{score},{avg}")
     path = os.path.join(os.environ.get("TMPDIR", "/tmp"), "phase3-selftest.csv")
     open(path, "w").write("\n".join(rows))
     art, summ = calibrate(load(path), r=100)
     os.remove(path)
-    assert set(art["games"]) == {"alpha", "beta"} and summ["games"]["tiny"]["status"] == "datos_insuficientes", summ
-    assert all(len(v["replicates"]) == 100 and all(len(p) == 2 for p in v["replicates"]) for v in art["games"].values())
+    assert set(art["games"]) == {"alpha", "beta", "calm"} and summ["games"]["tiny"]["status"] == "datos_insuficientes", summ
+    assert art["games"]["calm"] == {"evaluable": {"weekday": False, "regularity": False, "weekdayReason": "sin_derrotas_suficientes", "losses": 0}, "replicates": []}, art["games"]["calm"]
+    assert summ["games"]["calm"]["status"] == "sin_dimensiones_evaluables"
+    assert all(len(v["replicates"]) == 100 and all(len(p) == 2 for p in v["replicates"]) for g, v in art["games"].items() if g != "calm")
     assert 0 < summ["games"]["alpha"]["today"]["p_adjusted"] <= 1 and summ["games"]["alpha"]["stability"]["cuts"] > 5
     print("selftest ok:", {g: s["status"] for g, s in summ["games"].items()})
 

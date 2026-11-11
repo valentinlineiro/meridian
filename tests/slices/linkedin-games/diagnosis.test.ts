@@ -150,6 +150,39 @@ describe("diagnose: findings, what to watch, expiry", () => {
     expect(d.watch).toEqual({ dimension: "weekday", p: 0.001, unconfirmed: true });
   });
 
+  // Ten weeks of daily results (70). Mondays lose in 5 of the first 9 weeks; in the last week Monday to Friday all lose: 10 losses today, 5 a week earlier.
+  const lossy = (lossWeeks: number[], lastWeekLosses: number): Obs[] => {
+    const obs: Obs[] = [];
+    for (let w = 0; w < 10; w++) for (let dow = 0; dow < 7; dow++) {
+      const lose = w === 9 ? dow < lastWeekLosses : dow === 0 && lossWeeks.includes(w);
+      obs.push({ date: addDays("2026-03-02", 7 * w + dow), score: lose ? 20 : 10, avg: lose ? 10 : 15 });
+    }
+    return obs;
+  };
+
+  it("shouldNotPublishWhenTheCutAWeekEarlierHadFewerThanTenLosses", () => {
+    const obs = lossy([1, 3, 5, 7, 8], 5), to = obs[obs.length - 1]!.date; // 10 losses today, 5 a week earlier; every weekday has 9-10 results at both cuts
+    expect(diagnosisStats(obs, to).losses).toBe(10);
+    expect(diagnosisStats(obs, addDays(to, -7)).losses).toBe(5);
+    expect(diagnosisStats(obs, addDays(to, -7)).weekday).not.toBeNull(); // testable by cells: only the losses are missing
+    const d = diagnose("zip", obs, to, to, flat(TINY, FAR));
+    expect(d.findings).toEqual([]);
+    expect(d.watch).toEqual({ dimension: "weekday", p: 0.001, unconfirmed: true });
+  });
+
+  it("shouldNotTestTheWeekdayTodayWithFewerThanTenLossesEvenIfTheArtefactSaidItCould", () => {
+    const d = diagnose("zip", lossy([1, 3, 5], 2), addDays("2026-03-02", 69), addDays("2026-03-02", 69), flat(TINY, TINY)); // 3 + 2 = 5 losses
+    expect(d.dimensions!.weekday).toEqual({ evaluable: false, reason: "sin_derrotas_suficientes", p: null });
+    expect(d.findings.map((f) => f.dimension)).not.toContain("weekday");
+  });
+
+  it("shouldKeepAGameWithNoTestableDimensionAndSayWhyInsteadOfReportingNoCalibration", () => {
+    const th = { ...flat(TINY, TINY), games: { wend: { evaluable: { weekday: false, regularity: false, weekdayReason: "sin_derrotas_suficientes", losses: 0 }, replicates: [] } } };
+    const d = diagnose("wend", OBS, LAST, LAST, th);
+    expect(d).toEqual({ status: "vigente", calibratedThrough: LAST, findings: [], watch: null, dimensions: {
+      weekday: { evaluable: false, reason: "sin_derrotas_suficientes", p: null }, regularity: { evaluable: false, reason: "historial_insuficiente", p: null } } });
+  });
+
   it("shouldHideEverythingOnceTheCalibrationIsOlderThan28Days", () => {
     const th = flat(TINY, TINY);
     expect(MAX_AGE_DAYS).toBe(28);
@@ -175,12 +208,19 @@ describe("publishable: the same aspect, sign and day a week earlier", () => {
 });
 
 describe("the artefact", () => {
-  it("shouldParseTheCalibratedArtefactAndLeaveOutGamesWithNoTestableDimension", () => {
-    expect(Object.keys(DIAGNOSIS_THRESHOLDS.games).sort()).toEqual(["mini_sudoku", "patches", "queens", "tango", "zip"]);
+  it("shouldParseTheCalibratedArtefactKeepingTheGamesWithNoTestableDimensionAndTheirReason", () => {
+    expect(Object.keys(DIAGNOSIS_THRESHOLDS.games).sort()).toEqual(["mini_sudoku", "patches", "queens", "tango", "wend", "zip"]);
     expect(DIAGNOSIS_THRESHOLDS.games.queens!.replicates).toHaveLength(1000);
     expect(DIAGNOSIS_THRESHOLDS.games.mini_sudoku!.evaluable).toMatchObject({ weekday: false, weekdayReason: "sin_derrotas_suficientes", regularity: true });
+    expect(DIAGNOSIS_THRESHOLDS.games.wend).toEqual({ evaluable: { weekday: false, regularity: false, weekdayReason: "sin_derrotas_suficientes", losses: 0 }, replicates: [] });
   });
   it.each([[{ version: 1 }], [{ version: 2, calibratedThrough: "x", replicates: 1, alpha: 0.05, games: {} }], [null]])("shouldRejectAMalformedArtefact%#", (bad) => {
+    expect(() => parseDiagnosisThresholds(bad)).toThrow();
+  });
+  it("shouldAcceptNoReplicatesOnlyForAGameWithNothingToTest", () => {
+    const ok = { ...artefact(() => [0.1, 0.1]), games: { w: { evaluable: { weekday: false, regularity: false, weekdayReason: "sin_derrotas_suficientes", losses: 0 }, replicates: [] } } };
+    expect(() => parseDiagnosisThresholds(ok)).not.toThrow();
+    const bad = { ...ok, games: { w: { ...ok.games.w, evaluable: { ...ok.games.w.evaluable, regularity: true } } } };
     expect(() => parseDiagnosisThresholds(bad)).toThrow();
   });
   it("shouldRejectAReplicateThatIsNotAFinitePair", () => {

@@ -144,7 +144,7 @@
     "weekdayReason": "sin_derrotas_suficientes",
     "losses": 0
    },
-   "status": "datos_insuficientes"
+   "status": "sin_dimensiones_evaluables"
   },
   "zip": {
    "observations_with_average": 178,
