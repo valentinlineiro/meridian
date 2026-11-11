@@ -18,6 +18,12 @@ beforeEach(() => {
 
 const put = async (body: unknown, headers: Record<string, string> = {}) =>
   worker.fetch(new Request(`${BASE}/api/me/linkedin-games`, { method: "PUT", headers: { cookie: await cookie(), ...SAME, ...headers }, body: JSON.stringify(body) }), env);
+// A save that is expected to succeed: a refused one fails here, with its body, instead of surfacing as a wrong value later.
+const putOk = async (body: unknown, headers: Record<string, string> = {}) => {
+  const res = await put(body, headers);
+  expect(res.status, await res.clone().text()).toBe(200);
+  return res;
+};
 const get = async (date: string) =>
   worker.fetch(new Request(`${BASE}/api/me/linkedin-games?date=${date}`, { headers: { cookie: await cookie() } }), env);
 const rows = () => state.db.prepare("SELECT source, user_id, raw_json FROM snapshots WHERE source='linkedin-games' ORDER BY created_at, rowid").all();
@@ -35,9 +41,9 @@ describe("linkedin games manual entry over HTTP and D1", () => {
   });
 
   it("shouldAccumulateGamesAcrossSavesAndLeaveTheLatestVersionComplete", async () => {
-    await put(zip);
+    await putOk(zip);
     await new Promise((r) => setTimeout(r, 5));
-    await put({ date: "2026-10-13", game: "queens", score: "1:10" });
+    await putOk({ date: "2026-10-13", game: "queens", score: "1:10" });
     expect(rows()).toHaveLength(2);
     const body: any = await (await get("2026-10-13")).json();
     expect(Object.keys(body.day.games).sort()).toEqual(["queens", "zip"]);
@@ -45,7 +51,7 @@ describe("linkedin games manual entry over HTTP and D1", () => {
 
   it("shouldServeTheCorrectedValueWhenAResultIsCorrectedBackToAnEarlierOne", async () => {
     for (const score of ["0:08", "0:09", "0:08"]) {
-      await put({ ...zip, score });
+      await putOk({ ...zip, score });
       await new Promise((r) => setTimeout(r, 5)); // created_at has millisecond resolution
     }
     expect(rows()).toHaveLength(3);
@@ -55,16 +61,16 @@ describe("linkedin games manual entry over HTTP and D1", () => {
   });
 
   it("shouldKeepAverageAndPuzzleNumberInTheCurrentVersionWhenOnlyTheTimeIsCorrected", async () => {
-    await put(zip);
+    await putOk(zip);
     await new Promise((r) => setTimeout(r, 5));
-    await put({ date: "2026-10-13", game: "zip", score: "0:09", avg: null, number: null });
+    await putOk({ date: "2026-10-13", game: "zip", score: "0:09", avg: null, number: null });
     const body: any = await (await get("2026-10-13")).json();
     expect(body.day.games.zip).toEqual({ number: 449, score: "0:09", scoreSeconds: 9, avg: "0:17", avgSeconds: 17 });
   });
 
   it("shouldNotAddAVersionWhenTheSameRequestIsRetried", async () => {
-    await put(zip);
-    await put(zip);
+    await putOk(zip);
+    await putOk(zip);
     expect(rows()).toHaveLength(1);
   });
 
@@ -76,7 +82,7 @@ describe("linkedin games manual entry over HTTP and D1", () => {
   });
 
   it("shouldFileTheResultUnderThePlayDateNotTheEntryDate", async () => {
-    await put({ ...zip, date: "2026-10-01" });
+    await putOk({ ...zip, date: "2026-10-01" });
     expect(JSON.parse(rows()[0].raw_json).date).toBe("2026-10-01");
     expect(((await (await get("2026-10-13")).json()) as any).day.games).toEqual({});
   });
@@ -99,9 +105,9 @@ describe("linkedin games manual entry over HTTP and D1", () => {
     worker.fetch(new Request(`${BASE}/api/me/linkedin-games/summary?today=2026-10-14`, { headers }), env);
 
   it("shouldReturnTheSummaryOfTheOwnerWhenSnapshotsExist", async () => {
-    await put(zip);
+    await putOk(zip);
     await new Promise((r) => setTimeout(r, 5));
-    await put({ ...zip, score: "0:05" }); // edited: a second version of the same date
+    await putOk({ ...zip, score: "0:05" }); // edited: a second version of the same date
     const res = await summary({ cookie: await cookie() });
     expect(res.status).toBe(200);
     const body: any = await res.json();
