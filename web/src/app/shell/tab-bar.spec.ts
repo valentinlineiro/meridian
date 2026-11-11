@@ -172,4 +172,38 @@ describe('TabBar', () => {
       expect(go).toHaveBeenLastCalledWith(expect.anything(), expect.objectContaining({ replaceUrl: true }));
     });
   });
+  describe('la hoja Más es un diálogo modal', () => {
+    const sheetEl = (el: HTMLElement) => el.querySelector<HTMLElement>('#moreSheet')!;
+    const key = (el: HTMLElement, k: string, shift = false) => sheetEl(el).dispatchEvent(new KeyboardEvent('keydown', { key: k, shiftKey: shift, bubbles: true, cancelable: true }));
+    const focusables = (el: HTMLElement) => [...sheetEl(el).querySelectorAll<HTMLElement>('a[href], button:not([disabled])')];
+
+    it('shouldDeclareItselfModal', async () => {
+      const el = await render('/overview');
+      await press(el);
+      expect(sheetEl(el).getAttribute('aria-modal')).toBe('true');
+      expect(sheetEl(el).getAttribute('role')).toBe('dialog');
+    });
+    it('shouldKeepTabInsideTheSheetWrappingFromLastToFirst', async () => {
+      const el = await render('/overview');
+      await press(el);
+      const f = focusables(el);
+      f[f.length - 1]!.focus();
+      key(el, 'Tab');
+      expect(document.activeElement).toBe(f[0]);
+    });
+    it('shouldKeepShiftTabInsideTheSheetWrappingFromFirstToLast', async () => {
+      const el = await render('/overview');
+      await press(el);
+      const f = focusables(el);
+      f[0]!.focus();
+      key(el, 'Tab', true);
+      expect(document.activeElement).toBe(f[f.length - 1]);
+    });
+    it('shouldListTheSecondaryPagesAsAListOfLinks', async () => {
+      const el = await render('/overview');
+      await press(el);
+      const links = [...sheetEl(el).querySelectorAll('ul[aria-label="Resumen"] > li > a')];
+      expect(links.map((a) => a.textContent!.trim())).toEqual(['Qué cambió', 'Trayectoria']);
+    });
+  });
 });

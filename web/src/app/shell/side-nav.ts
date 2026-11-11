@@ -16,11 +16,13 @@ const GROUPS = [
   template: `
     <div class="side-menu" id="sideMenu">
       @for (group of groups; track group.label) {
-        <div class="side-group">{{ group.label }}</div>
-        @for (item of group.items; track item.path) {
-          @let on = item.path === (section() === 'profile' ? 'chess' : section());
-          <a class="side-item" [routerLink]="'/' + item.path" [class.active]="on" [attr.aria-current]="on ? 'page' : null">{{ item.label }}</a>
-        }
+        <div class="side-group" [id]="'sideGroup' + $index">{{ group.label }}</div>
+        <ul [attr.aria-labelledby]="'sideGroup' + $index">
+          @for (item of group.items; track item.path) {
+            @let on = item.path === (section() === 'profile' ? 'chess' : section());
+            <li><a class="side-item" [routerLink]="'/' + item.path" [class.active]="on" [attr.aria-current]="on ? 'page' : null">{{ item.label }}</a></li>
+          }
+        </ul>
       }
       <div class="side-group">Cuenta</div>
       <button id="syncBtn" class="btn btn-p side-sync" type="button" (click)="sync.start()" [disabled]="sync.busy()"
