@@ -1,6 +1,6 @@
 # Informe individual de juego — Fase 3: metodología del diagnóstico (borrador para aprobar)
 
-Fecha: 2026-11-11 · **Revisión 3** (rev. 2: nula por dimensión; rev. 3: nula conjunta única, simulación sobre datos sintéticos y una dimensión menos)
+Fecha: 2026-11-11 · **Revisión 4** (rev. 2: nula por dimensión; rev. 3: nula conjunta única y una dimensión menos; rev. 4: p-valor exacto de permutación y validación con intervalos de confianza)
 Estado: **borrador, sin implementar. Necesita aprobación explícita antes de leer producción o escribir código.**
 Contexto: la fase 1 (informe) y la fase 2 (agregaciones y su pantalla) están en producción. Ver
 `2026-11-10-games-individual-report-design.md` §5 (fase 3) y §7. Evidencia de esta revisión:
@@ -49,16 +49,16 @@ Se elimina el emparejamiento de réplicas de A y B de la rev. 2, que suponía in
 
 A y B **conmutan** (A actúa dentro de cada fila, B reordena filas), así que el orden de aplicación no importa. `J` conserva el multiconjunto de resultados de cada semana y destruye tanto la asociación día–resultado como el orden temporal: es la hipótesis nula «sin estructura» completa.
 
-### 3.3 Cálculo en cada réplica (reproducible)
+### 3.3 Cálculo (reproducible, exacto)
 
-Por juego, con `R = 1000` réplicas de `J` y una semilla registrada:
+Por juego, con `R = 1000` réplicas de `J` y una semilla registrada. Se forma el **conjunto de R + 1 elementos**: los datos reales más las R réplicas (intercambiables bajo la nula):
 
-1. De **cada** réplica se calculan a la vez los estadísticos de las dos dimensiones. La dependencia entre dimensiones queda dentro de la propia réplica, no se supone.
-2. Para cada dimensión se calcula el p-valor empírico de cada réplica contra las demás: `p_k(b) = #{b' : s_k(b') ≥ s_k(b)} / R`. Los datos reales reciben `p_k(obs) = (#{b : s_k(b) ≥ s_k(obs)} + 1) / (R + 1)`.
-3. `U(b) = min_k p_k(b)` (el p más pequeño de cada réplica). **Umbral del juego** = percentil 5 de `U` (equivale al P95 de `max u`).
-4. **Hay hallazgo** si `min_k p_k(obs) ≤` umbral. La dimensión del hallazgo es la de menor `p` y, para el día de la semana, se anota el día y el signo.
+1. Para cada dimensión `k` y cada elemento `i` del conjunto: `p_k(i) = #{j : s_k(j) ≥ s_k(i)} / (R + 1)`. La dependencia entre dimensiones queda dentro de cada elemento, no se supone.
+2. `U(i) = min_k p_k(i)`.
+3. **p ajustado** = `#{i : U(i) ≤ U(datos)} / (R + 1)`.
+4. **Hay hallazgo** si `p ajustado ≤ α`, es decir, si los datos están entre los `⌊α (R + 1)⌋` menores `U` del conjunto (con R = 1000 y α = 0,05: **50**). Es un **estadístico de orden finito** sobre el conjunto, sin interpolar entre valores. La dimensión del hallazgo es la de menor `p` y, para el día de la semana, se anota el día y el signo.
 
-Es el procedimiento max-T de un solo paso (Westfall–Young) con permutaciones compartidas. Da control del error de tipo I **bajo la nula global** (ninguna estructura). Con una estructura real en una dimensión, el control sobre la *otra* se mide por simulación (§4), no se da por supuesto.
+Este es el p-valor de permutación exacto con el «+1» de los datos incluidos (max-T de un solo paso, Westfall–Young, con permutaciones compartidas): **si H_A y H_B se cumplen, la probabilidad de hallazgo bajo la nula global es ≤ α exactamente**, no aproximadamente. Con una estructura real en una dimensión, el control sobre la *otra* no está garantizado y se mide por simulación (§4).
 
 ### 3.4 Estabilidad con identidad concreta
 
@@ -66,11 +66,11 @@ Un hallazgo se publica solo si **el mismo aspecto y el mismo signo** estaban tam
 
 ### 3.5 Artefacto
 
-`diagnosis-thresholds.json`: umbral por juego, `calibratedThrough`, `R`, semillas y versión del script. Lo genera un script offline (`docs/audits/…`) y se copia tal cual: nunca se edita a mano ni se recalcula en el servidor.
+`diagnosis-thresholds.json`: por juego y dimensión, los `R` estadísticos de las réplicas ordenados (de los que salen `p` y el orden exacto de §3.3), más `calibratedThrough`, `R`, semillas y versión del script. Lo genera un script offline (`docs/audits/…`) y se copia tal cual: nunca se edita a mano ni se recalcula en el servidor.
 
 ### 3.6 Por qué la tendencia no compite (cambio de la rev. 3)
 
-La simulación (§4) mostró que la tendencia no se puede contrastar de forma controlada con ~24 semanas:
+Una exploración previa con una versión de la simulación que incluía la tendencia (1.000 conjuntos por escenario; **no se conserva en el repositorio**, `sim.py` ya solo contiene la propuesta de dos dimensiones) mostró que no se puede contrastar de forma controlada con ~24 semanas. Son cifras orientativas, no una validación reproducible:
 
 - Permutando semanas sueltas, con semanas autocorrelacionadas (ρ = 0,6) el falso hallazgo en tendencia es **8,7 %** y **7,3 %** (W2/W3): por encima del 5 %.
 - Permutando bloques de 4 semanas el falso hallazgo baja a ≈ 4 %, pero la potencia para detectar una tendencia real cae de 12 % a 2–4 %: un bloque largo conserva la tendencia local como si fuera ruido.
@@ -79,26 +79,38 @@ La tendencia **ya la juzga el veredicto calibrado existente** (`trend112` y `rec
 
 ## 4. Validación del procedimiento completo
 
-**Qué se mide.** El error del procedimiento entero, no el de cada generador: para cada conjunto de datos sintético se ejecuta **todo** (sus propias réplicas de `J`, su propio umbral, su decisión) y se anota si hubo hallazgo y en qué dimensión. Un hallazgo es **falso** si va a una dimensión cuya verdad es nula en ese escenario.
+**Qué se mide.** El error del procedimiento entero: para cada conjunto sintético se ejecuta **todo** (sus propias réplicas de `J`, su p ajustado, su decisión) y se anota si hubo hallazgo y en qué dimensión. Un hallazgo es **falso** si va a una dimensión cuya verdad es nula en ese escenario.
 
-**Independencia.** Los conjuntos sintéticos salen de un flujo de semillas y las réplicas de permutación de **otro** (`sim.py`), de modo que lo validado nunca se calibró con los mismos números.
+**Independencia.** Los conjuntos salen de un flujo de semillas y las réplicas de permutación de **otro** (`sim.py`); la corrida con α = 0,025 usa además una **semilla de entropía distinta**, de modo que no se valida nada con los números con los que se calibró.
 
-**Resultados** (1.000 conjuntos por escenario, `R = 1000`, 24 semanas, semanas como bloques; `docs/audits/linkedin-games-phase3-simulation/results_2dim.json`):
+**Criterio de aceptación, fijado de antemano.** Con 5.000 conjuntos por escenario, el intervalo de Wilson al 95 % de una tasa del 5 % mide ± 0,6 puntos. Un escenario con verdad nula **falla** si el **límite inferior** de su intervalo supera el 5 % (hay evidencia de que lo excede). Como el test es exacto por construcción, la simulación busca *violaciones de los supuestos*, no «demuestra» el 5 %: un punto estimado de 4,6 % con intervalo [4,05; 5,22] es compatible con el nivel y no se interpreta como «por debajo».
 
-| Escenario | Verdad | Resultado |
+**Resultados con α = 0,05** (`results_a0.05.json`; 5.000 conjuntos por escenario, `R = 1000`, 24 semanas; entre corchetes, el intervalo al 95 %):
+
+| Escenario | Verdad | Falso hallazgo (dimensión nula) | Potencia (dimensión real) |
+|---|---|---|---|
+| W0 ruido puro | nada | **4,6 %** [4,05; 5,22] | — |
+| W2 semanas autocorrelacionadas (ρ 0,6) | nada | **4,3 %** [3,8; 4,9] | — |
+| W7 estrés: ρ 0,9, sd 0,4 | nada | **4,3 %** [3,7; 4,9] | — |
+| W1 asociación día–resultado (rango 0,6) | día | 2,7 % [2,3; 3,2] en regularidad | 31,7 % [30,4; 33,0] |
+| W3 asociación + autocorrelación | día | 2,7 % [2,3; 3,2] en regularidad | 31,7 % [30,5; 33,0] |
+| W4 martes sembrado (−0,5) | día | 1,2 % [1,0; 1,6] en regularidad | 72,8 % [71,6; 74,0] |
+| W6 ruido 0,5 → 0,8 en las últimas 8 semanas | regularidad | 0,9 % [0,7; 1,2] en día | 51,7 % [50,3; 53,1] |
+
+Ninguna celda con verdad nula tiene el límite inferior por encima del 5 %: **la validación pasa**. Incluso con semanas muy autocorrelacionadas (ρ 0,9) no se observa inflación en estas dos dimensiones.
+
+**Qué ocurre cuando se activa la corrección α = 0,025** (`results_a0.025.json`, semillas nuevas):
+
+| Escenario | Falso hallazgo | Potencia |
 |---|---|---|
-| W0 ruido puro (nula global) | nada | hallazgo **4,4 %** (día 1,7 · regularidad 2,7) ✔ |
-| W1 solo asociación día–resultado | día sí, regularidad no | falso en regularidad **2,2 %** ✔; detecta el día 32 % |
-| W2 semanas autocorrelacionadas (ρ 0,6) | nada | hallazgo **4,8 %** ✔ |
-| W3 día + autocorrelación | día sí, regularidad no | falso en regularidad **2,4 %** ✔ |
-| W4 día concreto sembrado (martes −0,5) | día | detecta **73 %** |
-| W6 ruido 0,5 → 0,8 en las últimas 8 semanas | regularidad | detecta **55 %** |
+| W0 / W2 / W7 (verdad nula) | 2,2 % [1,9; 2,7] / 2,2 % / 2,2 % | — |
+| W1 / W3 día | 1,5 % / 1,4 % en regularidad | 21,5 % [20,4; 22,7] / 19,9 % |
+| W4 martes sembrado | 0,7 % en regularidad | 65,0 % [63,7; 66,3] |
+| W6 dispersión | 0,3 % en día | 42,7 % [41,3; 44,1] |
 
-Con la tendencia incluida (`results_3dim.json`): ruido puro 5,3 % ✔, pero W2 11,4 % y W3 (tendencia) 7,3 % ✘, que es lo que motivó §3.6.
+La corrección **reduce a la mitad el falso hallazgo y cuesta unos 10 puntos de potencia** (un martes sembrado pasa de 73 % a 65 %). **Ningún escenario probado superó el 5 % con α = 0,05, así que no hay un caso real en el que la corrección haya tenido que rescatar nada**: queda caracterizada su consecuencia, no su necesidad. Si en la validación con datos reales una celda falla el criterio, se aplica una sola vez, con semillas nuevas; si falla otra vez, esa dimensión no entra en la primera entrega. No se afina sobre los mismos datos.
 
-**Qué significa «detecta».** Efectos grandes (martes −0,5 en log-eficiencia; el ruido pasa de 0,5 a 0,8). **Un efecto pequeño no se detecta con ~170 días**: con una asociación semanal de rango 0,6 (casi el doble de la observada en Queens, ≈ 0,33 en log-eficiencia mediana) solo se detecta un 32 %; con la real sería menos. El bloque dirá «ninguna desviación destacable» la mayoría de las veces, y es correcto.
-
-**Qué pasa si el 5 % no se cumple.** Una sola corrección, fijada de antemano: bajar `α` de 0,05 a 0,025 **una vez** y volver a validar con un flujo de semillas **nuevo**. Si sigue por encima del 5 %, esa dimensión **no se incluye** en la primera entrega. No se itera sobre los mismos datos ni se afina hasta que salga.
+**Qué significa «detecta».** Efectos grandes (martes −0,5 en log-eficiencia; el ruido pasa de 0,5 a 0,8). Una asociación semanal de rango 0,6, casi el doble de la observada en Queens (≈ 0,33), solo se detecta el 32 %; con la real sería menos. El bloque dirá «ninguna desviación destacable» la mayoría de las veces, y es correcto.
 
 **Con datos reales** (cuando haya permiso) se añade:
 
@@ -122,16 +134,16 @@ Con la tendencia incluida (`results_3dim.json`): ruido puro 5,3 % ✔, pero W2 1
 ## 7. Qué hay que decidir (mi recomendación entre paréntesis)
 
 1. **Dos dimensiones, día y regularidad, y la tendencia fuera** (§2, §3.6). Es un cambio respecto a lo aprobado en principio; lo motiva la simulación. (sí)
-2. **Nula conjunta única `J = A∘B` con p-valores por réplica y umbral P5 de `min p`** (§3.2–§3.3), con los supuestos H_A y H_B declarados. (sí)
+2. **Nula conjunta única `J = A∘B` con p-valor de permutación exacto (estadístico de orden sobre `R + 1`)** (§3.2–§3.3), con los supuestos H_A y H_B declarados. (aprobada en la revisión 3 con la precisión del orden finito, ya incorporada)
 3. **Identidad concreta (día y signo) en la estabilidad** (§3.4). (ya aprobado)
-4. **Validación de §4:** procedimiento completo por conjunto sintético, flujos de semillas independientes, una sola corrección `α = 0,025` y, si falla, la dimensión no entra. (sí)
+4. **Validación de §4:** procedimiento completo por conjunto sintético, 5.000 conjuntos por escenario, intervalos de Wilson, criterio de aceptación fijado de antemano, flujos de semillas independientes y una sola corrección `α = 0,025` caracterizada por simulación; si vuelve a fallar con datos reales, la dimensión no entra. (sí)
 5. **Lenguaje de «asociación»**, no de «efecto» (§1). (sí)
 
 ## 8. Riesgos conocidos
 
 - **Potencia baja:** con 177 días lo normal es que casi nada supere el umbral. Es correcto y se dice; no se baja el umbral para fabricar hallazgos.
-- **Autocorrelación entre semanas:** con ρ = 0,6 simulado el 5 % se mantiene (4,8 %); con una dependencia mayor o estacionalidad más larga (p. ej. mensual) no está comprobado y podría inflar «regularidad». Límite declarado, no resuelto.
+- **Autocorrelación entre semanas:** con ρ = 0,6 y 0,9 simulados no hay inflación (4,3 %); una estacionalidad más larga (p. ej. mensual) o dependencias de otra forma no están probadas. Límite declarado.
 - **Día registrado ≠ día jugado:** el registro es manual; un hábito de anotar ciertos días puede parecer una asociación con el día de la semana. Los huecos se tratan como ausencia, no como cero.
 - **Los datos sintéticos no son los reales:** la simulación valida el procedimiento, no que los datos reales cumplan H_A y H_B. Eso solo se puede mirar con los datos reales y con prudencia.
-- **Control débil:** el max-T de un solo paso controla el error bajo la nula global; con una estructura real en una dimensión, el error en la otra se mide por simulación (W1/W3: ≈ 2 %), no se demuestra en general.
+- **Control débil:** el max-T de un solo paso controla el error bajo la nula global; con una estructura real en una dimensión, el error en la otra se mide por simulación (W1/W3: 2,7 %), no se demuestra en general.
 - **Umbrales caducan:** igual que `noise-bands.json`, hay que recalibrar cuando cambie la población o pase tiempo (`calibratedThrough`).
