@@ -6,8 +6,6 @@ const NOW = Date.parse('2026-11-10T09:00:00Z');
 const DAY = 864e5;
 const day = (back: number) => new Date(NOW - back * DAY).toISOString().slice(0, 10);
 const iso = (back: number, extra = 0) => new Date(NOW - back * DAY - extra).toISOString();
-const rows = (from: number, to: number, xp: (back: number) => number) =>
-  Array.from({ length: from - to + 1 }, (_, i) => from - i).map((b) => ({ date: day(b), gainedXp: xp(b), numSessions: 1 }));
 
 // Local calendar days: "ayer" is the previous calendar day even when it was less than 24 hours ago.
 describe('syncChip: when the data was synced, in calendar days', () => {
