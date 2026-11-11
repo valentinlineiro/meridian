@@ -120,4 +120,56 @@ describe('TabBar', () => {
     expect(btn.disabled).toBe(true);
     expect(btn.textContent!.trim()).toBe('Iniciando…');
   });
+
+  describe('the back button with the sheet open', () => {
+    // The History API is the browser boundary: its calls are what the system "back" is built on.
+    afterEach(() => vi.restoreAllMocks());
+    const entries = () => { const push = vi.spyOn(history, 'pushState'), back = vi.spyOn(history, 'back').mockImplementation(() => {}), replace = vi.spyOn(history, 'replaceState'); return { push, back, replace }; };
+
+    it('shouldCloseTheSheetAndStayOnThePageWhenBackIsPressed', async () => {
+      const el = await render('/chess');
+      const h = entries();
+      await press(el);
+      expect(h.push).toHaveBeenCalledWith({ moreSheet: true }, '');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+      await settle();
+      expect(el.querySelector('.sheet')).toBeNull();
+      expect(TestBed.inject(Router).url).toBe('/chess');
+      expect(h.back).not.toHaveBeenCalled(); // the entry already went away: nothing more to drop
+    });
+
+    it('shouldDropItsHistoryEntryWhenTheSheetIsClosedWithEscape', async () => {
+      const el = await render('/chess');
+      const h = entries();
+      await press(el);
+      history.replaceState({ moreSheet: true }, ''); // the entry is on top, as pushState leaves it
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+      await settle();
+      expect(el.querySelector('.sheet')).toBeNull();
+      expect(h.back).toHaveBeenCalledTimes(1);
+    });
+
+    it('shouldReplaceTheSheetEntryInsteadOfAddingOneWhenALinkInItIsFollowed', async () => {
+      const el = await render('/chess');
+      const go = vi.spyOn(TestBed.inject(Router), 'navigateByUrl');
+      await press(el);
+      el.querySelector<HTMLAnchorElement>('.sheet a[href="/changes"]')!.click();
+      await new Promise((r) => setTimeout(r, 30)); await settle();
+      expect(go).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ replaceUrl: true }));
+      expect(TestBed.inject(Router).url).toBe('/changes');
+      expect(el.querySelector('.sheet')).toBeNull();
+    });
+
+    it('shouldReplaceTheSheetEntryWhenAnotherTabIsPressedWithTheSheetOpenButNotOtherwise', async () => {
+      const el = await render('/chess');
+      const go = vi.spyOn(TestBed.inject(Router), 'navigateByUrl');
+      tabs(el)[0]!.click(); // sheet closed: a plain push
+      await new Promise((r) => setTimeout(r, 30)); await settle();
+      expect(go).toHaveBeenLastCalledWith(expect.anything(), expect.not.objectContaining({ replaceUrl: true }));
+      await press(el);
+      tabs(el)[1]!.click(); // sheet open: it replaces the sheet's entry
+      await new Promise((r) => setTimeout(r, 30)); await settle();
+      expect(go).toHaveBeenLastCalledWith(expect.anything(), expect.objectContaining({ replaceUrl: true }));
+    });
+  });
 });
