@@ -1,6 +1,6 @@
 <div class="hero-card" id="gameReportHero">
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
-    <div class="muted" style="font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.05em">Informe individual · {{ rangeName() }}</div>
+  <div class="u-d-flex u-jc-space-between u-ai-flex-start u-wrap-wrap u-gap-8">
+    <div class="muted u-fs-xs u-tt-uppercase u-ls-p05em">Informe individual · {{ rangeName() }}</div>
     @if (verdict(); as v) {<app-verdict [verdict]="v" />}
   </div>
   @if (sentence().length) {<p class="grow-line" id="gameReportSentence">{{ sentence().join('. ') }}.</p>}
@@ -20,13 +20,13 @@
 <app-section title="Regularidad" sectionId="gameReportRegularity">
   <div id="gameReportRange">
     @if (nr(); as r) {
-      <p style="margin:0 0 4px"><b>Tu rango normal</b> <span class="muted">(la mitad central de tus partidas, {{ rangeName() }}, n = {{ r.n }})</span></p>
+      <p class="u-m-0-0-4"><b>Tu rango normal</b> <span class="muted">(la mitad central de tus partidas, {{ rangeName() }}, n = {{ r.n }})</span></p>
       <div class="gr-big">{{ r.low }} – {{ r.high }}</div>
       <div class="muted">mediana {{ r.median }} · mejor de siempre {{ r.best.time }} ({{ fmtDate(r.best.date) }})</div>
     } @else {<p class="muted">Aún pocos datos en este periodo.</p>}
   </div>
 
-  <p style="margin:16px 0 4px"><b>Semana a semana</b> <span class="muted">— días que le ganas a la media (%)</span></p>
+  <p class="u-m-16-0-4"><b>Semana a semana</b> <span class="muted">— días que le ganas a la media (%)</span></p>
   @if (weekly(); as w) {
     <div class="wkbeat" id="gameReportWeeks">
       @for (b of w.weeks; track b.start) {<div [attr.data-complete]="b.complete"><span>{{ b.beat === null ? '—' : pct(b.beat).replace(' %', '') }}</span><i [style.height.px]="(b.beat ?? 0) * 70"></i><span>{{ short(b.start) }}</span></div>}
@@ -34,7 +34,7 @@
     <p class="muted" id="gameReportWeeksWindow">Ventana fija: últimos 90 días, una barra por semana. Las barras discontinuas son semanas incompletas.</p>
   } @else {<p class="muted" id="gameReportWeeksWindow">No disponible</p>}
 
-  <p style="margin:16px 0 4px"><b>Por día de la semana</b> <span class="muted">— partidas en las que no le ganas a la media</span></p>
+  <p class="u-m-16-0-4"><b>Por día de la semana</b> <span class="muted">— partidas en las que no le ganas a la media</span></p>
   @if (weekdays(); as d) {
     <div class="gr-days" id="gameReportWeekdays">
       @for (r of d.rows; track r.day) {
@@ -47,7 +47,7 @@
   } @else {<p class="muted" id="gameReportWeekdaysWindow">No disponible</p>}
 
   @if (streak(); as st) {
-    <p id="gameReportStreak" style="margin:16px 0 0"><b>Días seguidos mejor que la media</b> · actual @if (st.now === '—') {sin racha activa@if (st.stale) { ({{ st.stale }})}} @else {{{ st.now }}} · máxima {{ st.max }}@if (st.maxDate) { (hasta el {{ fmtDate(st.maxDate) }})}</p>
+    <p class="u-m-16-0-0" id="gameReportStreak"><b>Días seguidos mejor que la media</b> · actual @if (st.now === '—') {sin racha activa@if (st.stale) { ({{ st.stale }})}} @else {{{ st.now }}} · máxima {{ st.max }}@if (st.maxDate) { (hasta el {{ fmtDate(st.maxDate) }})}</p>
   }
 </app-section>
 
@@ -73,7 +73,7 @@
     } @else {<p class="muted">No disponible</p>}
     @if (facts(); as f) {<div id="gameReportFacts"><app-stats [items]="f" /></div>}
     @if (seconds(); as w) {
-      <p style="margin:16px 0 4px"><b>Semana a semana en segundos</b> <span class="muted">— tu mediana frente a la media publicada</span></p>
+      <p class="u-m-16-0-4"><b>Semana a semana en segundos</b> <span class="muted">— tu mediana frente a la media publicada</span></p>
       <div class="tblwrap" tabindex="0" role="region" aria-label="Semanas en segundos (desplazable)">
         <table class="gtable" id="gameReportSeconds"><caption class="sr-only">Semana a semana en segundos</caption>
           <thead><tr><th scope="col">Semana del</th><th scope="col">Tu mediana</th><th scope="col">Media publicada</th><th scope="col">Velocidad</th><th scope="col">Partidas</th></tr></thead>
@@ -86,7 +86,7 @@
 }
 
 <app-section title="Qué sabemos y qué no" sectionId="gameReportEvidence">
-  <p class="muted" style="margin:0 0 4px"><b style="color:var(--text)">Evidencia</b> (lo que muestran los datos)</p>
+  <p class="muted u-m-0-0-4"><b class="u-c-text">Evidencia</b> (lo que muestran los datos)</p>
   <ul style="margin:0 0 10px;padding-left:18px">@for (l of evidence(); track $index) {<li>{{ l }}</li>}</ul>
-  <p class="muted" style="margin:0"><b style="color:var(--text)">Límite de lo medible</b>: solo se guarda el tiempo total de cada partida, sin errores ni pasos intermedios, así que los datos no permiten decir por qué tardas más o menos.</p>
+  <p class="muted u-m-0"><b class="u-c-text">Límite de lo medible</b>: solo se guarda el tiempo total de cada partida, sin errores ni pasos intermedios, así que los datos no permiten decir por qué tardas más o menos.</p>
 </app-section>

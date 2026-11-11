@@ -54,14 +54,14 @@ const CHIPS: { group: FilterGroup; label: string; options: { k: string; l: strin
   imports: [Segmented],
   template: `
     @let f = m.filters();
-    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px"><h2>Partidas</h2><span class="muted" style="font-size:var(--fs-sm)" id="chessMatchesSubtitle">{{ subtitle() }}</span><a class="btn btn-g" style="font-size:var(--fs-xs);padding:3px 8px;margin-left:8px" href="/api/export/matches.csv" download>Exportar CSV</a></div>
+    <div class="u-d-flex u-jc-space-between u-ai-baseline u-mb-8"><h2>Partidas</h2><span class="muted u-fs-sm" id="chessMatchesSubtitle">{{ subtitle() }}</span><a class="btn btn-g" style="font-size:var(--fs-xs);padding:3px 8px;margin-left:8px" href="/api/export/matches.csv" download>Exportar CSV</a></div>
     <div class="filters" id="matchChips">
       @for (c of chips; track c.group) {
         <app-segmented [label]="c.label" [caption]="c.label" [chipGroup]="c.group" [options]="c.options" [value]="f[c.group]" (picked)="m.setFilter(c.group, $event)" />
       }
     </div>
     @if (!m.compact()) {
-      <div class="filters" id="matchFilters" style="display:flex">
+      <div class="filters u-d-flex" id="matchFilters">
         <input id="q" placeholder="Buscar rival" [value]="f.q" (input)="m.onSearch(val($event))">
         <select id="fOpp" (change)="m.setFilter('opp', val($event))"><option value="" [selected]="f.opp === ''">Rival: Todos</option><option value="bot" [selected]="f.opp === 'bot'">Bots: Todos</option>
           @for (s of segments; track s[0]) { <option [value]="'seg:' + s[0]" [selected]="f.opp === 'seg:' + s[0]">{{ s[1] }}</option> }</select>
@@ -93,11 +93,11 @@ const CHIPS: { group: FilterGroup; label: string; options: { k: string; l: strin
           </tr>
         }
       </tbody></table>
-    @if (empty(); as e) { <div id="empty" class="empty" style="display:block">{{ e }}</div> }
+    @if (empty(); as e) { <div id="empty" class="empty u-d-block">{{ e }}</div> }
     @if (!m.compact()) {
-      <div class="pager" id="matchPager" style="display:flex"><button class="btn btn-g" type="button" id="prev" [disabled]="m.failed() || m.offset() === 0" (click)="m.page(-1)">‹ Anterior</button><span class="muted" id="mc">{{ counter() }}</span><button class="btn btn-g" type="button" id="next" [disabled]="m.failed() || m.offset() + m.pageSize() >= m.total()" (click)="m.page(1)">Siguiente ›</button></div>
+      <div class="pager u-d-flex" id="matchPager"><button class="btn btn-g" type="button" id="prev" [disabled]="m.failed() || m.offset() === 0" (click)="m.page(-1)">‹ Anterior</button><span class="muted" id="mc">{{ counter() }}</span><button class="btn btn-g" type="button" id="next" [disabled]="m.failed() || m.offset() + m.pageSize() >= m.total()" (click)="m.page(1)">Siguiente ›</button></div>
     } @else {
-      <button class="btn btn-g" type="button" id="btnAllMatches" (click)="m.showAll()" style="margin-top:10px">Ver todas las partidas</button>
+      <button class="btn btn-g u-mt-10" type="button" id="btnAllMatches" (click)="m.showAll()">Ver todas las partidas</button>
     }
   `,
 })

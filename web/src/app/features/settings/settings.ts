@@ -13,7 +13,7 @@ interface Reply { ok?: boolean; error?: string; dailyGoalXp?: unknown }
   template: `
     <h1 class="sr-only">Configuración</h1>
     <section class="card">
-      <h2 style="margin-bottom:4px">Objetivo diario</h2>
+      <h2 class="u-mb-4">Objetivo diario</h2>
       <div class="muted">XP que quieres conseguir cada día. Lo defines tú: no se toma del dato que reporta Duolingo. Vacío = sin objetivo.</div>
       <div class="goal-field">
         <label for="goalInput" class="muted">XP por día</label>

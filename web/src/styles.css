@@ -205,7 +205,7 @@ a.side-item{text-decoration:none}a.side-item:hover{text-decoration:none}
 @media(max-width:600px){
  .thbtn{min-height:44px;padding:8px 0}
  .lgcard select,.lgcard input{min-height:44px}
- .chips button.pill{min-height:40px;padding:6px 14px}
+ .chips button.pill{min-height:44px;padding:6px 14px}
 }
 .goal-field{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px}
 .goal-field input{width:130px}
@@ -274,3 +274,78 @@ app-tab-bar{display:none}
 .wkbeat>div{min-width:0}
 @media(max-width:760px){.wkbeat>div:nth-child(even)>span:last-child{visibility:hidden}} /* 13 weeks do not fit at 390 px with every date label: the bars shrink, a date every other week */
 .hl{margin:0 0 6px;padding-left:10px;border-left:3px solid var(--line-strong)}.hl[data-kind=debilidad]{border-color:var(--orange)}.hl[data-kind=fortaleza]{border-color:var(--ok)}
+
+/* Utilities generated from former inline styles (phase 4.3): !important keeps the precedence the inline attribute had. */
+.u-ai-baseline{align-items:baseline!important}
+.u-ai-center{align-items:center!important}
+.u-ai-flex-start{align-items:flex-start!important}
+.u-c-muted{color:var(--muted)!important}
+.u-c-text{color:var(--text)!important}
+.u-c-text-2{color:var(--text-2)!important}
+.u-c-warn{color:var(--warn)!important}
+.u-d-block{display:block!important}
+.u-d-flex{display:flex!important}
+.u-d-grid{display:grid!important}
+.u-d-inline-block{display:inline-block!important}
+.u-flex-1{flex:1!important}
+.u-flex-1-1-0{flex:1 1 0!important}
+.u-fs-display{font-size:var(--fs-display)!important}
+.u-fs-h{font-size:var(--fs-h)!important}
+.u-fs-lg{font-size:var(--fs-lg)!important}
+.u-fs-md{font-size:var(--fs-md)!important}
+.u-fs-sm{font-size:var(--fs-sm)!important}
+.u-fs-xl{font-size:var(--fs-xl)!important}
+.u-fs-xs{font-size:var(--fs-xs)!important}
+.u-fwt-400{font-weight:400!important}
+.u-fwt-600{font-weight:600!important}
+.u-fwt-700{font-weight:700!important}
+.u-gap-10{gap:10px!important}
+.u-gap-12{gap:12px!important}
+.u-gap-20{gap:20px!important}
+.u-gap-6{gap:6px!important}
+.u-gap-8{gap:8px!important}
+.u-jc-flex-end{justify-content:flex-end!important}
+.u-jc-space-between{justify-content:space-between!important}
+.u-ls-p04em{letter-spacing:.04em!important}
+.u-ls-p05em{letter-spacing:.05em!important}
+.u-m-0{margin:0!important}
+.u-m-0-0-10{margin:0 0 10px!important}
+.u-m-0-0-4{margin:0 0 4px!important}
+.u-m-0-0-8-0{margin:0 0 8px 0!important}
+.u-m-12-0{margin:12px 0!important}
+.u-m-12-0-0{margin:12px 0 0!important}
+.u-m-12-0-4{margin:12px 0 4px!important}
+.u-m-12-0-6{margin:12px 0 6px!important}
+.u-m-14-0-0{margin:14px 0 0!important}
+.u-m-16-0-0{margin:16px 0 0!important}
+.u-m-16-0-4{margin:16px 0 4px!important}
+.u-m-18-0-10{margin:18px 0 10px!important}
+.u-m-4-0-8{margin:4px 0 8px!important}
+.u-m-6-0{margin:6px 0!important}
+.u-m-6-0-4{margin:6px 0 4px!important}
+.u-m-8-0{margin:8px 0!important}
+.u-m-8-0-4{margin:8px 0 4px!important}
+.u-mb-10{margin-bottom:10px!important}
+.u-mb-12{margin-bottom:12px!important}
+.u-mb-16{margin-bottom:16px!important}
+.u-mb-4{margin-bottom:4px!important}
+.u-mb-6{margin-bottom:6px!important}
+.u-mb-8{margin-bottom:8px!important}
+.u-ml-4{margin-left:4px!important}
+.u-ml-6{margin-left:6px!important}
+.u-ml-8{margin-left:8px!important}
+.u-mt-10{margin-top:10px!important}
+.u-mt-12{margin-top:12px!important}
+.u-mt-14{margin-top:14px!important}
+.u-mt-16{margin-top:16px!important}
+.u-mt-2{margin-top:2px!important}
+.u-mt-4{margin-top:4px!important}
+.u-mt-6{margin-top:6px!important}
+.u-mt-8{margin-top:8px!important}
+.u-tt-none{text-transform:none!important}
+.u-tt-uppercase{text-transform:uppercase!important}
+.u-wrap-wrap{flex-wrap:wrap!important}
+/* same phone bump as the [style*="font-size:var(--fs-xs)"] rule above, which no longer matches a class */
+@media(max-width:760px){.u-fs-xs{font-size:var(--fs-sm)!important}}
+@media(max-width:760px){.muted.u-fs-xs,.muted.u-fs-sm{font-size:var(--fs-md)!important}} /* keeps the phone .muted rule winning over former inline font-sizes */
+@media(max-width:760px){#goalInput{min-height:44px}a.btn{display:inline-flex;align-items:center;justify-content:center}} /* 44px touch targets on phones: goal input, link-buttons */

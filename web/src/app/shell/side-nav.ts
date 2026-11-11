@@ -28,7 +28,7 @@ const GROUPS = [
       <div class="muted side-note" id="syncScopeHint" style="font-size:var(--fs-xs);margin-top:2px;line-height:1.3">Fuentes conectadas (Duolingo) · Games manual</div>
       <small class="muted side-note" aria-live="polite">{{ sync.note() }}</small>
       <a class="side-item" routerLink="/settings" routerLinkActive="active" ariaCurrentWhenActive="page">Configuración</a>
-      <form method="post" action="/logout" style="margin:0"><button class="side-item" type="submit">Salir</button></form>
+      <form class="u-m-0" method="post" action="/logout"><button class="side-item" type="submit">Salir</button></form>
     </div>
   `,
 })

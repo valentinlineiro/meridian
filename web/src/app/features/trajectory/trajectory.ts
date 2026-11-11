@@ -65,9 +65,9 @@ function trajectoryView(d: Rec) {
   imports: [EvaluationCards, NgTemplateOutlet],
   template: `
     <section id="trajectoryTab">
-      <div id="trajectoryHeader" style="margin-bottom:16px">
+      <div class="u-mb-16" id="trajectoryHeader">
         <h1>Tu trayectoria</h1>
-        <p class="muted" style="margin:0" id="trajectorySubtitle">Síntesis de patrones estables a lo largo de tu historial completo</p>
+        <p class="muted u-m-0" id="trajectorySubtitle">Síntesis de patrones estables a lo largo de tu historial completo</p>
       </div>
       @let v = view();
       @if (v === 'error') {<div id="trajectoryEmpty" class="empty">{{ error }}</div>} @else if (v?.empty) {<div id="trajectoryEmpty" class="empty">{{ v!.empty }}</div>}
@@ -76,13 +76,13 @@ function trajectoryView(d: Rec) {
         @if (v.evals.length) {<m-evaluation-cards [evaluations]="v.evals" [findingFor]="v.findingFor" [win]="v.win" />}
         @for (c of v.plain; track $index) {
           @if ('na' in c) {<ng-container *ngTemplateOutlet="na; context: { $implicit: c.title }" />} @else {
-            <div class="card" style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><h3 style="margin:0">{{ c.title }}</h3><span class="pill pill-scope">SIN EVALUAR</span></div><div style="font-size:var(--fs-md);font-weight:600;color:var(--text-2);margin-bottom:6px">{{ c.claim }}</div><div class="muted" style="font-size:var(--fs-sm)"><strong>Evidencia:</strong> {{ c.evidence }}</div></div>
+            <div class="card u-mb-10"><div class="u-d-flex u-jc-space-between u-ai-center u-mb-6"><h3 class="u-m-0">{{ c.title }}</h3><span class="pill pill-scope">SIN EVALUAR</span></div><div class="u-fs-md u-fwt-600 u-c-text-2 u-mb-6">{{ c.claim }}</div><div class="muted u-fs-sm"><strong>Evidencia:</strong> {{ c.evidence }}</div></div>
           }
         }
         @if (v.findingsNa) {<ng-container *ngTemplateOutlet="na; context: { $implicit: 'Patrones' }" />}
       }</div>
     </section>
-    <ng-template #na let-title><div class="card" style="margin-bottom:10px"><h3 style="margin:0">{{ title }}</h3><div class="muted" style="font-size:var(--fs-sm);margin-top:6px">No disponible</div></div></ng-template>
+    <ng-template #na let-title><div class="card u-mb-10"><h3 class="u-m-0">{{ title }}</h3><div class="muted u-fs-sm u-mt-6">No disponible</div></div></ng-template>
   `,
 })
 export class Trajectory {

@@ -19,10 +19,10 @@ const BADGE = { new: 'nuevo', changed: 'cambia', same: 'igual' } as const;
   selector: 'app-games-quick-entry',
   template: `
     <div id="lgQuick">
-      <label class="muted" for="lgQuickText" style="display:block;font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Registro rápido · juego, mis segundos, media</label>
+      <label class="muted u-d-block u-fs-xs u-tt-uppercase u-ls-p05em u-mb-6" for="lgQuickText">Registro rápido · juego, mis segundos, media</label>
       <textarea #box id="lgQuickText" rows="2" style="width:100%" placeholder="Z, 6, 12" autocomplete="off" autocapitalize="characters" spellcheck="false"
         [value]="text()" (input)="onInput($event)" (keydown)="onKey($event)"></textarea>
-      <div id="lgQuickPreview" role="status" class="muted" style="margin-top:6px;font-size:var(--fs-sm)">
+      <div id="lgQuickPreview" role="status" class="muted u-mt-6 u-fs-sm">
         @if (message(); as m) { {{ m }} }
         @else if (preview(); as p) {
           @for (e of p.errors; track e.line) { <div class="lgquick-err">Línea {{ e.line }}: {{ e.reason }} («{{ e.text }}»)</div> }
@@ -33,9 +33,9 @@ const BADGE = { new: 'nuevo', changed: 'cambia', same: 'igual' } as const;
           }
         }
       </div>
-      <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
+      <div class="u-d-flex u-ai-center u-gap-10 u-mt-8">
         <button id="lgQuickSave" class="btn btn-p" type="button" [disabled]="!canSave()" (click)="save()">Guardar</button>
-        <span class="muted" style="font-size:var(--fs-xs)">Enter guarda · Mayús+Enter, otra línea</span>
+        <span class="muted u-fs-xs">Enter guarda · Mayús+Enter, otra línea</span>
       </div>
     </div>
   `,

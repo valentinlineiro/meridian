@@ -30,29 +30,29 @@ function sectionRows(sections: Section[]) {
   selector: 'app-course-detail',
   template: `
     <div id="langDetailView">
-      <div style="margin-bottom:12px">
+      <div class="u-mb-12">
         <button type="button" class="btn btn-g" id="btnBackToLanguages" (click)="back.emit()">← Volver a todos los cursos</button>
       </div>
-      <div class="card" id="langCourseDetailCard" style="margin-bottom:12px">
+      <div class="card u-mb-12" id="langCourseDetailCard">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:gap:8px">
           <div>
             <h2 id="langDetailTitle" style="margin:0;font-size:var(--fs-h);letter-spacing:0;text-transform:none;color:var(--text)">{{ head()?.title }}</h2>
-            <div class="muted" id="langDetailSub" style="font-size:var(--fs-sm);margin-top:2px">{{ head()?.sub }}</div>
+            <div class="muted u-fs-sm u-mt-2" id="langDetailSub">{{ head()?.sub }}</div>
           </div>
-          <span id="langDetailXpPill" class="pill" style="font-size:var(--fs-lg);font-weight:700">{{ head()?.xp }}</span>
+          <span id="langDetailXpPill" class="pill u-fs-lg u-fwt-700">{{ head()?.xp }}</span>
         </div>
       </div>
-      <div class="card" id="langCefrCard" style="margin-bottom:12px">
-        <h2 style="margin:0 0 4px">Unidades curriculares por nivel CEFR</h2>
-        <div class="muted" style="font-size:var(--fs-xs);margin-bottom:10px">Mide unidades del árbol clasificadas por la fuente bajo cada nivel; no constituye evaluación ni certificación de competencia lingüística.</div>
+      <div class="card u-mb-12" id="langCefrCard">
+        <h2 class="u-m-0-0-4">Unidades curriculares por nivel CEFR</h2>
+        <div class="muted u-fs-xs u-mb-10">Mide unidades del árbol clasificadas por la fuente bajo cada nivel; no constituye evaluación ni certificación de competencia lingüística.</div>
         <div id="langCefrBody">
           @let c = cefr();
           @if (typeof c === 'string') { <div class="muted">{{ c }}</div> }
           @else {
             @for (r of c; track r.key) {
-              <div class="row" style="padding:6px 0"><div style="flex:1">
-                <div style="display:flex;justify-content:space-between;align-items:baseline"><b>{{ r.label }}</b><span><b>{{ r.units }}</b></span></div>
-                <div style="margin-top:4px"><div class="bar" style="height:8px"><i [style.width.%]="r.width" style="background:var(--info)"></i></div></div>
+              <div class="row" style="padding:6px 0"><div class="u-flex-1">
+                <div class="u-d-flex u-jc-space-between u-ai-baseline"><b>{{ r.label }}</b><span><b>{{ r.units }}</b></span></div>
+                <div class="u-mt-4"><div class="bar" style="height:8px"><i [style.width.%]="r.width" style="background:var(--info)"></i></div></div>
               </div></div>
             } @empty { <div class="muted">Sin información de CEFR</div> }
           }
@@ -65,11 +65,11 @@ function sectionRows(sections: Section[]) {
           @if (typeof ss === 'string') { <div class="muted">{{ ss }}</div> }
           @else {
             @for (s of ss; track s.key) {
-              <div class="row" style="padding:10px 0;border-bottom:1px solid var(--line)"><div style="flex:1">
-                <div style="display:flex;justify-content:space-between;align-items:baseline"><b>{{ s.title }}</b><span><b>{{ s.units }}</b></span></div>
-                <div style="margin-top:6px"><div class="bar" style="height:8px"><i [style.width.%]="s.width" style="background:var(--ok)"></i></div></div>
-                <details style="margin-top:6px"><summary class="muted" style="cursor:pointer;font-size:var(--fs-xs)">Detalle de sección</summary>
-                  <div class="muted" style="font-size:var(--fs-sm);margin-top:4px">{{ s.meta }}</div>
+              <div class="row" style="padding:10px 0;border-bottom:1px solid var(--line)"><div class="u-flex-1">
+                <div class="u-d-flex u-jc-space-between u-ai-baseline"><b>{{ s.title }}</b><span><b>{{ s.units }}</b></span></div>
+                <div class="u-mt-6"><div class="bar" style="height:8px"><i [style.width.%]="s.width" style="background:var(--ok)"></i></div></div>
+                <details class="u-mt-6"><summary class="muted" style="cursor:pointer;font-size:var(--fs-xs)">Detalle de sección</summary>
+                  <div class="muted u-fs-sm u-mt-4">{{ s.meta }}</div>
                 </details>
               </div></div>
             } @empty { <div class="muted">Sin secciones registradas</div> }

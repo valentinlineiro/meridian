@@ -171,20 +171,20 @@ describe('Chess', () => {
 
     it('shouldColourTheStreakPillByItsKind', async () => {
       await t.open();
-      expect(t.el().querySelector('#chessHeroStreak')!.className).toBe('pill pill-loss');
+      expect(t.el().querySelector('#chessHeroStreak')!.className.replace(/ ?u-\S+/g, '').trim()).toBe('pill pill-loss');
       expect(t.text('chessHeroStreak')).toBe('🔥 3 derrotas consecutivas');
     });
 
     it('shouldUseSingularAndTheWinColourForAStreakOfOneWin', async () => {
       await t.open(chessApi({ '/api/stats/summary': { ...summary, currentStreak: 1, currentStreakKind: 'win' } }));
-      expect(t.el().querySelector('#chessHeroStreak')!.className).toBe('pill pill-win');
+      expect(t.el().querySelector('#chessHeroStreak')!.className.replace(/ ?u-\S+/g, '').trim()).toBe('pill pill-win');
       expect(t.text('chessHeroStreak')).toBe('🔥 1 victoria consecutiva');
       expect(t.text('streak')).toContain('Racha actual: 1 victoria');
     });
 
     it('shouldSaySinRachaActivaWhenThereIsNoStreak', async () => {
       await t.open(chessApi({ '/api/stats/summary': { ...summary, currentStreak: 0, currentStreakKind: null } }));
-      expect(t.el().querySelector('#chessHeroStreak')!.className).toBe('pill');
+      expect(t.el().querySelector('#chessHeroStreak')!.className.replace(/ ?u-\S+/g, '').trim()).toBe('pill');
       expect(t.text('chessHeroStreak')).toBe('🔥 Sin racha activa');
     });
 

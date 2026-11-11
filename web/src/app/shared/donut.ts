@@ -5,7 +5,7 @@ import { pc1 } from '../core/format';
 @Component({
   selector: 'm-donut',
   template: `
-    <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap">
+    <div class="u-d-flex u-gap-20 u-ai-center u-wrap-wrap">
       <svg width="96" height="96" viewBox="0 0 72 72">
         <circle r="16" cx="36" cy="36" fill="transparent" stroke="var(--line)" stroke-width="8" />
         @for (s of segs(); track s.k) {
@@ -14,7 +14,7 @@ import { pc1 } from '../core/format';
         }
       </svg>
       <div>
-        <div style="font-size:var(--fs-display);font-weight:800">{{ score() }} % <span class="muted" style="font-weight:400;font-size:var(--fs-md)">score</span></div>
+        <div style="font-size:var(--fs-display);font-weight:800">{{ score() }} % <span class="muted u-fwt-400 u-fs-md">score</span></div>
         <div class="legend">
           @for (s of segs(); track s.k) {<span><i class="dot" [style.background]="s.c"></i>{{ s.legend }}</span>}
         </div>

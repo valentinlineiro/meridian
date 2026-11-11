@@ -138,13 +138,13 @@ describe('evaluation cards: verdict first, criteria on demand', () => {
     const el = render(CHANGES.short);
     const xp = card(el, 'Mayor XP diario');
     expect(xp.tagName).toBe('DETAILS');
-    expect(xp.className).toBe('card evcard');
+    expect(xp.className.replace(/ ?u-\S+/g, '').trim()).toBe('card evcard');
     expect(xp.hasAttribute('open')).toBe(false);
     expect(txt(xp)).toContain('Aún pocos datos');
     expect(txt(xp)).toContain('El periodo tiene 2 días completos; hacen falta 3.');
     const affirmed = cards(el).find((c) => txt(c).includes('Confirmado'))!;
     expect(affirmed.tagName).toBe('DIV');
-    expect(affirmed.className).toBe('card');
+    expect(affirmed.className.replace(/ ?u-\S+/g, '').trim()).toBe('card');
   });
 });
 

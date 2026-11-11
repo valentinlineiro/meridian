@@ -4,24 +4,24 @@
 <section id="chessTab">
   <h1 class="sr-only">Ajedrez</h1>
   <div class="hero-card" id="chessHero">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px">
+    <div class="u-d-flex u-jc-space-between u-ai-flex-start u-wrap-wrap u-gap-12">
       <div>
-        <div class="muted" style="font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.05em">Ajedrez · Nivel actual</div>
-        <div style="display:flex;align-items:baseline;gap:8px;margin-top:2px">
+        <div class="muted u-fs-xs u-tt-uppercase u-ls-p05em">Ajedrez · Nivel actual</div>
+        <div class="u-d-flex u-ai-baseline u-gap-8 u-mt-2">
           <span id="chessHeroElo" style="font-size:var(--fs-display);font-weight:800;line-height:1">{{ h.elo }}</span>
-          <span id="chessHeroEloSub" class="muted" style="font-size:var(--fs-sm)">{{ h.sub }}</span>
+          <span id="chessHeroEloSub" class="muted u-fs-sm">{{ h.sub }}</span>
         </div>
-        <div id="chessHeroMeta" class="muted" style="font-size:var(--fs-sm);margin-top:4px">{{ h.meta }}</div>
+        <div id="chessHeroMeta" class="muted u-fs-sm u-mt-4">{{ h.meta }}</div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
-        <span id="chessHeroStreak" [class]="h.pill" style="font-size:var(--fs-sm);font-weight:600">{{ h.streak }}</span>
-        <span id="chessHeroGames" class="muted" style="font-size:var(--fs-sm)">{{ h.games }}</span>
+        <span class="u-fs-sm u-fwt-600" id="chessHeroStreak" [class]="h.pill">{{ h.streak }}</span>
+        <span id="chessHeroGames" class="muted u-fs-sm">{{ h.games }}</span>
       </div>
     </div>
-    <div style="margin-top:14px">
-      <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:var(--fs-sm);margin-bottom:6px">
-        <span id="chessHeroWrLabel" style="font-weight:600">{{ h.wr }}</span>
-        <span id="chessHeroDistMeta" class="muted" style="font-size:var(--fs-xs)">{{ h.distMeta }}</span>
+    <div class="u-mt-14">
+      <div class="u-d-flex u-jc-space-between u-ai-baseline u-fs-sm u-mb-6">
+        <span class="u-fwt-600" id="chessHeroWrLabel">{{ h.wr }}</span>
+        <span id="chessHeroDistMeta" class="muted u-fs-xs">{{ h.distMeta }}</span>
       </div>
       <div class="distribution-bar" id="chessHeroDist">
         @if (h.dist; as b) {
@@ -42,10 +42,10 @@
       @for (k of x.kpis; track k.label) { <m-kpi [label]="k.label" [value]="k.value" [sub]="k.sub" /> }
     }
   </section>
-  <div class="card" id="formCard" style="margin-top:12px"><h2>Forma actual</h2>
-    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+  <div class="card u-mt-12" id="formCard"><h2>Forma actual</h2>
+    <div class="u-d-flex u-gap-6 u-ai-center u-wrap-wrap u-mb-10">
       <app-segmented label="Últimas partidas" caption="Últimas" idPrefix="b" [options]="recentOptions" [value]="'' + (recentN() ?? 50)" (picked)="setRecent(+$event)" />
-      <span class="muted" id="formMeta" style="margin-left:6px"></span></div>
+      <span class="muted u-ml-6" id="formMeta"></span></div>
     <div id="form">
       @let f = form();
       @if (f === null) {
@@ -53,31 +53,31 @@
       } @else if (f) {
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;text-align:center">
           <div>
-            <div class="muted" style="font-size:var(--fs-xs);letter-spacing:.04em;text-transform:uppercase">{{ f.now.head }}</div>
-            <div style="font-weight:700">{{ f.now.wr }}</div>
+            <div class="muted u-fs-xs u-ls-p04em u-tt-uppercase">{{ f.now.head }}</div>
+            <div class="u-fwt-700">{{ f.now.wr }}</div>
             <div class="muted">{{ f.now.detail }}</div>
-            @if (f.delta) { <div class="muted" style="margin-top:4px;font-size:var(--fs-xs)">{{ f.delta }}</div> }
+            @if (f.delta) { <div class="muted u-mt-4 u-fs-xs">{{ f.delta }}</div> }
           </div>
           <div style="border-left:1px solid var(--line);padding-left:8px">
-            <div class="muted" style="font-size:var(--fs-xs);letter-spacing:.04em;text-transform:uppercase">{{ f.before.head }}</div>
-            <div style="font-weight:700">{{ f.before.wr }}</div>
+            <div class="muted u-fs-xs u-ls-p04em u-tt-uppercase">{{ f.before.head }}</div>
+            <div class="u-fwt-700">{{ f.before.wr }}</div>
             <div class="muted">{{ f.before.detail }}</div>
           </div>
         </div>
       }
     </div>
-    <div class="muted" id="streak" style="margin-top:10px">@if (x) {@if (x.streakNow) {<b>{{ x.streakNow }}</b> · }{{ x.streakBest }}}</div>
+    <div class="muted u-mt-10" id="streak">@if (x) {@if (x.streakNow) {<b>{{ x.streakNow }}</b> · }{{ x.streakBest }}}</div>
   </div>
 
-  <div class="card" id="chessPatternsCard" style="margin-top:12px">
+  <div class="card u-mt-12" id="chessPatternsCard">
     <app-patterns [games]="x ? d()!.s.games ?? 0 : undefined" [colorStats]="x ? d()!.c : undefined" [profile]="profile()" (color)="filterColor($event, allMatches)" (engine)="engineDetails.reveal()" />
   </div>
 
   <app-section sectionId="cg-comp" title="Comparativa por color y oponente" #cgComp>
     <div class="grid2">
-      <div class="card" id="colCard"><h2>Rendimiento por color</h2><div id="colDiff" class="muted" style="margin-bottom:8px">{{ x?.colDiff }}</div>
+      <div class="card" id="colCard"><h2>Rendimiento por color</h2><div id="colDiff" class="muted u-mb-8">{{ x?.colDiff }}</div>
         <div id="col">@if (x) {@if (x.col; as g) {<m-compare [groups]="g" [total]="x.total" />} @else {<div class="muted">No disponible</div>}}</div></div>
-      <div class="card" id="oppCard"><h2>Oponentes por familia</h2><div class="muted" style="font-size:var(--fs-xs);margin-bottom:6px">Las diferencias por familia de oponente no aíslan la dificultad del rival.</div><div id="oppMacro" class="muted" style="margin-bottom:8px">{{ x?.oppMacro }}</div>
+      <div class="card" id="oppCard"><h2>Oponentes por familia</h2><div class="muted u-fs-xs u-mb-6">Las diferencias por familia de oponente no aíslan la dificultad del rival.</div><div id="oppMacro" class="muted u-mb-8">{{ x?.oppMacro }}</div>
         <div id="opp">@if (x) {@if (x.opp; as g) {<m-compare [groups]="g" [total]="x.total" />} @else {<div class="muted">No disponible</div>}}</div></div>
     </div>
   </app-section>
@@ -88,21 +88,21 @@
 
   <app-section sectionId="cg-evo" title="Evolución y detalle" [open]="!phone" #cgEvo>
     <div class="grid2">
-      <div class="card" id="evoCard"><h2>Evolución · ELO</h2><div class="muted" style="font-size:var(--fs-xs)">ELO observado en sincronizaciones</div>
+      <div class="card" id="evoCard"><h2>Evolución · ELO</h2><div class="muted u-fs-xs">ELO observado en sincronizaciones</div>
         <div id="evo">@if (x) {@if (x.evo; as e) {<m-sparkline [points]="e.points" />} @else {<div class="muted">No disponible</div>}}</div>
-        <div class="muted" id="evoNote" style="margin-top:6px">{{ x?.evo?.note }}</div></div>
+        <div class="muted u-mt-6" id="evoNote">{{ x?.evo?.note }}</div></div>
       <div class="card" id="resCard"><h2>Resultados</h2>
         <div id="res">@if (x) {@if (x.counts; as c) {<m-donut [wins]="c.w" [losses]="c.l" [draws]="c.d" />} @else {<div class="muted">—</div>}}</div>
-        <div class="muted" id="lossContext" style="margin-top:8px">{{ x?.res?.loss }}</div><div class="muted" id="lossRateNote" style="margin-top:4px">{{ x?.res?.rate }}</div><div class="muted" id="drawContext" style="margin-top:4px">{{ x?.res?.draw }}</div></div>
+        <div class="muted u-mt-8" id="lossContext">{{ x?.res?.loss }}</div><div class="muted u-mt-4" id="lossRateNote">{{ x?.res?.rate }}</div><div class="muted u-mt-4" id="drawContext">{{ x?.res?.draw }}</div></div>
     </div>
-    <details id="eloDetails" class="card" style="margin-top:12px">
-      <summary style="cursor:pointer;font-weight:600;font-size:var(--fs-md);letter-spacing:.05em;text-transform:uppercase;color:var(--muted)">ELO del rival <span id="eloSummaryMeta" class="muted" style="font-weight:400;text-transform:none">{{ x?.elo?.meta }}</span></summary>
-      <div style="margin-top:12px" id="eloCard">
+    <details id="eloDetails" class="card u-mt-12">
+      <summary style="cursor:pointer;font-weight:600;font-size:var(--fs-md);letter-spacing:.05em;text-transform:uppercase;color:var(--muted)">ELO del rival <span id="eloSummaryMeta" class="muted u-fwt-400 u-tt-none">{{ x?.elo?.meta }}</span></summary>
+      <div class="u-mt-12" id="eloCard">
         <div id="elo">@if (x) {@if (x.elo; as e) {
-          <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:baseline"><span style="font-size:var(--fs-h);font-weight:700">{{ e.known }} <span class="muted" style="font-size:var(--fs-md);font-weight:400">con ELO</span></span><span class="muted">{{ e.share }}</span></div>
+          <div class="u-d-flex u-gap-12 u-wrap-wrap u-ai-baseline"><span class="u-fs-h u-fwt-700">{{ e.known }} <span class="muted u-fs-md u-fwt-400">con ELO</span></span><span class="muted">{{ e.share }}</span></div>
           <div class="hist">@for (b of e.hist; track b.k) {<div class="hist-row"><span>{{ b.k }}</span><div class="bar"><i [style.width]="b.w" style="background:var(--info)"></i></div><span style="width:36px;text-align:right">{{ b.v }}</span></div>}</div>
         } @else {<div class="muted">No disponible</div>}}</div>
-        <div class="muted" id="eloNote" style="margin-top:6px">{{ x?.elo?.note }}</div>
+        <div class="muted u-mt-6" id="eloNote">{{ x?.elo?.note }}</div>
       </div>
     </details>
   </app-section>
@@ -111,16 +111,16 @@
     <div id="chessEngineProfileContent"><app-engine-profile [profile]="profile()" [cut]="cut()" (cutChange)="setCut($event)" /></div>
   </app-section>
 
-  <div class="card" style="margin-top:14px" id="allMatchesCard" #allMatches>
+  <div class="card u-mt-14" id="allMatchesCard" #allMatches>
     <app-matches-table [openings]="d()?.op ?? null" />
   </div>
 
-  <details class="methodology-disclosure" id="chessMethodology" style="margin-top:16px;margin-bottom:16px">
+  <details class="methodology-disclosure u-mt-16 u-mb-16" id="chessMethodology">
     <summary style="cursor:pointer;font-weight:600;font-size:var(--fs-md);color:var(--muted)">¿Cómo sabemos esto?</summary>
     <div style="margin-top:10px;font-size:var(--fs-sm);line-height:1.5;color:var(--muted)">
-      <p style="margin:6px 0"><b>Victoria, derrota o tablas:</b> cada partida se clasifica con el resultado que da Duolingo, y la causa del final (jaque mate, abandono, tiempo, ahogado, repetición, material insuficiente, regla de las 50 jugadas) es siempre una de esas.</p>
-      <p style="margin:6px 0"><b>Bots y personas:</b> los rivales se separan por su identificador (bots como Neural o Stockfish, o jugadores reales). Cuando hay pocas partidas, como contra personas, se dice cuántas son para no sacar conclusiones con prisa.</p>
-      <p style="margin:6px 0"><b>Tu ELO y las fechas:</b> el ELO es el que Duolingo mostraba cada vez que sincronizamos, no uno calculado aquí. Las fechas son las de la partida o, si falta, la de la primera vez que la vimos.</p>
+      <p class="u-m-6-0"><b>Victoria, derrota o tablas:</b> cada partida se clasifica con el resultado que da Duolingo, y la causa del final (jaque mate, abandono, tiempo, ahogado, repetición, material insuficiente, regla de las 50 jugadas) es siempre una de esas.</p>
+      <p class="u-m-6-0"><b>Bots y personas:</b> los rivales se separan por su identificador (bots como Neural o Stockfish, o jugadores reales). Cuando hay pocas partidas, como contra personas, se dice cuántas son para no sacar conclusiones con prisa.</p>
+      <p class="u-m-6-0"><b>Tu ELO y las fechas:</b> el ELO es el que Duolingo mostraba cada vez que sincronizamos, no uno calculado aquí. Las fechas son las de la partida o, si falta, la de la primera vez que la vimos.</p>
     </div>
   </details>
 </section>
