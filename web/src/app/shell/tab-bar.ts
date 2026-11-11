@@ -29,18 +29,20 @@ const SECONDARY = ['changes', 'trajectory', 'settings']; // live under "Más"
     @if (open()) {
       <button class="scrim" type="button" aria-label="Cerrar" tabindex="-1" (click)="close()"></button>
       <div #sheet class="sheet" id="moreSheet" role="dialog" aria-modal="true" aria-label="Más secciones" (keydown)="trap($event)">
-        <ul aria-label="Resumen">
-          <li><a routerLink="/changes" replaceUrl>Qué cambió</a></li>
-          <li><a routerLink="/trajectory" replaceUrl>Trayectoria</a></li>
+        <div class="sheet-group" id="sheetGroupResumen">Resumen</div>
+        <ul aria-labelledby="sheetGroupResumen">
+          <li><a routerLink="/changes" replaceUrl [attr.aria-current]="current() === 'changes' ? 'page' : null">Qué cambió</a></li>
+          <li><a routerLink="/trajectory" replaceUrl [attr.aria-current]="current() === 'trajectory' ? 'page' : null">Trayectoria</a></li>
         </ul>
-        <hr />
-        <button id="tabSyncBtn" class="btn btn-p sync" type="button" (click)="sync.start()" [disabled]="sync.busy()" aria-describedby="tabSyncHint"
-          title="Sincroniza cuentas conectadas (Duolingo). LinkedIn Games es registro manual.">{{ sync.lastSyncLabel() }}</button>
-        <p class="muted hint" id="tabSyncHint">Fuentes conectadas (Duolingo) · Games manual</p>
-        <small class="muted hint" aria-live="polite">{{ sync.note() }}</small>
-        <hr />
-        <a routerLink="/settings" replaceUrl>Configuración</a>
-        <form method="post" action="/logout"><button class="row" type="submit">Salir</button></form>
+        <div class="sheet-group" id="sheetGroupCuenta">Cuenta</div>
+        <div role="group" aria-labelledby="sheetGroupCuenta">
+          <button id="tabSyncBtn" class="btn btn-p sync" type="button" (click)="sync.start()" [disabled]="sync.busy()" aria-describedby="tabSyncHint"
+            title="Sincroniza cuentas conectadas (Duolingo). LinkedIn Games es registro manual.">{{ sync.lastSyncLabel() }}</button>
+          <p class="muted hint" id="tabSyncHint">Fuentes conectadas (Duolingo) · Games manual</p>
+          <small class="muted hint" aria-live="polite">{{ sync.note() }}</small>
+          <a routerLink="/settings" replaceUrl [attr.aria-current]="current() === 'settings' ? 'page' : null">Configuración</a>
+          <form method="post" action="/logout"><button class="row" type="submit">Salir</button></form>
+        </div>
       </div>
     }
   `,
