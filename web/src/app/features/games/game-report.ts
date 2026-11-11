@@ -6,7 +6,7 @@ import { Help } from '../../shared/help';
 import { Section } from '../../shared/section';
 import { Stats } from '../../shared/stats';
 import { VerdictPill } from '../../shared/verdict';
-import { evidenceLines, evolutionFacts, extraLines, levelRows, normalRange, reportSentence, secondsWeeks, weekdayReport, weeklyBeat } from './game-report.model';
+import { diagnosisBlock, evidenceLines, evolutionFacts, extraLines, levelRows, normalRange, reportSentence, secondsWeeks, weekdayReport, weeklyBeat } from './game-report.model';
 import { GamesChart } from './games-chart';
 import { gbeatStreak, gdays, interpretationLines, Range, RANGE_NAMES, staleTitle, Summary, trajectory } from './games.model';
 
@@ -36,6 +36,7 @@ export class GameReport {
   protected readonly nr = computed(() => safe(() => normalRange(this.x(), this.range()), null));
   protected readonly weekly = computed(() => safe(() => weeklyBeat(this.x()), null));
   protected readonly weekdays = computed(() => safe(() => weekdayReport(this.x()), null));
+  protected readonly diag = computed(() => safe(() => diagnosisBlock(this.x()), null));
   protected readonly level = computed(() => safe(() => levelRows(this.x()), null));
   protected readonly facts = computed(() => safe(() => {
     const f = evolutionFacts(this.x(), this.range());

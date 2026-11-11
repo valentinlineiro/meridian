@@ -28,6 +28,14 @@ export interface Game {
   weekly?: WeekSeconds[]; savings?: { medianSec: number; totalSec: number; n: number } | null;
   effSpread?: { p25: number; p75: number; ratio: number; n: number } | null;
   outliers?: { n: number; minN: number; good: { date: string; eff: number }[]; bad: { date: string; eff: number }[] };
+  // Report phase 3 (server: GameDiagnosis.ts); absent in a summary that predates it.
+  diagnosis?: Diagnosis;
+}
+export interface Diagnosis {
+  status: 'vigente' | 'caducada' | 'sin_calibracion'; calibratedThrough: string | null;
+  dimensions: Record<'weekday' | 'regularity', { evaluable: boolean; reason: string | null; p: number | null }> | null;
+  findings: { dimension: 'weekday' | 'regularity'; sign: 1 | -1; kind: 'fortaleza' | 'debilidad'; dow: number | null; pAdjusted: number }[];
+  watch: { dimension: 'weekday' | 'regularity'; p: number; unconfirmed: boolean } | null;
 }
 export interface WeekSeconds { weekStart: string; n: number; nWithAvg: number; medianSec: number; medianAvgSec: number | null; medianEff: number | null }
 export interface Adjusted {

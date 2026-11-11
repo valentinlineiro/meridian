@@ -1,4 +1,4 @@
-import { evidenceLines, evolutionFacts, extraLines, levelRows, MIN_WEEK_N, normalRange, reportSentence, secondsWeeks, weekdayReport, weeklyBeat } from './game-report.model';
+import { diagnosisBlock, evidenceLines, evolutionFacts, extraLines, levelRows, MIN_WEEK_N, normalRange, reportSentence, secondsWeeks, weekdayReport, weeklyBeat } from './game-report.model';
 import { interpretationLines, type Game } from './games.model';
 
 // Synthetic fixtures: only the fields the report reads.
@@ -213,5 +213,49 @@ describe('extraLines: savings, spread and outlier days, as statements with their
   });
   it('shouldGiveNothingWhenTheContractCarriesNoneOfThem', () => {
     expect(extraLines(game())).toEqual([]);
+  });
+});
+
+describe('diagnosisBlock: what stands out, as an association and never a cause', () => {
+  const dim = (evaluable = true, reason: string | null = null) => ({ evaluable, reason, p: evaluable ? 0.5 : null });
+  const diag = (o: Record<string, unknown> = {}) => ({ status: 'vigente', calibratedThrough: '2026-11-11', dimensions: { weekday: dim(), regularity: dim() }, findings: [], watch: null, ...o });
+  const g = (d: unknown) => game({ n: 157, diagnosis: d, losses: lossesQueensLike });
+
+  it('shouldHideTheBlockWhenThereIsNoDiagnosisOrNoCalibrationForTheGame', () => {
+    expect(diagnosisBlock(game())).toBeNull();
+    expect(diagnosisBlock(g(diag({ status: 'sin_calibracion', dimensions: null })))).toBeNull();
+  });
+  it('shouldOnlySayTheCalibrationIsStaleAndShowNoFindingWhenExpired', () => {
+    const f = { dimension: 'weekday', sign: 1, kind: 'debilidad', dow: 0, pAdjusted: 0.01 };
+    expect(diagnosisBlock(g(diag({ status: 'caducada', dimensions: null, findings: [f] })))).toEqual({ stale: true, notes: ['Calibración caducada; pendiente de actualizar'], highlights: [], watch: null });
+  });
+  it('shouldPublishAWeakWeekdayWithTheDayAndItsNumberOfResults', () => {
+    const b = diagnosisBlock(g(diag({ findings: [{ dimension: 'weekday', sign: 1, kind: 'debilidad', dow: 0, pAdjusted: 0.01 }] })))!;
+    expect(b.highlights).toEqual([{ kind: 'debilidad', text: 'Los lunes se pierde más que el resto de la semana (14 derrotas en 26 partidas)' }]);
+  });
+  it('shouldPublishAStrongWeekdayAsStrength', () => {
+    const b = diagnosisBlock(g(diag({ findings: [{ dimension: 'weekday', sign: -1, kind: 'fortaleza', dow: 5, pAdjusted: 0.01 }] })))!;
+    expect(b.highlights[0]).toEqual({ kind: 'fortaleza', text: 'Los sábados se pierde menos que el resto de la semana (0 derrotas en 25 partidas)' });
+  });
+  it('shouldPublishRegularityBothWays', () => {
+    const w = diagnosisBlock(g(diag({ findings: [{ dimension: 'regularity', sign: 1, kind: 'debilidad', dow: null, pAdjusted: 0.02 }] })))!;
+    const s = diagnosisBlock(g(diag({ findings: [{ dimension: 'regularity', sign: -1, kind: 'fortaleza', dow: null, pAdjusted: 0.02 }] })))!;
+    expect(w.highlights[0]!.text).toBe('Tus tiempos se han vuelto menos regulares en las últimas 8 semanas (157 partidas en total)');
+    expect(s.highlights[0]!.text).toBe('Tus tiempos se han vuelto más regulares en las últimas 8 semanas (157 partidas en total)');
+  });
+  it('shouldKeepAWatchApartAndMarkItUnconfirmed', () => {
+    const b = diagnosisBlock(g(diag({ watch: { dimension: 'weekday', p: 0.048, unconfirmed: true } })))!;
+    expect(b.highlights).toEqual([]);
+    expect(b.watch).toEqual({ text: 'Para observar: una posible asociación con el día de la semana, aún sin confirmar', unconfirmed: true });
+    expect(diagnosisBlock(g(diag({ watch: { dimension: 'regularity', p: 0.15, unconfirmed: false } })))!.watch!.text).toBe('Para observar: una posible variación de la regularidad de tus tiempos');
+  });
+  it('shouldSayExactlyWhyTheWeekdayCannotBeTestedInsteadOfNothingStandsOut', () => {
+    const b = diagnosisBlock(g(diag({ dimensions: { weekday: dim(false, 'sin_derrotas_suficientes'), regularity: dim(false, 'historial_insuficiente') } })))!;
+    expect(b.notes).toEqual(['Sin derrotas suficientes para contrastar el día', 'Historial insuficiente para contrastar la regularidad']);
+  });
+  it('shouldNeverUseCausalWords', () => {
+    const f = [{ dimension: 'weekday', sign: 1, kind: 'debilidad', dow: 0, pAdjusted: 0.01 }, { dimension: 'regularity', sign: 1, kind: 'debilidad', dow: null, pAdjusted: 0.01 }];
+    const all = JSON.stringify(diagnosisBlock(g(diag({ findings: f, watch: { dimension: 'weekday', p: .1, unconfirmed: true } }))));
+    expect(all).not.toMatch(/efecto|causa|por culpa|debido/i);
   });
 });

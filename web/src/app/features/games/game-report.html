@@ -7,6 +7,16 @@
   <app-help label="Cómo se calcula">@for (l of how(); track $index) {<p>{{ l }}</p>}</app-help>
 </div>
 
+@if (diag(); as b) {
+  <app-section title="Qué destaca" sectionId="gameReportHighlights">
+    @for (h of b.highlights; track $index) {<p class="hl" [attr.data-kind]="h.kind"><b>{{ h.kind === 'fortaleza' ? 'Fortaleza' : 'Debilidad' }}</b> · {{ h.text }}</p>}
+    @if (!b.stale && !b.highlights.length && !b.notes.length) {<p class="muted">Nada destaca por ahora.</p>}
+    @if (b.watch; as w) {<p class="muted" id="gameReportWatch">{{ w.text }}. Es una pista exploratoria, no un hallazgo.</p>}
+    @for (n of b.notes; track n) {<p class="muted">{{ n }}</p>}
+    @if (!b.stale) {<p class="muted">Es una asociación entre el día registrado y el resultado, no una causa.</p>}
+  </app-section>
+}
+
 <app-section title="Regularidad" sectionId="gameReportRegularity">
   <div id="gameReportRange">
     @if (nr(); as r) {

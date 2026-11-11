@@ -188,4 +188,28 @@ describe('GameReport', () => {
       expect(text('gameReportStreak')).not.toContain('hasta el');
     });
   });
+  describe('fase 3: qué destaca', () => {
+    const diag = (o: Record<string, unknown> = {}) => ({ status: 'vigente', calibratedThrough: '2026-11-11', dimensions: { weekday: { evaluable: true, reason: null, p: .3 }, regularity: { evaluable: true, reason: null, p: .4 } }, findings: [], watch: null, ...o });
+    it('shouldKeepFindingsAndWatchApartAndLeaveTheVerdictAlone', async () => {
+      const f = { dimension: 'weekday', sign: 1, kind: 'debilidad', dow: 0, pAdjusted: .01 };
+      await open(summary({ queens: queens({ diagnosis: diag({ findings: [f], watch: { dimension: 'regularity', p: .1, unconfirmed: false } }) }) }));
+      expect(el.querySelector('#gameReportHighlights .hl')!.textContent).toContain('Debilidad · Los lunes se pierde más');
+      expect(text('gameReportWatch')).toContain('Para observar');
+      expect(el.querySelector('#gameReportHero .pill')!.textContent).toBe('Sin señales de cambio');
+    });
+    it('shouldShowOnlyTheStaleMessageWhenExpired', async () => {
+      await open(summary({ queens: queens({ diagnosis: diag({ status: 'caducada', dimensions: null }) }) }));
+      expect(text('gameReportHighlights')).toContain('Calibración caducada; pendiente de actualizar');
+      expect(el.querySelector('.hl')).toBeNull();
+    });
+    it('shouldNotSayNothingStandsOutWhenTheDayCannotBeTested', async () => {
+      await open(summary({ queens: queens({ diagnosis: diag({ dimensions: { weekday: { evaluable: false, reason: 'sin_derrotas_suficientes', p: null }, regularity: { evaluable: true, reason: null, p: .4 } } }) }) }));
+      expect(text('gameReportHighlights')).toContain('Sin derrotas suficientes para contrastar el día');
+      expect(text('gameReportHighlights')).not.toContain('Nada destaca');
+    });
+    it('shouldRenderNoBlockWhenTheSummaryPredatesThePhase', async () => {
+      await open(summary({ queens: queens() }));
+      expect(el.querySelector('#gameReportHighlights')).toBeNull();
+    });
+  });
 });
