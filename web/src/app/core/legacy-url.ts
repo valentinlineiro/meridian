@@ -18,6 +18,8 @@ export function legacyRedirect(pathname: string, hash: string, search: string): 
 
   const [seg = '', ...rest] = target.trim().replace(/^\//, '').replace(/^#/, '').replace(/^\//, '').split('/');
   const sub = rest.join('/').trim() || null;
+  // A plain unknown path is not a legacy URL (those carry a hash, ?course= or a DUOLINGO_ segment): leave it to the router's not-found page.
+  if (seg && !hash && !course && !TABS.includes(seg) && seg !== 'languages' && !seg.startsWith('DUOLINGO_')) return null;
   const courseId = seg === 'languages' ? sub || course : seg.startsWith('DUOLINGO_') ? seg : null;
   const gameKey = seg === 'games' && sub && sub in GAME_NAMES ? sub : null; // /games/:game is the same route as /games
   const canonical = TABS.includes(seg) ? '/' + seg + (gameKey ? '/' + gameKey : '')

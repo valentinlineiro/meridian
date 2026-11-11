@@ -30,5 +30,5 @@ export const routes: Routes = [
   // Legacy /profile opens the chess view with its engine section open and scrolled to (it has no view of its own).
   { path: 'profile', title: 'Perfil · Meridian', data: { engineSection: true }, loadComponent: () => import('./features/chess/chess').then((m) => m.Chess) },
   { path: 'settings', title: 'Configuración · Meridian', loadComponent: () => import('./features/settings/settings').then((m) => m.Settings) },
-  { path: '**', redirectTo: 'overview' },
+  { path: '**', title: 'No encontrada · Meridian', loadComponent: () => import('./shell/not-found').then((m) => m.NotFound) },
 ];
