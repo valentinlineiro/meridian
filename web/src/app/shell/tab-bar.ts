@@ -28,9 +28,11 @@ const SECONDARY = ['changes', 'trajectory', 'settings']; // live under "Más"
     </nav>
     @if (open()) {
       <button class="scrim" type="button" aria-label="Cerrar" tabindex="-1" (click)="close()"></button>
-      <div #sheet class="sheet" id="moreSheet" role="dialog" aria-label="Más secciones">
-        <a routerLink="/changes" replaceUrl>Qué cambió</a>
-        <a routerLink="/trajectory" replaceUrl>Trayectoria</a>
+      <div #sheet class="sheet" id="moreSheet" role="dialog" aria-modal="true" aria-label="Más secciones" (keydown)="trap($event)">
+        <ul aria-label="Resumen">
+          <li><a routerLink="/changes" replaceUrl>Qué cambió</a></li>
+          <li><a routerLink="/trajectory" replaceUrl>Trayectoria</a></li>
+        </ul>
         <hr />
         <button id="tabSyncBtn" class="btn btn-p sync" type="button" (click)="sync.start()" [disabled]="sync.busy()" aria-describedby="tabSyncHint"
           title="Sincroniza cuentas conectadas (Duolingo). LinkedIn Games es registro manual.">{{ sync.lastSyncLabel() }}</button>
@@ -67,6 +69,16 @@ export class TabBar {
     this.open.set(false);
     this.moreBtn().nativeElement.focus();
     if (history.state?.moreSheet) history.back(); // drop the entry the sheet added
+  }
+
+  /** Modal: Tab and Shift+Tab wrap inside the sheet instead of reaching the page behind the scrim. */
+  protected trap(e: KeyboardEvent): void {
+    if (e.key !== 'Tab') return;
+    const f = [...this.sheet()!.nativeElement.querySelectorAll<HTMLElement>('a[href], button:not([disabled])')];
+    e.preventDefault();
+    if (!f.length) return;
+    const i = f.indexOf(document.activeElement as HTMLElement);
+    f[e.shiftKey ? (i <= 0 ? f.length - 1 : i - 1) : (i === f.length - 1 ? 0 : i + 1)]!.focus();
   }
 
   /** "Back" with the sheet open: it was the sheet's own entry that went away, so only the sheet closes. */
