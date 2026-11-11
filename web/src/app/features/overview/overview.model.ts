@@ -1,7 +1,7 @@
 // What Hoy says, as pure functions of what the API answered. Nothing is computed that the contracts do not support: a window with no
 // baseline says so, data older than two days is said to be old (never read as zero), and no number is invented.
 import { Delta, fmtDate, fmtDelta, pc1, scaleDelta } from '../../core/format';
-import { calendarDaysAgo, DAY, isStale, shift, shortDate, sign } from '../../core/xp-week';
+import { calendarDaysAgo, DAY, isStale, shortDate, sign } from '../../core/xp-week';
 import { attentionOrder, gameName, gdays, intervalVerdict, Verdict, VERDICT_ORDER, verdictFor, verdictKey } from '../../core/words';
 
 // What this page reads of each domain's response: a subset of the Chess and Games models (a feature does not import another feature).
