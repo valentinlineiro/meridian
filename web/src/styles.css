@@ -23,9 +23,9 @@ header{position:sticky;top:0;z-index:10;background:var(--surface);border-bottom:
 .btn-g{background:var(--line);color:var(--text-2);border:1px solid var(--line-strong)}.btn-g:disabled{opacity:.5;cursor:default}
 .btn[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 main{max-width:1120px;margin:0 auto;padding:20px 16px 40px}
-.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:16px 0}
-@media(max-width:760px){.kpis{grid-template-columns:repeat(2,1fr)}}
-.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:14px 16px}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:16px 0}
+@media(max-width:760px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.kpi{min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:14px 16px}
 .kpi .kl{font-size:var(--fs-xs);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 .kpi b{font-size:var(--fs-display);display:block;margin-top:4px}
 .kpi small{color:var(--muted);font-size:var(--fs-sm)}
@@ -172,7 +172,7 @@ a.side-item{text-decoration:none}a.side-item:hover{text-decoration:none}
 .lgsave{width:100%;margin-top:16px;padding:12px;font-size:var(--fs-lg)}
 .lgday{list-style:none;margin:0;padding:0}.lgday li{padding:4px 0;border-top:1px solid var(--line);font-size:var(--fs-lg)}
 .sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
-.tblwrap{overflow-x:auto;scrollbar-color:var(--line-strong) var(--sunken);-webkit-overflow-scrolling:touch;
+.tblwrap{position:relative;overflow-x:auto;scrollbar-color:var(--line-strong) var(--sunken);-webkit-overflow-scrolling:touch;
   /* sombras de scroll: aparecen solo en el lado con contenido oculto */
   background:linear-gradient(to right,var(--bg) 30%,transparent) left center/40px 100% no-repeat local,linear-gradient(to left,var(--bg) 30%,transparent) right center/40px 100% no-repeat local,linear-gradient(to right,rgba(0,0,0,.55),transparent) left center/14px 100% no-repeat scroll,linear-gradient(to left,rgba(0,0,0,.55),transparent) right center/14px 100% no-repeat scroll}
 .tblwrap:focus-visible{outline:2px solid var(--link);outline-offset:2px}
