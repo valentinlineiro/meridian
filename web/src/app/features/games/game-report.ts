@@ -6,7 +6,7 @@ import { Help } from '../../shared/help';
 import { Section } from '../../shared/section';
 import { Stats } from '../../shared/stats';
 import { VerdictPill } from '../../shared/verdict';
-import { evidenceLines, evolutionFacts, levelRows, normalRange, reportSentence, weekdayReport, weeklyBeat } from './game-report.model';
+import { evidenceLines, evolutionFacts, extraLines, levelRows, normalRange, reportSentence, secondsWeeks, weekdayReport, weeklyBeat } from './game-report.model';
 import { GamesChart } from './games-chart';
 import { gbeatStreak, gdays, interpretationLines, Range, RANGE_NAMES, staleTitle, Summary, trajectory } from './games.model';
 
@@ -44,7 +44,9 @@ export class GameReport {
   /** The weekly (90-day) trajectory the chart draws; null when it cannot be read. */
   protected readonly traj = computed(() => safe(() => trajectory(this.summary(), this.game(), '90'), null));
   /** The run of days beating the average, as the list says it: a stale manual log is "sin racha activa", never a zero. */
-  protected readonly streak = computed(() => safe(() => ({ now: gbeatStreak(this.x(), this.summary()), stale: staleTitle(this.x(), this.summary()), max: gdays(this.x().beatStreak.max) }), null));
+  protected readonly streak = computed(() => safe(() => ({ now: gbeatStreak(this.x(), this.summary()), stale: staleTitle(this.x(), this.summary()), max: gdays(this.x().beatStreak.max), maxDate: this.x().beatStreak.maxDate ?? null }), null));
+  protected readonly seconds = computed(() => safe(() => secondsWeeks(this.x()), null));
+  protected readonly extras = computed(() => safe(() => extraLines(this.x()), [] as string[]));
   protected readonly evidence = computed(() => safe(() => evidenceLines(this.x()), [] as string[]));
 
   protected count = (n: number, one: string) => `${n} ${one}${n === 1 ? '' : 's'}`;

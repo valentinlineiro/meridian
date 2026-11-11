@@ -1,10 +1,10 @@
-import { evidenceLines, evolutionFacts, levelRows, MIN_WEEK_N, normalRange, reportSentence, weekdayReport, weeklyBeat } from './game-report.model';
+import { evidenceLines, evolutionFacts, extraLines, levelRows, MIN_WEEK_N, normalRange, reportSentence, secondsWeeks, weekdayReport, weeklyBeat } from './game-report.model';
 import { interpretationLines, type Game } from './games.model';
 
 // Synthetic fixtures: only the fields the report reads.
 const cell = (dow: number, n: number, losses: number, lo: number | null = null, hi: number | null = null) => ({ dow, n, losses, rate: n ? losses / n : null, lo, hi });
 const weeks = (beats: (number | null)[], n = 7) => beats.map((beat, i) => ({ start: `2026-09-${String(i + 1).padStart(2, '0')}`, n, eff: 1.5, beat }));
-const game = (o: Partial<Record<'windows' | 'trajectory' | 'losses' | 'best', unknown>> = {}) => ({
+const game = (o: Record<string, unknown> = {}) => ({
   best: { seconds: 19, date: '2026-09-28' },
   windows: { '28': { time: { median: 43, p25: 36.75, p75: 52, nTime: 28 }, beat: { rate: 24 / 28, k: 24, nBeat: 28 } } },
   trajectory: { '90': [] },
@@ -166,5 +166,52 @@ describe('evidenceLines: what the data show, and nothing they do not', () => {
   });
   it('shouldOmitTheDateWhenTheFirstResultIsUnknown', () => {
     expect(evidenceLines(full({ firstDate: undefined }))[0]).toBe('146 de 177 días mejor que la media (82 %)');
+  });
+});
+
+describe('secondsWeeks: the weekly series in seconds against the published average', () => {
+  const wk = (weekStart: string, n: number, medianSec: number, medianAvgSec: number | null, medianEff: number | null) => ({ weekStart, n, nWithAvg: medianAvgSec == null ? 0 : n, medianSec, medianAvgSec, medianEff });
+  it('shouldListTheNewestWeeksFirstWithTheirOwnAndTheReferenceTime', () => {
+    const g = game({ weekly: [wk('2026-10-26', 7, 43, 61, 1.42), wk('2026-11-02', 2, 50, null, null)] });
+    expect(secondsWeeks(g)).toEqual([
+      { start: '2026-11-02', own: '0:50', ref: '—', speed: '—', n: 2, complete: false },
+      { start: '2026-10-26', own: '0:43', ref: '1:01', speed: '×1,42', n: 7, complete: true },
+    ]);
+  });
+  it('shouldKeepOnlyTheLastEightWeeks', () => {
+    const many = Array.from({ length: 12 }, (_, i) => wk(`2026-09-${String(i + 1).padStart(2, '0')}`, 7, 40, 60, 1.5));
+    expect(secondsWeeks(game({ weekly: many }))).toHaveLength(8);
+  });
+  it('shouldBeNullWithoutTheField', () => {
+    expect(secondsWeeks(game())).toBeNull();
+    expect(secondsWeeks(game({ weekly: [] }))).toBeNull();
+  });
+});
+
+describe('extraLines: savings, spread and outlier days, as statements with their n', () => {
+  const outliers = (o: object = {}) => ({ n: 40, minN: 20, good: [], bad: [], ...o });
+  it('shouldSayTheSavingsWithMedianTotalAndNAndThatItIsNotAdjustedForDifficulty', () => {
+    const l = extraLines(game({ savings: { medianSec: 12, totalSec: 5400, n: 150 } }));
+    expect(l[0]).toBe('Frente a la media de LinkedIn: ahorras 12 s en la partida mediana (n = 150); acumulado, ahorras 90 min en 150 partidas (suma histórica, sin descontar la dificultad)');
+  });
+  it('shouldSayLosesWhenTheSavingsAreNegative', () => {
+    expect(extraLines(game({ savings: { medianSec: -5, totalSec: -100, n: 10 } }))[0]).toBe('Frente a la media de LinkedIn: pierdes 5 s en la partida mediana (n = 10); acumulado, pierdes 100 s en 10 partidas (suma histórica, sin descontar la dificultad)');
+  });
+  it('shouldGiveTheSpreadOfEfficiencyWithItsN', () => {
+    expect(extraLines(game({ effSpread: { p25: 1.5, p75: 3, ratio: 2, n: 40 } }))[0]).toBe('Amplitud de la velocidad: de ×1,50 a ×3,00 la media en la mitad central de tus partidas (P75/P25 = 2,0; n = 40)');
+  });
+  it('shouldSayTooFewDaysWhenThereAreNotEnoughForOutliers', () => {
+    expect(extraLines(game({ outliers: outliers({ n: 12 }) }))[0]).toBe('Días atípicos: aún pocos datos (n = 12; hacen falta 20)');
+  });
+  it('shouldSayNoneWhenNoDayStandsOutWithEnoughData', () => {
+    expect(extraLines(game({ outliers: outliers() }))[0]).toBe('Días atípicos por velocidad: ninguno en 40 partidas (convención estadística, no diagnóstico)');
+  });
+  it('shouldListGoodAndBadDaysByDateAndCapTheListAtFive', () => {
+    const d = (n: number, eff: number) => Array.from({ length: n }, (_, i) => ({ date: `2026-10-${String(i + 1).padStart(2, '0')}`, eff }));
+    const l = extraLines(game({ outliers: outliers({ good: d(7, 3), bad: d(1, 0.5) }) }));
+    expect(l[0]).toBe('Días atípicos por velocidad (convención estadística, no calibrada con estos datos): 7 muy buenos (los 5 más recientes: 3 oct 2026, 4 oct 2026, 5 oct 2026, 6 oct 2026, 7 oct 2026) y 1 muy flojo (1 oct 2026)');
+  });
+  it('shouldGiveNothingWhenTheContractCarriesNoneOfThem', () => {
+    expect(extraLines(game())).toEqual([]);
   });
 });

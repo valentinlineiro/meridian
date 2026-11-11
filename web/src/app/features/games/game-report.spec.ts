@@ -151,4 +151,41 @@ describe('GameReport', () => {
     expect(text('gameReportWeeksWindow')).toContain('90 días');
     expect(text('gameReportWeekdaysWindow')).toContain('todo el histórico');
   });
+
+  describe('fase 2: segundos, ahorro, amplitud y días atípicos', () => {
+    const phase2 = { weekly: [{ weekStart: '2026-10-26', n: 7, nWithAvg: 7, medianSec: 43, medianAvgSec: 61, medianEff: 1.42 }, { weekStart: '2026-11-02', n: 2, nWithAvg: 2, medianSec: 50, medianAvgSec: 60, medianEff: 1.2 }],
+      savings: { medianSec: 12, totalSec: 5400, n: 150 }, effSpread: { p25: 1.5, p75: 3, ratio: 2, n: 150 }, outliers: { n: 150, minN: 20, good: [{ date: '2026-10-03', eff: 5 }], bad: [] } };
+
+    it('shouldShowTheWeeksInSecondsNewestFirstAndMarkTheIncompleteOnes', async () => {
+      await open(summary({ queens: queens(phase2) }));
+      const rows = [...el.querySelectorAll('#gameReportSeconds tbody tr')].map((r) => r.textContent!.replace(/\s+/g, ' ').trim());
+      expect(rows[0]).toContain('2 nov 2026');
+      expect(rows[0]).toContain('0:50');
+      expect(rows[0]).toContain('incompleta');
+      expect(rows[1]).toContain('0:43');
+      expect(rows[1]).toContain('1:01');
+      expect(rows[1]).not.toContain('incompleta');
+    });
+
+    it('shouldSayTheSavingsTheSpreadAndTheOutliersWithTheirN', async () => {
+      await open(summary({ queens: queens(phase2) }));
+      const t = text('gameReportExtras');
+      expect(t).toContain('ahorras 12 s en la partida mediana (n = 150)');
+      expect(t).toContain('Amplitud de la velocidad: de ×1,50 a ×3,00');
+      expect(t).toContain('1 muy bueno (3 oct 2026)');
+      expect(t).toContain('no calibrada');
+    });
+
+    it('shouldShowTheDateOfTheLongestStreak', async () => {
+      await open(summary({ queens: queens({ beatStreak: { current: 1, max: 13, maxDate: '2026-10-31' } }) }));
+      expect(text('gameReportStreak')).toContain('máxima 13 días (hasta el 31 oct 2026)');
+    });
+
+    it('shouldRenderNothingNewWhenTheSummaryPredatesThePhase', async () => {
+      await open(summary({ queens: queens() }));
+      expect(el.querySelector('#gameReportSeconds')).toBeNull();
+      expect(el.querySelector('#gameReportExtras')).toBeNull();
+      expect(text('gameReportStreak')).not.toContain('hasta el');
+    });
+  });
 });

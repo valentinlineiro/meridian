@@ -18,13 +18,18 @@ export interface Interp {
   bands: { '28': [number, number]; '28v56': [number, number]; rho112: [number, number] } | null;
 }
 export interface Game {
-  n: number; firstDate?: string; best: { seconds: number; date: string }; beatStreak: { current: number; max: number };
+  n: number; firstDate?: string; best: { seconds: number; date: string }; beatStreak: { current: number; max: number; maxDate?: string | null };
   trend112: { rho: number | null; slopePctPer28d: number | null; n: number; days: number };
   recent28vBase56: { delta: number; nCur: number; nBase: number };
   interpretation: Interp; series: { date: string; eff: number; roll: number }[];
   windows: Record<Range, Win>; trajectory: Record<Range, Bucket[]>;
   adjusted: Adjusted; losses: Losses;
+  // Report phase 2 (server: GameReportStats.ts); absent in a summary that predates it.
+  weekly?: WeekSeconds[]; savings?: { medianSec: number; totalSec: number; n: number } | null;
+  effSpread?: { p25: number; p75: number; ratio: number; n: number } | null;
+  outliers?: { n: number; minN: number; good: { date: string; eff: number }[]; bad: { date: string; eff: number }[] };
 }
+export interface WeekSeconds { weekStart: string; n: number; nWithAvg: number; medianSec: number; medianAvgSec: number | null; medianEff: number | null }
 export interface Adjusted {
   label: 'mejora' | 'deterioro' | 'sin_cambio' | 'pocos_datos'; elasticity: number | null; n: number;
   windows: Record<Range, { pct: number | null; n: number }>; trend: { pctPer28d: number; noise: [number, number]; weeks: number } | null;
