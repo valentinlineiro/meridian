@@ -47,6 +47,14 @@ describe('MatchesTable', () => {
     expect(text('chessMatchesSubtitle')).toBe('Partidas recientes (1 mostradas)');
   });
 
+  it('shouldNotAnnounceAnUnknownOpponentAsVsDash', async () => {
+    await answer({ rows: [row({ opponent_name: null }), row({ opponent_name: 'Bot 8' })], total: 2 });
+    const [a, b] = [...el.querySelectorAll('#mb tr')].map((tr) => tr.querySelector('button.rowbtn')!.getAttribute('aria-label')!);
+    expect(a).toMatch(/^Ver partida, /);
+    expect(a).not.toContain('—');
+    expect(b).toContain('Ver partida vs Bot 8');
+  });
+
   it('shouldRenderEachColumnAndEscapeThirdPartyStrings', async () => {
     const hostile = '<img src=x onerror=alert(1)>';
     await answer({ rows: [row({ opponent_name: hostile }), row({ match_id: null, ply_count: null, opponent_type: 'pvp', opponent_segment: 'unknown', user_color: 'black', result: 'loss', end_condition: 'disconnection', opening_family: 'unclassified', phase_key: 'unknown', reviewed: 0, opponent_elo: 1210 })], total: 2 });
