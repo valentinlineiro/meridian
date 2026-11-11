@@ -30,7 +30,8 @@ function rowView(m: MatchRow) {
     id: m.ply_count != null && m.match_id ? m.match_id : null, // only a game with stored moves opens in the viewer
     date: formatMatchDate(m.played_at, m.first_seen_at),
     fullDate: at ? at.toLocaleString('es-ES') : null,
-    opp: (m.opponent_name || '—') + (seg ? ' ' : ''), named: !!m.opponent_name, seg,
+    // Duolingo sends no name for bots: the segment is then the label (shown once), and a dash only when there is neither
+    opp: m.opponent_name ? m.opponent_name + (seg ? ' ' : '') : seg || '—', named: !!m.opponent_name, seg: m.opponent_name ? seg : '',
     type: t === 'bot' ? 'Bot' : t === 'pvp' ? 'PvP' : t || '—', pvp: t === 'pvp',
     opening: m.opening_family_label && m.opening_family !== 'unclassified' ? m.opening_family_label : '',
     phase: m.phase_key && m.phase_key !== 'unknown' ? PHASES[m.phase_key] || m.phase_key : '',
