@@ -3,6 +3,7 @@ import { arrow28, candidate, publish, type Arrow, type Label, type Reason } from
 import type { DayRecord } from "./LinkedinGames.ts";
 import { NOISE_BANDS, type Band, type GameBands, type NoiseBands } from "./NoiseBands.ts";
 import { adjustedForm, dayLevels, dowOf, lossMap, type AdjustedForm, type Level, type LossMap } from "./AdjustedForm.ts";
+import { effSpread, outliers, savings, weekly, type EffSpread, type Outliers, type Savings, type WeekPoint } from "./GameReportStats.ts";
 import { recent28vBase56, trend112, type Recent28vBase56, type Trend112 } from "./GameTrend.ts";
 
 // Read-side metrics over the recorded days (design: docs/audits/linkedin-games-read-view-design-2026-11-03.md).
@@ -12,7 +13,7 @@ export const WINDOW_DAYS = 28; // four whole weeks: cancels the weekend effect w
 const DAY_MS = 86_400_000;
 const addDays = (date: string, n: number) => new Date(Date.parse(`${date}T00:00:00Z`) + n * DAY_MS).toISOString().slice(0, 10);
 
-export interface Streak { current: number; max: number }
+export interface Streak { current: number; max: number; maxDate: string | null } // maxDate: the last day of the longest run
 export interface SeriesPoint { date: string; eff: number; roll: number }
 // The 28-day comparison carries its arrow and band (design rev. 4, §2.4); 7 d, 90 d and "Todo" stay exactly as measured in P0.
 export interface Window28 extends Omit<WindowResult, "delta"> {
@@ -45,6 +46,10 @@ export interface GameSummary {
   trajectory: Record<RangeKey, Bucket[]>;
   adjusted: AdjustedForm;
   losses: LossMap;
+  weekly: WeekPoint[]; // report phase 2 (GameReportStats.ts)
+  savings: Savings | null;
+  effSpread: EffSpread | null;
+  outliers: Outliers;
 }
 /** Monday = 0 … Sunday = 6: how all the games together went on that weekday, over the whole history. */
 export interface Weekday { dow: number; n: number; beat: BeatBlock; eff: EffBlock }
@@ -63,15 +68,15 @@ const positive = (v: unknown): v is number => typeof v === "number" && Number.is
 // Runs of strictly consecutive calendar days that satisfy `ok`. The current run counts only while its last day is
 // today or yesterday; a missing date breaks it (nothing is inferred).
 function streak(days: Array<{ date: string; ok: boolean }>, today: string): Streak {
-  let run = 0, max = 0, prev = NaN;
+  let run = 0, max = 0, maxDate: string | null = null, prev = NaN;
   for (const d of days) {
     const n = dayNo(d.date);
     run = d.ok ? (n === prev + 1 && run > 0 ? run + 1 : 1) : 0;
     prev = n;
-    max = Math.max(max, run);
+    if (run > max) { max = run; maxDate = d.date; } // strictly greater: the first of equally long runs keeps its date
   }
   const last = days[days.length - 1];
-  return { current: last && dayNo(today) - dayNo(last.date) <= 1 ? run : 0, max };
+  return { current: last && dayNo(today) - dayNo(last.date) <= 1 ? run : 0, max, maxDate };
 }
 
 function gameSummary(game: string, obs: Obs[], today: string, noise: NoiseBands): GameSummary {
@@ -103,6 +108,10 @@ function gameSummary(game: string, obs: Obs[], today: string, noise: NoiseBands)
     trajectory: trajectory(obs, today),
     adjusted: adjustedForm(obs, today),
     losses: lossMap(obs),
+    weekly: weekly(obs),
+    savings: savings(obs),
+    effSpread: effSpread(obs),
+    outliers: outliers(obs),
     series: withAvg.map((o) => ({
       date: o.date,
       eff: eff(o),
