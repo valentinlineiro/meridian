@@ -64,6 +64,15 @@ Este es el p-valor de permutación exacto con el «+1» de los datos incluidos (
 
 Un hallazgo se publica solo si **el mismo aspecto y el mismo signo** estaban también una semana antes; para el día de la semana, **el mismo día concreto** (martes → viernes no es estable aunque ambos sean «desfavorables»). En otro caso queda como «próximo aspecto a observar», estimado.
 
+**Implementación en el servidor (entrega 2).** `GameDiagnosis.ts` calcula el diagnóstico con los mismos estadísticos que `calibrate.py` (paridad comprobada con un fixture sintético generado por el script de Python). Decisiones que la metodología no fijaba:
+
+- El corte de «hace una semana» es `última fecha registrada − 7 días` (no necesariamente un domingo) y **reutiliza las réplicas del artefacto de hoy**: la nula está calibrada con los datos tal como eran, por eso caduca a los 28 días.
+- **Cada corte exige ≥ 60 observaciones con media** (`MIN_FIT`), como en la calibración; un corte con menos no puede confirmar nada. (Lo detectó la comparación con los datos reales: sin esta guarda, el lunes de Tango se habría publicado.)
+- Los hallazgos son **por dimensión**: cada dimensión con `p ajustado ≤ α` es un hallazgo (puede haber una debilidad y una fortaleza a la vez). El `p ajustado` de cada dimensión es la proporción del conjunto con `U ≤ p_k(datos)`; para la dimensión de menor `p` coincide con el del script.
+- Fortaleza o debilidad: día con más derrotas que su tasa global → debilidad; regularidad con más dispersión → debilidad (menos regular); lo contrario → fortaleza.
+- **Coherencia con el veredicto:** al salir la tendencia (§3.6), ninguna de las dos dimensiones puede contradecir la etiqueta calibrada, que habla de la evolución de la velocidad. Un test comprueba que el diagnóstico **no modifica** `interpretation`; no se ha inventado una regla de conflicto que no hace falta.
+- Un artefacto mal formado **hace fallar la carga** (`parseDiagnosisThresholds`): un diagnóstico de una calibración rota sería peor que ninguno.
+
 ### 3.5 Artefacto
 
 `diagnosis-thresholds.json`: por juego, las `R` réplicas conjuntas `(día, regularidad)` tal como se generaron (los pares, **no** dos listas ordenadas: `U` necesita los dos valores de cada réplica a la vez; de ellos salen `p` y el orden exacto de §3.3), más `calibratedThrough`, `R`, semillas y versión del script. Lo genera un script offline (`docs/audits/…`) y se copia tal cual: nunca se edita a mano ni se recalcula en el servidor.
