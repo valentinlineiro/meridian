@@ -202,8 +202,38 @@ describe('TabBar', () => {
     it('shouldListTheSecondaryPagesAsAListOfLinks', async () => {
       const el = await render('/overview');
       await press(el);
-      const links = [...sheetEl(el).querySelectorAll('ul[aria-label="Resumen"] > li > a')];
+      const links = [...sheetEl(el).querySelectorAll('ul[aria-labelledby="sheetGroupResumen"] > li > a')];
       expect(links.map((a) => a.textContent!.trim())).toEqual(['Qué cambió', 'Trayectoria']);
+    });
+  });
+  describe('Más como menú de dos secciones', () => {
+    const sheetEl = (el: HTMLElement) => el.querySelector<HTMLElement>('#moreSheet')!;
+    it('shouldShowResumenAndCuentaAsVisibleHeadingsInThatOrder', async () => {
+      const el = await render('/overview');
+      await press(el);
+      expect([...sheetEl(el).querySelectorAll('.sheet-group')].map((h) => h.textContent!.trim())).toEqual(['Resumen', 'Cuenta']);
+      expect(sheetEl(el).querySelector('hr')).toBeNull();
+    });
+    it('shouldTieEachGroupToItsHeading', async () => {
+      const el = await render('/overview');
+      await press(el);
+      const [h1, h2] = [...sheetEl(el).querySelectorAll('.sheet-group')];
+      const list = sheetEl(el).querySelector('ul')!;
+      expect(list.getAttribute('aria-labelledby')).toBe(h1!.id);
+      const account = sheetEl(el).querySelector('[role="group"]')!;
+      expect(account.getAttribute('aria-labelledby')).toBe(h2!.id);
+      expect([...account.querySelectorAll('a, button')].map((e) => e.textContent!.trim())).toEqual(['Sincronizar', 'Configuración', 'Salir']);
+    });
+    it.each([['/trajectory', 'Trayectoria'], ['/changes', 'Qué cambió'], ['/settings', 'Configuración']])('shouldMarkTheCurrentSecondaryPageInTheMenu %s', async (url, name) => {
+      const el = await render(url);
+      await press(el);
+      const current = [...sheetEl(el).querySelectorAll('a[aria-current="page"]')].map((a) => a.textContent!.trim());
+      expect(current).toEqual([name]);
+    });
+    it('shouldMarkNoLinkWhenThePageIsOneOfTheTabs', async () => {
+      const el = await render('/chess');
+      await press(el);
+      expect(sheetEl(el).querySelector('a[aria-current]')).toBeNull();
     });
   });
 });
