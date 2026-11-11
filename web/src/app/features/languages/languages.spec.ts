@@ -551,6 +551,14 @@ describe('Languages', () => {
       }
     });
 
+    it('shouldKeepTheLimitsNoticeAsAClosedDisclosureAboveTheCourseHero', async () => {
+      await open();
+      const limits = q('details#langLimitsCard') as HTMLDetailsElement;
+      expect(limits.open).toBe(false);
+      expect(limits.querySelector('summary')!.textContent).toContain('Lo que estos datos no pueden decir');
+      expect(limits.compareDocumentPosition(q('#langCourseHero')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
     it('shouldLabelTheCefrCardAsCurricularUnitsNotProficiency', async () => { // tests/uxPhase0.test.ts
       await open();
       q('#langCoursesList details[open] button')!.click();

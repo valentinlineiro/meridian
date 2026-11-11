@@ -19,15 +19,15 @@
     <div id="langContent">
      <!-- Nivel 1: Vista Global -->
      <div id="langGlobalView">
-      <div class="card" id="langLimitsCard" style="margin-bottom:12px;background:var(--sunken);border:1px solid var(--selected)">
-        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+      <details class="card" id="langLimitsCard" style="margin-bottom:12px;background:var(--sunken);border:1px solid var(--selected)">
+        <summary style="cursor:pointer;display:flex;align-items:center;gap:6px">
           <span style="color:var(--warn);font-size:var(--fs-md)" aria-hidden="true">⚠</span>
           <b style="font-size:var(--fs-sm);letter-spacing:.04em;text-transform:uppercase;color:var(--text)">Lo que estos datos no pueden decir</b>
-        </div>
-        <div class="muted" style="font-size:var(--fs-sm);line-height:1.5">
+        </summary>
+        <div class="muted" style="font-size:var(--fs-sm);line-height:1.5;margin-top:8px">
           No miden comprensión auditiva, expresión oral, lectura ni competencia comunicativa real. XP, racha y lecciones completadas son métricas de actividad y avance curricular en la plataforma, no representan dominio lingüístico ni una evaluación de competencia real.
         </div>
-      </div>
+      </details>
       <div class="card hero-card" id="langCourseHero" style="margin-bottom:12px">
         <div id="langHeroCard">
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
@@ -35,7 +35,7 @@
               <div class="muted" style="font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.05em">Curso seleccionado</div>
               <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
                 <span id="langCourseFlag" style="font-size:var(--fs-h)">{{ h?.flag }}</span>
-                <select id="langCourseSelect" aria-label="Curso seleccionado" (change)="select($any($event.target).value)" style="flex:1 1 0;min-width:0;max-width:100%;text-overflow:ellipsis;font-size:var(--fs-xl);font-weight:700">
+                <select id="langCourseSelect" class="course-select" aria-label="Curso seleccionado" (change)="select($any($event.target).value)" style="flex:1 1 0;min-width:0;max-width:100%;text-overflow:ellipsis">
                   @for (op of h?.options ?? []; track op.id) { <option [value]="op.id" [selected]="op.id === selected()">{{ op.label }}</option> }
                 </select>
               </div>
