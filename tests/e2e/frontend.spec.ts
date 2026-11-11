@@ -145,6 +145,7 @@ test.describe('Frontend E2E Integration Suite', () => {
     });
 
     await page.route('**/api/me/matches/*/game', async (route) => {
+      await new Promise((r) => setTimeout(r, 400)); // the game arrives after the modal opens, as on a slow connection: the test must wait for the moves
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -182,9 +183,10 @@ test.describe('Frontend E2E Integration Suite', () => {
     await expect(modal).toBeVisible();
     await expect(modal.locator('#gClose')).toBeFocused();
 
-    // Tab navigates into move links
-    await page.keyboard.press('Tab');
+    // Tab navigates into move links (once the game has loaded: before that there are none to reach)
     const firstMove = modal.locator('#gMoves .gm').first();
+    await expect(firstMove).toBeVisible();
+    await page.keyboard.press('Tab');
     await expect(firstMove).toBeFocused();
     await expect(firstMove).toHaveText('e4');
 
