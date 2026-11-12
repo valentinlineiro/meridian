@@ -1,4 +1,4 @@
-import { chessRow, eloChange, gamesRow, GamesSummaryIn, headline, syncChip, windowStart } from './overview.model';
+import { chessRow, eloChange, gamesRow, GamesSummaryIn, syncChip, windowStart } from './overview.model';
 // minimal summaries: only what the Overview reads of each game
 
 // "Now" is 2026-11-10 09:00 UTC (a Tuesday). Every date below is relative to it.
@@ -152,19 +152,6 @@ describe('gamesRow: what needs a look first across the games', () => {
   });
 });
 
-describe('headline', () => {
-  const v = (state: string, dir: 'up' | 'down' | null, label: string) => ({ state, dir, label, pill: '', sentence: '' }) as never;
-  it('shouldNameWhatNeedsALookWorstFirst', () => {
-    expect(headline([{ name: 'Ajedrez', verdict: v('possible', 'up', 'Posible subida') }, { name: 'Games', verdict: v('confirmed', 'down', 'A la baja') }]))
-      .toBe('Games: a la baja · Ajedrez: posible subida');
-  });
-  it('shouldSayNoClearChangeWhenNothingStandsOut', () => {
-    expect(headline([{ name: 'Ajedrez', verdict: v('no-signal', null, 'x') }, { name: 'Games', verdict: v('few-data', null, 'y') }])).toBe('Sin cambios claros en tus resultados recientes.');
-  });
-  it('shouldNotPretendWhenThereIsNoVerdictAtAll', () => {
-    expect(headline([{ name: 'Ajedrez', verdict: null }, { name: 'Games', verdict: v('few-data', null, 'y') }])).toBe('Aún no hay datos suficientes para valorar tu ritmo.');
-  });
-});
 
 describe('windowStart', () => {
   it('shouldGiveTheOldestDateOfTheNewestN', () => {

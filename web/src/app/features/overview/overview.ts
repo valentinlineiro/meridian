@@ -4,13 +4,12 @@ import { RouterLink } from '@angular/router';
 import { catchError, forkJoin, map, Observable, of } from 'rxjs';
 import { ApiClient } from '../../core/api-client';
 import { StatsService } from '../../core/stats.service';
-import { es, Langs, XpDay } from '../../core/courses';
-import { relDate } from '../../core/format';
+import { Langs, XpDay } from '../../core/courses';
 import { ResultBars } from '../../shared/result-bars';
 import { Sparkline } from '../../shared/sparkline';
 import { VerdictPill } from '../../shared/verdict';
-import { chessRow, ChessRecentIn, ChessSummaryIn, gamesRow, GamesSummaryIn, headline, syncChip, TimelineIn } from './overview.model';
-import { isStale, xpSummary, xpWeek, xpWeekLine } from '../../core/xp-week';
+import { chessRow, ChessRecentIn, ChessSummaryIn, gamesRow, GamesSummaryIn, syncChip, TimelineIn } from './overview.model';
+import { xpSummary, xpWeek, xpWeekLine } from '../../core/xp-week';
 
 /**
  * Hoy: how you are doing against your own normal, one row per domain. The rows come from overview.model.ts; totals live in each domain's view.
@@ -38,8 +37,6 @@ function view(d: OverviewData, now: number) {
   // so on a quiet stretch it would make fresh data look old.
   const xpSynced = d.langs?.updatedAt ?? null;
   const w = d.summaries ? xpWeek(d.summaries, xpSynced, now) : null;
-  const old = isStale(d.langs?.updatedAt, now);
-  const streak = d.langs?.streak;
   const bars = w?.state === 'ok' ? (() => {
     const max = Math.max(1, ...w.days.map((x) => x.xp));
     return w.days.map((x) => ({ letter: 'DLMXJVS'[new Date(x.date + 'T00:00:00Z').getUTCDay()]!, h: Math.max(2, Math.round(x.xp / max * 28)), xp: x.xp }));
@@ -49,12 +46,10 @@ function view(d: OverviewData, now: number) {
   try { g = d.games ? gamesRow(d.games) : null; } catch { g = null; } // a malformed summary is unavailable, not an empty log
 
   return {
-    headline: headline([{ name: 'Ajedrez', verdict: c.verdict }, { name: g?.name ?? 'Games', verdict: g?.verdict ?? null }]),
     chess: { ...c, form: c.form ?? NA, trend, freshChip: syncChip(chessSynced, now) },
     lang: {
       ...(w?.state === 'ok' ? (({ big, delta, note }) => ({ big, delta, line: note }))(xpSummary(w, today))
         : { big: '—', delta: '', line: !d.summaries ? NA : !w ? 'Sin sincronizar todavía' : xpWeekLine(w, today) }),
-      streak: streak == null ? '' : old ? `Racha de Duolingo: ${es(Number(streak))} días (dato de hace ${relDate(d.langs!.updatedAt!, now).replace(/^hace /, '')})` : `🔥 Racha de Duolingo: ${es(Number(streak))} días`,
       bars, aria: 'XP de los últimos 7 días completos: ' + bars.map((b) => `${b.letter} ${b.xp}`).join(', '),
       freshChip: syncChip(xpSynced, now),
     },

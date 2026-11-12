@@ -1,4 +1,5 @@
 import { Component, computed, input } from '@angular/core';
+import { fmtDate } from '../core/format';
 
 export interface EloPoint { date: string; elo: number }
 
@@ -25,7 +26,7 @@ const W = 520, H = 90, PAD = 10;
         <text [attr.x]="PAD" y="12" fill="var(--muted)" font-size="10">{{ c.max }}</text>
         <text [attr.x]="PAD" [attr.y]="H - 2" fill="var(--muted)" font-size="10">{{ c.min }}</text>
       </svg>
-      <div class="muted u-d-flex u-jc-space-between"><span>{{ ps[0].date }}</span><span>{{ ps[ps.length - 1].date }}</span></div>
+      <div class="muted u-d-flex u-jc-space-between"><span>{{ axis(ps[0].date) }}</span><span>{{ axis(ps[ps.length - 1].date) }}</span></div>
     }
   `,
 })
@@ -34,6 +35,8 @@ export class Sparkline {
   protected readonly W = W;
   protected readonly H = H;
   protected readonly PAD = PAD;
+
+  protected readonly axis = (d: string) => fmtDate(d).replace(/ \d{4}$/, ''); // axis: day and month, the year is not needed in a 30-day window
 
   protected readonly firstLabel = computed(() =>
     new Date(this.points()[0].date + 'T12:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' }));

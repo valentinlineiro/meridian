@@ -78,7 +78,7 @@ describe('Overview', () => {
 
   it('shouldSayHowYouAreDoingInOneRowPerDomainWhenEverythingAnswers', async () => {
     const el = await open(fullApi());
-    expect(text(el, 'overviewHeadline')).toBe('Tango: a la baja · Ajedrez: posible subida');
+    expect(el.querySelector('#overviewHero')!.textContent!.trim()).toBe('Hoy'); // the cards say it; the header does not repeat them
 
     expect(el.querySelector('#overviewChessRow .pill')!.textContent).toBe('Posible subida');
     expect(text(el, 'overviewChessForm')).toMatch(/^Últimas 50 partidas \(desde el .+\): 60,0 % de victorias · \+6,0 puntos de % \(entre \+1,0 y \+11,0\) frente a las anteriores$/);
@@ -89,7 +89,7 @@ describe('Overview', () => {
     expect(text(el, 'overviewLangBig')).toBe('1897');
     expect(text(el, 'overviewLangDelta')).toBe('−21 % frente a tu media');
     expect(text(el, 'overviewLangXp')).toBe('Hasta ayer · media de las 4 semanas anteriores: 2401 XP por semana');
-    expect(text(el, 'overviewLangStreak')).toBe('🔥 Racha de Duolingo: 108 días');
+    expect(el.querySelector('#overviewLangStreak')).toBeNull(); // the Duolingo streak lives in Idiomas
     expect(el.querySelectorAll('#overviewLangRow .wk > div')).toHaveLength(7);
 
     expect(el.querySelector('#overviewGamesRow .pill')!.textContent).toBe('A la baja');
@@ -141,7 +141,6 @@ describe('Overview', () => {
       expect(el.querySelector('#overviewLangDelta')).toBeNull();
       expect(el.querySelector('#overviewLangRow .wk')).toBeNull();
       expect(el.querySelector('#overviewLangRow')!.textContent).not.toContain('0 XP');
-      expect(text(el, 'overviewLangStreak')).toBe('Racha de Duolingo: 108 días (dato de hace 32d)');
       expect(el.querySelector('#overviewLangRow .pill-win')).toBeNull();
       expect(el.querySelector('#overviewLangRow .pill-warn')!.textContent).toContain('hace 32 días');
     });
@@ -161,7 +160,6 @@ describe('Overview', () => {
       api['/api/languages/xp'] = { summaries: [] };
       const el = await open(api);
       expect(text(el, 'overviewLangXp')).toBe('Sin sincronizar todavía');
-      expect(text(el, 'overviewLangStreak')).toBe('');
     });
   });
 
@@ -193,7 +191,6 @@ describe('Overview', () => {
       });
       for (const id of ['overviewChessForm', 'overviewLangXp', 'overviewGamesLine']) expect(text(el, id)).toBe('No disponible');
       expect(el.querySelector('#overviewGamesRow .pill')).toBeNull();
-      expect(text(el, 'overviewHeadline')).toBe('Aún no hay datos suficientes para valorar tu ritmo.');
     });
 
     it('shouldSayTheLogIsEmptyOnlyWhenTheSummaryAnsweredWithNoGames', async () => {
@@ -205,7 +202,6 @@ describe('Overview', () => {
   it('shouldShowPlaceholdersNotZerosWhenNothingHasAnsweredYet', async () => {
     await harness.navigateByUrl('/overview');
     const el = harness.routeNativeElement as HTMLElement;
-    expect(text(el, 'overviewHeadline')).toBe('—');
     for (const id of ['overviewChessForm', 'overviewLangXp', 'overviewGamesLine', 'overviewChessBig', 'overviewLangBig']) expect(text(el, id)).toBe('—');
     expect(el.textContent).not.toContain('0 XP');
   });
