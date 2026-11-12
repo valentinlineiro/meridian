@@ -204,7 +204,7 @@ export function activityToday(d: LangData, selected: string | null): string {
   if (!(xp > 0)) return 'Sin XP registrado hoy en la cuenta';
   const active = d.courses.find((c) => c.courseId === selected);
   const focus = active ? ' · Curso en foco: ' + (active.title || active.courseId) + (pair(active) ? ` (${pair(active)})` : '') : '';
-  return `+${es(xp)} XP hoy (cuenta)${focus} · No refleja competencia lingüística`;
+  return `+${es(xp)} XP hoy (cuenta)${focus}`;
 }
 
 export function timeline(xp: XpDay[]) {

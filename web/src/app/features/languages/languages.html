@@ -41,7 +41,6 @@
               </div>
               <div id="langActiveHeroMeta" class="muted u-fs-sm u-mt-2">{{ h?.meta ?? '—' }}</div>
             </div>
-            <span class="pill pill-scope">CURSO</span>
           </div>
           <div class="u-mt-14">
             <div class="u-d-flex u-jc-space-between u-ai-baseline u-fs-sm u-mb-4">
@@ -58,7 +57,6 @@
           <div>
             <div class="muted u-fs-xs u-tt-uppercase u-ls-p05em">Estado de la cuenta</div>
           </div>
-          <span class="pill pill-scope">CUENTA</span>
         </div>
         <div class="kpis u-m-14-0-0">
           <div class="kpi"><span class="kl">Total XP</span><b id="langAccountXp">{{ acc?.xp ?? '—' }}</b></div>
@@ -76,7 +74,6 @@
           <div>
             <div class="u-d-flex u-ai-center u-gap-8">
               <h2 class="u-m-0">Actividad de cuenta · últimos 7 días</h2>
-              <span class="pill pill-scope">CUENTA</span>
             </div>
             <div class="muted u-fs-xs u-mt-2">Incluye actividad de todos los cursos y actividades registradas en la fuente.</div>
           </div>
@@ -166,7 +163,6 @@
               <div id="langAccountActivityBlock" class="observed-dim">
                 <div class="u-d-flex u-jc-space-between u-ai-baseline">
                   <span class="u-fwt-600 u-c-muted">3. Actividad de cuenta (XP y sesiones)</span>
-                  <span class="pill pill-scope u-fs-xs">CUENTA · NO ES COMPETENCIA</span>
                 </div>
                 <div id="langAccountActivityDetail" class="muted u-mt-2">{{ activityToday() ?? '—' }}</div>
               </div>
@@ -177,7 +173,6 @@
         <div class="card u-mb-12">
           <div class="u-d-flex u-jc-space-between u-ai-center u-mb-8">
             <h2 class="u-m-0">Actividad de cuenta — últimos 90 días</h2>
-            <span class="pill pill-scope">CUENTA</span>
           </div>
           <div id="langXpTimeline" style="height:60px;display:flex;align-items:flex-end;gap:2px;padding:8px 0">
             @if (isNA(tl)) { <div class="muted">{{ tl }}</div> }
@@ -201,7 +196,6 @@
                   <div><div class="muted u-fs-xs u-ls-p04em u-tt-uppercase">XP / sesión</div><div class="u-fs-h u-fwt-700">{{ i.xp }}</div><div class="muted u-fs-xs">global · med: {{ i.xpMed }}</div></div>
                   <div style="border-left:1px solid var(--line);padding-left:8px"><div class="muted u-fs-xs u-ls-p04em u-tt-uppercase">Tiempo / sesión</div><div class="u-fs-h u-fwt-700">{{ i.time }}</div><div class="muted u-fs-xs">global · med: {{ i.timeMed }}</div></div>
                 </div>
-                <div class="muted" style="font-size:var(--fs-xs);line-height:1.4;border-top:1px solid var(--line);padding-top:8px">Cuánto XP ganas y cuánto dura una sesión, según Duolingo. No mide cuánto aprendes ni a qué velocidad.</div>
               }
             </div>
           </div>
