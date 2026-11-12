@@ -15,7 +15,7 @@ import { MatchesService } from './services/matches.service';
 import { MatchesTable } from './components/matches-table';
 import { MatchDetailModal } from './components/match-detail-modal';
 import { Openings as OpeningsBlock } from './components/openings';
-import { Patterns } from './components/patterns';
+import { ReviewSuggestion } from './components/review-suggestion';
 import { EngineProfile, Profile, PROFILE_CUT_KEY } from './components/engine-profile';
 import {
   ChessData, ColorStats, es, fmt, Group, list, Mates, NA, OpponentElo, Openings, Opponents, Phases, Recent, Results, scaleDelta, signedInt, streakWord,
@@ -163,7 +163,7 @@ function view(d: ChessData) {
 
 @Component({
   selector: 'app-chess',
-  imports: [Kpi, Section, Segmented, Donut, Sparkline, Compare, MatchesTable, MatchDetailModal, OpeningsBlock, Patterns, EngineProfile],
+  imports: [Kpi, Section, Segmented, Donut, Sparkline, Compare, MatchesTable, MatchDetailModal, OpeningsBlock, ReviewSuggestion, EngineProfile],
   providers: [MatchesService],
   templateUrl: './chess.html',
 })
@@ -208,8 +208,6 @@ export class Chess {
 
   private readonly matches = inject(MatchesService);
 
-  // On phones only the first block starts open: the page is a list of blocks to expand.
-  protected readonly phone = typeof matchMedia === 'function' && matchMedia('(max-width:760px)').matches;
 
   constructor() {
     effect(() => this.stats.chessUpdated.set(this.v()?.syncMeta ?? ''));
@@ -240,12 +238,6 @@ export class Chess {
   protected setCut(v: string): void {
     saveCut(v);
     this.cut.set(v);
-  }
-
-  /** Evidence one tap away: filter the matches by colour and scroll to them. */
-  protected filterColor(value: string, card: HTMLElement): void {
-    this.matches.setFilter('color', value);
-    card.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   /** The `?s=` query param (bound by the router): the block the page index points at, so Back and shared links keep it. */
