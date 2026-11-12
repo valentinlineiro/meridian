@@ -1,4 +1,5 @@
-import { Component, computed, DestroyRef, inject, linkedSignal, signal } from '@angular/core';
+import { Component, computed, DestroyRef, inject, input, linkedSignal, ResourceParamsStatus, signal } from '@angular/core';
+import { Router } from '@angular/router';
 import { NgTemplateOutlet } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { rxResource, takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -9,6 +10,7 @@ import { fmtDelta, pc1 } from '../../core/format';
 import { list, safe } from '../../core/guard';
 import { Segmented } from '../../shared/segmented';
 import { EvalFinding, Evaluation, EvaluationCards } from '../evaluations/evaluation-cards';
+import { Trajectory } from './trajectory';
 
 // Port of the Qué cambió tab (src/frontend.ts:472–477; src/dashboard.client.js fmtWhen, putChangesAnchor, loadChangesAnchor,
 // fetchWhatChanged, markChangesAsSeen, setChangesInterval :2039–2165, renderEvaluations and renderWhatChanged :2291–2400).
@@ -55,8 +57,10 @@ function headerView(w: Win) {
       : w.readable ? 'Sin visita registrada: mostrando los últimos 7 días (' + span + ')'
       : 'No se pudo leer tu última visita: mostrando los últimos 7 días (' + span + ')')
     : 'Mostrando cambios entre ' + span;
-  return { sub, canMark: w.canMark, markNote: !w.canMark && !!w.anchor, is7d: !w.visit && w.days === 7, is30d: !w.visit && w.days === 30, visit: w.visit };
+  return { sub, canMark: w.canMark, markNote: !w.canMark && !!w.anchor, value: w.visit ? '0' : w.days === 7 ? '7' : w.days === 30 ? '30' : '', history: false };
 }
+/** The whole-history period: no window, no unseen changes to mark. */
+const HISTORY_HEADER = { sub: 'Patrones estables a lo largo de todo tu historial', canMark: false, markNote: false, value: 'all', history: true };
 
 type Event = { title: string; category: string; claim: string; evidence: string } | { na: true; title: string };
 const str = (v: unknown): string => { if (typeof v !== 'string') throw new Error('not text: ' + String(v)); return v; };
@@ -128,7 +132,7 @@ function bodyView(b: Body, w: Win) {
 
 @Component({
   selector: 'app-changes',
-  imports: [EvaluationCards, NgTemplateOutlet, Segmented],
+  imports: [EvaluationCards, NgTemplateOutlet, Segmented, Trajectory],
   template: `
     @let v = view();
     <section id="changesTab">
@@ -142,9 +146,10 @@ function bodyView(b: Body, w: Win) {
             @if (v.header.canMark) {<button type="button" class="btn btn-p" id="btnMarkSeen" [disabled]="saving()" (click)="markSeen()">{{ markFailed() ? 'No se pudo guardar; reintenta' : 'Marcar como visto' }}</button>}
           </div>
           @if (v.header.markNote) {<div class="muted u-fs-xs u-mt-6">Para marcar como visto, elige «Desde última visita»: esta ventana no cubre todo lo que no has visto.</div>}
-          <app-segmented class="u-d-block u-mt-12" label="Periodo" [options]="windows" [value]="v.header.visit ? '0' : v.header.is7d ? '7' : v.header.is30d ? '30' : ''" (picked)="choose($event === '7' ? 7 : $event === '30' ? 30 : 0)" />
+          <app-segmented class="u-d-block u-mt-12" label="Periodo" [options]="windows" [value]="v.header.value" (picked)="choose($event)" />
         </div>
       }</div>
+      @if (v?.header?.history) {<app-trajectory />} @else {
       @let b = v?.body;
       @if (b?.empty) {<div id="changesEmpty" class="empty">{{ b!.empty }}</div>}
       <div class="u-mb-16" id="changesFindings">@if (b?.findings; as f) {
@@ -178,6 +183,7 @@ function bodyView(b: Body, w: Win) {
           }
         </div>
       }</div>
+      }
     </section>
     <ng-template #na let-title><div class="card u-mb-10"><h3 class="u-m-0">{{ title }}</h3><div class="muted u-fs-sm u-mt-6">No disponible</div></div></ng-template>
   `,
@@ -186,7 +192,15 @@ export class Changes {
   private readonly api = inject(ApiClient);
   private readonly destroyRef = inject(DestroyRef);
 
-  protected readonly choice = signal<Choice>({ days: 0 });
+  /** The `?w=` query param (bound by the router): the period lives in the URL so Back and shared links keep it. */
+  readonly w = input<string>();
+  private readonly router = inject(Router);
+  protected readonly history = linkedSignal(() => this.w() === 'historial');
+  /** The window the URL names; the same object is kept while it is the one already chosen (the URL following a click must not ask again). */
+  protected readonly choice = linkedSignal<number, Choice>({
+    source: () => (this.w() === '7' ? 7 : this.w() === '30' ? 30 : 0),
+    computation: (days, prev) => (prev && prev.value.days === days ? prev.value : { days: days as Choice['days'] }),
+  });
   protected readonly saving = signal(false);
   /** The save failed: the button says so until another window is shown. */
   protected readonly markFailed = linkedSignal({ source: this.choice, computation: () => false });
@@ -198,7 +212,7 @@ export class Changes {
 
   // A new choice cancels the previous one's requests (switchMap): an older window never paints over a later one.
   private readonly state = rxResource<State, Choice>({
-    params: () => this.choice(),
+    params: () => { if (this.history()) throw ResourceParamsStatus.IDLE; return this.choice(); }, // the whole history asks /api/trajectory instead
     stream: ({ params }) => {
       const now = Date.now();
       return this.anchor$.pipe(switchMap((a) => {
@@ -214,6 +228,7 @@ export class Changes {
   });
 
   protected readonly view = computed(() => {
+    if (this.history()) return { header: HISTORY_HEADER, body: null };
     if (!this.state.hasValue()) return null;
     const s = this.state.value();
     return { header: headerView(s.win), body: s.body ? bodyView(s.body, s.win) : null };
@@ -227,8 +242,13 @@ export class Changes {
     return (isObj(iv) && typeof iv['until'] === 'string' && iv['until']) || s.win.until;
   });
 
-  protected readonly windows = [{ k: '7', l: 'Últimos 7 días' }, { k: '30', l: 'Últimos 30 días' }, { k: '0', l: 'Desde última visita' }];
-  protected choose(days: Choice['days']): void { this.choice.set({ days }); }
+  protected readonly windows = [{ k: '7', l: 'Últimos 7 días' }, { k: '30', l: 'Últimos 30 días' }, { k: '0', l: 'Desde última visita' }, { k: 'all', l: 'Todo el historial' }];
+  protected choose(k: string): void {
+    const history = k === 'all';
+    this.history.set(history);
+    if (!history) this.choice.set({ days: k === '7' ? 7 : k === '30' ? 30 : 0 });
+    void this.router.navigate([], { queryParams: { w: history ? 'historial' : k === '0' ? null : k }, queryParamsHandling: 'merge' });
+  }
 
   protected markSeen(): void {
     const until = this.shownUntil();
@@ -239,6 +259,7 @@ export class Changes {
       if (!r.ok) { this.markFailed.set(true); return; }
       this.anchor$ = of({ anchor: r.seenThrough, readable: true });
       this.choice.set({ days: 0 });
+      void this.router.navigate([], { queryParams: { w: null }, queryParamsHandling: 'merge' });
     });
   }
 

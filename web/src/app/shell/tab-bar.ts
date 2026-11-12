@@ -3,7 +3,7 @@ import { RouterLink } from '@angular/router';
 import { SyncService } from '../core/sync.service';
 import { currentSection } from './section';
 
-const SECONDARY = ['changes', 'trajectory', 'settings']; // live under "Más"
+const SECONDARY = ['changes', 'settings']; // live under "Más"
 
 /**
  * The navigation of the installed app on phones: four sections and "Más", always in reach of the thumb (the pages are long, the old
@@ -32,7 +32,6 @@ const SECONDARY = ['changes', 'trajectory', 'settings']; // live under "Más"
         <div class="sheet-group" id="sheetGroupResumen">Resumen</div>
         <ul aria-labelledby="sheetGroupResumen">
           <li><a routerLink="/changes" replaceUrl [attr.aria-current]="current() === 'changes' ? 'page' : null">Qué cambió</a></li>
-          <li><a routerLink="/trajectory" replaceUrl [attr.aria-current]="current() === 'trajectory' ? 'page' : null">Trayectoria</a></li>
         </ul>
         <div class="sheet-group" id="sheetGroupCuenta">Cuenta</div>
         <div role="group" aria-labelledby="sheetGroupCuenta">

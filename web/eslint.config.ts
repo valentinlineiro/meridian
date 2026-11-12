@@ -2,8 +2,8 @@ import tseslint from 'typescript-eslint';
 import angular from 'angular-eslint';
 
 // Límites: una feature no importa de otra (salvo `evaluations`, compartida por
-// changes y trajectory); core y shared no dependen de features.
-const FEATURES = ['changes', 'chess', 'games', 'languages', 'overview', 'settings', 'trajectory'];
+// changes); core y shared no dependen de features.
+const FEATURES = ['changes', 'chess', 'games', 'languages', 'overview', 'settings'];
 const restrict = (group, message) => ({ 'no-restricted-imports': ['error', { patterns: [{ group, message }] }] });
 
 export default tseslint.config(

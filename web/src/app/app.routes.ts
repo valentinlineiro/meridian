@@ -1,4 +1,5 @@
-import { ResolveFn, Routes, UrlMatcher, UrlSegment } from '@angular/router';
+import { inject } from '@angular/core';
+import { ResolveFn, Router, Routes, UrlMatcher, UrlSegment } from '@angular/router';
 import { legacyUrlGuard } from './core/legacy-url';
 import { GAME_NAMES, gameName } from './core/words';
 
@@ -22,7 +23,8 @@ export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'overview' },
   { path: 'overview', title: 'Hoy · Meridian', loadComponent: () => import('./features/overview/overview').then((m) => m.Overview) },
   { path: 'changes', title: 'Qué cambió · Meridian', loadComponent: () => import('./features/changes/changes').then((m) => m.Changes) },
-  { path: 'trajectory', title: 'Trayectoria · Meridian', loadComponent: () => import('./features/trajectory/trajectory').then((m) => m.Trajectory) },
+  // Trayectoria is the "Todo el historial" period of Qué cambió; old links and bookmarks land there.
+  { path: 'trajectory', pathMatch: 'full', redirectTo: () => inject(Router).parseUrl('/changes?w=historial') },
   { path: 'chess', title: 'Ajedrez · Meridian', loadComponent: () => import('./features/chess/chess').then((m) => m.Chess) },
   { matcher: languages, title: 'Idiomas · Meridian', loadComponent: () => import('./features/languages/languages').then((m) => m.Languages) },
   { matcher: games, title: gamesTitle, loadComponent: () => import('./features/games/games').then((m) => m.Games) },

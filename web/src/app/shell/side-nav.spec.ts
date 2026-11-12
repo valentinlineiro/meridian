@@ -87,6 +87,6 @@ describe('SideNav', () => {
     const el = await render('/chess');
     const lists = [...el.querySelectorAll('ul[aria-labelledby]')];
     expect(lists.map((u) => el.querySelector('#' + u.getAttribute('aria-labelledby'))!.textContent)).toEqual(['Resumen', 'Dominios']);
-    expect(lists.map((u) => [...u.querySelectorAll(':scope > li > a')].map((a) => a.textContent!.trim()))).toEqual([['Hoy', 'Qué cambió', 'Trayectoria'], ['Ajedrez', 'Idiomas', 'LinkedIn Games']]);
+    expect(lists.map((u) => [...u.querySelectorAll(':scope > li > a')].map((a) => a.textContent!.trim()))).toEqual([['Hoy', 'Qué cambió'], ['Ajedrez', 'Idiomas', 'LinkedIn Games']]);
   });
 });

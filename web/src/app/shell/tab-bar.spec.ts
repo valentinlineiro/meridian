@@ -48,7 +48,7 @@ describe('TabBar', () => {
       expect(tabs(el).filter((t) => t.classList.contains('active')).map(label)).toEqual([name]);
     });
 
-  it.each(['/changes', '/trajectory', '/settings'])('shouldHighlightMoreWhenTheSectionIsSecondary %s', async (url) => {
+  it.each(['/changes', '/settings'])('shouldHighlightMoreWhenTheSectionIsSecondary %s', async (url) => {
     const el = await render(url);
     expect(tabs(el).filter((t) => t.classList.contains('active')).map(label)).toEqual(['Más']);
     expect(tabs(el).filter((t) => t.getAttribute('aria-current') === 'page')).toHaveLength(0);
@@ -61,7 +61,7 @@ describe('TabBar', () => {
     const sheet = el.querySelector('.sheet')!;
     expect(sheet.getAttribute('role')).toBe('dialog');
     const links = [...sheet.querySelectorAll('a')];
-    expect(links.map((a) => [label(a), a.getAttribute('href')])).toEqual([['Qué cambió', '/changes'], ['Trayectoria', '/trajectory'], ['Configuración', '/settings']]);
+    expect(links.map((a) => [label(a), a.getAttribute('href')])).toEqual([['Qué cambió', '/changes'], ['Configuración', '/settings']]);
     expect(sheet.querySelector('form[method="post"][action="/logout"] button[type="submit"]')!.textContent!.trim()).toBe('Salir');
     expect(sheet.querySelector('#tabSyncBtn')!.textContent!.trim()).toBe('Sincronizar');
   });
@@ -94,10 +94,10 @@ describe('TabBar', () => {
   it('shouldCloseTheSheetWhenAnItemNavigates', async () => {
     const el = await render('/chess');
     await press(el);
-    await TestBed.inject(Router).navigateByUrl('/trajectory');
+    await TestBed.inject(Router).navigateByUrl('/changes');
     await settle();
     expect(el.querySelector('.sheet')).toBeNull();
-    expect(tabs(el).filter((t) => t.classList.contains('active')).map(label)).toEqual(['Más']); // Trayectoria lives under Más
+    expect(tabs(el).filter((t) => t.classList.contains('active')).map(label)).toEqual(['Más']); // Qué cambió lives under Más
   });
 
   it('shouldFocusTheFirstItemWhenTheSheetOpens', async () => {
@@ -203,7 +203,7 @@ describe('TabBar', () => {
       const el = await render('/overview');
       await press(el);
       const links = [...sheetEl(el).querySelectorAll('ul[aria-labelledby="sheetGroupResumen"] > li > a')];
-      expect(links.map((a) => a.textContent!.trim())).toEqual(['Qué cambió', 'Trayectoria']);
+      expect(links.map((a) => a.textContent!.trim())).toEqual(['Qué cambió']);
     });
   });
   describe('Más como menú de dos secciones', () => {
@@ -224,7 +224,7 @@ describe('TabBar', () => {
       expect(account.getAttribute('aria-labelledby')).toBe(h2!.id);
       expect([...account.querySelectorAll('a, button')].map((e) => e.textContent!.trim())).toEqual(['Sincronizar', 'Configuración', 'Salir']);
     });
-    it.each([['/trajectory', 'Trayectoria'], ['/changes', 'Qué cambió'], ['/settings', 'Configuración']])('shouldMarkTheCurrentSecondaryPageInTheMenu %s', async (url, name) => {
+    it.each([['/changes', 'Qué cambió'], ['/settings', 'Configuración']])('shouldMarkTheCurrentSecondaryPageInTheMenu %s', async (url, name) => {
       const el = await render(url);
       await press(el);
       const current = [...sheetEl(el).querySelectorAll('a[aria-current="page"]')].map((a) => a.textContent!.trim());
