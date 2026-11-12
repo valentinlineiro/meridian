@@ -17,7 +17,7 @@ import { handleSyncRequest, handleSyncStatus } from "./sync.ts";
 import { handleSaveMatchDetail, handleGetMatchDetail, handleGetPendingMatchDetails, handleGetPendingThreats, handlePostMateThreats, handleGetPendingEngine, handlePostEngineEval } from "./chessDetail.ts";
 import { handleGetLanguages, handleGetLanguageCourse, handleGetLanguageXp } from "./languages.ts";
 import { handleGetLanguagesAnalytics } from "./languagesAnalytics.ts";
-import { logInternalError, mapErrorToResponse, mapError } from "./errors.ts";
+import { internalErrorResponse, mapErrorToResponse, mapError } from "./errors.ts";
 import { importPayloadSchema, envSchema, whatChangedQuerySchema, trajectoryQuerySchema } from "./schemas.ts";
 import { createD1WhatChangedAdapter } from "../infrastructure/d1/d1WhatChangedAdapter.ts";
 import { getWhatChangedUseCase } from "../application/getWhatChangedUseCase.ts";
@@ -44,9 +44,15 @@ app.use("*", async (c, next) => {
 });
 
 // Every API response is private or machine-facing: never cached, never sniffed. (Set after the handler so every route and error path gets it.)
+// One exception: a SUCCESSFUL read of the chess stats (they only change when a sync lands) may sit in the browser's private cache for 30 s,
+// because repeated reloads of Ajedrez exhausted D1's 10-second budget. The client adds a data-version param after a sync to skip it.
+const isCacheableRead = (method: string, path: string) => method === "GET" && (path.startsWith("/api/stats/") || path === "/api/matches");
 app.use("/api/*", async (c, next) => {
   await next();
-  c.header("Cache-Control", "no-store");
+  if (c.res.status === 200 && isCacheableRead(c.req.method, c.req.path)) {
+    c.header("Cache-Control", "private, max-age=30");
+    c.header("Vary", "Cookie");
+  } else c.header("Cache-Control", "no-store");
   c.header("X-Content-Type-Options", "nosniff");
 });
 
@@ -299,10 +305,7 @@ app.get("*", async (c) => {
 
 // exported so composition wrappers (src/dev.ts, tests) keep identical error/404 behaviour
 export const onFailure = (e: Error) => {
-  const mapped = mapErrorToResponse(e);
-  if (mapped) return mapped;
-  logInternalError(e);
-  return json({ ok: false, error: "internal error" }, 500);
+  return mapErrorToResponse(e) ?? internalErrorResponse(e);
 };
 export const onNotFound = () => json({ ok: false, error: "not found" }, 404);
 

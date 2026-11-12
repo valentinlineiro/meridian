@@ -15,6 +15,7 @@ import { routes } from '../../app.routes';
 // frontendEmptyAndErrorStates (chess cases), frontendNetwork (chess), frontendWinRateCi, frontendDeltas (colour/form),
 // uxPhase2/uxPhase4 (chess cases). An unanswered or failed request is "No disponible" / "—", never 0 or an empty state.
 export const FAIL = Symbol('500');
+export const MISSING = Symbol('404'); // the route does not exist (an older deploy): the only failure of the bundle that still falls back to each stat's own route
 export type Api = Record<string, unknown>;
 export const group = (o: object) => ({ key: 'white', games: 10, wins: 5, losses: 4, draws: 1, unknown: 0, decided: 10, winRate: 0.5, scoreRate: 0.55, winRateCi: { lower: 0.2, upper: 0.8 }, ...o });
 const tally = (faced: number, neutralized: number, missed: number, unpunished: number) => ({ faced, neutralized, missed, unpunished, rate: faced ? neutralized / faced : null });
@@ -68,7 +69,7 @@ export const setupChess = async () => {
   const http = TestBed.inject(HttpTestingController);
   const harness = await RouterTestingHarness.create();
   const pending = (): TestRequest[] => http.match(() => true).filter((r) => !r.cancelled);
-  const flush = (r: TestRequest, body: unknown) => body === FAIL ? r.flush({ ok: false }, { status: 500, statusText: 'Internal Server Error' }) : r.flush(body as object);
+  const flush = (r: TestRequest, body: unknown) => body === FAIL ? r.flush({ ok: false }, { status: 500, statusText: 'Internal Server Error' }) : body === MISSING ? r.flush({ ok: false }, { status: 404, statusText: 'Not Found' }) : r.flush(body as object);
   // Answers every request the page makes, in rounds (the fallback routes are asked after the bundle), then renders.
   const answer = async (api: Api) => {
     for (let round = 0, quiet = 0; round < 12; round++) {
@@ -108,10 +109,20 @@ describe('Chess', () => {
       expect(urls).toEqual(expect.arrayContaining(['/api/stats/openings', '/api/stats/phases', '/api/stats/mates', '/api/stats/threats']));
     });
 
-    it('shouldFallBackToEachRouteOnceAndKeepRenderingWhenTheBundleFails', async () => {
+    it('shouldNotFireTheSevenPerRouteReadsWhenTheBundleAnswers5xxBecauseThatOnlyOverloadsTheBackendMore', async () => {
       const asked: string[] = [];
       await t.harness.navigateByUrl('/chess');
       const api = chessApi({ '/api/stats/bundle': FAIL });
+      for (let i = 0; i < 4; i++) { for (const r of t.pending()) { if (r.cancelled) continue; asked.push(r.request.urlWithParams); t.flush(r, api[r.request.url]); } TestBed.tick(); await new Promise((r) => setTimeout(r)); }
+      for (const r of ['/api/stats/summary', '/api/stats/results', '/api/stats/color', '/api/stats/opponents', '/api/stats/opponent-elo', '/api/stats/timeline', '/api/stats/recent?limit=50'])
+        expect(asked).not.toContain(r);
+      expect(asked.filter((u) => u === '/api/stats/bundle')).toHaveLength(1);
+    });
+
+    it('shouldFallBackToEachRouteOnceAndKeepRenderingWhenTheBundleRouteIsMissing', async () => {
+      const asked: string[] = [];
+      await t.harness.navigateByUrl('/chess');
+      const api = chessApi({ '/api/stats/bundle': MISSING });
       for (let i = 0; i < 4; i++) { for (const r of t.pending()) { asked.push(r.request.urlWithParams); t.flush(r, api[r.request.url]); } TestBed.tick(); await new Promise((r) => setTimeout(r)); }
       await t.harness.fixture.whenStable();
       for (const r of ['/api/stats/summary', '/api/stats/results', '/api/stats/color', '/api/stats/opponents', '/api/stats/opponent-elo', '/api/stats/timeline', '/api/stats/recent?limit=50'])
@@ -356,8 +367,8 @@ describe('Chess', () => {
     });
 
     it('shouldKeepTheKpisAndSayNoDisponiblePerCardWhenTheBundleAndEveryOtherStatsRouteFail', async () => {
-      const failing = Object.fromEntries(['bundle', 'results', 'color', 'opponents', 'opponent-elo', 'timeline', 'recent', 'openings', 'phases'].map((r) => ['/api/stats/' + r, FAIL]));
-      await t.open(chessApi(failing));
+      const failing = Object.fromEntries(['results', 'color', 'opponents', 'opponent-elo', 'timeline', 'recent', 'openings', 'phases'].map((r) => ['/api/stats/' + r, FAIL]));
+      await t.open(chessApi({ ...failing, '/api/stats/bundle': MISSING }));
       expect(t.text('kpis')).toContain('Partidas');
       for (const id of ['col', 'opp', 'evo', 'elo', 'form', 'lossContext']) expect(t.text(id)).toBe('No disponible');
       expect(t.text('chessHeroEloSub')).toBe('ELO · +100 vs primera lectura'); // the summary still knows the first ELO
@@ -554,7 +565,7 @@ describe('Chess', () => {
     });
 
     it('shouldSayNoDisponibleWhenTheColourRequestFails', async () => {
-      await t.open(chessApi({ '/api/stats/bundle': FAIL, '/api/stats/color': FAIL }));
+      await t.open(chessApi({ '/api/stats/bundle': MISSING, '/api/stats/color': FAIL }));
       expect(t.text('chessPatternColorConclusion')).toBe('No disponible');
     });
 

@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable, signal } from '@angular/core';
 import { catchError, map, Observable, of, shareReplay, switchMap, throwError, TimeoutError } from 'rxjs';
 import { ApiClient } from './api-client';
@@ -16,16 +17,16 @@ export class StatsService {
 
   /**
    * One load: the bundle is asked once and serves every stat. If it fails (or carries no summary) each stat falls back to
-   * its own route; if it timed out the backend is slow and more reads would not help, so each stat errors instead.
+   * its own route; if it timed out or answered 5xx (D1 overloaded) the backend is struggling and more reads would not help, so each stat errors instead.
    * A new session asks again: a retry never re-reads a failure.
    */
   session(): <T>(key: StatKey, route: string, params?: Params) => Observable<T | null> {
     const bundle = this.api.get<Partial<Record<StatKey, unknown>> | null>('/api/stats/bundle').pipe(
-      map((b) => { if (!b?.summary) throw new Error('bundle'); return { b, timedOut: false }; }),
-      catchError((e) => of({ b: null, timedOut: e instanceof TimeoutError })),
+      map((b) => { if (!b?.summary) throw new Error('bundle'); return { b, fatal: null as Error | null }; }),
+      catchError((e) => of({ b: null, fatal: (e instanceof TimeoutError || (e instanceof HttpErrorResponse && e.status >= 500) ? e : null) as Error | null })),
       shareReplay({ bufferSize: 1, refCount: true }),
     );
-    return <T>(key: StatKey, route: string, params?: Params) => bundle.pipe(switchMap(({ b, timedOut }) =>
-      b ? of((b[key] ?? null) as T | null) : timedOut ? throwError(() => new TimeoutError()) : this.api.get<T>(route, params)));
+    return <T>(key: StatKey, route: string, params?: Params) => bundle.pipe(switchMap(({ b, fatal }) =>
+      b ? of((b[key] ?? null) as T | null) : fatal ? throwError(() => fatal) : this.api.get<T>(route, params)));
   }
 }

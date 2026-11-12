@@ -1,7 +1,7 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
-import { ApiClient, BROWSER_LOCATION } from './api-client';
+import { ApiClient, BROWSER_LOCATION, DATA_VERSION_KEY } from './api-client';
 
 // Port of doSync/trackSync/resumeSync (src/dashboard.client.js:168-225). Same storage key, so a run started on the
 // legacy page resumes here and vice versa.
@@ -91,6 +91,7 @@ export class SyncService {
         if (s.conclusion !== 'success') return this.idle('Sincronizar', RUN_FAILED);
         // A full reload is the one refresh known to show the new data (partial reloads left the list stale).
         this.idle('✓ Sincronizado', 'Sincronización completada.');
+        try { localStorage.setItem(DATA_VERSION_KEY, String(Date.now())); } catch { /* private mode: the 30 s cache may show the old data once */ }
         setTimeout(() => this.location.reload(), 800);
         return;
       }

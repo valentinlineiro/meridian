@@ -13,13 +13,18 @@ const REQUEST_TIMEOUT_MS = 10_000;
 
 type Params = Record<string, string | number>;
 
+/** Bumped when a sync lands. The Worker lets the browser keep the chess stats for 30 s; this param makes the reads after a sync miss that cache. */
+export const DATA_VERSION_KEY = 'meridian.dataVersion';
+const dataVersion = (): string | null => { try { return localStorage.getItem(DATA_VERSION_KEY); } catch { return null; } };
+
 /** The one place the app talks to the Worker API. An HTTP error is an error, never data. */
 @Injectable({ providedIn: 'root' })
 export class ApiClient {
   private readonly http = inject(HttpClient);
 
   get<T>(path: string, params?: Params): Observable<T> {
-    return this.http.get<T>(path, { params }).pipe(timeout(REQUEST_TIMEOUT_MS));
+    const v = dataVersion();
+    return this.http.get<T>(path, { params: v ? { ...params, v } : params }).pipe(timeout(REQUEST_TIMEOUT_MS));
   }
 
   post<T>(path: string, body: unknown = null, params?: Params): Observable<T> {

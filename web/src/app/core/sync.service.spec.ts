@@ -15,7 +15,7 @@ describe('SyncService', () => {
       providers: [provideHttpClient(), provideHttpClientTesting(), { provide: BROWSER_LOCATION, useValue: location }],
     });
   });
-  afterEach(() => vi.useRealTimers());
+  afterEach(() => { vi.useRealTimers(); localStorage.clear(); });
 
   const status = (runId: number) => (r: { url: string; params: { get(k: string): string | null } }) =>
     r.url === '/api/me/sync/status' && r.params.get('runId') === String(runId);
@@ -217,5 +217,16 @@ describe('SyncService', () => {
       await drive(sync, run(() => fail(status)));
       expect(localStorage.getItem('meridian.syncRun')).toBe('7');
     });
+  });
+  it('shouldBumpTheDataVersionBeforeReloadingSoTheCachedStatsAreSkipped', async () => {
+    const sync = TestBed.inject(SyncService);
+    const http = TestBed.inject(HttpTestingController);
+    sync.start();
+    http.expectOne({ method: 'POST', url: '/api/me/sync' }).flush({ runId: 7 });
+    await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(3000);
+    http.expectOne(status(7)).flush({ status: 'completed', conclusion: 'success' });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(Number(localStorage.getItem('meridian.dataVersion'))).toBeGreaterThan(0);
   });
 });
