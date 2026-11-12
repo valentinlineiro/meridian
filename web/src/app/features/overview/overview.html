@@ -9,35 +9,30 @@
   @let c = d?.chess;
   @let l = d?.lang;
   @let g = d?.games;
-  <div class="grows">
-    <a class="grow card" id="overviewChessRow" routerLink="/chess">
-      <div class="grow-h"><b>Ajedrez</b>@if (c?.verdict; as vd) {<app-verdict [verdict]="vd" />}@if (c?.freshChip; as f) {<span id="overviewChessFresh" class="pill" [class.pill-warn]="f.stale">{{ f.text }}</span>}</div>
-      <div>
-        <p class="grow-line" id="overviewChessForm">{{ c?.form ?? '—' }}</p>
-        <p class="muted" id="overviewChessElo">{{ c?.elo }}</p>
-      </div>
-      <div class="grow-viz">@if (c?.spark; as sp) {<svg class="spark" viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true"><polyline [attr.points]="sp" fill="none" stroke="var(--link)" stroke-width="1.5" vector-effect="non-scaling-stroke" /></svg>}</div>
-      <span class="grow-t" aria-hidden="true">›</span>
+  <div class="hcs">
+    <a class="hc card" id="overviewChessRow" routerLink="/chess">
+      <div class="hc-h"><b>Ajedrez</b>@if (c?.verdict; as vd) {<app-verdict [verdict]="vd" />}@if (c?.freshChip; as f) {<span id="overviewChessFresh" class="pill" [class.pill-warn]="f.stale">{{ f.text }}</span>}</div>
+      <div class="hc-n"><span class="hc-big" id="overviewChessBig">{{ c?.elo ?? '—' }}</span><span class="muted">ELO</span><span class="hc-delta muted" id="overviewChessElo">{{ c?.eloChange }}</span></div>
+      @if (c && c.trend.length > 1) {<m-sparkline [points]="c.trend" />}
+      <p class="hc-line" id="overviewChessForm">{{ c?.form ?? '—' }}</p>
     </a>
 
-    <a class="grow card" id="overviewLangRow" routerLink="/languages">
-      <div class="grow-h"><b>Idiomas</b><span class="grow-tag">toda la cuenta</span>@if (l?.freshChip; as f) {<span id="overviewLangFresh" class="pill" [class.pill-warn]="f.stale">{{ f.text }}</span>}</div>
-      <div>
-        <p class="grow-line" id="overviewLangXp">{{ l?.line ?? '—' }}</p>
-        <p class="muted" id="overviewLangStreak">{{ l?.streak }}</p>
-      </div>
-      <div class="grow-viz">@if (l?.bars?.length) {<div class="wk" role="img" [attr.aria-label]="l?.aria">@for (b of l!.bars; track $index) {<div><i [style.height.px]="b.h"></i><span>{{ b.letter }}</span></div>}</div>}</div>
-      <span class="grow-t" aria-hidden="true">›</span>
+    <a class="hc card" id="overviewLangRow" routerLink="/languages">
+      <div class="hc-h"><b>Idiomas</b><span class="grow-tag">toda la cuenta</span>@if (l?.freshChip; as f) {<span id="overviewLangFresh" class="pill" [class.pill-warn]="f.stale">{{ f.text }}</span>}</div>
+      <div class="hc-n"><span class="hc-big" id="overviewLangBig">{{ l?.big ?? '—' }}</span><span class="muted">XP en 7 días</span>@if (l?.delta) {<span class="hc-delta muted" id="overviewLangDelta">{{ l?.delta }}</span>}</div>
+      @if (l?.bars?.length) {<div class="wk" role="img" [attr.aria-label]="l?.aria">@for (b of l!.bars; track $index) {<div><i [style.height.px]="b.h"></i><span>{{ b.letter }}</span></div>}</div>}
+      <p class="hc-line" id="overviewLangXp">{{ l?.line ?? '—' }}</p>
+      <p class="muted hc-sub" id="overviewLangStreak">{{ l?.streak }}</p>
     </a>
 
-    <a class="grow card" id="overviewGamesRow" [routerLink]="g?.link ?? '/games'">
-      <div class="grow-h"><b>LinkedIn Games</b>@if (g?.verdict; as vd) {<app-verdict [verdict]="vd" />}<span class="grow-tag">registro manual</span></div>
-      <div>
-        <p class="grow-line" id="overviewGamesLine">{{ g?.line ?? '—' }}</p>
-        <p class="muted" id="overviewGamesStreak">{{ g?.streak }}</p>
-      </div>
-      <span></span>
-      <span class="grow-t" aria-hidden="true">›</span>
+    <a class="hc card" id="overviewGamesRow" [routerLink]="g?.link ?? '/games'">
+      <div class="hc-h"><b>LinkedIn Games</b>@if (g?.verdict; as vd) {<app-verdict [verdict]="vd" />}<span class="grow-tag">registro manual</span></div>
+      @if (g?.focus; as f) {
+        <div class="hc-n"><span class="hc-big" id="overviewGamesBig">{{ f.big }}</span><span class="muted" id="overviewGamesCap">{{ f.cap }}</span></div>
+        <app-result-bars [data]="f.bars" />
+      }
+      <p class="hc-line" id="overviewGamesLine">{{ g?.line ?? '—' }}</p>
+      <p class="muted hc-sub" id="overviewGamesStreak">{{ g?.streak }}</p>
     </a>
   </div>
 </section>

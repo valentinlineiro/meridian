@@ -1,6 +1,7 @@
 // Port of the LinkedIn Games view builders (src/dashboard.client.js:1787–1943). Pure: the range is a parameter, not a global.
 // Nothing here is computed beyond formatting: labels, bands and arrows come from the server's contract.
 import { fmtDate } from '../../core/format';
+import { resultBars } from '../../shared/result-bars';
 import { attentionOrder, GAME_NAMES, gameName, gdays, PERIODS, PeriodKey, typicalTime, Verdict, verdictFor } from '../../core/words';
 
 export type Range = PeriodKey;
@@ -172,24 +173,17 @@ export function lossRows(s: Summary) {
   return { rows, days: DAYS.map((d) => d.slice(0, 3)), sentence: w ? `Donde más pierdes: ${gameName(w.k)} los ${DAYS[w.c.dow]} (${gpct(w.c.rate)}, ${w.c.n} partidas).` : 'Aún no hay ningún día con partidas suficientes para decir dónde pierdes más.' };
 }
 
-export const RECENT_DOTS = 14;
-/** A result 50 % away from the average fills its half of the bar strip; further away is capped. */
-const BAR_FULL = 0.5, BAR_MIN = 8;
-const barPct = (d: number) => Math.min(100, Math.max(BAR_MIN, Math.round(Math.abs(d) / BAR_FULL * 100)));
 /** The first look: per game a verdict, the speed against the average as one big number, the verdict's own sentence (it never contradicts the pill) and the last 14 results as bars. */
 export function summaryRows(s: Summary, range: Range) {
   return cardOrder(s).flatMap((k) => { try { return [row(k)]; } catch { return []; } }); // a malformed game drops its own row only
   function row(k: string) {
-    const x = s.games[k]!, w = x.windows[range], last = x.series.slice(-RECENT_DOTS);
-    const bars = last.map((p) => ({ win: p.eff > 1, h: barPct(p.eff - 1), title: fmtDate(p.date) + (p.eff > 1 ? ': mejor que la media' : ': peor que la media') }));
-    const wins = bars.filter((d) => d.win).length;
+    const x = s.games[k]!, w = x.windows[range];
     const m = w.eff.median, e = w.delta?.effRel?.value;
     return {
-      k, name: gameName(k), verdict: verdictOf(x), line: verdictOf(x).sentence, bars,
+      k, name: gameName(k), verdict: verdictOf(x), line: verdictOf(x).sentence, bars: resultBars(x.series),
       big: m == null ? '—' : gsigned((m - 1) * 100, ' %'),
       cap: m == null ? 'aún sin media' : m > 1 ? 'más rápido que la media' : m < 1 ? 'más lento que la media' : 'igual que la media',
       delta: e == null ? '' : gsigned(e * 100, ' %') + ' frente al periodo anterior',
-      aria: bars.length ? `Últimas ${bars.length} partidas con media: ${wins} mejores que la media y ${bars.length - wins} peores.` : 'Sin partidas con media.',
       time: typicalTime(w.time.median, null, null).main,
     };
   }

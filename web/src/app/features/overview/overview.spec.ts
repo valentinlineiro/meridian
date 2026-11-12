@@ -82,15 +82,35 @@ describe('Overview', () => {
 
     expect(el.querySelector('#overviewChessRow .pill')!.textContent).toBe('Posible subida');
     expect(text(el, 'overviewChessForm')).toMatch(/^Últimas 50 partidas \(desde el .+\): 60,0 % de victorias · \+6,0 puntos de % \(entre \+1,0 y \+11,0\) frente a las anteriores$/);
-    expect(text(el, 'overviewChessElo')).toMatch(/^ELO 900 \(\+50 desde el /);
+    expect(text(el, 'overviewChessBig')).toBe('900');
+    expect(text(el, 'overviewChessElo')).toMatch(/^\+50 desde el /);
+    expect(el.querySelector('#overviewChessRow m-sparkline svg')).not.toBeNull(); // the rating over time, with its scale
 
-    expect(text(el, 'overviewLangXp')).toMatch(/^Últimos 7 días completos \(hasta ayer\): 1897 XP · media de las 4 semanas anteriores: 2401 XP por semana \(−21 %\)$/);
+    expect(text(el, 'overviewLangBig')).toBe('1897');
+    expect(text(el, 'overviewLangDelta')).toBe('−21 % frente a tu media');
+    expect(text(el, 'overviewLangXp')).toBe('Hasta ayer · media de las 4 semanas anteriores: 2401 XP por semana');
     expect(text(el, 'overviewLangStreak')).toBe('🔥 Racha de Duolingo: 108 días');
     expect(el.querySelectorAll('#overviewLangRow .wk > div')).toHaveLength(7);
 
     expect(el.querySelector('#overviewGamesRow .pill')!.textContent).toBe('A la baja');
     expect(text(el, 'overviewGamesLine')).toBe('Tango: A la baja · 1 sin señales de cambio');
     expect(text(el, 'overviewGamesStreak')).toBe('Racha: 12 días seguidos');
+  });
+
+  it('shouldGiveTheSpeedAndTheLastResultsOfTheGameBehindTheVerdict', async () => {
+    const api = fullApi();
+    const withData = (label: string, median: number) => ({ ...game(label), series: [{ date: '2026-11-01', eff: 1.3 }, { date: '2026-11-02', eff: 0.7 }], windows: { '28': { eff: { median } } } });
+    (api['/api/me/linkedin-games/summary'] as { summary: { games: object } }).summary.games = { zip: withData('estable', 1.1), tango: withData('deterioro', 0.94) };
+    const el = await open(api);
+    expect(text(el, 'overviewGamesBig')).toBe('−6 %');
+    expect(text(el, 'overviewGamesCap')).toBe('Tango · más lento que la media');
+    expect(el.querySelectorAll('#overviewGamesRow app-result-bars .gb')).toHaveLength(2);
+  });
+
+  it('shouldNotInventANumberForGamesWhenNoGameSaysAnything', async () => {
+    const el = await open(fullApi()); // the fixture games have no windows
+    expect(el.querySelector('#overviewGamesBig')).toBeNull();
+    expect(el.querySelector('#overviewGamesRow app-result-bars')).toBeNull();
   });
 
   it('shouldKeepTheHistoricalTotalsOutOfTheSummary', async () => {
@@ -117,6 +137,8 @@ describe('Overview', () => {
       api['/api/languages/xp'] = { summaries: [...xpRows(60, 33, 100)] };
       const el = await open(api);
       expect(text(el, 'overviewLangXp')).toBe('Sin datos nuevos desde hace 32 días · no se compara con tu media');
+      expect(text(el, 'overviewLangBig')).toBe('—');
+      expect(el.querySelector('#overviewLangDelta')).toBeNull();
       expect(el.querySelector('#overviewLangRow .wk')).toBeNull();
       expect(el.querySelector('#overviewLangRow')!.textContent).not.toContain('0 XP');
       expect(text(el, 'overviewLangStreak')).toBe('Racha de Duolingo: 108 días (dato de hace 32d)');
@@ -129,7 +151,7 @@ describe('Overview', () => {
       const api = fullApi();
       api['/api/languages/xp'] = { summaries: [...xpRows(7, 1, 271, { updatedAt: iso(10 * DAY) }), ...xpRows(35, 8, 343, { updatedAt: iso(10 * DAY) })] };
       const el = await open(api);
-      expect(text(el, 'overviewLangXp')).toMatch(/^Últimos 7 días completos \(hasta ayer\): 1897 XP/);
+      expect(text(el, 'overviewLangBig')).toBe('1897');
       expect(text(el, 'overviewLangFresh')).toBe('datos de hoy');
     });
 
@@ -156,7 +178,9 @@ describe('Overview', () => {
         '/api/stats/summary': { games: 10, currentElo: 880 }, '/api/stats/timeline': { snapshots: [{ createdAt: iso(0), elo: 880 }] },
         '/api/stats/recent': { limit: 50, games: 50, decided: 50, winRate: 0.5, delta: null, before: null },
       });
-      expect(text(el, 'overviewChessElo')).toBe('ELO 880');
+      expect(text(el, 'overviewChessBig')).toBe('880');
+      expect(text(el, 'overviewChessElo')).toBe('');
+      expect(el.querySelector('#overviewChessRow m-sparkline')).toBeNull(); // one reading is not a trend
       expect(el.querySelector('#overviewChessRow .pill')!.textContent).toBe('Aún pocos datos');
     });
   });
@@ -182,7 +206,7 @@ describe('Overview', () => {
     await harness.navigateByUrl('/overview');
     const el = harness.routeNativeElement as HTMLElement;
     expect(text(el, 'overviewHeadline')).toBe('—');
-    for (const id of ['overviewChessForm', 'overviewLangXp', 'overviewGamesLine']) expect(text(el, id)).toBe('—');
+    for (const id of ['overviewChessForm', 'overviewLangXp', 'overviewGamesLine', 'overviewChessBig', 'overviewLangBig']) expect(text(el, id)).toBe('—');
     expect(el.textContent).not.toContain('0 XP');
   });
 
@@ -196,7 +220,7 @@ describe('Overview', () => {
 
   it('shouldLinkEachRowToItsViewWhenClicked', async () => {
     const el = await open(fullApi());
-    const rows = [...el.querySelectorAll<HTMLAnchorElement>('a.grow')];
+    const rows = [...el.querySelectorAll<HTMLAnchorElement>('a.hc')];
     expect(rows.map((a) => a.getAttribute('href'))).toEqual(['/chess', '/languages', '/games/tango']); // Tango is the game behind the verdict
     rows[2].click();
     await harness.fixture.whenStable();

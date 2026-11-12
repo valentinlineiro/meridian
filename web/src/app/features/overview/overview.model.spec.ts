@@ -79,12 +79,19 @@ describe('chessRow', () => {
     const r = chessRow({ ...base, matches: matches.slice(0, 10), recent: recent({ diff: 0.06, lower: 0.01, upper: 0.11 }) });
     expect(r.form).toMatch(/^Últimas 50 partidas: /);
   });
-  it('shouldGiveTheEloWithItsDatedChange', () => {
+  it('shouldGiveTheEloAndItsDatedChangeApart', () => {
     const r = chessRow({ ...base, recent: recent(null) });
-    expect(r.elo).toBe(`ELO 900 (+50 desde el ${new Date(NOW - 40 * DAY).getUTCDate()} ${['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'][new Date(NOW - 40 * DAY).getUTCMonth()]})`);
+    const d = new Date(NOW - 40 * DAY);
+    expect(r.elo).toBe(900);
+    expect(r.eloChange).toBe(`+50 desde el ${d.getUTCDate()} ${['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'][d.getUTCMonth()]}`);
   });
-  it('shouldGiveOnlyTheEloWhenThereIsNoChangeToDate', () => {
-    expect(chessRow({ ...base, timeline: { snapshots: [{ createdAt: iso(0), elo: 900 }] }, recent: recent(null) }).elo).toBe('ELO 900');
+  it('shouldGiveNoChangeWhenThereIsNothingToDate', () => {
+    const r = chessRow({ ...base, timeline: { snapshots: [{ createdAt: iso(0), elo: 900 }] }, recent: recent(null) });
+    expect(r.elo).toBe(900);
+    expect(r.eloChange).toBeNull();
+  });
+  it('shouldGiveNoEloWhenTheSummaryHasNone', () => {
+    expect(chessRow({ ...base, summary: null, recent: recent(null) })).toMatchObject({ elo: null, eloChange: null });
   });
 });
 
@@ -124,8 +131,24 @@ describe('gamesRow: what needs a look first across the games', () => {
     expect(gamesRow(sum({ zip: g('estable') }, { playStreak: { current: 1, max: 9 } }))!.streak).toBe('Racha: 1 día seguido');
     expect(gamesRow(sum({ zip: g('estable') }, { playStreak: { current: 0, max: 9 }, to: '2026-11-03' }))!.streak).toBe('Sin registro desde 3 nov 2026 · registro manual');
   });
+  describe('focus: the number of the game behind the verdict', () => {
+    const withData = (label: string, median: number | null) => ({ interpretation: { label, pending: null }, series: [{ date: '2026-11-01', eff: 1.3 }, { date: '2026-11-02', eff: 0.7 }], windows: { '28': { eff: { median } } } });
+    it('shouldGiveTheSpeedAgainstTheAverageAndTheLastResultsOfThatGame', () => {
+      const r = gamesRow(sum({ zip: withData('estable', 1.1), tango: withData('deterioro', 0.94) } as never));
+      expect(r!.focus).toMatchObject({ big: '−6 %', cap: 'Tango · más lento que la media' });
+      expect(r!.focus!.bars.bars).toHaveLength(2);
+    });
+    it('shouldSayFasterWhenTheMedianIsAboveTheAverage', () => {
+      expect(gamesRow(sum({ zip: withData('mejora_sostenida', 1.14) } as never))!.focus).toMatchObject({ big: '+14 %', cap: 'Zip · más rápido que la media' });
+    });
+    it('shouldGiveNoFocusWhenNoGameSaysAnythingOrTheMedianIsMissing', () => {
+      expect(gamesRow(sum({ zip: withData('estable', 1.1) } as never))!.focus).toBeNull();
+      expect(gamesRow(sum({ tango: withData('deterioro', null) } as never))!.focus).toBeNull();
+      expect(gamesRow(sum({ tango: g('deterioro') }))!.focus).toBeNull(); // a summary without series or windows
+    });
+  });
   it('shouldSayTheLogIsEmptyAndGiveNoVerdict', () => {
-    expect(gamesRow(sum({}))).toEqual({ verdict: null, name: null, link: '/games', line: 'Sin partidas registradas aún', streak: '' });
+    expect(gamesRow(sum({}))).toEqual({ verdict: null, name: null, link: '/games', line: 'Sin partidas registradas aún', streak: '', focus: null });
   });
 });
 
