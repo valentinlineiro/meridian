@@ -62,7 +62,7 @@ describe('chessRow', () => {
     expect(r.form).toContain('Últimas 50 partidas (desde el ' + new Date(NOW - 49 * DAY).getUTCDate());
     expect(r.form).toContain('60,0 % de victorias');
     expect(r.form).toContain('+6,0 puntos de % (entre +1,0 y +11,0)');
-    expect(r.verdict).toMatchObject({ label: 'Posible mejora' });
+    expect(r.verdict).toMatchObject({ label: 'Mejorando' });
   });
   it('shouldSayNoClearChangeWhenTheIntervalIncludesZero', () => {
     const r = chessRow({ ...base, recent: recent({ diff: 0.06, lower: -0.08, upper: 0.2 }) });
@@ -108,7 +108,7 @@ describe('gamesRow: what needs a look first across the games', () => {
   it('shouldRankAPossibleFallAboveAConfirmedRise', () => {
     const r = gamesRow(sum({ zip: g('mejora_sostenida'), tango: g('estable', 'deterioro') }));
     expect(r!.verdict).toMatchObject({ state: 'possible', dir: 'down' });
-    expect(r!.line).toBe('Tango: Posible bajada · 1 mejorando');
+    expect(r!.line).toBe('Tango: Bajando · 1 mejorando');
   });
   it('shouldJustCountWhenNoGameSaysAnything', () => {
     const r = gamesRow(sum({ zip: g('estable'), tango: g('estable'), queens: g('datos_insuficientes') }));

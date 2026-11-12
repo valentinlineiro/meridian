@@ -50,9 +50,9 @@ describe('evaluation cards (P0)', () => {
 
   it('shouldExplainWhatIsMissingWhenEvaluationIsIndicio', () => {
     const h = html(CHANGES.decided9);
-    expect(h).toContain('Posible señal');
+    expect(h).toContain('Señal');
     expect(h).toContain('Tienes 9 partidas con ganador; hacen falta 10 para fiarse.');
-    expect(h).toContain('no podemos darla por buena');
+    expect(h).toContain('queda confirmada si se repite');
   });
 
   it('shouldShowIntervalReasonWhenIntervalIncludesZero', () => {
@@ -67,14 +67,14 @@ describe('evaluation cards (P0)', () => {
 
   it('shouldMarkSinIndicioWhenEffectIsBelowCriterion', () => {
     const h = html(CHANGES.below);
-    expect(h).toContain('Sin señales de cambio');
+    expect(h).toContain('Sin cambios');
     expect(h).toContain('Entre blancas y negras hay 4,0 puntos de % de diferencia');
-    expect(h).toContain('no demuestra que no haya habido cambio');
+    expect(h).toContain('No hay cambio con este criterio');
   });
 
   it('shouldMarkInsuficienteNotSinIndicioWhenTheWindowIsTooShort', () => {
     const h = txt(card(render(CHANGES.short), 'Mayor XP diario'));
-    expect(h).not.toContain('Sin señales de cambio');
+    expect(h).not.toContain('Sin cambios');
     expect(h).toContain('Pocos datos');
     expect(h).toContain('El periodo tiene 2 días completos; hacen falta 3.');
   });
@@ -92,7 +92,7 @@ describe('evaluation cards (P0)', () => {
   it('shouldMarkRatingJumpInsuficienteWhenNoRatingIsObservedInTheWindow', () => {
     const h = txt(card(render(CHANGES.noRating), 'Salto de ELO'));
     expect(h).toContain('Pocos datos');
-    expect(h).not.toContain('Sin señales de cambio');
+    expect(h).not.toContain('Sin cambios');
     expect(h).toContain('Falta una lectura de tu ELO antes o después de este periodo');
   });
 
@@ -115,7 +115,7 @@ describe('evaluation cards (P0)', () => {
   });
 
   it('shouldRenderIndicioWithAmberPill', () => {
-    const pill = [...render(CHANGES.decided9).querySelectorAll('.pill')].find((p) => p.textContent === '◐ Posible señal')!;
+    const pill = [...render(CHANGES.decided9).querySelectorAll('.pill')].find((p) => p.textContent === '◐ Señal')!;
     expect(pill.className).toBe('pill pill-selected');
   });
 
@@ -125,10 +125,10 @@ describe('evaluation cards (P0)', () => {
 
   it('shouldOrderAfirmadoBeforeIndicioBeforeSinIndicio', () => {
     const h = html(CHANGES.wide);
-    expect(h.indexOf('Posible señal')).toBeGreaterThan(-1);
-    expect(h.indexOf('Posible señal')).toBeLessThan(h.indexOf('Sin señales de cambio'));
+    expect(h.indexOf('Señal')).toBeGreaterThan(-1);
+    expect(h.indexOf('Señal')).toBeLessThan(h.indexOf('Sin cambios'));
     const states = cards(render(CHANGES.wide)).map((c) => c.querySelector('.pill:not(.pill-scope)')!.textContent);
-    const order = ['Confirmado', 'Posible señal', 'Pocos datos', 'Sin señales de cambio'];
+    const order = ['Confirmado', 'Señal', 'Pocos datos', 'Sin cambios'];
     expect(states.map((s) => order.indexOf(s!))).toEqual([...states.map((s) => order.indexOf(s!))].sort());
   });
 });
@@ -154,10 +154,10 @@ describe('A7: calibrated rules abstain on screen', () => {
     const h = elo(CHANGES.eloDown40);
     expect(h).toContain('Pocos datos');
     expect(h).toContain('Tu ELO ha bajado 40 puntos en 10 partidas. Todavía no sabemos cuánto varía normalmente');
-    expect(h).not.toContain('Sin señales de cambio');
+    expect(h).not.toContain('Sin cambios');
   });
   it('shouldShowSinIndicioWhenThereIsNoEffect', () => {
-    expect(elo(CHANGES.elo0)).toContain('Sin señales de cambio');
+    expect(elo(CHANGES.elo0)).toContain('Sin cambios');
   });
   it('shouldAttributeCalibrationOnlyToTheRulesThatUseIt', () => {
     const el = render(CHANGES.base);
@@ -198,7 +198,7 @@ describe('evaluation cards: a malformed evaluation degrades alone', () => {
     const el = render(p);
     expect(cards(el).length).toBe(3);
     expect(txt(card(el, 'Asimetría por color'))).toContain('No disponible');
-    expect(txt(card(el, 'Salto de ELO'))).toContain('Sin señales de cambio');
+    expect(txt(card(el, 'Salto de ELO'))).toContain('Sin cambios');
     expect(txt(card(el, 'Mayor XP diario'))).not.toContain('No disponible');
   });
 

@@ -80,7 +80,7 @@ describe('Overview', () => {
     const el = await open(fullApi());
     expect(el.querySelector('#overviewHero')!.textContent!.trim()).toBe('Hoy'); // the cards say it; the header does not repeat them
 
-    expect(el.querySelector('#overviewChessRow .pill')!.textContent).toBe('▲ Posible mejora');
+    expect(el.querySelector('#overviewChessRow .pill')!.textContent).toBe('▲ Mejorando');
     expect(text(el, 'overviewChessForm')).toMatch(/^Últimas 50 partidas \(desde el .+\): 60,0 % de victorias · \+6,0 puntos de % \(entre \+1,0 y \+11,0\) frente a las anteriores$/);
     expect(text(el, 'overviewChessBig')).toBe('900');
     expect(text(el, 'overviewChessElo')).toMatch(/^\+50 desde el /);

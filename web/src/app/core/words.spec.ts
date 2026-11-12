@@ -27,11 +27,10 @@ describe('words', () => {
     expect(PERIODS.map((p) => p.phrase)).toEqual(['la última semana', 'las últimas 4 semanas', 'los últimos 3 meses', 'todo el histórico']);
   });
 
-  it('shouldNeverCallNoSignalAProofThatNothingChanged', () => {
+  it('shouldSayPlainlyThatThereAreNoChangesWhenThereIsNoSignal', () => {
     const v = verdictFor({ label: 'estable', pending: null });
     expect(v.label).toBe('Estable');
-    expect(v.sentence).toBe('No se ve ningún cambio claro en las últimas 4 semanas.');
-    expect(v.sentence).not.toMatch(/sin cambios|no hubo cambio|estable/i);
+    expect(v.sentence).toBe('No hay cambios en las últimas 4 semanas.');
   });
 
   it('shouldMapTheEngineLabelsToOneVocabularyWithADirection', () => {
@@ -43,9 +42,9 @@ describe('words', () => {
 
   it('shouldCallAnUnconfirmedSignalPossibleWithItsDirection', () => {
     const down = verdictFor({ label: 'estable', pending: 'deterioro' });
-    expect(down).toMatchObject({ state: 'possible', dir: 'down', label: 'Posible bajada' });
-    expect(down.sentence).toBe('Puede que vayas algo más lento. Si se repite la semana que viene, lo confirmamos.');
-    expect(verdictFor({ label: 'estable', pending: 'mejora_sostenida' })).toMatchObject({ state: 'possible', dir: 'up', label: 'Posible mejora' });
+    expect(down).toMatchObject({ state: 'possible', dir: 'down', label: 'Bajando' });
+    expect(down.sentence).toBe('Vas algo más lento. Si se repite la semana que viene, queda confirmado.');
+    expect(verdictFor({ label: 'estable', pending: 'mejora_sostenida' })).toMatchObject({ state: 'possible', dir: 'up', label: 'Mejorando' });
   });
 
   it('shouldListWhatNeedsAttentionFirst', () => {
@@ -54,10 +53,10 @@ describe('words', () => {
 
   describe('intervalVerdict (one observation window against a baseline, with its 95% interval)', () => {
     it('shouldSayPossibleRiseWhenTheIntervalIsAboveZero', () => {
-      expect(intervalVerdict({ diff: 6, lower: 1, upper: 11 })).toMatchObject({ state: 'possible', dir: 'up', label: 'Posible mejora', pill: 'pill pill-selected' });
+      expect(intervalVerdict({ diff: 6, lower: 1, upper: 11 })).toMatchObject({ state: 'possible', dir: 'up', label: 'Mejorando', pill: 'pill pill-selected' });
     });
     it('shouldSayPossibleFallWhenTheIntervalIsBelowZero', () => {
-      expect(intervalVerdict({ diff: -6, lower: -11, upper: -1 })).toMatchObject({ state: 'possible', dir: 'down', label: 'Posible bajada' });
+      expect(intervalVerdict({ diff: -6, lower: -11, upper: -1 })).toMatchObject({ state: 'possible', dir: 'down', label: 'Bajando' });
     });
     it('shouldSayNoSignalWhenTheIntervalIncludesZero', () => {
       for (const d of [{ diff: 6, lower: -8, upper: 20 }, { diff: 0, lower: 0, upper: 3 }, { diff: 2, lower: -3, upper: 0 }])
