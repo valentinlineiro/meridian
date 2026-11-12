@@ -1,7 +1,7 @@
 // Port of the LinkedIn Games view builders (src/dashboard.client.js:1787–1943). Pure: the range is a parameter, not a global.
 // Nothing here is computed beyond formatting: labels, bands and arrows come from the server's contract.
 import { fmtDate } from '../../core/format';
-import { attentionOrder, GAME_NAMES, gameName, gdays, formWords, PERIODS, PeriodKey, typicalTime, Verdict, verdictFor } from '../../core/words';
+import { attentionOrder, GAME_NAMES, gameName, gdays, PERIODS, PeriodKey, typicalTime, Verdict, verdictFor } from '../../core/words';
 
 export type Range = PeriodKey;
 export type Label = 'mejora_sostenida' | 'estable' | 'deterioro' | 'datos_insuficientes';
@@ -172,16 +172,11 @@ export function lossRows(s: Summary) {
   return { rows, days: DAYS.map((d) => d.slice(0, 3)), sentence: w ? `Donde más pierdes: ${gameName(w.k)} los ${DAYS[w.c.dow]} (${gpct(w.c.rate)}, ${w.c.n} partidas).` : 'Aún no hay ningún día con partidas suficientes para decir dónde pierdes más.' };
 }
 
-/** One plain sentence about the player's form (the difficulty of the days already taken out), for the period picked. */
-const formLine = (x: Game, range: Range): string => {
-  const w = formWords(x.adjusted.windows[range].pct);
-  return w === 'Aún pocos datos' ? w : w === 'a la par' ? 'Vas a tu ritmo de siempre' : `Vas ${w} de lo normal`;
-};
 export const RECENT_DOTS = 14;
 /** A result 50 % away from the average fills its half of the bar strip; further away is capped. */
 const BAR_FULL = 0.5, BAR_MIN = 8;
 const barPct = (d: number) => Math.min(100, Math.max(BAR_MIN, Math.round(Math.abs(d) / BAR_FULL * 100)));
-/** The first look: per game a verdict, the speed against the average as one big number, one sentence and the last 14 results as bars. */
+/** The first look: per game a verdict, the speed against the average as one big number, the verdict's own sentence (it never contradicts the pill) and the last 14 results as bars. */
 export function summaryRows(s: Summary, range: Range) {
   return cardOrder(s).flatMap((k) => { try { return [row(k)]; } catch { return []; } }); // a malformed game drops its own row only
   function row(k: string) {
@@ -190,7 +185,7 @@ export function summaryRows(s: Summary, range: Range) {
     const wins = bars.filter((d) => d.win).length;
     const m = w.eff.median, e = w.delta?.effRel?.value;
     return {
-      k, name: gameName(k), verdict: verdictOf(x), line: formLine(x, range), bars,
+      k, name: gameName(k), verdict: verdictOf(x), line: verdictOf(x).sentence, bars,
       big: m == null ? '—' : gsigned((m - 1) * 100, ' %'),
       cap: m == null ? 'aún sin media' : m > 1 ? 'más rápido que la media' : m < 1 ? 'más lento que la media' : 'igual que la media',
       delta: e == null ? '' : gsigned(e * 100, ' %') + ' frente al periodo anterior',

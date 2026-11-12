@@ -502,8 +502,16 @@ describe('Games', () => {
       expect(zip.querySelector('.gc-big')!.textContent!.trim()).toBe('+13 %');
       expect(zip.querySelector('.gc-cap')!.textContent!.trim()).toBe('más rápido que la media');
       expect(zip.querySelector('.gc-delta')!.textContent!.trim()).toBe('−13 % frente al periodo anterior');
-      expect(zip.textContent).toContain('Vas bastante más rápido de lo normal');
+      expect(zip.textContent).toContain('No se ve ningún cambio claro en las últimas 4 semanas.');
       expect(zip.textContent).toContain('Tiempo normal 0:52');
+    });
+
+    it('shouldSayTheSentenceOfTheVerdictSoItNeverContradictsThePill', async () => {
+      const down = game({ interpretation: interp({ label: 'deterioro', reason: 'reciente', candidate: 'deterioro', previousCandidate: 'deterioro' }) });
+      await open({ tango: down });
+      const row = rowOf('Tango');
+      expect(row.querySelector('.gc-line')!.textContent).toContain('Vas más lento que antes, y se ha repetido dos semanas seguidas.');
+      expect(row.textContent).not.toContain('de lo normal'); // the difficulty-adjusted form is another frame: it lives in the report
     });
 
     it('shouldSayMoreSlowAndShowADashWhenTheMedianSpeedIsBelowOrMissing', async () => {
