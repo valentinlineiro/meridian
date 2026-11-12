@@ -359,3 +359,8 @@ app-tab-bar{display:none}
 .gb i{display:block;width:100%;border-radius:var(--r-sm)}
 .gc-line{margin:0;font-size:var(--fs-lg)}
 @media(min-width:761px){.gcs{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Games header: today's log first, the streak as a small line, the long-run facts as a footer */
+.gh-top{display:flex;justify-content:space-between;align-items:baseline;gap:4px 12px;flex-wrap:wrap}.gh-top b{font-size:var(--fs-xl)}
+.gh-foot{display:flex;flex-wrap:wrap;gap:4px 16px;margin-top:12px;font-size:var(--fs-sm)}.gh-foot a{margin-left:auto;display:inline-flex;align-items:center;min-height:44px}
+#gamesToday .pill{text-transform:none;letter-spacing:0;font-weight:600}

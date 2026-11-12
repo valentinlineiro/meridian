@@ -75,6 +75,12 @@ export class Games {
     const done = new Set(g && typeof g === 'object' ? Object.keys(g) : []);
     return Object.keys(GAME_NAMES).map((k) => ({ k, name: GAME_NAMES[k], done: done.has(k), text: (done.has(k) ? '✓ ' : '') + GAME_NAMES[k] }));
   });
+  /** "Hoy · 2 de 6 registrados"; just "Hoy" while the day could not be read: unknown is never said as zero. */
+  protected readonly todayTitle = computed(() => {
+    const day = this.loaded()?.d?.day?.games, chips = this.chips();
+    if (!chips.length) return '';
+    return day && typeof day === 'object' ? `Hoy · ${chips.filter((c) => c.done).length} de ${chips.length} registrados` : 'Hoy';
+  });
   protected readonly loss = computed(() => { const s = this.summary(); return s ? safe(() => lossRows(s) ?? null, null) : undefined; });
   protected readonly diff = computed(() => { const s = this.summary(); return s ? safe(() => difficultyGrid(s) ?? null, null) : undefined; });
   protected readonly rows = computed(() => { const s = this.summary(), range = this.range(); return s ? safe(() => summaryRows(s, range), []) : []; });
