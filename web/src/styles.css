@@ -347,3 +347,15 @@ app-tab-bar{display:none}
 [tabindex="-1"]:focus{outline:none} /* programmatic focus targets (main, page headings) */
 .brand a{color:inherit;text-decoration:none}.brand a:focus-visible{outline:2px solid var(--link);outline-offset:2px;border-radius:var(--r-sm)}
 .side-menu ul,.sheet ul{list-style:none;margin:0;padding:0}
+
+/* Games: one card per game (big number, bars of the last results, one sentence) */
+.gcs{display:grid;gap:12px}
+.gc{display:grid;gap:8px;padding:16px}
+.gc-h{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.gc-n{display:flex;align-items:baseline;gap:4px 8px;flex-wrap:wrap}.gc-big{font-size:var(--fs-display);font-weight:800;line-height:1;font-variant-numeric:tabular-nums}.gc-delta{margin-left:auto}
+.gbars{display:grid;grid-template-columns:repeat(14,minmax(0,1fr));gap:3px;height:56px;position:relative}
+.gbars::before{content:"";position:absolute;left:0;right:0;top:50%;border-top:1px dashed var(--selected-line)}
+.gb{display:grid;grid-template-rows:1fr 1fr}.gb-up,.gb-dn{display:flex}.gb-up{align-items:flex-end}.gb-dn{align-items:flex-start}
+.gb i{display:block;width:100%;border-radius:var(--r-sm)}
+.gc-line{margin:0;font-size:var(--fs-lg)}
+@media(min-width:761px){.gcs{grid-template-columns:repeat(2,minmax(0,1fr))}}

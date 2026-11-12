@@ -70,7 +70,7 @@ describe('Games', () => {
   describe('the list links to each report', () => {
     it('shouldLinkEachGameRowToItsReport', async () => {
       await open({ queens: game(), zip: game() });
-      const links = [...el.querySelectorAll('#gamesNow .grow-h a')];
+      const links = [...el.querySelectorAll('#gamesNow .gc-h a')];
       expect(links.map((a) => a.getAttribute('href')).sort()).toEqual(['/games/queens', '/games/zip']);
       expect(links.map((a) => a.getAttribute('aria-label')).sort()).toEqual(['Informe de Queens', 'Informe de Zip']);
       expect(links.map((a) => a.textContent!.trim()).sort()).toEqual(['Queens', 'Zip']); // the visible name is the link
@@ -238,7 +238,7 @@ describe('Games', () => {
     it('shouldShowTheHeroAsUnavailableWhenItsFieldsAreMalformed', async () => {
       await open({ zip: game() }, undefined, { days: { bad: 1 } });
       expect(text('gamesHeroMeta')).toBe('No disponible');
-      expect(el.querySelectorAll('#gamesNow .grow')).toHaveLength(1);
+      expect(el.querySelectorAll('#gamesNow .gc')).toHaveLength(1);
     });
 
     it('shouldKeepTheChipsWhenTheDayBodyIsMalformed', async () => {
@@ -493,27 +493,66 @@ describe('Games', () => {
 
   });
   describe('first look', () => {
-    it('shouldShowOneRowPerGameWithASentenceAndTheLast14ResultsAsDots', async () => {
-      const series = Array.from({ length: 20 }, (_, i) => ({ date: `2026-10-${String(10 + i).padStart(2, '0')}`, eff: i % 4 === 0 ? 0.8 : 1.5, roll: 1.2 }));
-      await open({ zip: game({ series }), tango: game() });
-      const rows = [...el.querySelectorAll('#gamesNow .grow')];
-      expect(rows).toHaveLength(2);
-      const zip = rows.find((r) => r.textContent!.includes('Zip'))!;
-      expect(zip.textContent).toContain('Vas bastante más rápido de lo normal');
-      expect(zip.querySelectorAll('.dot')).toHaveLength(14);
-      expect(zip.querySelectorAll('.dot-l').length).toBe(3); // indexes 8, 12, 16 of the last 14 (6..19)
-      expect(zip.querySelector('.dots')!.getAttribute('aria-label')).toBe('Últimas 14 partidas con media: 11 mejores que la media y 3 peores.');
+    const withSeries = (effs: number[]) => effs.map((eff, i) => ({ date: `2026-10-${String(10 + i).padStart(2, '0')}`, eff, roll: 1.2 }));
+    const rowOf = (name: string) => [...el.querySelectorAll('#gamesNow .gc')].find((r) => r.textContent!.includes(name))!;
+
+    it('shouldShowTheBigNumberTheChangeAndTheSentenceOfEachGame', async () => {
+      await open({ zip: game(), tango: game() });
+      const zip = rowOf('Zip');
+      expect(zip.querySelector('.gc-big')!.textContent!.trim()).toBe('+13 %');
+      expect(zip.querySelector('.gc-cap')!.textContent!.trim()).toBe('más rápido que la media');
+      expect(zip.querySelector('.gc-delta')!.textContent!.trim()).toBe('−13 % frente al periodo anterior');
+      expect(zip.textContent).toContain('No se ve ningún cambio claro en las últimas 4 semanas.');
+      expect(zip.textContent).toContain('Tiempo normal 0:52');
     });
 
-    it('shouldDrawOnlyTheLast28DaysInTheLine', async () => {
-      const series = [
-        { date: '2026-09-01', eff: 1.5, roll: 100 }, // far outside the last 28 days: must not set the scale
-        ...Array.from({ length: 10 }, (_, i) => ({ date: `2026-11-${String(i + 1).padStart(2, '0')}`, eff: 1.5, roll: 1 + i })),
-      ];
+    it('shouldSayTheSentenceOfTheVerdictSoItNeverContradictsThePill', async () => {
+      const down = game({ interpretation: interp({ label: 'deterioro', reason: 'reciente', candidate: 'deterioro', previousCandidate: 'deterioro' }) });
+      await open({ tango: down });
+      const row = rowOf('Tango');
+      expect(row.querySelector('.gc-line')!.textContent).toContain('Vas más lento que antes, y se ha repetido dos semanas seguidas.');
+      expect(row.textContent).not.toContain('de lo normal'); // the difficulty-adjusted form is another frame: it lives in the report
+    });
+
+    it('shouldSayMoreSlowAndShowADashWhenTheMedianSpeedIsBelowOrMissing', async () => {
+      const slow = game({ windows: { ...game().windows, '28': win28('flat', -0.1) } });
+      slow.windows['28'].eff = { median: 0.94, nEff: 28 };
+      const none = game();
+      (none.windows['28'] as any).eff = { median: null, nEff: 0 };
+      await open({ zip: slow, tango: none });
+      expect(rowOf('Zip').querySelector('.gc-big')!.textContent!.trim()).toBe('−6 %');
+      expect(rowOf('Zip').querySelector('.gc-cap')!.textContent!.trim()).toBe('más lento que la media');
+      expect(rowOf('Tango').querySelector('.gc-big')!.textContent!.trim()).toBe('—');
+    });
+
+    it('shouldOmitTheChangeWhenThePeriodHasNoPreviousOne', async () => {
+      await open({ zip: game() });
+      await setRange('90');
+      expect(rowOf('Zip').querySelector('.gc-delta')).toBeNull();
+    });
+
+    it('shouldDrawTheLast14ResultsAsBarsWhoseHeightIsTheDistanceToTheAverage', async () => {
+      const series = withSeries(Array.from({ length: 20 }, (_, i) => (i % 4 === 0 ? 0.8 : 1.5)));
       await open({ zip: game({ series }) });
-      const pts = el.querySelector('#gamesNow polyline')!.getAttribute('points')!.split(' ');
-      expect(pts).toHaveLength(10);
-      expect(pts[0]).toBe('0.0,22.0'); // the lowest of the last 28 days sits at the bottom: the old point (100) is not in the scale
+      const bars = rowOf('Zip').querySelectorAll('.gbars .gb');
+      expect(bars).toHaveLength(14);
+      expect(rowOf('Zip').querySelectorAll('.gb-dn i')).toHaveLength(3); // indexes 8, 12, 16 of the last 14 (6..19)
+      expect(rowOf('Zip').querySelectorAll('.gb-up i')).toHaveLength(11);
+      const h = (sel: string) => (rowOf('Zip').querySelector(sel) as HTMLElement).style.height;
+      expect(h('.gb-up i')).toBe('100%'); // 1.5 is +50 %: the full half
+      expect(h('.gb-dn i')).toBe('40%'); // 0.8 is -20 %
+      expect(rowOf('Zip').querySelector('.gbars')!.getAttribute('aria-label')).toBe('Últimas 14 partidas con media: 11 mejores que la media y 3 peores.');
+    });
+
+    it('shouldCapTheBarsAndKeepAVisibleStubForAnAlmostEqualResult', async () => {
+      await open({ zip: game({ series: withSeries([3, 1.01]) }) });
+      expect((rowOf('Zip').querySelector('.gb-up i') as HTMLElement).style.height).toBe('100%');
+      expect(parseFloat((rowOf('Zip').querySelectorAll('.gb-up i')[1] as HTMLElement).style.height)).toBeGreaterThanOrEqual(8);
+    });
+
+    it('shouldNotDrawTheOldDotsOrTheLineOnTheRows', async () => {
+      await open({ zip: game() });
+      expect(el.querySelector('#gamesNow .dot, #gamesNow .spark, #gamesNow .grow-tag')).toBeNull();
     });
 
     it('shouldKeepTheChartOneClickAwayUnderMoreDetail', async () => {
@@ -525,7 +564,7 @@ describe('Games', () => {
 
     it('shouldDropOnlyTheRowOfAMalformedGame', async () => {
       await open({ zip: game({ windows: {} }), tango: game() });
-      expect(el.querySelectorAll('#gamesNow .grow')).toHaveLength(1);
+      expect(el.querySelectorAll('#gamesNow .gc')).toHaveLength(1);
     });
   });
 });
