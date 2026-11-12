@@ -61,7 +61,7 @@ describe('evaluation cards (P0)', () => {
 
   it('shouldMarkInsuficienteWhenDataIsUnavailable', () => {
     const h = html(CHANGES.histZero);
-    expect(h).toContain('Aún pocos datos');
+    expect(h).toContain('Pocos datos');
     expect(h).toContain('Aún no tenemos suficientes días anteriores para saber cuál es tu XP normal.');
   });
 
@@ -75,7 +75,7 @@ describe('evaluation cards (P0)', () => {
   it('shouldMarkInsuficienteNotSinIndicioWhenTheWindowIsTooShort', () => {
     const h = txt(card(render(CHANGES.short), 'Mayor XP diario'));
     expect(h).not.toContain('Sin señales de cambio');
-    expect(h).toContain('Aún pocos datos');
+    expect(h).toContain('Pocos datos');
     expect(h).toContain('El periodo tiene 2 días completos; hacen falta 3.');
   });
 
@@ -91,7 +91,7 @@ describe('evaluation cards (P0)', () => {
 
   it('shouldMarkRatingJumpInsuficienteWhenNoRatingIsObservedInTheWindow', () => {
     const h = txt(card(render(CHANGES.noRating), 'Salto de ELO'));
-    expect(h).toContain('Aún pocos datos');
+    expect(h).toContain('Pocos datos');
     expect(h).not.toContain('Sin señales de cambio');
     expect(h).toContain('Falta una lectura de tu ELO antes o después de este periodo');
   });
@@ -115,7 +115,7 @@ describe('evaluation cards (P0)', () => {
   });
 
   it('shouldRenderIndicioWithAmberPill', () => {
-    const pill = [...render(CHANGES.decided9).querySelectorAll('.pill')].find((p) => p.textContent === 'Posible señal')!;
+    const pill = [...render(CHANGES.decided9).querySelectorAll('.pill')].find((p) => p.textContent === '◐ Posible señal')!;
     expect(pill.className).toBe('pill pill-selected');
   });
 
@@ -128,7 +128,7 @@ describe('evaluation cards (P0)', () => {
     expect(h.indexOf('Posible señal')).toBeGreaterThan(-1);
     expect(h.indexOf('Posible señal')).toBeLessThan(h.indexOf('Sin señales de cambio'));
     const states = cards(render(CHANGES.wide)).map((c) => c.querySelector('.pill:not(.pill-scope)')!.textContent);
-    const order = ['Confirmado', 'Posible señal', 'Aún pocos datos', 'Sin señales de cambio'];
+    const order = ['Confirmado', 'Posible señal', 'Pocos datos', 'Sin señales de cambio'];
     expect(states.map((s) => order.indexOf(s!))).toEqual([...states.map((s) => order.indexOf(s!))].sort());
   });
 });
@@ -140,7 +140,7 @@ describe('evaluation cards: verdict first, criteria on demand', () => {
     expect(xp.tagName).toBe('DETAILS');
     expect(xp.className.replace(/ ?u-\S+/g, '').trim()).toBe('card evcard');
     expect(xp.hasAttribute('open')).toBe(false);
-    expect(txt(xp)).toContain('Aún pocos datos');
+    expect(txt(xp)).toContain('Pocos datos');
     expect(txt(xp)).toContain('El periodo tiene 2 días completos; hacen falta 3.');
     const affirmed = cards(el).find((c) => txt(c).includes('Confirmado'))!;
     expect(affirmed.tagName).toBe('DIV');
@@ -152,7 +152,7 @@ describe('A7: calibrated rules abstain on screen', () => {
   const elo = (p: Payload) => txt(card(render(p), 'Salto de ELO'));
   it('shouldShowInsuficienteWithTheObservedEffectWhenTheUsualVariationIsUnknown', () => {
     const h = elo(CHANGES.eloDown40);
-    expect(h).toContain('Aún pocos datos');
+    expect(h).toContain('Pocos datos');
     expect(h).toContain('Tu ELO ha bajado 40 puntos en 10 partidas. Todavía no sabemos cuánto varía normalmente');
     expect(h).not.toContain('Sin señales de cambio');
   });

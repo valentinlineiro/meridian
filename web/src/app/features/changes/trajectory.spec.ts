@@ -136,7 +136,7 @@ describe('Trajectory', () => {
 
     it('shouldMarkInsuficienteWhenTheHistoryIsTooShort', async () => {
       await open(TRAJECTORY.short);
-      expect(html()).toContain('Aún pocos datos');
+      expect(html()).toContain('Pocos datos');
       expect(html()).toContain('Solo hay 59 días de historial; con menos de 60 sería adivinar.');
     });
 

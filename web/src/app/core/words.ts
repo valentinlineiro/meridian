@@ -42,13 +42,13 @@ export function verdictFor(e: Engine): Verdict {
   if (pending) {
     return pending === 'down'
       ? { state: 'possible', dir: 'down', label: 'Posible bajada', pill: 'pill pill-selected', sentence: 'Puede que vayas algo más lento. Si se repite la semana que viene, lo confirmamos.' }
-      : { state: 'possible', dir: 'up', label: 'Posible subida', pill: 'pill pill-selected', sentence: 'Puede que vayas algo más rápido. Si se repite la semana que viene, lo confirmamos.' };
+      : { state: 'possible', dir: 'up', label: 'Posible mejora', pill: 'pill pill-selected', sentence: 'Puede que vayas algo más rápido. Si se repite la semana que viene, lo confirmamos.' };
   }
   switch (e.label) {
-    case 'deterioro': return { state: 'confirmed', dir: 'down', label: 'A la baja', pill: 'pill pill-warn', sentence: 'Vas más lento que antes, y se ha repetido dos semanas seguidas.' };
-    case 'mejora_sostenida': return { state: 'confirmed', dir: 'up', label: 'Al alza', pill: 'pill pill-win', sentence: 'Vas más rápido que antes, y se ha repetido dos semanas seguidas.' };
-    case 'estable': return { state: 'no-signal', dir: null, label: 'Sin señales de cambio', pill: 'pill', sentence: `No se ve ningún cambio claro en ${PERIODS[1].phrase}.` };
-    default: return { state: 'few-data', dir: null, label: 'Aún pocos datos', pill: 'pill pill-draw', sentence: 'Todavía no hay historial suficiente para juzgar este juego.' };
+    case 'deterioro': return { state: 'confirmed', dir: 'down', label: 'Bajando', pill: 'pill pill-warn', sentence: 'Vas más lento que antes, y se ha repetido dos semanas seguidas.' };
+    case 'mejora_sostenida': return { state: 'confirmed', dir: 'up', label: 'Mejorando', pill: 'pill pill-win', sentence: 'Vas más rápido que antes, y se ha repetido dos semanas seguidas.' };
+    case 'estable': return { state: 'no-signal', dir: null, label: 'Estable', pill: 'pill', sentence: `No se ve ningún cambio claro en ${PERIODS[1].phrase}.` };
+    default: return { state: 'few-data', dir: null, label: 'Pocos datos', pill: 'pill pill-draw', sentence: 'Todavía no hay historial suficiente para juzgar este juego.' };
   }
 }
 
@@ -56,7 +56,7 @@ export function verdictFor(e: Engine): Verdict {
 export const EVAL_VERDICTS: Record<'AFIRMADO' | 'INDICIO' | 'INSUFICIENTE' | 'SIN INDICIO', Verdict> = {
   'AFIRMADO': { state: 'confirmed', dir: null, label: 'Confirmado', pill: 'pill pill-win', sentence: '' },
   'INDICIO': { state: 'possible', dir: null, label: 'Posible señal', pill: 'pill pill-selected', sentence: 'Se ve una señal, pero con lo que hay todavía no podemos darla por buena.' },
-  'INSUFICIENTE': { state: 'few-data', dir: null, label: 'Aún pocos datos', pill: 'pill pill-draw', sentence: 'Aún no hay datos suficientes para responder en este periodo.' },
+  'INSUFICIENTE': { state: 'few-data', dir: null, label: 'Pocos datos', pill: 'pill pill-draw', sentence: 'Aún no hay datos suficientes para responder en este periodo.' },
   'SIN INDICIO': { state: 'no-signal', dir: null, label: 'Sin señales de cambio', pill: 'pill', sentence: 'No se ve un cambio claro con este criterio. Eso no demuestra que no haya habido cambio.' },
 };
 
@@ -65,10 +65,10 @@ export const EVAL_VERDICTS: Record<'AFIRMADO' | 'INDICIO' | 'INSUFICIENTE' | 'SI
  * never a confirmed one (no persistence rule has been applied to it); no baseline is "few data".
  */
 export function intervalVerdict(d: { diff: number; lower: number; upper: number } | null): Verdict {
-  if (!d) return { state: 'few-data', dir: null, label: 'Aún pocos datos', pill: 'pill pill-draw', sentence: 'Todavía no hay partidas anteriores con las que comparar.' };
-  if (d.lower > 0) return { state: 'possible', dir: 'up', label: 'Posible subida', pill: 'pill pill-selected', sentence: 'Hay indicio de que vas mejor que antes, pero aún no lo damos por confirmado.' };
+  if (!d) return { state: 'few-data', dir: null, label: 'Pocos datos', pill: 'pill pill-draw', sentence: 'Todavía no hay partidas anteriores con las que comparar.' };
+  if (d.lower > 0) return { state: 'possible', dir: 'up', label: 'Posible mejora', pill: 'pill pill-selected', sentence: 'Hay indicio de que vas mejor que antes, pero aún no lo damos por confirmado.' };
   if (d.upper < 0) return { state: 'possible', dir: 'down', label: 'Posible bajada', pill: 'pill pill-selected', sentence: 'Hay indicio de que vas peor que antes, pero aún no lo damos por confirmado.' };
-  return { state: 'no-signal', dir: null, label: 'Sin señales de cambio', pill: 'pill', sentence: 'No se ve un cambio claro frente a tus partidas anteriores. Eso no demuestra que no lo haya.' };
+  return { state: 'no-signal', dir: null, label: 'Estable', pill: 'pill', sentence: 'No se ve un cambio claro frente a tus partidas anteriores. Eso no demuestra que no lo haya.' };
 }
 
 export const verdictKey = (v: Verdict): string => v.dir ? `${v.state}-${v.dir}` : v.state;
@@ -78,7 +78,7 @@ export const VERDICT_ORDER = ['confirmed-down', 'possible-down', 'possible-up', 
 /** How far ahead of (or behind) what the day's difficulty asked for, in words (pct > 0 is faster); the percent stays in "Cómo se calcula". */
 const FORM_TIERS: [upTo: number, phrase: [faster: string, slower: string]][] = [[10, ['algo más rápido', 'algo más lento']], [20, ['bastante más rápido', 'bastante más lento']]];
 export const formWords = (pct: number | null): string => {
-  if (pct == null) return 'Aún pocos datos';
+  if (pct == null) return 'Pocos datos';
   if (Math.abs(pct) < 3) return 'a la par';
   const [faster, slower] = FORM_TIERS.find(([upTo]) => Math.abs(pct) < upTo)?.[1] ?? ['mucho más rápido', 'mucho más lento'];
   return pct > 0 ? faster : slower;
@@ -87,10 +87,10 @@ export const formWords = (pct: number | null): string => {
 /** The trend of the difficulty-adjusted form, in the same verdict vocabulary (the interval, not two weeks, is its rule). */
 export function formVerdict(label: string): Verdict {
   switch (label) {
-    case 'mejora': return { state: 'confirmed', dir: 'up', label: 'Al alza', pill: 'pill pill-win', sentence: 'Teniendo en cuenta lo difícil que era cada día, vas cada vez más rápido.' };
-    case 'deterioro': return { state: 'confirmed', dir: 'down', label: 'A la baja', pill: 'pill pill-warn', sentence: 'Teniendo en cuenta lo difícil que era cada día, vas cada vez más lento.' };
-    case 'sin_cambio': return { state: 'no-signal', dir: null, label: 'Sin señales de cambio', pill: 'pill', sentence: 'Con la dificultad en cuenta no se ve un cambio claro.' };
-    default: return { state: 'few-data', dir: null, label: 'Aún pocos datos', pill: 'pill pill-draw', sentence: 'Aún no hay historial suficiente para ajustar por dificultad.' };
+    case 'mejora': return { state: 'confirmed', dir: 'up', label: 'Mejorando', pill: 'pill pill-win', sentence: 'Teniendo en cuenta lo difícil que era cada día, vas cada vez más rápido.' };
+    case 'deterioro': return { state: 'confirmed', dir: 'down', label: 'Bajando', pill: 'pill pill-warn', sentence: 'Teniendo en cuenta lo difícil que era cada día, vas cada vez más lento.' };
+    case 'sin_cambio': return { state: 'no-signal', dir: null, label: 'Estable', pill: 'pill', sentence: 'Con la dificultad en cuenta no se ve un cambio claro.' };
+    default: return { state: 'few-data', dir: null, label: 'Pocos datos', pill: 'pill pill-draw', sentence: 'Aún no hay historial suficiente para ajustar por dificultad.' };
   }
 }
 
