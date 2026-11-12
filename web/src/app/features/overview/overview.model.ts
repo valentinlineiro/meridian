@@ -83,8 +83,8 @@ export function gamesRow(s: GamesSummaryIn): { verdict: Verdict | null; name: st
   const head = vs[0]!.state === 'confirmed' || vs[0]!.state === 'possible';
   const rest = head ? vs.slice(1) : vs; // the head is said once, not counted again
   const count = (f: (v: Verdict) => boolean, text: string) => { const n = rest.filter(f).length; return n ? `${n} ${text}` : ''; };
-  const counts = [count((v) => v.dir === 'up', 'al alza'), count((v) => v.dir === 'down', 'a la baja'),
-    count((v) => v.state === 'no-signal', 'sin señales de cambio'), count((v) => v.state === 'few-data', 'con pocos datos')].filter(Boolean);
+  const counts = [count((v) => v.dir === 'up', 'mejorando'), count((v) => v.dir === 'down', 'bajando'),
+    count((v) => v.state === 'no-signal', 'sin cambios'), count((v) => v.state === 'few-data', 'con pocos datos')].filter(Boolean);
   const cur = s.playStreak?.current ?? 0;
   return {
     verdict: vs[0]!,

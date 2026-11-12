@@ -64,9 +64,14 @@ describe('shared pieces', () => {
     expect(rows).toEqual([['Tiempo normal', '0:52', 'suele estar entre 0:47 y 1:00'], ['Mejor marca', '0:33']]);
   });
 
+  it('shouldGiveEveryVerdictStateAGlyphAndNeverRelyOnColourAlone', async () => {
+    const glyph = async (label: string) => { const f = TestBed.createComponent(VerdictPill); f.componentRef.setInput('verdict', verdictFor({ label, pending: null })); await f.whenStable(); return f.nativeElement.textContent.trim(); };
+    expect([await glyph('mejora_sostenida'), await glyph('deterioro'), await glyph('estable'), await glyph('otro')]).toEqual(['▲ Mejorando', '▼ Bajando', '▬ Estable', '○ Pocos datos']);
+  });
+
   it('shouldColourTheVerdictPillFromTheVerdict', () => {
     const pill = el.querySelector('app-verdict span')!;
     expect(pill.className).toBe('pill pill-warn');
-    expect(pill.textContent).toBe('A la baja');
+    expect(pill.textContent).toBe('▼ Bajando');
   });
 });

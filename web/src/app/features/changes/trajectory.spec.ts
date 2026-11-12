@@ -122,7 +122,7 @@ describe('Trajectory', () => {
 
     it('shouldExplainWhyThereIsNoPatternInsteadOfShowingAnEmptyTab', async () => {
       await open(TRAJECTORY.indicio);
-      expect(html()).toContain('Posible señal');
+      expect(html()).toContain('Señal');
       expect(html()).toContain('repartidas en 59 días');
       expect(html()).toContain('Hacen falta 40 por color y 60 días jugados.');
       expect(empty()).toBeNull();
@@ -136,7 +136,7 @@ describe('Trajectory', () => {
 
     it('shouldMarkInsuficienteWhenTheHistoryIsTooShort', async () => {
       await open(TRAJECTORY.short);
-      expect(html()).toContain('Aún pocos datos');
+      expect(html()).toContain('Pocos datos');
       expect(html()).toContain('Solo hay 59 días de historial; con menos de 60 sería adivinar.');
     });
 
@@ -253,7 +253,7 @@ describe('Trajectory', () => {
     it('shouldShowTheFindingsAsUnavailableWhenTheyAreNotAList', async () => {
       await open({ ...copy(TRAJECTORY.indicio), findings: 'none' });
       expect(cardText('Patrones')).toContain('No disponible');
-      expect(html()).toContain('Posible señal');
+      expect(html()).toContain('Señal');
     });
 
     it('shouldKeepTheAfirmadoCardWhenItsFindingCannotBeRead', async () => {

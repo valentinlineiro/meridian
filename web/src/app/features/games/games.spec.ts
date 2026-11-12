@@ -524,7 +524,7 @@ describe('Games', () => {
       expect(zip.querySelector('.gc-big')!.textContent!.trim()).toBe('+13 %');
       expect(zip.querySelector('.gc-cap')!.textContent!.trim()).toBe('más rápido que la media');
       expect(zip.querySelector('.gc-delta')!.textContent!.trim()).toBe('−13 % frente al periodo anterior');
-      expect(zip.textContent).toContain('No se ve ningún cambio claro en las últimas 4 semanas.');
+      expect(zip.textContent).toContain('No hay cambios en las últimas 4 semanas.');
       expect(zip.textContent).toContain('Tiempo normal 0:52');
     });
 

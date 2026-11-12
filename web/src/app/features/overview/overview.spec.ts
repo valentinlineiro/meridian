@@ -80,7 +80,7 @@ describe('Overview', () => {
     const el = await open(fullApi());
     expect(el.querySelector('#overviewHero')!.textContent!.trim()).toBe('Hoy'); // the cards say it; the header does not repeat them
 
-    expect(el.querySelector('#overviewChessRow .pill')!.textContent).toBe('Posible subida');
+    expect(el.querySelector('#overviewChessRow .pill')!.textContent).toBe('▲ Mejorando');
     expect(text(el, 'overviewChessForm')).toMatch(/^Últimas 50 partidas \(desde el .+\): 60,0 % de victorias · \+6,0 puntos de % \(entre \+1,0 y \+11,0\) frente a las anteriores$/);
     expect(text(el, 'overviewChessBig')).toBe('900');
     expect(text(el, 'overviewChessElo')).toMatch(/^\+50 desde el /);
@@ -92,8 +92,8 @@ describe('Overview', () => {
     expect(el.querySelector('#overviewLangStreak')).toBeNull(); // the Duolingo streak lives in Idiomas
     expect(el.querySelectorAll('#overviewLangRow .wk > div')).toHaveLength(7);
 
-    expect(el.querySelector('#overviewGamesRow .pill')!.textContent).toBe('A la baja');
-    expect(text(el, 'overviewGamesLine')).toBe('Tango: A la baja · 1 sin señales de cambio');
+    expect(el.querySelector('#overviewGamesRow .pill')!.textContent).toBe('▼ Bajando');
+    expect(text(el, 'overviewGamesLine')).toBe('Tango: Bajando · 1 sin cambios');
     expect(text(el, 'overviewGamesStreak')).toBe('Racha: 12 días seguidos');
   });
 
@@ -179,7 +179,7 @@ describe('Overview', () => {
       expect(text(el, 'overviewChessBig')).toBe('880');
       expect(text(el, 'overviewChessElo')).toBe('');
       expect(el.querySelector('#overviewChessRow m-sparkline')).toBeNull(); // one reading is not a trend
-      expect(el.querySelector('#overviewChessRow .pill')!.textContent).toBe('Aún pocos datos');
+      expect(el.querySelector('#overviewChessRow .pill')!.textContent).toBe('○ Pocos datos');
     });
   });
 

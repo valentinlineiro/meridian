@@ -62,7 +62,7 @@ describe('chessRow', () => {
     expect(r.form).toContain('Últimas 50 partidas (desde el ' + new Date(NOW - 49 * DAY).getUTCDate());
     expect(r.form).toContain('60,0 % de victorias');
     expect(r.form).toContain('+6,0 puntos de % (entre +1,0 y +11,0)');
-    expect(r.verdict).toMatchObject({ label: 'Posible subida' });
+    expect(r.verdict).toMatchObject({ label: 'Mejorando' });
   });
   it('shouldSayNoClearChangeWhenTheIntervalIncludesZero', () => {
     const r = chessRow({ ...base, recent: recent({ diff: 0.06, lower: -0.08, upper: 0.2 }) });
@@ -103,16 +103,16 @@ describe('gamesRow: what needs a look first across the games', () => {
     const r = gamesRow(sum({ zip: g('mejora_sostenida'), tango: g('deterioro'), queens: g('estable'), patches: g('datos_insuficientes') }));
     expect(r!.verdict).toMatchObject({ state: 'confirmed', dir: 'down' });
     expect(r!.name).toBe('Tango'); // the game that originates the verdict
-    expect(r!.line).toBe('Tango: A la baja · 1 al alza · 1 sin señales de cambio · 1 con pocos datos'); // the others, not the head again
+    expect(r!.line).toBe('Tango: Bajando · 1 mejorando · 1 sin cambios · 1 con pocos datos'); // the others, not the head again
   });
   it('shouldRankAPossibleFallAboveAConfirmedRise', () => {
     const r = gamesRow(sum({ zip: g('mejora_sostenida'), tango: g('estable', 'deterioro') }));
     expect(r!.verdict).toMatchObject({ state: 'possible', dir: 'down' });
-    expect(r!.line).toBe('Tango: Posible bajada · 1 al alza');
+    expect(r!.line).toBe('Tango: Bajando · 1 mejorando');
   });
   it('shouldJustCountWhenNoGameSaysAnything', () => {
     const r = gamesRow(sum({ zip: g('estable'), tango: g('estable'), queens: g('datos_insuficientes') }));
-    expect(r!.line).toBe('2 sin señales de cambio · 1 con pocos datos');
+    expect(r!.line).toBe('2 sin cambios · 1 con pocos datos');
   });
   it('shouldLinkToTheReportOfTheGameBehindTheVerdict', () => {
     expect(gamesRow(sum({ zip: g('mejora_sostenida'), tango: g('deterioro'), queens: g('estable') }))!.link).toBe('/games/tango');

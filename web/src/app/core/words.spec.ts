@@ -27,25 +27,24 @@ describe('words', () => {
     expect(PERIODS.map((p) => p.phrase)).toEqual(['la última semana', 'las últimas 4 semanas', 'los últimos 3 meses', 'todo el histórico']);
   });
 
-  it('shouldNeverCallNoSignalAProofThatNothingChanged', () => {
+  it('shouldSayPlainlyThatThereAreNoChangesWhenThereIsNoSignal', () => {
     const v = verdictFor({ label: 'estable', pending: null });
-    expect(v.label).toBe('Sin señales de cambio');
-    expect(v.sentence).toBe('No se ve ningún cambio claro en las últimas 4 semanas.');
-    expect(v.sentence).not.toMatch(/sin cambios|no hubo cambio|estable/i);
+    expect(v.label).toBe('Estable');
+    expect(v.sentence).toBe('No hay cambios en las últimas 4 semanas.');
   });
 
   it('shouldMapTheEngineLabelsToOneVocabularyWithADirection', () => {
-    expect(verdictFor({ label: 'mejora_sostenida', pending: null })).toMatchObject({ state: 'confirmed', dir: 'up', label: 'Al alza', pill: 'pill pill-win' });
-    expect(verdictFor({ label: 'deterioro', pending: null })).toMatchObject({ state: 'confirmed', dir: 'down', label: 'A la baja', pill: 'pill pill-warn' });
-    expect(verdictFor({ label: 'datos_insuficientes', pending: null })).toMatchObject({ state: 'few-data', label: 'Aún pocos datos', pill: 'pill pill-draw' });
+    expect(verdictFor({ label: 'mejora_sostenida', pending: null })).toMatchObject({ state: 'confirmed', dir: 'up', label: 'Mejorando', pill: 'pill pill-win' });
+    expect(verdictFor({ label: 'deterioro', pending: null })).toMatchObject({ state: 'confirmed', dir: 'down', label: 'Bajando', pill: 'pill pill-warn' });
+    expect(verdictFor({ label: 'datos_insuficientes', pending: null })).toMatchObject({ state: 'few-data', label: 'Pocos datos', pill: 'pill pill-draw' });
     expect(verdictFor({ label: 'estable', pending: null })).toMatchObject({ state: 'no-signal', pill: 'pill' });
   });
 
   it('shouldCallAnUnconfirmedSignalPossibleWithItsDirection', () => {
     const down = verdictFor({ label: 'estable', pending: 'deterioro' });
-    expect(down).toMatchObject({ state: 'possible', dir: 'down', label: 'Posible bajada' });
-    expect(down.sentence).toBe('Puede que vayas algo más lento. Si se repite la semana que viene, lo confirmamos.');
-    expect(verdictFor({ label: 'estable', pending: 'mejora_sostenida' })).toMatchObject({ state: 'possible', dir: 'up', label: 'Posible subida' });
+    expect(down).toMatchObject({ state: 'possible', dir: 'down', label: 'Bajando' });
+    expect(down.sentence).toBe('Vas algo más lento. Si se repite la semana que viene, queda confirmado.');
+    expect(verdictFor({ label: 'estable', pending: 'mejora_sostenida' })).toMatchObject({ state: 'possible', dir: 'up', label: 'Mejorando' });
   });
 
   it('shouldListWhatNeedsAttentionFirst', () => {
@@ -54,17 +53,17 @@ describe('words', () => {
 
   describe('intervalVerdict (one observation window against a baseline, with its 95% interval)', () => {
     it('shouldSayPossibleRiseWhenTheIntervalIsAboveZero', () => {
-      expect(intervalVerdict({ diff: 6, lower: 1, upper: 11 })).toMatchObject({ state: 'possible', dir: 'up', label: 'Posible subida', pill: 'pill pill-selected' });
+      expect(intervalVerdict({ diff: 6, lower: 1, upper: 11 })).toMatchObject({ state: 'possible', dir: 'up', label: 'Mejorando', pill: 'pill pill-selected' });
     });
     it('shouldSayPossibleFallWhenTheIntervalIsBelowZero', () => {
-      expect(intervalVerdict({ diff: -6, lower: -11, upper: -1 })).toMatchObject({ state: 'possible', dir: 'down', label: 'Posible bajada' });
+      expect(intervalVerdict({ diff: -6, lower: -11, upper: -1 })).toMatchObject({ state: 'possible', dir: 'down', label: 'Bajando' });
     });
     it('shouldSayNoSignalWhenTheIntervalIncludesZero', () => {
       for (const d of [{ diff: 6, lower: -8, upper: 20 }, { diff: 0, lower: 0, upper: 3 }, { diff: 2, lower: -3, upper: 0 }])
-        expect(intervalVerdict(d)).toMatchObject({ state: 'no-signal', dir: null, label: 'Sin señales de cambio' });
+        expect(intervalVerdict(d)).toMatchObject({ state: 'no-signal', dir: null, label: 'Estable' });
     });
     it('shouldSayFewDataWhenThereIsNoDelta', () => {
-      expect(intervalVerdict(null)).toMatchObject({ state: 'few-data', dir: null, label: 'Aún pocos datos' });
+      expect(intervalVerdict(null)).toMatchObject({ state: 'few-data', dir: null, label: 'Pocos datos' });
     });
     it('shouldNeverConfirmBecauseNoPersistenceRuleIsApplied', () => {
       for (const d of [{ diff: 30, lower: 20, upper: 40 }, { diff: -30, lower: -40, upper: -20 }, null]) expect(intervalVerdict(d).state).not.toBe('confirmed');

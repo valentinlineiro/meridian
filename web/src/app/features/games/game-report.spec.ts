@@ -40,7 +40,7 @@ describe('GameReport', () => {
 
   it('shouldHeadWithTheCalibratedVerdictItsSourceAndTheFactualSentence', async () => {
     await open(summary({ queens: queens() }));
-    expect(el.querySelector('#gameReportHero .pill')!.textContent).toBe('Sin señales de cambio');
+    expect(el.querySelector('#gameReportHero .pill')!.textContent).toBe('▬ Estable');
     expect(el.querySelector('#gameReportHero app-help summary')!.textContent).toBe('Cómo se calcula');
     expect(text('gameReportSentence')).toContain('Le ganas a la media el 86 % de los días (24 de 28, las últimas 4 semanas)');
     expect(text('gameReportSentence')).toContain('En las 11 semanas completas, entre el 71 % y el 100 % de los días');
@@ -137,7 +137,7 @@ describe('GameReport', () => {
 
   it('shouldShowWhatIsMissingInsteadOfAVerdictAndTheEvolutionWhenTheGameHasTooFewResults', async () => {
     await open(summary({ tango: fewData() }), 'tango');
-    expect(el.querySelector('#gameReportHero .pill')!.textContent).toBe('Aún pocos datos');
+    expect(el.querySelector('#gameReportHero .pill')!.textContent).toBe('○ Pocos datos');
     expect(el.textContent).toContain('Faltan observaciones');
     expect(el.querySelector('#gameReportLevel')).not.toBeNull(); // the level is still measurable
     expect(el.querySelector('#gameReportEvolution')).toBeNull();
@@ -202,7 +202,7 @@ describe('GameReport', () => {
       await open(summary({ queens: queens({ diagnosis: diag({ findings: [f], watch: { dimension: 'regularity', p: .1, unconfirmed: false } }) }) }));
       expect(el.querySelector('#gameReportHighlights .hl')!.textContent).toContain('Debilidad · Los lunes se pierde más');
       expect(text('gameReportWatch')).toContain('Para observar');
-      expect(el.querySelector('#gameReportHero .pill')!.textContent).toBe('Sin señales de cambio');
+      expect(el.querySelector('#gameReportHero .pill')!.textContent).toBe('▬ Estable');
     });
     it('shouldShowOnlyTheStaleMessageWhenExpired', async () => {
       await open(summary({ queens: queens({ diagnosis: diag({ status: 'caducada', dimensions: null }) }) }));
