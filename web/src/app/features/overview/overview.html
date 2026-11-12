@@ -2,8 +2,6 @@
 <section id="overviewTab">
   <div class="hero-card" id="overviewHero">
     <h1>Hoy</h1>
-    <p class="grow-line" id="overviewHeadline">{{ d?.headline ?? '—' }}</p>
-    <p class="muted">Cómo vas frente a tu propio ritmo. Los totales de siempre están en cada sección.</p>
   </div>
 
   @let c = d?.chess;
@@ -22,7 +20,6 @@
       <div class="hc-n"><span class="hc-big" id="overviewLangBig">{{ l?.big ?? '—' }}</span><span class="muted">XP en 7 días</span>@if (l?.delta) {<span class="hc-delta muted" id="overviewLangDelta">{{ l?.delta }}</span>}</div>
       @if (l?.bars?.length) {<div class="wk" role="img" [attr.aria-label]="l?.aria">@for (b of l!.bars; track $index) {<div><i [style.height.px]="b.h"></i><span>{{ b.letter }}</span></div>}</div>}
       <p class="hc-line" id="overviewLangXp">{{ l?.line ?? '—' }}</p>
-      <p class="muted hc-sub" id="overviewLangStreak">{{ l?.streak }}</p>
     </a>
 
     <a class="hc card" id="overviewGamesRow" [routerLink]="g?.link ?? '/games'">

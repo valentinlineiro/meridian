@@ -3,7 +3,7 @@
 import { Delta, fmtDate, fmtDelta, pc1, scaleDelta } from '../../core/format';
 import { calendarDaysAgo, DAY, isStale, shortDate, sign } from '../../core/xp-week';
 import { resultBars, ResultBarsData } from '../../shared/result-bars';
-import { attentionOrder, gameName, gdays, intervalVerdict, Verdict, VERDICT_ORDER, verdictFor, verdictKey } from '../../core/words';
+import { attentionOrder, gameName, gdays, intervalVerdict, Verdict, verdictFor } from '../../core/words';
 
 // What this page reads of each domain's response: a subset of the Chess and Games models (a feature does not import another feature).
 export interface ChessRecentIn { games?: number | null; winRate?: number | null; delta?: Delta | null }
@@ -97,10 +97,3 @@ export function gamesRow(s: GamesSummaryIn): { verdict: Verdict | null; name: st
 }
 
 // ── The page ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-/** The one sentence at the top: only verdicts that say something, worst first, each with the subject that originates it ("Tango: a la baja"); never a claim the rows do not make. */
-export function headline(rows: { name: string; verdict: Verdict | null }[]): string {
-  const said = rows.filter((r) => r.verdict && (r.verdict.state === 'confirmed' || r.verdict.state === 'possible'))
-    .sort((a, b) => VERDICT_ORDER.indexOf(verdictKey(a.verdict!)) - VERDICT_ORDER.indexOf(verdictKey(b.verdict!)));
-  if (said.length) return said.map((r) => `${r.name}: ${r.verdict!.label.toLowerCase()}`).join(' · ');
-  return rows.some((r) => r.verdict?.state === 'no-signal') ? 'Sin cambios claros en tus resultados recientes.' : 'Aún no hay datos suficientes para valorar tu ritmo.';
-}

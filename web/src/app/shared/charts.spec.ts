@@ -71,7 +71,7 @@ describe('m-sparkline', () => {
     expect(line.getAttribute('d')).toBe('M10.0 80.0 L260.0 10.0 L510.0 45.0');
     expect(area.getAttribute('d')).toBe('M10.0 80.0 L260.0 10.0 L510.0 45.0 L510.0 80 L10.0 80 Z');
     expect([...el.querySelectorAll('text')].map((t) => t.textContent)).toEqual(['920', '900']);
-    expect(el.querySelector('.muted')!.textContent).toBe('2026-11-012026-11-03');
+    expect(el.querySelector('.muted')!.textContent).toBe('1 nov3 nov');
   });
 
   it('shouldKeepAllLineCoordinatesWithinVisibleArea', async () => {
