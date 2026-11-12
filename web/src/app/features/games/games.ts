@@ -68,18 +68,22 @@ export class Games {
     const s = this.summary();
     return s ? safe(() => gamesHero(s), { ...HERO_IDLE, meta: NA }) : HERO_IDLE;
   });
+  /** The games recorded today; null when the day could not be read (a failed request, or a body that is not a plain object). */
+  private readonly recorded = computed((): Set<string> | null => {
+    const g: unknown = this.loaded()?.d?.day?.games;
+    return g && typeof g === 'object' && !Array.isArray(g) ? new Set(Object.keys(g)) : null;
+  });
   /** Today's six games; a recorded one is ticked. Shown once the summary answered, as in legacy. */
   protected readonly chips = computed(() => {
     if (!this.summary()) return [];
-    const g = this.loaded()?.d?.day?.games;
-    const done = new Set(g && typeof g === 'object' ? Object.keys(g) : []);
+    const done = this.recorded() ?? new Set<string>();
     return Object.keys(GAME_NAMES).map((k) => ({ k, name: GAME_NAMES[k], done: done.has(k), text: (done.has(k) ? '✓ ' : '') + GAME_NAMES[k] }));
   });
   /** "Hoy · 2 de 6 registrados"; just "Hoy" while the day could not be read: unknown is never said as zero. */
   protected readonly todayTitle = computed(() => {
-    const day = this.loaded()?.d?.day?.games, chips = this.chips();
+    const chips = this.chips(), done = this.recorded();
     if (!chips.length) return '';
-    return day && typeof day === 'object' ? `Hoy · ${chips.filter((c) => c.done).length} de ${chips.length} registrados` : 'Hoy';
+    return done ? `Hoy · ${chips.filter((c) => c.done).length} de ${chips.length} registrados` : 'Hoy';
   });
   protected readonly loss = computed(() => { const s = this.summary(); return s ? safe(() => lossRows(s) ?? null, null) : undefined; });
   protected readonly diff = computed(() => { const s = this.summary(); return s ? safe(() => difficultyGrid(s) ?? null, null) : undefined; });

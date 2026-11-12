@@ -188,6 +188,10 @@ describe('Games', () => {
       expect(text('gamesHeroToday')).toBe('Hoy');
       await open({ zip: game() }, { ok: true, day: { games: 'x' } });
       expect(text('gamesHeroToday')).toBe('Hoy');
+      await open({ zip: game() }, { ok: true, day: { games: ['zip'] } }); // an array is not the object of recorded games
+      expect(text('gamesHeroToday')).toBe('Hoy');
+      await open({ zip: game() }, { ok: true, day: { games: null } });
+      expect(text('gamesHeroToday')).toBe('Hoy');
     });
 
     it('shouldShowTheStreakAsSmallTextNotAsTheHeadline', async () => {
