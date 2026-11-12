@@ -194,7 +194,10 @@ function timelineBody(snaps: { id: unknown; created_at: unknown; elo: unknown }[
   return { snapshots: snaps.map((s) => ({ id: s.id, createdAt: s.created_at, elo: num(s.elo) })), note: "ELO is snapshot-observed (page/snapshot level), not verified per-match ELO." };
 }
 
-const SNAPSHOT_ELO_SQL = "SELECT id, created_at, json_extract(raw_json, '$.eloRating') as elo FROM snapshots";
+// The ELO lives only in chess snapshots (~430 KB each). Language snapshots (~1,400 of ~72 KB) never carry one, so CASE keeps SQLite from
+// parsing them (≈100 MB of JSON per call, ~590 ms in production); every snapshot is still listed, with elo null where there is none.
+const CHESS_SOURCE = "duolingo-chess";
+const SNAPSHOT_ELO_SQL = `SELECT id, created_at, CASE WHEN source = '${CHESS_SOURCE}' THEN json_extract(raw_json, '$.eloRating') END as elo FROM snapshots`;
 
 async function snapshotElos(db: D1Database, userId: string | null): Promise<{ id: unknown; created_at: unknown; elo: unknown }[]> {
   const stmt = userId
@@ -224,8 +227,8 @@ export async function handleStats(db: D1Database, kind: string, url: URL): Promi
     case "summary": {
       const rows = await allMatches(db, userId);
       const eloStmt = userId
-        ? db.prepare("SELECT json_extract(raw_json, '$.eloRating') as elo FROM snapshots WHERE user_id=? AND json_extract(raw_json, '$.eloRating') IS NOT NULL ORDER BY created_at ASC").bind(userId)
-        : db.prepare("SELECT json_extract(raw_json, '$.eloRating') as elo FROM snapshots WHERE json_extract(raw_json, '$.eloRating') IS NOT NULL ORDER BY created_at ASC");
+        ? db.prepare(`SELECT json_extract(raw_json, '$.eloRating') as elo FROM snapshots WHERE source = '${CHESS_SOURCE}' AND user_id=? AND json_extract(raw_json, '$.eloRating') IS NOT NULL ORDER BY created_at ASC`).bind(userId)
+        : db.prepare(`SELECT json_extract(raw_json, '$.eloRating') as elo FROM snapshots WHERE source = '${CHESS_SOURCE}' AND json_extract(raw_json, '$.eloRating') IS NOT NULL ORDER BY created_at ASC`);
       return json(summaryBody(rows, (await eloStmt.all<any>()).results ?? []));
     }
     case "results": {
