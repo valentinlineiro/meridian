@@ -1,7 +1,7 @@
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting, TestRequest } from '@angular/common/http/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { Games } from './games';
 import { chartGeometry } from './games-chart';
 import { speedWords } from '../../core/words';
@@ -390,6 +390,29 @@ describe('Games', () => {
       expect(names().at(-1)).toBe('a_null');
       await sortBy('speed'); // flips to ascending
       expect(names().at(-1)).toBe('a_null');
+    });
+
+    it('shouldPutThePeriodInTheUrlWhenItIsPickedAndDropItForTheDefault', async () => {
+      await open({ zip: game() });
+      const url = () => TestBed.inject(Router).url;
+      await setRange('7');
+      await new Promise((r) => setTimeout(r));
+      expect(url()).toBe('/?r=7');
+      await setRange('28');
+      await new Promise((r) => setTimeout(r));
+      expect(url()).toBe('/');
+    });
+
+    it('shouldShowThePeriodFromTheUrlAndFallBackToTheDefaultWhenItIsUnknown', async () => {
+      fixture = TestBed.createComponent(Games);
+      el = fixture.nativeElement;
+      fixture.componentRef.setInput('r', '90');
+      await tick();
+      await answer(summaryOf({ zip: game() }));
+      expect(el.querySelector('#gr-90')!.getAttribute('aria-pressed')).toBe('true');
+      fixture.componentRef.setInput('r', 'xx');
+      await tick();
+      expect(el.querySelector('#gr-28')!.getAttribute('aria-pressed')).toBe('true');
     });
 
     it('shouldRecomputeTheTableWhenThePeriodChangesWithoutAskingTheServerAgain', async () => {

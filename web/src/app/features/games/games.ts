@@ -1,6 +1,6 @@
-import { Component, computed, inject, input, signal } from '@angular/core';
+import { Component, computed, inject, input, linkedSignal, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { catchError, forkJoin, Observable, of } from 'rxjs';
 import { ApiClient } from '../../core/api-client';
 import { safe } from '../../core/guard';
@@ -32,7 +32,14 @@ export class Games {
   private readonly api = inject(ApiClient);
 
   protected readonly ranges = RANGES;
-  protected readonly range = signal<Range>('28');
+  /** The `?r=` query param (bound by the router): the period lives in the URL so Back and shared links keep it. */
+  readonly r = input<string>();
+  private readonly router = inject(Router);
+  protected readonly range = linkedSignal<Range>(() => RANGES.find((x) => x.k === this.r())?.k ?? '28');
+  protected pickRange(k: string): void {
+    this.range.set(k as Range);
+    void this.router.navigate([], { queryParams: { r: k === '28' ? null : k }, queryParamsHandling: 'merge' });
+  }
   protected readonly gameName = gameName;
   /** The game the user picked for the chart; one that is not in the summary falls back to the most observed. */
   protected readonly trajPick = signal<string | null>(null);

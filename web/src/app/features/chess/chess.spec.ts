@@ -2,7 +2,7 @@ import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting, TestRequest } from '@angular/common/http/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router, withComponentInputBinding } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { StatsService } from '../../core/stats.service';
 import { Chess } from './chess';
@@ -64,7 +64,7 @@ class Elsewhere {}
 export const setupChess = async () => {
   localStorage.clear();
   TestBed.configureTestingModule({
-    providers: [provideRouter([{ path: 'chess', component: Chess }, routes.find((r) => r.path === 'profile')!, { path: ':other', component: Elsewhere }]), provideHttpClient(), provideHttpClientTesting()],
+    providers: [provideRouter([{ path: 'chess', component: Chess }, routes.find((r) => r.path === 'profile')!, { path: ':other', component: Elsewhere }], withComponentInputBinding()), provideHttpClient(), provideHttpClientTesting()],
   });
   const http = TestBed.inject(HttpTestingController);
   const harness = await RouterTestingHarness.create();
@@ -745,6 +745,20 @@ describe('Chess', () => {
       expect(buttons.map((b) => b.textContent)).toEqual(['Comparativa', 'Aperturas', 'Evolución', 'Partidas']);
       for (const b of buttons) b.click();
       expect(scrolled).toEqual(['cg-comp', 'cg-open', 'cg-evo', 'allMatchesCard']);
+      expect(evo.open).toBe(true);
+    });
+
+    it('shouldPutTheSectionInTheUrlWhenItsIndexButtonIsPressedAndOpenItFromTheUrl', async () => {
+      await t.open();
+      Element.prototype.scrollIntoView = function () {};
+      t.el().querySelectorAll<HTMLButtonElement>('nav.cindex button')[1].click();
+      await t.tick();
+      expect(t.harness.fixture.debugElement.injector.get(Router).url).toBe('/chess?s=aperturas');
+      const evo = t.el().querySelector<HTMLDetailsElement>('#cg-evo')!;
+      evo.open = false;
+      await t.harness.navigateByUrl('/chess?s=evolucion');
+      await t.tick();
+      await t.tick();
       expect(evo.open).toBe(true);
     });
   });

@@ -1,5 +1,5 @@
-import { afterNextRender, Component, computed, DestroyRef, effect, inject, Injector, linkedSignal, signal, viewChild } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { afterNextRender, Component, computed, DestroyRef, effect, ElementRef, inject, input, Injector, linkedSignal, signal, viewChild } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { catchError, forkJoin, map, Observable, of } from 'rxjs';
 import { ApiClient } from '../../core/api-client';
@@ -214,10 +214,16 @@ export class Chess {
   constructor() {
     effect(() => this.stats.chessUpdated.set(this.v()?.syncMeta ?? ''));
     inject(DestroyRef).onDestroy(() => this.stats.chessUpdated.set(''));
+    // A block named in the URL (link, Back) opens once the cards above it hold their data, as /profile does below.
+    const injector = inject(Injector);
+    const ready = computed(() => !this.data.isLoading() && this.profile() !== undefined);
+    effect(() => {
+      const k = this.s();
+      if (k && ready()) afterNextRender(() => this.show(k), { injector });
+    });
     // /profile (legacy showTab('profile')): open the engine section and scroll to it, once the cards above it hold
     // their data (scrolled earlier, the cards growing above push the section out of view on phones).
     if (inject(ActivatedRoute).snapshot.data['engineSection']) {
-      const injector = inject(Injector);
       const once = effect(() => {
         if (this.data.isLoading() || this.profile() === undefined) return;
         once.destroy();
@@ -242,9 +248,25 @@ export class Chess {
     card.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  /** Page index: scroll to a block (sections use their own reveal()). Buttons, not #anchors: the URL belongs to the router. */
-  protected jump(el: HTMLElement): void {
-    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  /** The `?s=` query param (bound by the router): the block the page index points at, so Back and shared links keep it. */
+  readonly s = input<string>();
+  private readonly router = inject(Router);
+  private readonly cgComp = viewChild.required<Section>('cgComp');
+  private readonly cgOpen = viewChild.required<Section>('cgOpen');
+  private readonly cgEvo = viewChild.required<Section>('cgEvo');
+  private readonly allMatches = viewChild.required<ElementRef<HTMLElement>>('allMatches');
+
+  /** Page index: open and scroll to a block, and put it in the URL (a new history entry). Buttons, not #anchors: the URL belongs to the router. */
+  protected go(k: string): void {
+    this.show(k);
+    void this.router.navigate([], { queryParams: { s: k }, queryParamsHandling: 'merge' });
+  }
+
+  private show(k: string | undefined): void {
+    if (k === 'comparativa') this.cgComp().reveal();
+    else if (k === 'aperturas') this.cgOpen().reveal();
+    else if (k === 'evolucion') this.cgEvo().reveal();
+    else if (k === 'partidas') this.allMatches().nativeElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   private load(): Observable<ChessData> {
