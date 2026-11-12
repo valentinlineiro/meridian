@@ -5,7 +5,7 @@ import { currentSection } from './section';
 
 // The sidebar of the desktop layout; phones use the tab bar (tab-bar.ts). Groups and items as the legacy side nav (src/frontend.ts:15-35).
 const GROUPS = [
-  { label: 'Resumen', items: [{ path: 'overview', label: 'Hoy' }, { path: 'changes', label: 'Qué cambió' }, { path: 'trajectory', label: 'Trayectoria' }] },
+  { label: 'Resumen', items: [{ path: 'overview', label: 'Hoy' }, { path: 'changes', label: 'Qué cambió' }] },
   { label: 'Dominios', items: [{ path: 'chess', label: 'Ajedrez' }, { path: 'languages', label: 'Idiomas' }, { path: 'games', label: 'LinkedIn Games' }] },
 ];
 // Attribute selector: the host is the <nav class="side"> itself, so the .shell grid and sticky rules apply as in legacy.

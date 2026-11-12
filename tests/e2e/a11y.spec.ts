@@ -3,7 +3,7 @@ import AxeBuilder from '@axe-core/playwright';
 
 // Rutas principales: sin violaciones WCAG 2 A/AA detectables automáticamente.
 // No sustituye a una revisión manual.
-const ROUTES = ['/overview', '/trajectory', '/changes', '/games', '/games/queens', '/chess', '/languages', '/profile', '/settings'];
+const ROUTES = ['/overview', '/changes', '/changes?w=historial', '/games', '/games/queens', '/chess', '/languages', '/profile', '/settings'];
 
 test.describe('Accesibilidad (axe)', () => {
   test.beforeEach(async ({ page }) => {
@@ -16,7 +16,7 @@ test.describe('Accesibilidad (axe)', () => {
   for (const route of ROUTES) {
     test(`shouldHaveNoAxeViolationsWhenOn${route.slice(1)}`, async ({ page }) => {
       await page.goto(route);
-      await expect(page).toHaveURL(new RegExp(`${route}$`)); // una ruta inexistente redirige a /overview
+      await expect(page).toHaveURL(new RegExp(`${route.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`)); // una ruta inexistente redirige a /overview
       await page.waitForLoadState('networkidle');
       await expect(page.locator('h1')).toHaveCount(1); // un título de página por ruta
       const { violations } = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();

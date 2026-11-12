@@ -65,10 +65,6 @@ function trajectoryView(d: Rec) {
   imports: [EvaluationCards, NgTemplateOutlet],
   template: `
     <section id="trajectoryTab">
-      <div class="u-mb-16" id="trajectoryHeader">
-        <h1>Tu trayectoria</h1>
-        <p class="muted u-m-0" id="trajectorySubtitle">Síntesis de patrones estables a lo largo de tu historial completo</p>
-      </div>
       @let v = view();
       @if (v === 'error') {<div id="trajectoryEmpty" class="empty">{{ error }}</div>} @else if (v?.empty) {<div id="trajectoryEmpty" class="empty">{{ v!.empty }}</div>}
       <div id="trajectoryFindings">@if (v && v !== 'error') {
