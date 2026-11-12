@@ -33,7 +33,7 @@
     </div>
   </div>
   <nav class="cindex" aria-label="Secciones de ajedrez">
-    <button class="btn btn-g" type="button" (click)="cgComp.reveal()">Comparativa</button><button class="btn btn-g" type="button" (click)="cgOpen.reveal()">Aperturas</button><button class="btn btn-g" type="button" (click)="cgEvo.reveal()">Evolución</button><button class="btn btn-g" type="button" (click)="jump(allMatches)">Partidas</button>
+    <button class="btn btn-g" type="button" (click)="go('comparativa')">Comparativa</button><button class="btn btn-g" type="button" (click)="go('aperturas')">Aperturas</button><button class="btn btn-g" type="button" (click)="go('evolucion')">Evolución</button><button class="btn btn-g" type="button" (click)="go('partidas')">Partidas</button>
   </nav>
   <section class="kpis" id="kpis">
     @if (failed()) {

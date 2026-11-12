@@ -6,7 +6,7 @@
       <div class="muted" role="alert">No disponible</div>
     } @else if (summary(); as s) {
       @if (s.games[g]) {
-        <app-segmented groupId="gamesRange" label="Periodo de análisis" caption="Periodo" idPrefix="gr-" [options]="ranges" [value]="range()" (picked)="range.set($any($event))" />
+        <app-segmented groupId="gamesRange" label="Periodo de análisis" caption="Periodo" idPrefix="gr-" [options]="ranges" [value]="range()" (picked)="pickRange($event)" />
         <app-game-report [summary]="s" [game]="g" [range]="range()" />
       } @else {
         <p class="muted">Aún sin partidas registradas de {{ gameName(g) }}.</p>
@@ -32,7 +32,7 @@
     <div class="u-mt-14"><app-games-quick-entry #quick (saved)="data.reload()" /><a class="btn btn-g u-mt-8" id="gamesExport" href="/api/me/linkedin-games/export.csv" download>Descargar resultados (CSV)</a></div>
   </div>
   <div id="gamesNote" class="muted" role="status">{{ note() }}</div>
-  <app-segmented groupId="gamesRange" label="Periodo de análisis" caption="Periodo" idPrefix="gr-" [options]="ranges" [value]="range()" (picked)="range.set($any($event))" />
+  <app-segmented groupId="gamesRange" label="Periodo de análisis" caption="Periodo" idPrefix="gr-" [options]="ranges" [value]="range()" (picked)="pickRange($event)" />
   <app-section title="Tus juegos" sectionId="cg-games-now">
     <div id="gamesNow" class="grows">
       @for (r of rows(); track r.k) {
