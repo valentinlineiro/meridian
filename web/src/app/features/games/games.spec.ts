@@ -178,6 +178,28 @@ describe('Games', () => {
       expect(text('gamesHeroMeta')).toBe('Tu récord: 122 días · registro manual');
     });
 
+    it('shouldCountTodaysRecordedGamesInTheHeroTitle', async () => {
+      await open({ zip: game() }, { ok: true, day: { games: { zip: { score: '0:08' }, tango: { score: '0:20' } } } });
+      expect(text('gamesHeroToday')).toBe('Hoy · 2 de 6 registrados');
+    });
+
+    it('shouldNotCountWhenTodayCouldNotBeReadSoItNeverClaimsZero', async () => {
+      await open({ zip: game() }, FAIL);
+      expect(text('gamesHeroToday')).toBe('Hoy');
+      await open({ zip: game() }, { ok: true, day: { games: 'x' } });
+      expect(text('gamesHeroToday')).toBe('Hoy');
+      await open({ zip: game() }, { ok: true, day: { games: ['zip'] } }); // an array is not the object of recorded games
+      expect(text('gamesHeroToday')).toBe('Hoy');
+      await open({ zip: game() }, { ok: true, day: { games: null } });
+      expect(text('gamesHeroToday')).toBe('Hoy');
+    });
+
+    it('shouldShowTheStreakAsSmallTextNotAsTheHeadline', async () => {
+      await open({ zip: game() });
+      expect((el.querySelector('#gamesHeroStreak') as HTMLElement).style.fontSize).toBe('');
+      expect(el.querySelector('#gamesHeroToday')!.compareDocumentPosition(el.querySelector('#gamesHeroStreak')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
     it('shouldMarkTodaysRecordedGamesInTheHeroChips', async () => {
       await open({ zip: game() }, { ok: true, day: { games: { zip: { score: '0:08' } } } });
       const chips = [...el.querySelectorAll('#gamesToday button')];

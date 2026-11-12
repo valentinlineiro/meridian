@@ -15,21 +15,15 @@
   } @else {
   <h1 class="sr-only">LinkedIn Games</h1>
   @let h = hero();
-  <div class="hero-card" id="gamesHero">
-    <div class="u-d-flex u-jc-space-between u-ai-flex-start u-wrap-wrap u-gap-12">
-      <div>
-        <div id="gamesHeroStreakLabel" class="muted u-fs-xs u-tt-uppercase u-ls-p05em">{{ h.label }}</div>
-        <div class="u-d-flex u-ai-baseline u-gap-8 u-mt-2"><span id="gamesHeroStreak" style="font-size:var(--fs-display);font-weight:800;line-height:1">{{ h.streak }}</span></div>
-        <div id="gamesHeroMeta" class="muted u-fs-sm u-mt-4">{{ h.meta }}</div>
-      </div>
-      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
-        <span id="gamesHeroDays" class="muted u-fs-sm">{{ h.days }}</span>
-      </div>
+  <div class="hero-card gh" id="gamesHero">
+    <div class="gh-top">
+      <b id="gamesHeroToday">{{ todayTitle() }}</b>
+      <span class="muted"><span id="gamesHeroStreakLabel" class="sr-only">{{ h.label }}</span><span id="gamesHeroStreak">{{ h.streak }}</span></span>
     </div>
-    <div class="u-mt-14"><div class="muted u-fs-xs u-tt-uppercase u-ls-p05em u-mb-6">Hoy · toca un juego para empezar a escribirlo</div>
-      <div id="gamesToday" class="chips">@for (c of chips(); track c.k) {<button type="button" [class]="'pill ' + (c.done ? 'pill-win' : 'pill-scope')" [attr.data-game]="c.k" (click)="quick.prefill(c.name)">{{ c.text }}</button>}</div>
-    </div>
-    <div class="u-mt-14"><app-games-quick-entry #quick (saved)="data.reload()" /><a class="btn btn-g u-mt-8" id="gamesExport" href="/api/me/linkedin-games/export.csv" download>Descargar resultados (CSV)</a></div>
+    <div class="muted u-fs-xs u-mt-8">Toca un juego para empezar a escribirlo</div>
+    <div id="gamesToday" class="chips u-mt-6">@for (c of chips(); track c.k) {<button type="button" [class]="'pill ' + (c.done ? 'pill-win' : 'pill-scope')" [attr.data-game]="c.k" (click)="quick.prefill(c.name)">{{ c.text }}</button>}</div>
+    <div class="u-mt-14"><app-games-quick-entry #quick (saved)="data.reload()" /></div>
+    <div class="gh-foot muted"><span id="gamesHeroMeta">{{ h.meta }}</span><span id="gamesHeroDays">{{ h.days }}</span><a id="gamesExport" href="/api/me/linkedin-games/export.csv" download>Descargar resultados (CSV)</a></div>
   </div>
   <div id="gamesNote" class="muted" role="status">{{ note() }}</div>
   <app-segmented groupId="gamesRange" label="Periodo de análisis" caption="Periodo" idPrefix="gr-" [options]="ranges" [value]="range()" (picked)="pickRange($event)" />
