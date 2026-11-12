@@ -1,6 +1,6 @@
 // Port of the LinkedIn Games view builders (src/dashboard.client.js:1787–1943). Pure: the range is a parameter, not a global.
 // Nothing here is computed beyond formatting: labels, bands and arrows come from the server's contract.
-import { fmtDate, sparkPoints } from '../../core/format';
+import { fmtDate } from '../../core/format';
 import { attentionOrder, GAME_NAMES, gameName, gdays, formWords, PERIODS, PeriodKey, typicalTime, Verdict, verdictFor } from '../../core/words';
 
 export type Range = PeriodKey;
@@ -95,9 +95,6 @@ export function interpretationLines(x: Game): string[] {
 
 const verdictOf = (g: Game): Verdict => verdictFor(g.interpretation);
 const DAYS = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'];
-/** Polyline points of the 28-day rolling median, or '' with fewer than two points. */
-export const gameSpark = (series: { roll: number }[]): string => sparkPoints(series.map((p) => p.roll));
-
 export function formLines(x: Game, range: Range): string[] {
   const a = x.adjusted;
   if (a.elasticity == null) return ['Descontar la dificultad necesita al menos 60 resultados con media de este juego (hay ' + a.n + ').'];
@@ -181,24 +178,24 @@ const formLine = (x: Game, range: Range): string => {
   return w === 'Aún pocos datos' ? w : w === 'a la par' ? 'Vas a tu ritmo de siempre' : `Vas ${w} de lo normal`;
 };
 export const RECENT_DOTS = 14;
-/** The line shows only the last 28 days (up to the game's last result); its scale is that of those days. */
-const recentLine = (series: { date: string; roll: number }[]) => {
-  const last = series[series.length - 1];
-  if (!last) return [];
-  const from = new Date(Date.parse(last.date + 'T00:00:00Z') - 27 * 86_400_000).toISOString().slice(0, 10);
-  return series.filter((p) => p.date >= from);
-};
-/** The first look: per game a verdict, one sentence, the last 14 results as win/loss dots and the 28-day line. */
+/** A result 50 % away from the average fills its half of the bar strip; further away is capped. */
+const BAR_FULL = 0.5, BAR_MIN = 8;
+const barPct = (d: number) => Math.min(100, Math.max(BAR_MIN, Math.round(Math.abs(d) / BAR_FULL * 100)));
+/** The first look: per game a verdict, the speed against the average as one big number, one sentence and the last 14 results as bars. */
 export function summaryRows(s: Summary, range: Range) {
   return cardOrder(s).flatMap((k) => { try { return [row(k)]; } catch { return []; } }); // a malformed game drops its own row only
   function row(k: string) {
-    const x = s.games[k]!, last = x.series.slice(-RECENT_DOTS);
-    const dots = last.map((p) => ({ win: p.eff > 1, title: fmtDate(p.date) + (p.eff > 1 ? ': mejor que la media' : ': peor que la media') }));
-    const w = dots.filter((d) => d.win).length;
+    const x = s.games[k]!, w = x.windows[range], last = x.series.slice(-RECENT_DOTS);
+    const bars = last.map((p) => ({ win: p.eff > 1, h: barPct(p.eff - 1), title: fmtDate(p.date) + (p.eff > 1 ? ': mejor que la media' : ': peor que la media') }));
+    const wins = bars.filter((d) => d.win).length;
+    const m = w.eff.median, e = w.delta?.effRel?.value;
     return {
-      k, name: gameName(k), verdict: verdictOf(x), line: formLine(x, range), dots,
-      aria: dots.length ? `Últimas ${dots.length} partidas con media: ${w} mejores que la media y ${dots.length - w} peores.` : 'Sin partidas con media.',
-      spark: gameSpark(recentLine(x.series)), time: typicalTime(x.windows[range].time.median, null, null).main,
+      k, name: gameName(k), verdict: verdictOf(x), line: formLine(x, range), bars,
+      big: m == null ? '—' : gsigned((m - 1) * 100, ' %'),
+      cap: m == null ? 'aún sin media' : m > 1 ? 'más rápido que la media' : m < 1 ? 'más lento que la media' : 'igual que la media',
+      delta: e == null ? '' : gsigned(e * 100, ' %') + ' frente al periodo anterior',
+      aria: bars.length ? `Últimas ${bars.length} partidas con media: ${wins} mejores que la media y ${bars.length - wins} peores.` : 'Sin partidas con media.',
+      time: typicalTime(w.time.median, null, null).main,
     };
   }
 }
