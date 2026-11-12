@@ -65,17 +65,6 @@
     </app-help>
   </app-section>
   <app-section title="Más detalle" sectionId="cg-games-more" [open]="false">
-  <app-section title="Comparativa" sectionId="cg-games-cmp">
-    <app-games-table [summary]="summary() ?? undefined" [range]="range()" />
-    @if (range() !== '28') {<p class="muted" id="gamesRangeNote">«Cómo vas» mira siempre las últimas 4 semanas, elijas el periodo que elijas.</p>}
-    <app-help label="Cómo leer esta tabla">
-      <p><b>Cómo vas:</b> mira siempre las últimas 4 semanas y solo habla de cambio si se repite dos semanas seguidas.</p>
-      <p><b>Velocidad frente a la media:</b> tu tiempo frente a la media de LinkedIn ese día (×1 es igual que la media, ×2 el doble de rápido).</p>
-      <p><b>Le ganas a la media:</b> los días en que tu tiempo fue mejor que la media, sobre los días con media disponible.</p>
-      <p><b>Tiempo normal:</b> tu tiempo típico (la mediana). Pasa el ratón por encima para ver entre qué tiempos suele estar la mitad central.</p>
-      <p><b>Días seguidos mejor que la media:</b> «—» significa sin racha activa; el último registro está en la cabecera.</p>
-    </app-help>
-  </app-section>
   <app-section title="Trayectoria" sectionId="cg-games-traj">
     @let t = traj();
     <label class="muted" for="gamesTrajGame">Juego</label> <select id="gamesTrajGame" (change)="trajPick.set($any($event.target).value)">@for (o of t?.options; track o.k) {<option [value]="o.k" [selected]="o.k === t?.game">{{ o.l }}</option>}</select>
@@ -97,40 +86,6 @@
     <app-help label="Cómo se decide">
       <p>Un día es «duro» si la media de LinkedIn fue de las más lentas para ese juego y ese día de la semana (el tercio más lento de tu histórico), y «fácil» si fue de las más rápidas. El día entero toma el nivel que comparten más juegos; si empatan, «normal». Es solo contexto: no cambia ninguna cifra.</p>
     </app-help>
-  </app-section>
-  <app-section title="Por día de la semana" sectionId="cg-games-week" [open]="false">
-    @if (week(); as w) {
-      <p class="muted" id="gamesWeekNote">{{ w.sentence || 'Todos los juegos juntos, con todo tu histórico, frente a la media de cada día.' }}</p>
-      <p class="muted">Ojo: el fin de semana la media de LinkedIn es mucho más lenta, así que esta tabla refleja en parte lo difícil que es cada día y no solo cómo juegas.</p>
-      <div class="tblwrap" tabindex="0" role="region" aria-label="Perfil por día de la semana (desplazable)"><table class="gtable gweek" id="gamesWeek"><caption class="sr-only">Cómo te van los juegos según el día de la semana</caption>
-        <thead><tr><th scope="col">Día</th><th scope="col">Partidas</th><th scope="col">Velocidad frente a la media</th><th scope="col">Le ganas a la media</th></tr></thead>
-        <tbody>@for (r of w.rows; track r.day) {<tr><th scope="row">{{ r.day }}</th><td class="num">{{ r.n }}</td><td>{{ r.speed }}</td><td class="num">{{ r.beat }}</td></tr>}</tbody></table></div>
-    } @else if (week() === null) {<div class="muted">No disponible</div>}
-  </app-section>
-  <app-section title="Por juego" sectionId="cg-games">
-    <app-help label="Cómo leer estas tarjetas" helpId="gamesInterpNote">
-      <p>La etiqueta compara con la variación normal de cada juego (límites calibrados con datos reales) y solo se publica si se repite dos semanas seguidas. «Sin señales de cambio» significa que no se ve un cambio claro, no que no lo haya habido. Las cifras de cada tarjeta siguen el periodo elegido; la etiqueta, no.</p>
-    </app-help>
-    <div id="gamesList" class="grid2">
-      @for (c of cards(); track c.k) {
-        @if ('na' in c) {
-          <section class="card gcard"><h3>{{ c.name }}</h3><p class="muted">No disponible</p></section>
-        } @else {
-          <section class="card gcard" [class.det]="c.det">
-            <h3>{{ c.name }}<app-verdict [verdict]="c.verdict" /></h3>
-            <p class="ginterp">{{ c.verdict.sentence }}</p>
-            <p class="gcap">Cifras de {{ c.period }}</p>
-            <app-stats [items]="c.stats" />
-            <div>@if (c.spark) {<svg class="spark" viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true"><polyline [attr.points]="c.spark" fill="none" stroke="var(--link)" stroke-width="1.5" vector-effect="non-scaling-stroke" /></svg>}</div>
-            <p class="gcap">Tendencia de 28 días</p>
-            <app-help>
-              @for (t of c.how.lines; track $index) {<p>{{ t }}</p>}
-              <app-stats [items]="c.how.metrics" />
-            </app-help>
-          </section>
-        }
-      }
-    </div>
   </app-section>
   </app-section>
   }

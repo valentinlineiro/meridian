@@ -1,7 +1,7 @@
 // Port of the LinkedIn Games view builders (src/dashboard.client.js:1787–1943). Pure: the range is a parameter, not a global.
 // Nothing here is computed beyond formatting: labels, bands and arrows come from the server's contract.
-import { fmtClock, fmtDate, sparkPoints } from '../../core/format';
-import { attentionOrder, beatDays, formVerdict, GAME_NAMES, gameName, gdays, formWords, PERIODS, PeriodKey, speedWords, typicalTime, Verdict, verdictFor, verdictKey, VERDICT_ORDER } from '../../core/words';
+import { fmtDate, sparkPoints } from '../../core/format';
+import { attentionOrder, GAME_NAMES, gameName, gdays, formWords, PERIODS, PeriodKey, typicalTime, Verdict, verdictFor } from '../../core/words';
 
 export type Range = PeriodKey;
 export type Label = 'mejora_sostenida' | 'estable' | 'deterioro' | 'datos_insuficientes';
@@ -61,9 +61,7 @@ const gpct = (r: number | null) => r == null ? '—' : Math.round(r * 100) + ' %
 /** Typographic minus, as in the rest of the UI (changes, chess). */
 const minus = (s: string) => s.replace('-', '−');
 const gsigned = (v: number | null, suffix: string) => { if (v == null) return '—'; const r = Math.round(v); return (r > 0 ? '+' : '') + minus(String(r)) + suffix; };
-const gtime = (s: number | null) => s == null ? '—' : fmtClock(Math.round(s));
 const gsign = (v: number | null, d: number) => v == null ? '—' : (v > 0 ? '+' : '') + minus(gnum(v, d));
-const gband = (b: [number, number]) => gsigned(b[0] * 100, ' %') + ' a ' + gsigned(b[1] * 100, ' %');
 export const effText = (v: number | null) => v == null ? '—' : '×' + gnum(v, 2);
 export const beatText = gpct;
 
@@ -95,87 +93,12 @@ export function interpretationLines(x: Game): string[] {
   return out;
 }
 
-function deltaWhy(w: Win, range: Range): string {
-  if (range === 'all') return 'Sin periodo anterior: es todo el histórico.';
-  if (!w.prev) return 'Periodo anterior incompleto: el juego no tiene datos de todo ese periodo.';
-  return 'Falta alguna observación en uno de los dos periodos.';
-}
-function deltaTitle(w: Win, range: Range): string | null {
-  const e = w.delta && w.delta.effRel;
-  if (!e || e.value == null) return deltaWhy(w, range);
-  if (range !== '28') return null;
-  if (e.arrow === 'flat') return 'Dentro del ruido de este juego (' + gband(e.band!) + ').';
-  if (e.arrow) return 'Supera el ruido de este juego (fuera de ' + gband(e.band!) + ').';
-  return 'Sin calibración o sin observaciones suficientes para interpretar este cambio.';
-}
-
-// Table columns: one source for the header, the cell text and the sort value. nulls always sort last. What is shown is plain words
-// (core/words); the numbers behind them are in each card's "Cómo se calcula".
-type Val = string | number | null;
-interface Col { k: string; l: string; v: (g: Game, w: Win, k: string) => Val; t: (g: Game, w: Win, k: string, s: Summary) => string; title?: (g: Game, w: Win, s: Summary) => string | null }
 const verdictOf = (g: Game): Verdict => verdictFor(g.interpretation);
-const GCOLS: Col[] = [
-  { k: 'name', l: 'Juego', v: (g, w, k) => gameName(k), t: (g, w, k) => gameName(k) },
-  { k: 'verdict', l: 'Cómo vas', v: (g) => VERDICT_ORDER.indexOf(verdictKey(verdictOf(g))), t: (g) => verdictOf(g).label },
-  { k: 'speed', l: 'Velocidad frente a la media', v: (g, w) => w.eff.median, t: (g, w) => speedWords(w.eff.median) },
-  { k: 'beat', l: 'Le ganas a la media', v: (g, w) => w.beat.rate, t: (g, w) => beatDays(w.beat.k, w.beat.nBeat) },
-  { k: 'time', l: 'Tiempo normal', v: (g, w) => w.time.median, t: (g, w) => typicalTime(w.time.median, w.time.p25, w.time.p75).main, title: (g, w) => typicalTime(w.time.median, w.time.p25, w.time.p75).range || null },
-  { k: 'streak', l: 'Días seguidos mejor que la media', v: (g) => g.beatStreak.current, t: (g, w, k, s) => gbeatStreak(g, s), title: (g, w, s) => staleTitle(g, s) },
-];
-
-export interface Sort { key: string; dir: 1 | -1 }
-export const nextSort = (cur: Sort, key: string): Sort => cur.key === key ? { key, dir: -cur.dir as 1 | -1 } : { key, dir: key === 'name' ? 1 : -1 };
-export interface Cell { text: string; title: string | null; pill: string | null; num: boolean }
-
-export function gamesTable(s: Summary, range: Range, sort: Sort) {
-  const head = GCOLS.map((c) => ({ k: c.k, l: c.l, aria: sort.key === c.k ? (sort.dir > 0 ? 'ascending' : 'descending') : 'none' }));
-  const col = GCOLS.find((c) => c.k === sort.key) || GCOLS[2];
-  const rows = Object.keys(s.games).map((k) => { const g = s.games[k]; return { k, g, w: g.windows[range] }; });
-  rows.sort((a, b) => {
-    const x = col.v(a.g, a.w, a.k), y = col.v(b.g, b.w, b.k);
-    if (x == null && y == null) return 0; if (x == null) return 1; if (y == null) return -1;
-    return (typeof x === 'string' ? x.localeCompare(y as string) : x - (y as number)) * sort.dir;
-  });
-  return {
-    head,
-    rows: rows.map((r) => ({ k: r.k, cells: GCOLS.map((c): Cell => ({
-      text: c.t(r.g, r.w, r.k, s),
-      title: c.title?.(r.g, r.w, s) ?? null,
-      pill: c.k === 'verdict' ? verdictOf(r.g).pill : null,
-      num: c.k !== 'name' && c.k !== 'verdict',
-    })) })),
-  };
-}
-
 const DAYS = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'];
-/** A weekday says nothing with only a few results behind it. */
-export const MIN_WEEKDAY = 8;
-/** How the games go on each weekday (all games together, whole history): rows plus the best and weakest day when there is enough to say. */
-export function weekdayRows(s: Summary) {
-  const ws = s.weekdays ?? [];
-  if (!ws.some((w) => w.n > 0)) return undefined;
-  const enough = (w: Weekday) => w.n >= MIN_WEEKDAY && w.eff.median != null;
-  const rows = ws.map((w) => ({ day: DAYS[w.dow][0].toUpperCase() + DAYS[w.dow].slice(1), n: w.n, speed: enough(w) ? speedWords(w.eff.median) : 'Aún pocos datos', beat: enough(w) ? gpct(w.beat.rate) : '—' }));
-  const ok = ws.filter(enough).sort((a, b) => b.eff.median! - a.eff.median!);
-  const best = ok[0], weak = ok[ok.length - 1];
-  const sentence = ok.length >= 2 && best.eff.median! > weak.eff.median!
-    ? `Tu mejor día frente a la media es el ${DAYS[best.dow]}; el más flojo, el ${DAYS[weak.dow]}.` : '';
-  // The average itself is slower on weekends, so part of this table is the difficulty of the day, not the player.
-  return { rows, sentence };
-}
-
 /** Polyline points of the 28-day rolling median, or '' with fewer than two points. */
 export const gameSpark = (series: { roll: number }[]): string => sparkPoints(series.map((p) => p.roll));
 
-/** The player's form with the difficulty of the days taken out: the number first, then its trend with the same verdict words. */
-function formStats(x: Game, range: Range): { l: string; v: string; s?: string }[] {
-  const a = x.adjusted, w = a.windows[range], v = formVerdict(a.label);
-  return [
-    { l: 'Forma, descontando la dificultad', v: formWords(w.pct), s: w.pct == null ? undefined : 'de lo que pedía la dificultad de esos días' },
-    { l: 'Tendencia, descontando la dificultad', v: v.label },
-  ];
-}
-function formLines(x: Game, range: Range): string[] {
+export function formLines(x: Game, range: Range): string[] {
   const a = x.adjusted;
   if (a.elasticity == null) return ['Descontar la dificultad necesita al menos 60 resultados con media de este juego (hay ' + a.n + ').'];
   return [
@@ -184,35 +107,6 @@ function formLines(x: Game, range: Range): string[] {
   ];
 }
 
-export function gameCard(k: string, x: Game, s: Summary, range: Range) {
-  const w = x.windows[range], e = w.delta && w.delta.effRel, v = verdictOf(x), t = typicalTime(w.time.median, w.time.p25, w.time.p75);
-  const dl = e && e.value != null ? gsigned(e.value * 100, ' %') + ' vs periodo previo (n=' + e.nCur + '/' + e.nPrev + ')' : 'sin periodo previo comparable';
-  return {
-    k, name: gameName(k), verdict: v, det: v.state === 'confirmed' && v.dir === 'down',
-    period: RANGE_NAMES[range],
-    // What is read first: words, a time, a count of days.
-    stats: [
-      ...formStats(x, range),
-      { l: 'Velocidad frente a la media', v: speedWords(w.eff.median) },
-      { l: 'Le ganas a la media', v: beatDays(w.beat.k, w.beat.nBeat) },
-      { l: 'Tiempo normal', v: t.main, s: t.range },
-      { l: 'Mejor marca', v: fmtClock(x.best.seconds), s: fmtDate(x.best.date) },
-      { l: 'Días seguidos mejor que la media', v: gbeatStreak(x, s), s: 'tu récord: ' + gdays(x.beatStreak.max) + (streakActive(x, s) ? '' : ' · sin racha activa') },
-    ],
-    // The formulas and fine print: the engine's own sentences and the figures behind every word above.
-    how: {
-      lines: [...interpretationLines(x), ...formLines(x, range)],
-      metrics: [
-        { l: 'Eficiencia', v: w.eff.median == null ? '—' : '×' + gnum(w.eff.median, 2), s: w.eff.median == null ? '' : 'n=' + w.eff.nEff + ' · ' + dl },
-        { l: 'Gana a la media', v: w.beat.rate == null ? '—' : gpct(w.beat.rate), s: w.beat.rate == null ? '' : 'n=' + w.beat.nBeat },
-        { l: 'Cambio frente al periodo anterior', v: e && e.value != null ? gsigned(e.value * 100, ' %') : '—', s: deltaTitle(w, range) ?? '' },
-        { l: 'Tiempo mediano', v: w.time.median == null ? '—' : gtime(w.time.median), s: w.time.median == null ? '' : 'P25–P75 ' + gtime(w.time.p25) + '–' + gtime(w.time.p75) + ' · n=' + w.time.nTime },
-      ],
-    },
-    spark: gameSpark(x.series),
-  };
-}
-export type GameCard = ReturnType<typeof gameCard>;
 /** Cards in verdict order: what needs a look first. A game without a readable verdict goes last. */
 export const cardOrder = (s: Summary): string[] => attentionOrder(s.games);
 

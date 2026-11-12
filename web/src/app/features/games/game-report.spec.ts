@@ -47,6 +47,13 @@ describe('GameReport', () => {
     expect(text('gameReportSentence')).toContain('Se pierde más los lunes');
   });
 
+  it('shouldKeepTheAdjustedFormFormulasInComoSeCalcula', async () => {
+    await open(summary({ queens: queens() }));
+    const help = text('gameReportHero');
+    expect(help).toContain('Forma descontando la dificultad');
+    expect(help).toContain('Tendencia:');
+  });
+
   describe('regularidad', () => {
     it('shouldGiveTheNormalRangeWithItsNAndTheBestTime', async () => {
       await open(summary({ queens: queens() }));

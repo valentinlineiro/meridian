@@ -8,7 +8,7 @@ import { Stats } from '../../shared/stats';
 import { VerdictPill } from '../../shared/verdict';
 import { diagnosisBlock, evidenceLines, evolutionFacts, extraLines, levelRows, normalRange, reportSentence, secondsWeeks, weekdayReport, weeklyBeat } from './game-report.model';
 import { GamesChart } from './games-chart';
-import { gbeatStreak, gdays, interpretationLines, Range, RANGE_NAMES, staleTitle, Summary, trajectory } from './games.model';
+import { gbeatStreak, formLines, gdays, interpretationLines, Range, RANGE_NAMES, staleTitle, Summary, trajectory } from './games.model';
 
 /**
  * The report of one game: regularity first, then level, evolution and what the data do and do not say. Every block is built on its own
@@ -30,7 +30,7 @@ export class GameReport {
   protected readonly rangeName = computed(() => RANGE_NAMES[this.range()]);
   protected readonly verdict = computed(() => safe(() => verdictFor(this.x().interpretation), null));
   protected readonly sentence = computed(() => safe(() => reportSentence(this.x(), this.range()), [] as string[]));
-  protected readonly how = computed(() => safe(() => interpretationLines(this.x()), [] as string[]));
+  protected readonly how = computed(() => safe(() => [...interpretationLines(this.x()), ...formLines(this.x(), this.range())], [] as string[]));
   /** Too little history to judge: the report says what is missing instead of the evolution. */
   protected readonly few = computed(() => safe(() => this.x().interpretation.label === 'datos_insuficientes', false));
   protected readonly nr = computed(() => safe(() => normalRange(this.x(), this.range()), null));
