@@ -7,13 +7,11 @@ import { safe } from '../../core/guard';
 import { GameReport } from './game-report';
 import { GamesChart } from './games-chart';
 import { GamesQuickEntry } from './games-quick-entry';
-import { GamesTable } from './games-table';
 import { Help } from '../../shared/help';
 import { Section } from '../../shared/section';
 import { Segmented } from '../../shared/segmented';
-import { Stats } from '../../shared/stats';
 import { VerdictPill } from '../../shared/verdict';
-import { cardOrder, Day, defaultTrajGame, GAME_NAMES, gameCard, gameName, difficultyGrid, gamesHero, summaryRows, localToday, lossRows, Range, RANGES, Summary, trajectory, weekdayRows } from './games.model';
+import { Day, defaultTrajGame, GAME_NAMES, gameName, difficultyGrid, gamesHero, summaryRows, localToday, lossRows, Range, RANGES, Summary, trajectory } from './games.model';
 
 // Port of the LinkedIn Games tab (src/frontend.ts:489–520, src/dashboard.client.js:1787–1971).
 const orNull = <T>(o: Observable<T>) => o.pipe(catchError(() => of(null)));
@@ -22,7 +20,7 @@ const HERO_IDLE = { label: 'LinkedIn Games · racha actual', streak: '—', meta
 
 @Component({
   selector: 'app-games',
-  imports: [GameReport, GamesChart, GamesQuickEntry, GamesTable, Help, RouterLink, Section, Segmented, Stats, VerdictPill],
+  imports: [GameReport, GamesChart, GamesQuickEntry, Help, RouterLink, Section, Segmented, VerdictPill],
   templateUrl: './games.html',
 })
 export class Games {
@@ -77,15 +75,9 @@ export class Games {
     const done = new Set(g && typeof g === 'object' ? Object.keys(g) : []);
     return Object.keys(GAME_NAMES).map((k) => ({ k, name: GAME_NAMES[k], done: done.has(k), text: (done.has(k) ? '✓ ' : '') + GAME_NAMES[k] }));
   });
-  protected readonly week = computed(() => { const s = this.summary(); return s ? safe(() => weekdayRows(s), null) : undefined; });
   protected readonly loss = computed(() => { const s = this.summary(); return s ? safe(() => lossRows(s) ?? null, null) : undefined; });
   protected readonly diff = computed(() => { const s = this.summary(); return s ? safe(() => difficultyGrid(s) ?? null, null) : undefined; });
   protected readonly rows = computed(() => { const s = this.summary(), range = this.range(); return s ? safe(() => summaryRows(s, range), []) : []; });
-  protected readonly cards = computed(() => {
-    const s = this.summary(), range = this.range();
-    if (!s) return [];
-    return safe(() => cardOrder(s), [] as string[]).map((k) => safe(() => gameCard(k, s.games[k], s, range), { k, name: gameName(k), na: true as const }));
-  });
   /** undefined: nothing to draw (loading, failed, no games); null: the trajectory could not be read. */
   protected readonly traj = computed(() => {
     const s = this.summary(), range = this.range(), pick = this.trajPick();
