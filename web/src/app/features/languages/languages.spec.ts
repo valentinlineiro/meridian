@@ -199,8 +199,8 @@ describe('Languages', () => {
       expect(text('langAccountCourses')).toBe('2 cursos');
       expect(q('#langCourseHero')!.querySelector('#langAccountXp')).toBeNull();
       expect(q('#langAccountCard')!.querySelector('#langCourseSelect')).toBeNull();
-      expect(q('#langCourseHero .pill-scope')!.textContent!.trim()).toBe('CURSO');
-      expect(q('#langAccountCard .pill-scope')!.textContent!.trim()).toBe('CUENTA');
+      expect(q('#langCourseHero .pill-scope')).toBeNull(); // the title says it; no scope tags
+      expect(q('#langAccountCard .pill-scope')).toBeNull();
     });
 
     it('shouldChangeOnlyCourseScopedDataWhenSwitchingCourse', async () => {
@@ -273,7 +273,7 @@ describe('Languages', () => {
       expect(text('langObservedSynthesis')).toBe('1 de 2 cursos comparables sin cambio estructural');
       expect(text('langCurricularProgressDetail')).toBe('+2 unidades completadas en Demo Beta (mismo árbol curricular: denominador idéntico)');
       expect(text('langCourseStructureDetail')).toBe('Árbol curricular estable sin cambios estructurales en los cursos observados');
-      expect(text('langAccountActivityDetail')).toBe('+5072 XP hoy (cuenta) · Curso en foco: Demo Beta (EN → XB) · No refleja competencia lingüística');
+      expect(text('langAccountActivityDetail')).toBe('+5072 XP hoy (cuenta) · Curso en foco: Demo Beta (EN → XB)');
     });
 
     it('shouldCountInsufficientAndStructuralChangesApart', async () => {
@@ -616,7 +616,7 @@ describe('Languages', () => {
       await open('/languages', langApi({ '/api/languages/analytics': a }));
       expect(text('langConcentrationBody')).not.toMatch(/HHI|Cursos efectivos|Cuota Top 3|0[.,]3552|2[.,]82/);
       expect(text('langIntensityBody')).not.toMatch(/XP \/ minuto|29[.,]0/);
-      expect(text('langIntensityBody')).toMatch(/No mide cuánto aprendes ni a qué velocidad/);
+      expect(text('langIntensityBody')).not.toMatch(/competencia|aprendes/); // the one caveat lives in the card at the top
     });
 
     it.each([[{ totalUnits: 4 }], [{}]])('shouldShowSectionsWithoutUnitCountsAsZeroNotAsNaN %j', async (units) => {
