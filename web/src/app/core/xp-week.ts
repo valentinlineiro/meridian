@@ -57,6 +57,13 @@ export function xpLine(w: Extract<XpWeek, { state: 'ok' }>, today: string): stri
   return `${head} · media de las 4 semanas anteriores: ${es(Math.round(w.avgWeek))} XP por semana (${sign(Math.round(w.pct!))} %)`;
 }
 
+/** The week for a card: the total as the big number, its change against the 4 weeks before (when there is one) and what it is compared with. */
+export function xpSummary(w: Extract<XpWeek, { state: 'ok' }>, today: string): { big: string; delta: string; note: string } {
+  const upto = w.through === shift(today, -1) ? 'Hasta ayer' : `Hasta ${shortDate(w.through, Date.parse(today))}`;
+  const note = w.avgWeek == null ? 'aún sin 4 semanas de historial para comparar' : w.avgWeek === 0 ? 'sin XP en las 4 semanas anteriores' : `media de las 4 semanas anteriores: ${es(Math.round(w.avgWeek))} XP por semana`;
+  return { big: es(w.total), delta: w.pct == null ? '' : `${sign(Math.round(w.pct))} % frente a tu media`, note: `${upto} · ${note}` };
+}
+
 /** The one sentence for the week, whatever the state: what Hoy and Idiomas both say. */
 export function xpWeekLine(w: XpWeek, today: string): string {
   if (w.state === 'none') return 'Sin sincronizar todavía';

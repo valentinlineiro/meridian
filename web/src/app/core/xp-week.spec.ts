@@ -1,4 +1,4 @@
-import { isStale, xpLine, xpWeek } from './xp-week';
+import { isStale, xpLine, xpSummary, xpWeek } from './xp-week';
 
 
 // "Now" is 2026-11-10 09:00 UTC (a Tuesday). Every date below is relative to it.
@@ -83,6 +83,18 @@ describe('xpWeek: the last seven complete days against the four weeks before', (
       const w = xpWeek([...rows(9, 3, () => 50), ...rows(37, 10, () => 50)], iso(2), NOW);
       if (w.state !== 'ok') throw new Error('not ok');
       expect(xpLine(w, day(0))).toContain('(hasta 7 nov)');
+    });
+  });
+
+  describe('xpSummary: the same week as a number, a change and a note', () => {
+    const ok = (data: ReturnType<typeof rows>) => { const w = xpWeek(data, syncedToday, NOW); if (w.state !== 'ok') throw new Error('not ok'); return w; };
+    it('shouldGiveTheTotalTheSignedChangeAndTheBaseline', () => {
+      expect(xpSummary(ok([...rows(7, 1, () => 271), ...rows(35, 8, () => 343)]), day(0)))
+        .toEqual({ big: '1897', delta: '−21 % frente a tu media', note: 'Hasta ayer · media de las 4 semanas anteriores: 2401 XP por semana' });
+    });
+    it('shouldGiveNoChangeWhenThereAreNoFourWeeksOrTheyHadNoXp', () => {
+      expect(xpSummary(ok(rows(20, 1, () => 100)), day(0))).toEqual({ big: '700', delta: '', note: 'Hasta ayer · aún sin 4 semanas de historial para comparar' });
+      expect(xpSummary(ok([...rows(7, 1, () => 100), ...rows(35, 8, () => 0)]), day(0)).note).toBe('Hasta ayer · sin XP en las 4 semanas anteriores');
     });
   });
 });

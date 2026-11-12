@@ -208,15 +208,11 @@ a.side-item{text-decoration:none}a.side-item:hover{text-decoration:none}
 .help{margin-top:8px}.help>summary{cursor:pointer;font-size:var(--fs-sm);color:var(--link)}.help>summary:focus-visible{outline:2px solid var(--link);outline-offset:2px;border-radius:var(--r-sm)}
 .help-body{margin-top:6px;font-size:var(--fs-sm);color:var(--muted)}.help-body p{margin:4px 0}
 
-.grows{display:grid;gap:8px}.grow{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1.4fr) auto 3rem;gap:4px 16px;align-items:center;padding:12px 16px}
-.grow-h{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.grow-line{margin:0;font-size:var(--fs-lg)}.grow-viz{display:flex;gap:12px;align-items:center}.grow-t{font-variant-numeric:tabular-nums;text-align:right}
-.dots{display:inline-flex;gap:3px}.dot{display:inline-block;width:8px;height:18px;border-radius:var(--r-sm);background:var(--draw-line)}.dot-w{background:var(--win-line)}.dot-l{background:var(--warn-line)}
-.grow .spark{width:90px;height:24px;margin:0}
-@media (max-width:760px){.grow{grid-template-columns:1fr auto}.grow-t{grid-row:1;grid-column:2}.grow-line{grid-column:1/-1;order:2}.grow-viz{grid-column:1/-1;order:3}}
+.grow-line{margin:0;font-size:var(--fs-lg)}
+.dot{display:inline-block;width:8px;height:18px;border-radius:var(--r-sm);background:var(--draw-line)}
 
-.grow-tag{font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-right:8px}.grow-viz .grow-tag{margin-right:0}
+.grow-tag{font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-right:8px}
 .loss-note{margin:0 0 8px;padding:8px 12px;border-left:3px solid var(--warn-line);background:var(--warn-bg);color:var(--warn-fg);border-radius:var(--r-sm)}.gl-n{display:block;font-size:var(--fs-xs);font-weight:400;opacity:.7}
-.grow-dots{display:inline-flex;align-items:center;gap:8px}
 .grow-tag{white-space:nowrap}
 
 /* notch / system bars when installed (viewport-fit=cover): the header owns the top inset (its own background covers it, nothing scrolls behind),
@@ -227,10 +223,8 @@ header{padding-top:calc(14px + env(safe-area-inset-top))}
 .side{top:calc(76px + env(safe-area-inset-top))}
 
 /* Hoy: each row is one link to its view; the week of XP is seven small bars */
-a.grow{color:inherit}a.grow:hover{background:var(--hover);text-decoration:none}
 .wk{display:flex;align-items:flex-end;gap:4px}.wk>div{display:flex;flex-direction:column;align-items:center;gap:2px}
 .wk i{display:block;width:12px;background:var(--info);border-radius:var(--r-sm) var(--r-sm) 0 0}.wk span{font-size:var(--fs-xs);color:var(--muted)}
-@media(min-width:761px){a.grow{grid-template-columns:minmax(0,1.1fr) minmax(0,1.4fr) 12rem 1.5rem}} /* the rows of Hoy share one grid: the visual differs per row but the text column must not move */
 
 /* Informe de un juego: la tira semanal, la cifra grande y la fila del periodo elegido */
 .gr-big{font-size:var(--fs-display);font-weight:800;line-height:1.1}
@@ -238,7 +232,7 @@ a.grow{color:inherit}a.grow:hover{background:var(--hover);text-decoration:none}
 .wkbeat i{display:block;width:100%;max-width:26px;min-height:2px;background:var(--ok);border-radius:var(--r-sm) var(--r-sm) 0 0}.wkbeat span{font-size:var(--fs-xs);color:var(--muted)}
 .wkbeat [data-complete=false] i{background:transparent;border:1px dashed var(--line-strong)}
 .gtable tr[data-selected=true]>td{background:var(--selected)}
-@media(max-width:760px){.grow-h a{display:inline-flex;align-items:center;min-height:44px}} /* the game name is a link: a touch target on phones */
+@media(max-width:760px){.gc-h a{display:inline-flex;align-items:center;min-height:44px}} /* the game name is a link: a touch target on phones */
 .gr-day{display:grid;grid-template-columns:5.5rem minmax(0,1fr);gap:2px 10px;align-items:center;padding:6px 0;font-size:var(--fs-md)}.gr-day .gr-txt{grid-column:2;color:var(--text-2)}
 @media(min-width:761px){.gr-day{grid-template-columns:5.5rem minmax(0,1fr) 17rem}.gr-day .gr-txt{grid-column:auto;text-align:right}}
 @media(max-width:760px){#gameReportLevel thead{display:none}} /* the stacked cells carry their own labels */
@@ -364,3 +358,11 @@ app-tab-bar{display:none}
 .gh-top{display:flex;justify-content:space-between;align-items:baseline;gap:4px 12px;flex-wrap:wrap}.gh-top b{font-size:var(--fs-xl)}
 .gh-foot{display:flex;flex-wrap:wrap;gap:4px 16px;margin-top:12px;font-size:var(--fs-sm)}.gh-foot a{margin-left:auto;display:inline-flex;align-items:center;min-height:44px}
 #gamesToday .pill{text-transform:none;letter-spacing:0;font-weight:600}
+
+/* Hoy: one card per domain (big number, change, a chart with its scale, one sentence) */
+.hcs{display:grid;gap:12px}
+@media(min-width:1000px){.hcs{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.hc{display:grid;gap:8px;align-content:start;padding:16px;color:inherit}a.hc:hover{background:var(--hover);text-decoration:none}
+.hc-h{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.hc-n{display:flex;align-items:baseline;gap:4px 8px;flex-wrap:wrap}.hc-big{font-size:var(--fs-display);font-weight:800;line-height:1;font-variant-numeric:tabular-nums}.hc-delta{margin-left:auto}
+.hc-line{margin:0;font-size:var(--fs-lg)}.hc-sub{margin:0}

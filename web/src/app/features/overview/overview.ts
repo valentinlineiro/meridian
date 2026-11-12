@@ -5,10 +5,12 @@ import { catchError, forkJoin, map, Observable, of } from 'rxjs';
 import { ApiClient } from '../../core/api-client';
 import { StatsService } from '../../core/stats.service';
 import { es, Langs, XpDay } from '../../core/courses';
-import { relDate, sparkPoints } from '../../core/format';
+import { relDate } from '../../core/format';
+import { ResultBars } from '../../shared/result-bars';
+import { Sparkline } from '../../shared/sparkline';
 import { VerdictPill } from '../../shared/verdict';
 import { chessRow, ChessRecentIn, ChessSummaryIn, gamesRow, GamesSummaryIn, headline, syncChip, TimelineIn } from './overview.model';
-import { isStale, xpWeek, xpWeekLine } from '../../core/xp-week';
+import { isStale, xpSummary, xpWeek, xpWeekLine } from '../../core/xp-week';
 
 /**
  * Hoy: how you are doing against your own normal, one row per domain. The rows come from overview.model.ts; totals live in each domain's view.
@@ -30,7 +32,7 @@ function view(d: OverviewData, now: number) {
   const snaps = d.timeline?.snapshots ?? [];
   const chessSynced = snaps[snaps.length - 1]?.createdAt ?? null;
   const c = chessRow({ recent: d.recent, summary: d.stats, timeline: d.timeline, matches: d.matches, now });
-  const spark = sparkPoints(snaps.filter((s) => s.elo != null).slice(-30).map((s) => s.elo!));
+  const trend = snaps.filter((s) => s.elo != null).slice(-30).map((s) => ({ date: s.createdAt.slice(0, 10), elo: s.elo! }));
 
   // The sync time is the catalogue's. The XP rows' own updatedAt is only "when that day last CHANGED" (a row is rewritten only if it differs),
   // so on a quiet stretch it would make fresh data look old.
@@ -48,20 +50,21 @@ function view(d: OverviewData, now: number) {
 
   return {
     headline: headline([{ name: 'Ajedrez', verdict: c.verdict }, { name: g?.name ?? 'Games', verdict: g?.verdict ?? null }]),
-    chess: { ...c, form: c.form ?? NA, spark, freshChip: syncChip(chessSynced, now) },
+    chess: { ...c, form: c.form ?? NA, trend, freshChip: syncChip(chessSynced, now) },
     lang: {
-      line: !d.summaries ? NA : !w ? 'Sin sincronizar todavía' : xpWeekLine(w, today),
+      ...(w?.state === 'ok' ? (({ big, delta, note }) => ({ big, delta, line: note }))(xpSummary(w, today))
+        : { big: '—', delta: '', line: !d.summaries ? NA : !w ? 'Sin sincronizar todavía' : xpWeekLine(w, today) }),
       streak: streak == null ? '' : old ? `Racha de Duolingo: ${es(Number(streak))} días (dato de hace ${relDate(d.langs!.updatedAt!, now).replace(/^hace /, '')})` : `🔥 Racha de Duolingo: ${es(Number(streak))} días`,
       bars, aria: 'XP de los últimos 7 días completos: ' + bars.map((b) => `${b.letter} ${b.xp}`).join(', '),
       freshChip: syncChip(xpSynced, now),
     },
-    games: { line: d.games ? g?.line ?? NA : NA, verdict: g?.verdict ?? null, streak: g?.streak ?? '', link: g?.link ?? '/games' },
+    games: { line: d.games ? g?.line ?? NA : NA, verdict: g?.verdict ?? null, streak: g?.streak ?? '', link: g?.link ?? '/games', focus: g?.focus ?? null },
   };
 }
 
 @Component({
   selector: 'app-overview',
-  imports: [RouterLink, VerdictPill],
+  imports: [ResultBars, RouterLink, Sparkline, VerdictPill],
   templateUrl: './overview.html',
 })
 export class Overview {

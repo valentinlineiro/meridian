@@ -8,6 +8,7 @@ import { GameReport } from './game-report';
 import { GamesChart } from './games-chart';
 import { GamesQuickEntry } from './games-quick-entry';
 import { Help } from '../../shared/help';
+import { ResultBars } from '../../shared/result-bars';
 import { Section } from '../../shared/section';
 import { Segmented } from '../../shared/segmented';
 import { VerdictPill } from '../../shared/verdict';
@@ -20,7 +21,7 @@ const HERO_IDLE = { label: 'LinkedIn Games · racha actual', streak: '—', meta
 
 @Component({
   selector: 'app-games',
-  imports: [GameReport, GamesChart, GamesQuickEntry, Help, RouterLink, Section, Segmented, VerdictPill],
+  imports: [GameReport, GamesChart, GamesQuickEntry, Help, ResultBars, RouterLink, Section, Segmented, VerdictPill],
   templateUrl: './games.html',
 })
 export class Games {

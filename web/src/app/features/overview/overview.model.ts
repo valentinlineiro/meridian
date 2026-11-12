@@ -2,14 +2,19 @@
 // baseline says so, data older than two days is said to be old (never read as zero), and no number is invented.
 import { Delta, fmtDate, fmtDelta, pc1, scaleDelta } from '../../core/format';
 import { calendarDaysAgo, DAY, isStale, shortDate, sign } from '../../core/xp-week';
+import { resultBars, ResultBarsData } from '../../shared/result-bars';
 import { attentionOrder, gameName, gdays, intervalVerdict, Verdict, VERDICT_ORDER, verdictFor, verdictKey } from '../../core/words';
 
 // What this page reads of each domain's response: a subset of the Chess and Games models (a feature does not import another feature).
 export interface ChessRecentIn { games?: number | null; winRate?: number | null; delta?: Delta | null }
 export interface ChessSummaryIn { currentElo?: number | null; latestElo?: number | null }
 export interface TimelineIn { snapshots?: { createdAt: string; elo?: number | null }[] }
+export interface GameIn {
+  interpretation: { label: string; pending: string | null };
+  series?: { date: string; eff: number }[]; windows?: Record<string, { eff?: { median: number | null } }>;
+}
 export interface GamesSummaryIn {
-  games: Record<string, { interpretation: { label: string; pending: string | null } }>;
+  games: Record<string, GameIn>;
   playStreak?: { current: number; max: number } | null; to?: string | null;
 }
 
@@ -57,16 +62,23 @@ export function chessRow(i: {
   return {
     verdict: r ? intervalVerdict(scaleDelta(r.delta, 100)) : null,
     form: r ? chessForm(r, since, i.now) : null,
-    elo: elo != null ? `ELO ${elo}` + (ch ? ` (${sign(ch.diff)} desde el ${shortDate(ch.since, i.now)})` : '') : null,
+    elo, eloChange: ch ? `${sign(ch.diff)} desde el ${shortDate(ch.since, i.now)}` : null,
   };
 }
 
 // ── LinkedIn Games ───────────────────────────────────────────────────────────────────────────────────────────────────────────
 /** What needs a look first across the games (the order of the Games view), counted by the same verdict words. */
 /** `link` goes to the report of the game behind the verdict when that verdict says something, and to /games when nothing stands out. */
-export function gamesRow(s: GamesSummaryIn): { verdict: Verdict | null; name: string | null; link: string; line: string; streak: string } {
+export interface GamesFocus { big: string; cap: string; bars: ResultBarsData }
+/** The speed against the LinkedIn average (the verdict's own 28-day window) and the last results of the game the verdict is about. */
+function focusOf(k: string, g: GameIn): GamesFocus | null {
+  const m = g.windows?.['28']?.eff?.median;
+  if (typeof m !== 'number' || !Number.isFinite(m)) return null;
+  return { big: `${sign(Math.round((m - 1) * 100))} %`, cap: `${gameName(k)} · ${m > 1 ? 'más rápido' : m < 1 ? 'más lento' : 'igual'} que la media`, bars: resultBars(g.series ?? []) };
+}
+export function gamesRow(s: GamesSummaryIn): { verdict: Verdict | null; name: string | null; link: string; line: string; streak: string; focus: GamesFocus | null } {
   const keys = attentionOrder(s.games);
-  if (!keys.length) return { verdict: null, name: null, link: '/games', line: 'Sin partidas registradas aún', streak: '' };
+  if (!keys.length) return { verdict: null, name: null, link: '/games', line: 'Sin partidas registradas aún', streak: '', focus: null };
   const vs = keys.map((k) => verdictFor(s.games[k]!.interpretation));
   const head = vs[0]!.state === 'confirmed' || vs[0]!.state === 'possible';
   const rest = head ? vs.slice(1) : vs; // the head is said once, not counted again
@@ -78,6 +90,7 @@ export function gamesRow(s: GamesSummaryIn): { verdict: Verdict | null; name: st
     verdict: vs[0]!,
     name: gameName(keys[0]!),
     link: head ? `/games/${keys[0]}` : '/games',
+    focus: head ? focusOf(keys[0]!, s.games[keys[0]!]!) : null,
     line: [...(head ? [`${gameName(keys[0]!)}: ${vs[0]!.label}`] : []), ...counts].join(' · '),
     streak: cur > 0 ? `Racha: ${gdays(cur)} ${cur === 1 ? 'seguido' : 'seguidos'}` : s.to ? `Sin registro desde ${fmtDate(s.to)} · registro manual` : '',
   };
