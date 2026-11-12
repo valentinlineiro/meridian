@@ -12,6 +12,7 @@ const DAY = 864e5;
 const iso = (msAgo: number) => new Date(Date.now() - msAgo).toISOString();
 const utcDay = (daysAgo: number) => new Date(Date.now() - daysAgo * DAY).toISOString().slice(0, 10);
 const FAIL = Symbol('500');
+const MISSING = Symbol('404'); // the bundle route does not exist: the only bundle failure that still falls back to each stat's route
 type Api = Record<string, unknown>;
 
 const xpRows = (from: number, to: number, xp: number, extra: object = {}) =>
@@ -63,6 +64,7 @@ describe('Overview', () => {
         if (!(r.request.url in api)) throw new Error('unexpected request ' + r.request.urlWithParams);
         const body = api[r.request.url];
         if (body === FAIL) r.flush({ ok: false }, { status: 500, statusText: 'Internal Server Error' });
+        else if (body === MISSING) r.flush({ ok: false }, { status: 404, statusText: 'Not Found' });
         else r.flush(body as object);
       }
       TestBed.tick();
@@ -148,9 +150,9 @@ describe('Overview', () => {
       expect(text(await open(api), 'overviewChessFresh')).toBe('datos de hace 5 días');
     });
 
-    it('shouldReadEachStatsRouteWhenTheBundleFails', async () => {
+    it('shouldReadEachStatsRouteWhenTheBundleRouteIsMissing', async () => {
       const el = await open({
-        ...fullApi(), '/api/stats/bundle': FAIL,
+        ...fullApi(), '/api/stats/bundle': MISSING,
         '/api/stats/summary': { games: 10, currentElo: 880 }, '/api/stats/timeline': { snapshots: [{ createdAt: iso(0), elo: 880 }] },
         '/api/stats/recent': { limit: 50, games: 50, decided: 50, winRate: 0.5, delta: null, before: null },
       });

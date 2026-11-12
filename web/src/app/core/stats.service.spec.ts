@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { firstValueFrom, forkJoin, Observable, of, throwError, TimeoutError } from 'rxjs';
 import { ApiClient } from './api-client';
@@ -40,6 +41,20 @@ describe('StatsService', () => {
     const stat = stats.session();
     await expect(firstValueFrom(stat('summary', '/api/stats/summary'))).rejects.toThrow();
     expect(asked).toEqual(['/api/stats/bundle']);
+  });
+
+  it('shouldNotAskEachRouteAgainWhenTheBundleAnswersWithA5xxBecauseTheBackendIsOverloaded', async () => {
+    const stats = setup(() => throwError(() => new HttpErrorResponse({ status: 503 })));
+    const stat = stats.session();
+    const results = await Promise.allSettled([firstValueFrom(stat('summary', '/api/stats/summary')), firstValueFrom(stat('color', '/api/stats/color'))]);
+    expect(results.map((r) => r.status)).toEqual(['rejected', 'rejected']);
+    expect((results[0] as PromiseRejectedResult).reason).toBeInstanceOf(HttpErrorResponse);
+    expect(asked).toEqual(['/api/stats/bundle']); // 7 more reads against an overloaded D1 only make it worse
+  });
+
+  it('shouldStillFallBackToEachRouteWhenTheBundleRouteDoesNotExist', async () => {
+    const stats = setup((p) => p === '/api/stats/bundle' ? throwError(() => new HttpErrorResponse({ status: 404 })) : of({ from: p }));
+    expect(await firstValueFrom(stats.session()('summary', '/api/stats/summary'))).toEqual({ from: '/api/stats/summary' });
   });
 
   it('shouldAskTheBundleAgainWhenANewSessionStarts', async () => {

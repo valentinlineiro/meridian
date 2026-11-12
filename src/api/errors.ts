@@ -33,9 +33,19 @@ export function logInternalError(e: unknown): void {
   console.error(JSON.stringify({ event: "internal_error", name, message: message.slice(0, 300) }));
 }
 
-export function mapError(c: Context<any>, err: unknown): Response {
-  const mapped = mapErrorToResponse(err);
-  if (mapped) return mapped;
-  logInternalError(err);
-  return c.json({ ok: false, error: "internal error" }, 500);
+const OVERLOADED = /D1 DB is overloaded|Too many resources consumed/i;
+
+/** The opaque answer to an unmapped failure. D1 saying it is overloaded is a "try again shortly" (503 + Retry-After), not a bug (500). Always logged. */
+export function internalErrorResponse(e: unknown): Response {
+  logInternalError(e);
+  if (e instanceof Error && OVERLOADED.test(e.message)) {
+    const res = json({ ok: false, error: "temporarily overloaded", code: "D1_OVERLOADED" }, 503);
+    res.headers.set("Retry-After", "10"); // D1's window is 10 s
+    return res;
+  }
+  return json({ ok: false, error: "internal error" }, 500);
+}
+
+export function mapError(_c: Context<any>, err: unknown): Response {
+  return mapErrorToResponse(err) ?? internalErrorResponse(err);
 }
