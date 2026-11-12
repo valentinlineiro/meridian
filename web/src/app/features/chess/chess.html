@@ -32,6 +32,7 @@
       </div>
     </div>
   </div>
+  <div class="card u-mt-12" id="chessPatternsCard"><app-review-suggestion [profile]="profile()" /></div>
   <nav class="cindex" aria-label="Secciones de ajedrez">
     <button class="btn btn-g" type="button" (click)="go('comparativa')">Comparativa</button><button class="btn btn-g" type="button" (click)="go('aperturas')">Aperturas</button><button class="btn btn-g" type="button" (click)="go('evolucion')">Evolución</button><button class="btn btn-g" type="button" (click)="go('partidas')">Partidas</button>
   </nav>
@@ -69,11 +70,7 @@
     <div class="muted u-mt-10" id="streak">@if (x) {@if (x.streakNow) {<b>{{ x.streakNow }}</b> · }{{ x.streakBest }}}</div>
   </div>
 
-  <div class="card u-mt-12" id="chessPatternsCard">
-    <app-patterns [games]="x ? d()!.s.games ?? 0 : undefined" [colorStats]="x ? d()!.c : undefined" [profile]="profile()" (color)="filterColor($event, allMatches)" (engine)="engineDetails.reveal()" />
-  </div>
-
-  <app-section sectionId="cg-comp" title="Comparativa por color y oponente" #cgComp>
+  <app-section sectionId="cg-comp" title="Comparativa por color y oponente" [open]="false" #cgComp>
     <div class="grid2">
       <div class="card" id="colCard"><h2>Rendimiento por color</h2><div id="colDiff" class="muted u-mb-8">{{ x?.colDiff }}</div>
         <div id="col">@if (x) {@if (x.col; as g) {<m-compare [groups]="g" [total]="x.total" />} @else {<div class="muted">No disponible</div>}}</div></div>
@@ -82,11 +79,11 @@
     </div>
   </app-section>
 
-  <app-section sectionId="cg-open" title="Repertorio de aperturas y fases" [open]="!phone" #cgOpen>
+  <app-section sectionId="cg-open" title="Repertorio de aperturas y fases" [open]="false" #cgOpen>
     <app-openings [openings]="x ? d()!.op : undefined" [phases]="x ? d()!.ph : undefined" [matesStats]="x ? d()!.mt : undefined" [threatStats]="x ? d()!.th : undefined" [total]="x?.total ?? 1" />
   </app-section>
 
-  <app-section sectionId="cg-evo" title="Evolución y detalle" [open]="!phone" #cgEvo>
+  <app-section sectionId="cg-evo" title="Evolución y detalle" [open]="false" #cgEvo>
     <div class="grid2">
       <div class="card" id="evoCard"><h2>Evolución · ELO</h2><div class="muted u-fs-xs">ELO observado en sincronizaciones</div>
         <div id="evo">@if (x) {@if (x.evo; as e) {<m-sparkline [points]="e.points" />} @else {<div class="muted">No disponible</div>}}</div>
@@ -107,7 +104,7 @@
     </details>
   </app-section>
 
-  <app-section sectionId="chessEngineProfileDetails" title="Perfil de juego y análisis de motor (Stockfish)" [open]="!phone" #engineDetails>
+  <app-section sectionId="chessEngineProfileDetails" title="Perfil de juego y análisis de motor (Stockfish)" [open]="false" #engineDetails>
     <div id="chessEngineProfileContent"><app-engine-profile [profile]="profile()" [cut]="cut()" (cutChange)="setCut($event)" /></div>
   </app-section>
 

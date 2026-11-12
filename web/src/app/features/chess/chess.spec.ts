@@ -143,21 +143,11 @@ describe('Chess', () => {
     });
   });
 
-  describe('layout on a phone', () => {
-    const phone = (matches: boolean) => vi.stubGlobal('matchMedia', () => ({ matches }));
-    afterEach(() => vi.unstubAllGlobals());
-    const isOpen = (id: string) => (t.el().querySelector('#' + id) as HTMLDetailsElement).open;
-
-    it('shouldStartWithOnlyTheFirstBlockOpenOnAPhone', async () => {
-      phone(true);
+  describe('layout', () => {
+    it('shouldStartWithEveryDetailBlockClosedOnAnyScreen', async () => {
       await t.open();
-      expect(['cg-comp', 'cg-open', 'cg-evo', 'chessEngineProfileDetails'].map(isOpen)).toEqual([true, false, false, false]);
-    });
-
-    it('shouldKeepEveryBlockOpenOnADesktop', async () => {
-      phone(false);
-      await t.open();
-      expect(['cg-comp', 'cg-open', 'cg-evo', 'chessEngineProfileDetails'].every(isOpen)).toBe(true);
+      const isOpen = (id: string) => (t.el().querySelector('#' + id) as HTMLDetailsElement).open;
+      expect(['cg-comp', 'cg-open', 'cg-evo', 'chessEngineProfileDetails'].map(isOpen)).toEqual([false, false, false, false]);
     });
   });
 
@@ -526,9 +516,8 @@ describe('Chess', () => {
       siblingsRender();
     });
 
-    it('shouldSayNoDisponibleInPatternsWhenTheColourGroupsAreNotAList', async () => {
+    it('shouldSayNoDisponibleWhenTheColourGroupsAreNotAList', async () => {
       await t.open(chessApi({ '/api/stats/color': { groups: 'x', difference: null } }));
-      expect(t.text('chessPatternColorConclusion')).toBe('No disponible');
       expect(t.text('col')).toBe('No disponible');
       expect(t.text('kpis')).toContain('Partidas');
     });
@@ -540,54 +529,9 @@ describe('Chess', () => {
     });
   });
 
-  describe('patterns', () => {
-    it('shouldSayWhetherTheColourDifferenceIsDetectableAndPersistent', async () => {
-      await t.harness.navigateByUrl('/chess');
-      const api = chessApi({ '/api/stats/color': { groups: [group({ key: 'white', winRate: 0.68 }), group({ key: 'black', winRate: 0.62 })], difference: { diff: 0.06, lower: -0.18, upper: 0.30 } } });
-      const all = t.pending(); // answer everything but the trajectory, to see the interim line
-      for (const r of all) t.flush(r, api[r.request.url]);
-      await t.tick();
-      const traj = t.pending().find((r) => r.request.url === '/api/trajectory')!;
-      expect(t.text('chessPatternColorConclusion')).toBe('Con estos datos no se puede asegurar que haya diferencia (+6,0 puntos de %; podría estar entre −18,0 y +30,0). · patrón persistente: comprobando…');
-      traj.flush(api['/api/trajectory'] as object);
-      await t.tick();
-      expect(t.text('chessPatternColorConclusion')).toBe('Con estos datos no se puede asegurar que haya diferencia (+6,0 puntos de %; podría estar entre −18,0 y +30,0). · Patrón persistente (al menos 15 puntos de % y en las dos mitades): no demostrado');
-    });
-
-    it('shouldSaySinEvaluarWhenThePersistenceCannotBeRead', async () => {
-      await t.open(chessApi({ '/api/trajectory': FAIL }));
-      expect(t.text('chessPatternColorConclusion')).toBe('La diferencia se nota: +25,0 puntos de % (con estos datos, entre +3,8 y +43,3). · Patrón persistente (al menos 15 puntos de % y en las dos mitades): sin evaluar');
-    });
-
-    it('shouldSayThereIsNotEnoughColourDataOrThatItIsUnavailable', async () => {
-      await t.open(chessApi({ '/api/stats/color': { groups: [], difference: null } }));
-      expect(t.text('chessPatternColorConclusion')).toBe('Sin datos de color suficientes');
-    });
-
-    it('shouldSayNoDisponibleWhenTheColourRequestFails', async () => {
-      await t.open(chessApi({ '/api/stats/bundle': MISSING, '/api/stats/color': FAIL }));
-      expect(t.text('chessPatternColorConclusion')).toBe('No disponible');
-    });
-
-    it('shouldFormatStockfishCoverageWithExplicitDenominatorAndItsOwnDate', async () => {
-      await t.open();
-      expect(t.text('chessEngineCoverageVal')).toBe('0 de 100 partidas analizadas (0 %)');
-      expect(t.text('chessEngineCoverageMeta')).toBe('Análisis pendiente · Denominador: 100 partidas guardadas en el historial (elegibles para análisis)');
-      expect(t.text('chessPatternSuggested')).toBe('Partidas sugeridas para revisión: disponibles tras el análisis de motor.');
-    });
-
-    it('shouldShowThePartialCoverageAndNeverBorrowTheDateFromTheEloSnapshot', async () => {
-      await t.open(chessApi({ '/api/stats/profile': { ...PROFILE, analysed: 42 } }));
-      expect(t.text('chessEngineCoverageVal')).toBe('42 de 100 partidas analizadas (42,0 %)');
-      expect(t.text('chessEngineCoverageMeta')).toBe('Denominador: 100 partidas guardadas en el historial (elegibles para análisis)');
-      await t.harness.navigateByUrl('/elsewhere');
-      await t.open(chessApi({ '/api/stats/profile': { ...PROFILE, analysed: 42, observedAt: '2026-11-02T10:00:00Z' } }));
-      expect(t.text('chessEngineCoverageMeta')).toBe('Denominador: 100 partidas guardadas en el historial (elegibles para análisis) · observado 2026-11-02');
-    });
-
+  describe('review suggestion', () => {
     it('shouldSayTheCoverageIsUnavailableNotZeroWhenTheProfileFails', async () => {
       await t.open(chessApi({ '/api/stats/profile': FAIL }));
-      expect(t.text('chessEngineCoverageVal')).toBe('No disponible');
       expect(t.text('chessPatternSuggested')).toBe('Partida sugerida para revisión: No disponible');
       expect(t.text('profileKpis')).toBe('No se pudo cargar el perfil');
     });
@@ -601,19 +545,6 @@ describe('Chess', () => {
       btn.click();
       await t.tick();
       expect(t.pending().some((r) => r.request.url === '/api/me/matches/' + encodeURIComponent(worst[0].matchId) + '/game')).toBe(true);
-    });
-
-    it('shouldFilterMatchesAndScrollWhenColorChipsAreClicked', async () => {
-      await t.open();
-      const scrolled: string[] = [];
-      Element.prototype.scrollIntoView = function (this: Element) { scrolled.push(this.id); };
-      t.el().querySelector<HTMLButtonElement>('#chessPatternColorCard button')!.click();
-      await t.tick();
-      expect(scrolled).toEqual(['allMatchesCard']);
-      expect(t.pending().find((r) => r.request.url === '/api/matches')!.request.params.get('color')).toBe('white');
-      t.el().querySelector<HTMLButtonElement>('#chessPatternEngineCard button')!.click();
-      expect(scrolled).toEqual(['allMatchesCard', 'chessEngineProfileDetails']);
-      expect(t.el().querySelector<HTMLDetailsElement>('#chessEngineProfileDetails')!.open).toBe(true);
     });
   });
 
