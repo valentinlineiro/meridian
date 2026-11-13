@@ -38,13 +38,15 @@
       @for (r of rows(); track r.k) {
         <a class="gc card" [routerLink]="['/games', r.k]">
           <span class="gc-name"><b>{{ r.name }}</b><app-verdict [verdict]="r.verdict" /></span>
-          <span class="gc-n"><span class="gc-big">{{ r.big }}</span><span class="gc-cap muted">{{ r.cap }}</span></span>
+          <span class="gc-trend">{{ r.verdict.sentence }}</span>
+          <span class="gc-n"><span class="gc-ref muted">LinkedIn</span><span class="gc-big">{{ r.big }}</span><span class="gc-cap muted">{{ r.cap }}</span></span>
           <app-result-bars [data]="r.bars" />
         </a>
       }
     </div>
     <app-help label="Cómo leerlo">
-      <p>El número grande es lo más rápido o lento que vas frente a la media de LinkedIn, en el periodo elegido. Cada barra es una de tus últimas 14 partidas con media: hacia arriba, mejor que la media ese día; hacia abajo, peor; cuanto más alta, mayor la diferencia. La etiqueta (Mejorando, Estable, Bajando) se confirma cuando el cambio se repite dos semanas seguidas; hasta entonces la frase te dice que queda por confirmar. «Estable» significa que con los datos de este periodo no hay un cambio medible, no que sea imposible que lo haya. «Pocos datos»: faltan partidas para valorar. Debajo, «Más detalle» tiene las tablas y los gráficos.</p>
+      <p>La etiqueta (Mejorando, Estable, Bajando) es tu tendencia: compara tus últimos 28 días con los 56 anteriores y mira tu evolución de los últimos 4 meses. Solo se confirma cuando se mantiene una semana después; hasta entonces la frase te dice que queda por confirmar. «Estable» significa que con tus datos no hay un cambio medible, no que sea imposible que lo haya. «Pocos datos»: faltan partidas para valorar.</p>
+      <p>La línea «LinkedIn» es solo una referencia: cuánto más rápido o lento vas que la media de LinkedIn en el periodo elegido. No dice si mejoras. Cada barra es una de tus últimas 14 partidas con media: hacia arriba, mejor que la media ese día; hacia abajo, peor. Debajo, «Más detalle» tiene las tablas y los gráficos.</p>
     </app-help>
   </app-section>
   <app-section title="Dónde pierdes" sectionId="cg-games-loss" [open]="false">
