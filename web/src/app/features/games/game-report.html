@@ -1,3 +1,64 @@
+<div class="hero-card" id="gameReportFigures">
+  <div class="u-d-flex u-jc-space-between u-ai-center u-wrap-wrap u-gap-8">
+    <div class="muted u-fs-xs u-tt-uppercase u-ls-p05em">Frente a la media de LinkedIn · {{ rangeName() }}</div>
+    @if (verdict(); as v) {<app-verdict [verdict]="v" />}
+  </div>
+  @if (figs(); as f) {
+    <div class="gr-n u-mt-8"><span class="gr-fig" id="gameFigBig">{{ f.big }}</span><span class="muted" id="gameFigCap">{{ f.cap }}</span>@if (f.delta) {<span class="gr-delta muted" id="gameFigDelta">{{ f.delta }}</span>}</div>
+  }
+  @if (bars(); as b) {<div class="u-mt-10"><app-result-bars [data]="b" /></div>}
+  <div class="gr-kpis">
+    <div><span class="muted">Tiempo normal</span><b id="gameFigTime">{{ time() }}</b></div>
+    <div><span class="muted">Mejor marca</span><b id="gameFigBest">{{ best() }}</b></div>
+    <div><span class="muted">Partidas</span><b id="gameFigGames">{{ x().n }}</b></div>
+    <div><span class="muted">Racha</span><b id="gameFigStreak">{{ streak()?.now ?? '—' }}</b></div>
+  </div>
+  @if (verdict(); as v) {<p class="u-m-0 u-mt-10" id="gameReportVerdictSentence">{{ v.sentence }}</p>}
+</div>
+
+<div class="gr-charts u-mt-12">
+<div class="card" id="gameChartEvolution">
+  <div class="u-d-flex u-jc-space-between u-ai-baseline"><h2 class="u-m-0">Tu tiempo y la media</h2><span class="muted u-fs-sm">menos es mejor</span></div>
+  @if (evo(); as e) {
+    <svg viewBox="0 0 330 120" width="100%" role="img" [attr.aria-label]="e.aria" class="gr-svg">
+      @for (t of e.ticks; track $index) {<line x1="36" [attr.y1]="t.y" x2="330" [attr.y2]="t.y" stroke="var(--line)"/><text x="0" [attr.y]="+t.y + 4" font-size="11" fill="var(--muted)">{{ t.t }}</text>}
+      <polyline [attr.points]="e.ref" fill="none" stroke="var(--muted)" stroke-width="2" stroke-dasharray="5 4"/>
+      <polyline [attr.points]="e.own" fill="none" stroke="var(--info)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+      <circle [attr.cx]="e.lastX" [attr.cy]="e.lastY" r="4.5" fill="var(--info)"/>
+      <text x="36" y="116" font-size="11" fill="var(--muted)">{{ short(e.from) }}</text><text x="328" y="116" font-size="11" fill="var(--muted)" text-anchor="end">{{ short(e.to) }}</text>
+    </svg>
+    <div class="gr-legend"><span><i class="gr-key gr-key-own"></i>Tú {{ e.ownNow }}</span><span><i class="gr-key gr-key-ref"></i>Media {{ e.refNow }}</span></div>
+  } @else {<p class="muted u-m-0">No disponible</p>}
+</div>
+
+<div class="card" id="gameChartWeekdays">
+  <div class="u-d-flex u-jc-space-between u-ai-baseline"><h2 class="u-m-0">Por día de la semana</h2><span class="muted u-fs-sm">le ganas a la media</span></div>
+  @if (wd(); as d) {
+    <svg viewBox="0 0 330 120" width="100%" role="img" aria-label="Porcentaje de partidas en las que le ganas a la media, por día de la semana" class="gr-svg">
+      @if (d.overallY) {<line x1="0" [attr.y1]="d.overallY" x2="330" [attr.y2]="d.overallY" stroke="var(--selected-line)" stroke-dasharray="4 4"/>}
+      @for (b of d.bars; track b.day) {
+        <g [attr.data-day]="b.day" [attr.data-enough]="b.enough">
+          <title>{{ b.day }}: {{ b.text }} (n = {{ b.n }})</title>
+          <rect [attr.x]="b.x" [attr.y]="b.y" width="34" [attr.height]="b.h" rx="4" [attr.fill]="!b.enough ? 'var(--line-strong)' : b.stands ? 'var(--err)' : 'var(--info)'"/>
+          <text [attr.x]="b.cx" [attr.y]="b.ty" font-size="11" fill="var(--text-2)" text-anchor="middle">{{ b.text }}</text>
+          <text [attr.x]="b.cx" y="112" font-size="11" fill="var(--muted)" text-anchor="middle">{{ b.letter }}</text>
+        </g>
+      }
+    </svg>
+    <div class="muted u-fs-sm">Línea de puntos: tu media del juego. En rojo, el día en que más se pierde.</div>
+  } @else {<p class="muted u-m-0">No disponible</p>}
+</div>
+
+<div class="card" id="gameChartSplit">
+  <div class="u-d-flex u-jc-space-between u-ai-baseline"><h2 class="u-m-0">Tus resultados frente a la media</h2><span class="muted u-fs-sm">{{ rangeName() }}</span></div>
+  @if (split(); as s) {
+    <div id="gameSplitBar" class="gr-split" role="img" [attr.aria-label]="s.aria"><span class="gs-up" [style.flex-grow]="s.flex[0]"></span><span class="gs-eq" [style.flex-grow]="s.flex[1]"></span><span class="gs-dn" [style.flex-grow]="s.flex[2]"></span></div>
+    <div class="gr-splitlegend"><span><i class="gs-up"></i>Por encima <b id="gameSplitAbove">{{ s.above }}</b></span><span><i class="gs-eq"></i>En línea <b id="gameSplitLine">{{ s.line }}</b></span><span><i class="gs-dn"></i>Por debajo <b id="gameSplitBelow">{{ s.below }}</b></span></div>
+  } @else {<p class="muted u-m-0">Aún pocos datos en este periodo.</p>}
+</div>
+</div>
+
+<app-section title="Más detalle" sectionId="gameReportMore" [open]="false">
 <div class="hero-card" id="gameReportHero">
   <div class="u-d-flex u-jc-space-between u-ai-flex-start u-wrap-wrap u-gap-8">
     <div class="muted u-fs-xs u-tt-uppercase u-ls-p05em">Informe individual · {{ rangeName() }}</div>
@@ -89,4 +150,5 @@
   <p class="muted u-m-0-0-4"><b class="u-c-text">Evidencia</b> (lo que muestran los datos)</p>
   <ul style="margin:0 0 10px;padding-left:18px">@for (l of evidence(); track $index) {<li>{{ l }}</li>}</ul>
   <p class="muted u-m-0"><b class="u-c-text">Límite de lo medible</b>: solo se guarda el tiempo total de cada partida, sin errores ni pasos intermedios, así que los datos no permiten decir por qué tardas más o menos.</p>
+</app-section>
 </app-section>

@@ -51,6 +51,36 @@ export function weekdayReport(x: Game): {
   return { rows, overallRate, standing: rows.flatMap((r, i) => (r.stands ? [DAYS_PLURAL[i]!] : [])) };
 }
 
+const WEEKS_CHARTED = 12;
+/** The last 12 weeks, oldest first: your median time (seconds) next to the published average's. Null without the weekly series. */
+export function weeklyTimes(x: Game): { start: string; own: number; ref: number | null; n: number; complete: boolean }[] | null {
+  const w = x.weekly;
+  if (!w?.length) return null;
+  return [...w].sort((a, b) => a.weekStart.localeCompare(b.weekStart)).slice(-WEEKS_CHARTED)
+    .map((k) => ({ start: k.weekStart, own: k.medianSec, ref: k.medianAvgSec, n: k.n, complete: k.n >= MIN_WEEK_N }));
+}
+
+/** The share of results per weekday that beat the average (the complement of the loss cells), with the game's overall share; a day with too few results has no share. */
+export function weekdayWins(x: Game): { rows: { letter: string; day: string; n: number; rate: number | null; stands: boolean }[]; overall: number | null } {
+  const r = weekdayReport(x);
+  return {
+    overall: r.overallRate == null ? null : 1 - r.overallRate,
+    rows: r.rows.map((d, i) => ({ letter: 'LMXJVSD'[i]!, day: d.day, n: d.n, rate: d.enough && d.rate != null ? 1 - d.rate : null, stands: d.stands })),
+  };
+}
+
+/** A result within this fraction of the average counts as "in line" (a presentation convention, not a statistical threshold). */
+export const IN_LINE = 0.05;
+const RANGE_DAYS: Record<Range, number> = { '7': 7, '28': 28, '90': 90, all: Infinity };
+/** How many results of the period are above, in line with and below the average (speed against it; all six games are timed, less is better). Null with none. */
+export function resultSplit(x: Game, range: Range, to: string | null): { above: number; line: number; below: number; n: number } | null {
+  const end = to ? Date.parse(to + 'T00:00:00Z') : null;
+  const rows = x.series.filter((p) => end == null || Date.parse(p.date + 'T00:00:00Z') > end - RANGE_DAYS[range] * 86_400_000);
+  if (!rows.length) return null;
+  const above = rows.filter((p) => p.eff > 1 + IN_LINE).length, below = rows.filter((p) => p.eff < 1 - IN_LINE).length;
+  return { above, line: rows.length - above - below, below, n: rows.length };
+}
+
 /** Up to three clauses of facts, each only when its condition holds; it describes, it does not conclude. */
 export function reportSentence(x: Game, range: Range): string[] {
   const b = x.windows[range].beat;
