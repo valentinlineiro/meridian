@@ -11,7 +11,7 @@
     <div><span class="muted">Tiempo normal</span><b id="gameFigTime">{{ time() }}</b></div>
     <div><span class="muted">Mejor marca</span><b id="gameFigBest">{{ best() }}</b></div>
     <div><span class="muted">Partidas</span><b id="gameFigGames">{{ x().n }}</b></div>
-    <div><span class="muted">Racha</span><b id="gameFigStreak">{{ streak()?.now ?? '—' }}</b></div>
+    <div><span class="muted">Días seguidos mejor que la media</span><b id="gameFigStreak">{{ streak()?.now ?? '—' }}</b></div>
   </div>
   @if (verdict(); as v) {<p class="u-m-0 u-mt-10" id="gameReportVerdictSentence">{{ v.sentence }}</p>}
 </div>
