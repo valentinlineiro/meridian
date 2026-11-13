@@ -628,4 +628,45 @@ describe('Languages', () => {
       expect(el().innerHTML).not.toContain('NaN');
     });
   });
+
+  describe('level and progress', () => {
+    const levels = [section({ sectionId: 'a', sectionIndex: 1, cefrLevel: 'A1', cefrSublevel: null, completedUnits: 20, totalUnits: 20 }), section({ sectionId: 'b', sectionIndex: 2, cefrLevel: 'A2', cefrSublevel: null, completedUnits: 20, totalUnits: 20 }),
+      section({ sectionId: 'c', sectionIndex: 3, cefrLevel: 'B1', cefrSublevel: null, completedUnits: 18, totalUnits: 40 }), section({ sectionId: 'd', sectionIndex: 4, cefrLevel: 'B2', cefrSublevel: null, completedUnits: 0, totalUnits: 30 }),
+      section({ sectionId: 'e', sectionIndex: 5, cefrLevel: 'C1', cefrSublevel: null, completedUnits: 0, totalUnits: 10 })];
+
+    it('shouldShowTheLevelFirstWithTheProgressOfTheLevelAndOfTheCourse', async () => {
+      await open('/languages', langApi({ '/api/languages/courses/XB_EN': { course: XB, sections: levels } }));
+      expect(text('langLevel')).toBe('B1');
+      expect(text('langActiveProgress')).toBe('58 / 120 unidades (48,3 %)');
+      expect(text('langLevelText')).toBe('18 de 40 unidades · 45,0 %');
+      expect(q('#langLevelBar')!.style.width).toBe('45%');
+      expect(text('langLevelSentence')).toBe('Te faltan 22 unidades para empezar B2.');
+      expect(text('langLevelChange')).toBe('+2 unidades desde el 1 nov 2026');
+      expect(q('#langLevels')!.querySelectorAll('[data-level]')).toHaveLength(5);
+    });
+
+    it('shouldKeepTheCourseProgressAndShowNoLevelWhenTheSectionsHaveNone', async () => {
+      await open('/languages/XC_ES', langApi());
+      expect(q('#langLevel')).toBeNull();
+      expect(text('langActiveProgress')).toBe('1 / 4 unidades (25,0 %)');
+    });
+  });
+
+  describe('activity', () => {
+    it('shouldShowTheXpOfTheLastSevenDaysTheBarsAndTheStreak', async () => {
+      const rows = Array.from({ length: 7 }, (_, i) => ({ date: Math.floor((Date.now() - (i + 1) * DAY) / 1000), gainedXp: 100, numSessions: 2 }));
+      await open('/languages', langApi({ '/api/languages/xp': { summaries: rows } }));
+      expect(text('langActivityBig')).toBe('700');
+      expect(q('#langActivity')!.querySelectorAll('.wk > div')).toHaveLength(7);
+      expect(text('langActivityStreak')).toBe('Racha: 1212 días');
+    });
+
+    it('shouldFoldTheAccountCardsUnderTuCuenta', async () => {
+      await open('/languages', langApi());
+      const more = q('#langAccountDetails') as HTMLDetailsElement;
+      expect(more.open).toBe(false);
+      expect(more.querySelector('#langAccountCard')).not.toBeNull();
+      expect(more.querySelector('#langWeekCard')).not.toBeNull();
+    });
+  });
 });

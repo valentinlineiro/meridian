@@ -28,6 +28,7 @@
           No miden comprensión auditiva, expresión oral, lectura ni competencia comunicativa real. XP, racha y lecciones completadas son métricas de actividad y avance curricular en la plataforma, no representan dominio lingüístico ni una evaluación de competencia real.
         </div>
       </details>
+      <div class="lg-top u-mb-12">
       <div class="card hero-card u-mb-12" id="langCourseHero">
         <div id="langHeroCard">
           <div class="u-d-flex u-jc-space-between u-ai-center u-wrap-wrap u-gap-8">
@@ -42,16 +43,37 @@
               <div id="langActiveHeroMeta" class="muted u-fs-sm u-mt-2">{{ h?.meta ?? '—' }}</div>
             </div>
           </div>
+          @let v = lv();
+          @if (v) {
+            <div class="lv-top u-mt-14"><span class="lv-big" id="langLevel">{{ v.level }}</span><span class="muted u-fs-sm">según el curso</span>@if (v.change) {<span class="lv-change" id="langLevelChange">{{ v.change }}</span>}</div>
+          }
           <div class="u-mt-14">
             <div class="u-d-flex u-jc-space-between u-ai-baseline u-fs-sm u-mb-4">
-              <span class="muted">Progreso curricular</span>
+              <span class="muted">Curso</span>
               <span class="u-fwt-600" id="langActiveProgress">{{ p?.text ?? '—' }}</span>
             </div>
-            <div class="progress-bar"><div id="langActiveProgressBar" [style.width.%]="p?.width ?? 0"></div></div>
+            <div class="progress-bar lv-track"><div id="langActiveProgressBar" [style.width.%]="p?.width ?? 0"></div>@if (v) {@for (x of v.dividers; track $index) {<i class="lv-div" [style.left.%]="x"></i>}}</div>
+            @if (v) {
+              <div id="langLevels" class="lv-names">@for (l of v.levels; track l.name) {<span [attr.data-level]="l.name" [class.lv-cur]="l.current" [style.flex-grow]="l.units">{{ l.name }}</span>}</div>
+              <div class="u-d-flex u-jc-space-between u-ai-baseline u-fs-sm u-mt-12 u-mb-4"><span class="muted">Nivel {{ v.level }}</span><span class="u-fwt-600" id="langLevelText">{{ v.levelText }}</span></div>
+              <div class="progress-bar"><div id="langLevelBar" [style.width.%]="v.levelPct"></div></div>
+              <p class="u-m-0 u-mt-8" id="langLevelSentence">{{ v.sentence }}</p>
+            }
           </div>
         </div>
       </div>
 
+      @if (activity(); as act) {
+        <div class="card u-mb-12" id="langActivity">
+          <div class="u-d-flex u-jc-space-between u-ai-baseline"><h2 class="u-m-0">Actividad</h2><span class="muted u-fs-sm" id="langActivityStreak">{{ act.streak }}</span></div>
+          <div class="hc-n u-mt-8"><span class="hc-big" id="langActivityBig">{{ act.big }}</span><span class="muted">XP en 7 días · de toda la cuenta</span>@if (act.delta) {<span class="hc-delta muted">{{ act.delta }}</span>}</div>
+          @if (act.bars.length) {<div class="wk u-mt-8" role="img" [attr.aria-label]="act.aria">@for (b of act.bars; track $index) {<div><i [style.height.px]="b.h"></i><span>{{ b.letter }}</span></div>}</div>}
+          <p class="muted u-fs-sm u-m-0 u-mt-8" id="langActivityNote">{{ act.note }}</p>
+        </div>
+      }
+      </div>
+
+      <app-section sectionId="langAccountDetails" title="Tu cuenta" [open]="false">
       <div class="card u-mb-12" id="langAccountCard">
         <div class="u-d-flex u-jc-space-between u-ai-center u-wrap-wrap u-gap-8">
           <div>
@@ -94,6 +116,7 @@
           <a routerLink="/settings">Configurar</a>
         </div>
       </div>
+      </app-section>
 
       <!-- Tus Cursos (Comprensión 1m) -->
       <app-section sectionId="langCoursesDetails" title="Tus Cursos" metaId="langCoursesCount" [meta]="d() ? d()!.courses.length + ' cursos registrados' : ''" [open]="false">

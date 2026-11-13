@@ -9,7 +9,7 @@ import { ResultBars } from '../../shared/result-bars';
 import { Sparkline } from '../../shared/sparkline';
 import { VerdictPill } from '../../shared/verdict';
 import { chessRow, ChessRecentIn, ChessSummaryIn, gamesRow, GamesSummaryIn, syncChip, TimelineIn } from './overview.model';
-import { xpSummary, xpWeek, xpWeekLine } from '../../core/xp-week';
+import { xpBars, xpSummary, xpWeek, xpWeekLine } from '../../core/xp-week';
 
 /**
  * Hoy: how you are doing against your own normal, one row per domain. The rows come from overview.model.ts; totals live in each domain's view.
@@ -37,10 +37,8 @@ function view(d: OverviewData, now: number) {
   // so on a quiet stretch it would make fresh data look old.
   const xpSynced = d.langs?.updatedAt ?? null;
   const w = d.summaries ? xpWeek(d.summaries, xpSynced, now) : null;
-  const bars = w?.state === 'ok' ? (() => {
-    const max = Math.max(1, ...w.days.map((x) => x.xp));
-    return w.days.map((x) => ({ letter: 'DLMXJVS'[new Date(x.date + 'T00:00:00Z').getUTCDay()]!, h: Math.max(2, Math.round(x.xp / max * 28)), xp: x.xp }));
-  })() : [];
+  const xb = w?.state === 'ok' ? xpBars(w) : null;
+  const bars = xb?.bars ?? [];
 
   let g: ReturnType<typeof gamesRow> | null = null;
   try { g = d.games ? gamesRow(d.games) : null; } catch { g = null; } // a malformed summary is unavailable, not an empty log
@@ -50,7 +48,7 @@ function view(d: OverviewData, now: number) {
     lang: {
       ...(w?.state === 'ok' ? (({ big, delta, note }) => ({ big, delta, line: note }))(xpSummary(w, today))
         : { big: '—', delta: '', line: !d.summaries ? NA : !w ? 'Sin sincronizar todavía' : xpWeekLine(w, today) }),
-      bars, aria: 'XP de los últimos 7 días completos: ' + bars.map((b) => `${b.letter} ${b.xp}`).join(', '),
+      bars, aria: xb?.aria ?? '',
       freshChip: syncChip(xpSynced, now),
     },
     games: { line: d.games ? g?.line ?? NA : NA, verdict: g?.verdict ?? null, streak: g?.streak ?? '', link: g?.link ?? '/games', focus: g?.focus ?? null },

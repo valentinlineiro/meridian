@@ -70,3 +70,10 @@ export function xpWeekLine(w: XpWeek, today: string): string {
   if (w.state === 'stale') return `Sin datos nuevos desde hace ${w.ageDays} ${w.ageDays === 1 ? 'día' : 'días'} · no se compara con tu media`;
   return xpLine(w, today);
 }
+
+/** The week as bars: the day letter, a height (px, at most 28) and the XP, plus the sentence a screen reader gets. */
+export function xpBars(w: Extract<XpWeek, { state: 'ok' }>) {
+  const max = Math.max(1, ...w.days.map((x) => x.xp));
+  const bars = w.days.map((x) => ({ letter: 'DLMXJVS'[new Date(x.date + 'T00:00:00Z').getUTCDay()]!, h: Math.max(2, Math.round(x.xp / max * 28)), xp: x.xp }));
+  return { bars, aria: 'XP de los últimos 7 días completos: ' + bars.map((b) => `${b.letter} ${b.xp}`).join(', ') };
+}
