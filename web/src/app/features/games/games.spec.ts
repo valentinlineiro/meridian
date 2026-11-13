@@ -199,13 +199,21 @@ describe('Games', () => {
       expect(el.querySelector('#gamesHeroToday')!.compareDocumentPosition(el.querySelector('#gamesHeroStreak')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     });
 
-    it('shouldMarkTodaysRecordedGamesInTheHeroChips', async () => {
-      await open({ zip: game() }, { ok: true, day: { games: { zip: { score: '0:08' } } } });
-      const chips = [...el.querySelectorAll('#gamesToday button')];
-      expect(chips).toHaveLength(6);
-      expect(chips.find((c) => c.textContent!.includes('Zip'))!.className).toContain('pill-win');
-      expect(chips.find((c) => c.textContent!.includes('Zip'))!.textContent).toBe('✓ Zip');
-      expect(chips.find((c) => c.textContent!.includes('Tango'))!.className).not.toContain('pill-win');
+    it('shouldOfferToRegisterTodayAndOpenTheDialogFilledWithTodaysRecord', async () => {
+      await open({ zip: game() }, { ok: true, day: { games: { zip: { score: '0:08', avg: '0:09' } } } });
+      expect(text('gamesRegisterOpen')).toBe('Registrar hoy');
+      await click('#gamesRegisterOpen');
+      expect(el.querySelector('#gamesRegister')!.hasAttribute('open')).toBe(true);
+      expect((el.querySelector('#lgReg-zip-score') as HTMLInputElement).value).toBe('0:08');
+      expect((el.querySelector('#lgReg-zip-avg') as HTMLInputElement).value).toBe('0:09');
+      expect((el.querySelector('#lgReg-tango-score') as HTMLInputElement).value).toBe('');
+    });
+
+    it('shouldSayEditWhenAllSixGamesAreRecorded', async () => {
+      const six = Object.fromEntries(['zip', 'tango', 'queens', 'mini_sudoku', 'patches', 'wend'].map((k) => [k, { score: '0:30' }]));
+      await open({ zip: game() }, { ok: true, day: { games: six } });
+      expect(text('gamesRegisterOpen')).toBe('Editar lo de hoy');
+      expect(text('gamesHeroToday')).toBe('Hoy · 6 de 6 registrados');
     });
 
     it('shouldOfferTheWholeHistoryAsCsvFromTheHero', async () => {
@@ -215,23 +223,10 @@ describe('Games', () => {
       expect(a.hasAttribute('download')).toBe(true);
     });
 
-    it('shouldStartALineInTheQuickBoxWhenAHeroChipIsPressed', async () => {
-      await open({ zip: game() });
-      const box = () => el.querySelector<HTMLTextAreaElement>('#gamesHero #lgQuickText')!;
-      await click('#gamesToday [data-game="tango"]');
-      expect(box().value).toBe('Tango, ');
-      expect(document.activeElement).toBe(box());
-      expect([box().selectionStart, box().selectionEnd]).toEqual([7, 7]); // the cursor waits after "Tango, "
-      box().value = 'Tango, 0:30'; box().dispatchEvent(new Event('input'));
-      await click('#gamesToday [data-game="zip"]');
-      expect(box().value).toBe('Tango, 0:30\nZip, ');
-      expect([box().selectionStart, box().selectionEnd]).toEqual([box().value.length, box().value.length]);
-    });
-
     it('shouldSayTheDayCouldNotBeLoadedInsteadOfShowingNothingRecordedWhenTodayFails', async () => {
       await open({ zip: game() }, FAIL);
       expect(text('gamesNote')).toBe('No se pudo cargar el día.');
-      expect(el.querySelectorAll('#gamesToday button')).toHaveLength(6); // still the way to log a result
+      expect(el.querySelector('#gamesRegisterOpen')).not.toBeNull(); // still the way to log a result
       expect(text('gamesHeroStreak')).toBe('48 días seguidos');
     });
 
@@ -262,9 +257,10 @@ describe('Games', () => {
       expect(el.querySelectorAll('#gamesNow .gc')).toHaveLength(1);
     });
 
-    it('shouldKeepTheChipsWhenTheDayBodyIsMalformed', async () => {
+    it('shouldKeepTheRegisterButtonWhenTheDayBodyIsMalformed', async () => {
       await open({ zip: game() }, { ok: true, day: { games: 'x' } });
-      expect([...el.querySelectorAll('#gamesToday button')].map((b) => b.className)).toEqual(Array(6).fill('pill pill-scope'));
+      expect(text('gamesRegisterOpen')).toBe('Registrar hoy');
+      expect(text('gamesHeroToday')).toBe('Hoy'); // unknown is never said as zero
     });
   });
 

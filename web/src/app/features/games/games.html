@@ -27,9 +27,8 @@
         <p class="u-m-0" id="gamesOverviewSentence">{{ o.sentence }}</p>
       </div>
     }
-    <div class="muted u-fs-xs u-mt-8">Toca un juego para empezar a escribirlo</div>
-    <div id="gamesToday" class="chips u-mt-6">@for (c of chips(); track c.k) {<button type="button" [class]="'pill ' + (c.done ? 'pill-win' : 'pill-scope')" [attr.data-game]="c.k" (click)="quick.prefill(c.name)">{{ c.text }}</button>}</div>
-    <div class="u-mt-14"><app-games-quick-entry #quick (saved)="data.reload()" /></div>
+    <div class="u-mt-14"><button id="gamesRegisterOpen" type="button" [class]="'btn ' + (allDone() ? 'btn-g' : 'btn-p')" (click)="reg.open()">{{ allDone() ? 'Editar lo de hoy' : 'Registrar hoy' }}</button></div>
+    <app-games-register #reg [day]="dayGames()" (saved)="data.reload()" />
     <div class="gh-foot muted"><span id="gamesHeroMeta">{{ h.meta }}</span><span id="gamesHeroDays">{{ h.days }}</span><a id="gamesExport" href="/api/me/linkedin-games/export.csv" download>Descargar resultados (CSV)</a></div>
   </div>
   <div id="gamesNote" class="muted" role="status">{{ note() }}</div>

@@ -41,7 +41,7 @@ const BADGE = { new: 'nuevo', changed: 'cambia', same: 'igual' } as const;
   `,
 })
 export class GamesQuickEntry {
-  /** Results were stored: the page refreshes its summary and today's chips. */
+  /** Results were stored: the page refreshes its summary and today's count. */
   readonly saved = output<void>();
 
   private readonly api = inject(ApiClient);
@@ -71,17 +71,6 @@ export class GamesQuickEntry {
     const p = this.preview();
     return !this.saving() && !!p && p.ok && p.errors.length === 0 && p.days.some((d) => d.games.some((g) => g.status !== 'same'));
   });
-
-  /** A game chip: starts a line for that game (a new line if something is already written) and puts the cursor there. */
-  prefill(game: string): void {
-    const t = this.text();
-    this.message.set('');
-    this.text.set((t.trim() ? t.replace(/\n*$/, '\n') : '') + game + ', ');
-    const el = this.box().nativeElement;
-    el.value = this.text();
-    el.focus();
-    el.setSelectionRange(el.value.length, el.value.length);
-  }
 
   protected name(k: string): string { return gameName(k); }
   protected badge(s: Imported['status']): string { return BADGE[s]; }
