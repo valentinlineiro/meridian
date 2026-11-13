@@ -40,6 +40,11 @@ describe('words', () => {
     expect(verdictFor({ label: 'estable', pending: null })).toMatchObject({ state: 'no-signal', pill: 'pill' });
   });
 
+  it('shouldNameTheThresholdWhenThereAreFewDataAndSayWhenItIsTheCalibration', () => {
+    expect(verdictFor({ label: 'datos_insuficientes', pending: null, reason: 'cobertura_insuficiente' }).sentence).toContain('68 de los últimos 112');
+    expect(verdictFor({ label: 'datos_insuficientes', pending: null, reason: 'sin_calibracion' }).sentence).toContain('calibración');
+  });
+
   it('shouldCallAnUnconfirmedSignalPossibleWithItsDirection', () => {
     const down = verdictFor({ label: 'estable', pending: 'deterioro' });
     expect(down).toMatchObject({ state: 'possible', dir: 'down', label: 'Bajando' });
