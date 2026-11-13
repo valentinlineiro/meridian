@@ -5,9 +5,11 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { RouterLink, Router } from '@angular/router';
 import { catchError, forkJoin, map, Observable, of, switchMap } from 'rxjs';
 import { ApiClient } from '../../core/api-client';
-import { Course, CourseDetail, Langs, resolveSelectedCourseId, SELECTED_COURSE_KEY, XpDay } from '../../core/courses';
+import { Course, CourseDetail, es, Langs, resolveSelectedCourseId, SELECTED_COURSE_KEY, XpDay } from '../../core/courses';
 import { list, safe } from '../../core/guard';
+import { xpBars, xpSummary, xpWeek, xpWeekLine } from '../../core/xp-week';
 import { CourseDetailView } from './course-detail';
+import { levelView } from './level';
 import {
   account, accountActivity, activityToday, Analytics, comparability, concentration, courseList, Detail, hero, intensity, LangData, legacyAccount, LegacyLang,
   Load, NA, observed, pace, progress, timeline, week, weekdays,
@@ -57,6 +59,25 @@ export class Languages {
   // Every card is built on its own: a body one cannot read degrades that card alone.
   protected readonly hero = computed(() => { const d = this.d(); return d && safe(() => hero(d, this.selected()), null); });
   protected readonly progress = computed(() => { const d = this.d(); return d ? safe(() => progress(d, this.selected(), this.detail()), { text: NA, width: 0 }) : null; });
+  /** The level the selected course has reached and the progress in it; the change comes from the course's comparable observation. */
+  protected readonly lv = computed(() => {
+    const d = this.d(), det = this.detail();
+    if (!d || !det) return null;
+    const deltas = d.analytics?.curriculum?.recentDeltas;
+    return safe(() => levelView(det, Array.isArray(deltas) ? deltas.find((x) => x?.courseId === this.selected()) : undefined), null);
+  });
+  /** The last seven complete days of XP (account-wide) and the streak: the supporting card under the level. */
+  protected readonly activity = computed(() => {
+    const d = this.d();
+    if (!d) return null;
+    return safe(() => {
+      const now = Date.now(), today = new Date(now).toISOString().slice(0, 10);
+      const w = d.xp ? xpWeek(d.xp, d.langs.updatedAt, now) : null;
+      const streak = d.langs.streak == null ? '' : `Racha: ${es(Number(d.langs.streak))} días`;
+      if (w?.state === 'ok') return { ...xpSummary(w, today), ...xpBars(w), streak };
+      return { big: '—', delta: '', note: !d.xp ? NA : !w ? 'Sin sincronizar todavía' : xpWeekLine(w, today), bars: [], aria: '', streak };
+    }, { big: '—', delta: '', note: NA, bars: [], aria: '', streak: '' });
+  });
   protected readonly account = computed(() => {
     const s = this.state();
     if (s?.kind === 'legacy') return safe(() => ({ ...legacyAccount(s.legacy), courses: '—', gap: '' }), { xp: '—', streak: '—', days: '—', daysSub: '', sync: NA, courses: '—', gap: '' });

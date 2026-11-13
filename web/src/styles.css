@@ -394,3 +394,9 @@ app-tab-bar{display:none}
 .gr-splitlegend span{display:inline-flex;align-items:center;gap:6px}.gr-splitlegend i{display:inline-block;width:10px;height:10px;border-radius:var(--r-sm)}
 .gr-n{display:flex;align-items:baseline;gap:4px 8px;flex-wrap:wrap}.gr-delta{margin-left:auto}
 .gr-charts{display:grid;gap:12px}@media(min-width:761px){.gr-charts{grid-template-columns:repeat(2,minmax(0,1fr))}.gr-charts #gameChartSplit{grid-column:1/-1}}
+
+/* Idiomas: the level first, then the progress in the course and in the level */
+.lv-top{display:flex;align-items:baseline;gap:4px 10px;flex-wrap:wrap}.lv-big{font-size:calc(var(--fs-display)*2);font-weight:800;line-height:1}
+.lv-change{margin-left:auto;color:var(--ok-soft);font-weight:600;font-size:var(--fs-md)}
+.lv-track{position:relative}.lv-div{position:absolute;top:0;bottom:0;width:2px;background:var(--surface)}
+.lv-names{display:flex;gap:4px;margin-top:6px;font-size:var(--fs-md);color:var(--muted)}.lv-names span{flex:1 1 0;min-width:0;text-align:center}.lv-cur{color:var(--text);font-weight:700}
