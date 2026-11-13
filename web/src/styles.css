@@ -400,3 +400,6 @@ app-tab-bar{display:none}
 .lv-change{margin-left:auto;color:var(--ok-soft);font-weight:600;font-size:var(--fs-md)}
 .lv-track{position:relative}.lv-div{position:absolute;top:0;bottom:0;width:2px;background:var(--surface)}
 .lv-names{display:flex;gap:4px;margin-top:6px;font-size:var(--fs-md);color:var(--muted)}.lv-names span{flex:1 1 0;min-width:0;text-align:center}.lv-cur{color:var(--text);font-weight:700}
+
+.lg-top{display:grid;gap:12px;align-items:start}.lg-top>.card{margin-bottom:0}
+@media(min-width:761px){.lg-top{grid-template-columns:minmax(0,2fr) minmax(0,1fr)}}
