@@ -6,7 +6,7 @@ import { ApiClient } from '../../core/api-client';
 import { safe } from '../../core/guard';
 import { GameReport } from './game-report';
 import { GamesChart } from './games-chart';
-import { GamesQuickEntry } from './games-quick-entry';
+import { GamesRegister } from './games-register';
 import { Help } from '../../shared/help';
 import { ResultBars } from '../../shared/result-bars';
 import { Section } from '../../shared/section';
@@ -21,7 +21,7 @@ const HERO_IDLE = { label: 'LinkedIn Games · racha actual', streak: '—', meta
 
 @Component({
   selector: 'app-games',
-  imports: [GameReport, GamesChart, GamesQuickEntry, Help, ResultBars, RouterLink, Section, Segmented, VerdictPill],
+  imports: [GameReport, GamesChart, GamesRegister, Help, ResultBars, RouterLink, Section, Segmented, VerdictPill],
   templateUrl: './games.html',
 })
 export class Games {
@@ -74,17 +74,20 @@ export class Games {
     const g: unknown = this.loaded()?.d?.day?.games;
     return g && typeof g === 'object' && !Array.isArray(g) ? new Set(Object.keys(g)) : null;
   });
-  /** Today's six games; a recorded one is ticked. Shown once the summary answered, as in legacy. */
-  protected readonly chips = computed(() => {
+  /** Today's stored record for the register dialog (null when the day could not be read). */
+  protected readonly dayGames = computed(() => this.recorded() ? this.loaded()!.d!.day!.games! : null);
+  /** Today's six games and whether each is recorded; empty until the summary answered, as in legacy. */
+  private readonly todayGames = computed(() => {
     if (!this.summary()) return [];
     const done = this.recorded() ?? new Set<string>();
-    return Object.keys(GAME_NAMES).map((k) => ({ k, name: GAME_NAMES[k], done: done.has(k), text: (done.has(k) ? '✓ ' : '') + GAME_NAMES[k] }));
+    return Object.keys(GAME_NAMES).map((k) => ({ k, done: done.has(k) }));
   });
+  protected readonly allDone = computed(() => this.todayGames().length > 0 && this.todayGames().every((g) => g.done));
   /** "Hoy · 2 de 6 registrados"; just "Hoy" while the day could not be read: unknown is never said as zero. */
   protected readonly todayTitle = computed(() => {
-    const chips = this.chips(), done = this.recorded();
-    if (!chips.length) return '';
-    return done ? `Hoy · ${chips.filter((c) => c.done).length} de ${chips.length} registrados` : 'Hoy';
+    const games = this.todayGames(), done = this.recorded();
+    if (!games.length) return '';
+    return done ? `Hoy · ${games.filter((g) => g.done).length} de ${games.length} registrados` : 'Hoy';
   });
   protected readonly loss = computed(() => { const s = this.summary(); return s ? safe(() => lossRows(s) ?? null, null) : undefined; });
   protected readonly diff = computed(() => { const s = this.summary(); return s ? safe(() => difficultyGrid(s) ?? null, null) : undefined; });
