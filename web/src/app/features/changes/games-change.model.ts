@@ -1,4 +1,4 @@
-import { gameName, Verdict, VERDICT_ORDER, verdictFor, verdictKey } from '../../core/words';
+import { EVAL_VERDICTS, gameName, Verdict, VERDICT_ORDER, verdictFor, verdictKey } from '../../core/words';
 
 // The shape of GET /api/me/linkedin-games/changes (src/slices/linkedin-games/application/GetGamesChange.ts). The web never sees the engine behind it.
 export type GameState =
@@ -35,7 +35,7 @@ const label = (s: GameState) => LABEL[s.kind === 'senal' || s.kind === 'pocos_da
 const VERDICT_OF_STATE = (s: GameState): Verdict =>
   s.kind === 'mejorando' ? verdictFor({ label: 'mejora_sostenida', pending: null })
     : s.kind === 'bajando' ? verdictFor({ label: 'deterioro', pending: null })
-    : s.kind === 'senal' ? verdictFor({ label: 'estable', pending: s.dir === 'bajando' ? 'deterioro' : 'mejora_sostenida' })
+    : s.kind === 'senal' ? EVAL_VERDICTS['INDICIO'] // a pending candidate is a señal, not the direction it points to
     : s.kind === 'pocos_datos' ? verdictFor({ label: 'datos_insuficientes', pending: null })
     : verdictFor({ label: 'estable', pending: null });
 const NO_CONCLUYENTE: Verdict = { state: 'no-signal', dir: null, label: 'No concluyente', pill: 'pill', sentence: '' };

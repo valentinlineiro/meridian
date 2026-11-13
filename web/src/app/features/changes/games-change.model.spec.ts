@@ -23,6 +23,10 @@ describe('gamesChangeView', () => {
     expect(textOf(c)).toEqual(['Queens: posible mejora. Se confirma si se repite la semana que viene.']);
     expect(textOf(change([row('queens', flat, sigDown, { kind: 'senal', to: sigDown })]))[0]).toBe('Queens: posible empeoramiento. Se confirma si se repite la semana que viene.');
   });
+  it('shouldLabelASenalPillAsSenalAndNeverAsTheDirection', () => {
+    const v = gamesChangeView(change([row('queens', flat, sigDown, { kind: 'senal', to: sigDown })]));
+    expect(v.rows[0]!.verdict.label).toBe('Señal');
+  });
   it('shouldSaySigueEstableIgualQueElOct8', () => {
     const c = change([row('wend', flat, flat, { kind: 'sin_cambios', state: flat })]);
     expect(textOf(c)).toEqual(['Wend: sigue Estable, igual que el 8 oct.']);

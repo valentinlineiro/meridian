@@ -403,3 +403,6 @@ app-tab-bar{display:none}
 
 .lg-top{display:grid;gap:12px;align-items:start}.lg-top>.card{margin-bottom:0}
 @media(min-width:761px){.lg-top{grid-template-columns:minmax(0,2fr) minmax(0,1fr)}}
+
+/* Qué cambió · Games: the pill, then what changed */
+.cg-row{display:flex;gap:10px;align-items:baseline}.cg-row app-verdict{flex:none}.cg-text{flex:1;min-width:0}
