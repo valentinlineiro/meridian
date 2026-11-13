@@ -24,7 +24,7 @@ import {
 
 // Port of loadChessDashboard/renderChessView (src/dashboard.client.js:1004–1100, 1447–1625).
 const orNull = <T>(o: Observable<T>) => o.pipe(catchError(() => of(null)));
-const WR_LABEL = '% de victorias (historial completo, todos los rivales)';
+const WR_LABEL = '% de victorias en las últimas 50 partidas';
 // The experiment cut lives in this browser only; storage may be blocked (then it lasts as long as the view).
 const readCut = () => { try { return localStorage.getItem(PROFILE_CUT_KEY) || ''; } catch { return ''; } };
 const saveCut = (v: string) => { try { if (v) localStorage.setItem(PROFILE_CUT_KEY, v); else localStorage.removeItem(PROFILE_CUT_KEY); } catch { /* storage blocked */ } };
@@ -39,7 +39,9 @@ function hero(d: ChessData | null, failed: boolean) {
   const single = d.t ? (d.t.snapshots?.length ?? 0) <= 1 : false;
   const n = s.currentStreak;
   const bots = list<{ key: string; games: number }>(d.o?.macro)?.find((m) => m.key === 'bot');
-  const c = counts(s);
+  // The headline is the recent window (what is happening now); the whole history stays one line away in distMeta.
+  const rc = d.rec && (d.rec.games ?? 0) > 0 && d.rec.winRate != null ? d.rec : null;
+  const c = rc ? { w: rc.wins ?? 0, l: rc.losses ?? 0, d: rc.draws ?? 0 } : counts(s);
   const sum = c ? c.w + c.l + c.d : 0;
   const wP = sum ? Number((c!.w / sum * 100).toFixed(1)) : 0, lP = sum ? Number((c!.l / sum * 100).toFixed(1)) : 0;
   return {
@@ -49,8 +51,8 @@ function hero(d: ChessData | null, failed: boolean) {
     pill: 'pill' + (n ? (s.currentStreakKind === 'loss' ? ' pill-loss' : ' pill-win') : ''),
     streak: n ? `🔥 ${n} ${streakWord(n, s.currentStreakKind)}${n === 1 ? ' consecutiva' : ' consecutivas'}` : '🔥 Sin racha activa',
     games: !s.games || !d.o ? '—' : bots && bots.games >= 0 ? `${es(bots.games)} de ${es(s.games)} partidas contra bots` : '',
-    wr: s.winRate != null ? `${pc1(s.winRate * 100)} de victorias (historial completo, todos los rivales)` : WR_LABEL,
-    distMeta: c ? `${c.w}W · ${c.l}L · ${c.d}D` : '—',
+    wr: rc ? `${pc1(rc.winRate! * 100)} de victorias en las últimas ${rc.games} partidas` : s.winRate != null ? `${pc1(s.winRate * 100)} de victorias en todo el historial` : WR_LABEL,
+    distMeta: c ? `${c.w}W · ${c.l}L · ${c.d}D` + (rc && s.winRate != null ? ` · historial ${pc1(s.winRate * 100)}` : '') : '—',
     // the historical rate is the one reference here; the 20/50/100 windows live in "Forma actual"
     dist: c && sum > 0 ? { ...c, wP, lP, dP: Number(Math.max(0, 100 - wP - lP).toFixed(1)) } : null,
   };

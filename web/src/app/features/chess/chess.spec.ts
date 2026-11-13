@@ -160,14 +160,14 @@ describe('Chess', () => {
       expect(t.text('kpis')).not.toContain('vs primera lectura'); // the hero is the one place for the ELO change
     });
 
-    it('shouldShowTheHistoricalRateAndTheBotShareInTheHero', async () => {
+    it('shouldShowTheRecentRateWithItsWindowAndTheHistoryInTheHero', async () => {
       await t.open(chessApi({ '/api/stats/summary': { games: 1683, wins: 1046, losses: 505, draws: 132, winRate: 0.6216, scoreRate: 0.6, currentElo: 908, firstElo: 992 },
         '/api/stats/opponents': { macro: [{ key: 'bot', games: 1650 }, { key: 'pvp', games: 33 }] } }));
-      expect(t.text('chessHeroWrLabel')).toBe('62,2 % de victorias (historial completo, todos los rivales)');
-      expect(t.text('chessHeroDistMeta')).toBe('1046W · 505L · 132D');
+      expect(t.text('chessHeroWrLabel')).toBe('50,0 % de victorias en las últimas 50 partidas');
+      expect(t.text('chessHeroDistMeta')).toBe('25W · 20L · 5D · historial 62,2 %');
       expect(t.text('chessHeroGames')).toBe('1650 de 1683 partidas contra bots');
       expect(t.text('chessHeroEloSub')).toBe('ELO · −84 vs primera lectura');
-      expect(t.el().querySelector<HTMLElement>('#chessHeroDist .bar-win')!.style.width).toBe('62.2%');
+      expect(t.el().querySelector<HTMLElement>('#chessHeroDist .bar-win')!.style.width).toBe('50%');
     });
 
     it('shouldColourTheStreakPillByItsKind', async () => {
@@ -189,10 +189,9 @@ describe('Chess', () => {
       expect(t.text('chessHeroStreak')).toBe('🔥 Sin racha activa');
     });
 
-    it('shouldNotPrintZeroCountsInTheChessHeroWhenTheSummaryCarriesNoCounts', async () => {
+    it('shouldShowTheWindowCountsNotZerosInTheChessHeroWhenTheSummaryCarriesNoCounts', async () => {
       await t.open(chessApi({ '/api/stats/summary': { games: 3, winRate: 0.5 } }));
-      expect(t.text('chessHeroDistMeta')).toBe('—');
-      expect(t.el().querySelector('#chessHeroDist .bar-win')).toBeNull();
+      expect(t.text('chessHeroDistMeta')).toBe('25W · 20L · 5D · historial 50,0 %'); // the last-50 counts, never invented zeros
       expect(t.text('res')).toBe('—');
     });
 
@@ -206,7 +205,7 @@ describe('Chess', () => {
       expect(t.text('chessHeroElo')).toBe('—');
       expect(t.text('chessHeroMeta')).toBe('—');
       expect(t.text('chessHeroDistMeta')).toBe('—');
-      expect(t.text('chessHeroWrLabel')).toBe('% de victorias (historial completo, todos los rivales)');
+      expect(t.text('chessHeroWrLabel')).toBe('% de victorias en las últimas 50 partidas');
       expect(t.text('kpis')).toBe('');
     });
   });
@@ -264,7 +263,7 @@ describe('Chess', () => {
       expect(t.text('form')).toContain('Últimas 100');
       expect(t.el().querySelector('#b100')!.getAttribute('aria-pressed')).toBe('true');
       expect(t.el().querySelector('#b20')!.getAttribute('aria-pressed')).toBe('false');
-      expect(t.text('chessHeroWrLabel')).toContain('50,0 %'); // the hero is historical and does not follow the window
+      expect(t.text('chessHeroWrLabel')).toContain('50,0 %'); // the hero keeps its own last-50 window and does not follow the selector
     });
 
     it('shouldShowUnavailableWhenARecentWindowFailsAfterOneSucceeded', async () => {
