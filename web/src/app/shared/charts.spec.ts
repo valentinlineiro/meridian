@@ -62,7 +62,7 @@ describe('m-sparkline', () => {
     expect(el.querySelector('svg')).toBeNull();
     expect(el.textContent).toContain('912');
     expect(el.textContent).toContain('Primera lectura · 3 nov 2026');
-    expect(el.textContent).toContain('La evolución aparecerá cuando haya más días de datos.');
+    expect(el.textContent).toContain('La evolución aparecerá con la próxima lectura de otro día.');
   });
 
   it('shouldDrawTheLineAndTheRangeWhenThereAreSeveralPoints', async () => {

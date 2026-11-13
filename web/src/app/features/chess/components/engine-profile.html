@@ -10,7 +10,7 @@
   @if (failed()) {
     <div class="empty" style="grid-column:1/-1">No se pudo cargar el perfil</div>
   } @else if (x && !a) {
-    <div class="empty" style="grid-column:1/-1">Todavía no hay partidas analizadas</div>
+    <div class="empty" style="grid-column:1/-1">Todavía no hay partidas analizadas; el perfil aparece en cuanto el motor analice la primera</div>
   } @else if (a) {
     @for (k of a.kpis; track k.label) { <m-kpi [label]="k.label" [value]="k.value" [sub]="k.sub" /> }
   }
