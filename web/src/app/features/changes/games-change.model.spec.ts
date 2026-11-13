@@ -80,6 +80,22 @@ describe('gamesChangeView', () => {
     expect(gamesChangeView(change(rows)).rows.map((r) => r.game)).toEqual(['zip', 'queens', 'wend', 'tango']);
   });
 
+  it('shouldOrderRowsInsideAGroupByVerdictBeforeByName', () => {
+    const rows = [
+      row('patches', flat, up, { kind: 'cambio_confirmado', from: flat, to: up }),
+      row('zip', flat, down, { kind: 'cambio_confirmado', from: flat, to: down }),
+    ];
+    expect(gamesChangeView(change(rows)).rows.map((r) => r.game)).toEqual(['zip', 'patches']); // what needs a look first, not the alphabet
+  });
+
+  it('shouldLabelAnUncalibratedGamePillSinCalibracionAndAnyOtherLackOfDataPocosDatos', () => {
+    const v = gamesChangeView(change([
+      row('tango', uncal, uncal, { kind: 'evidencia', sub: 'ausente', from: uncal, to: uncal }),
+      row('queens', few, few, { kind: 'evidencia', sub: 'ausente', from: few, to: few })]));
+    expect(v.rows.find((r) => r.game === 'tango')!.verdict.label).toBe('Sin calibración');
+    expect(v.rows.find((r) => r.game === 'queens')!.verdict.label).toBe('Pocos datos');
+  });
+
   it('shouldShowTheNoticeWhenNothingWasRecordedInTheWindow', () => {
     const v = gamesChangeView(change([row('zip', flat, flat, { kind: 'sin_cambios', state: flat })], { playedDaysInWindow: 0 }));
     expect(v.notice).toBe('No registraste Games en este periodo.');

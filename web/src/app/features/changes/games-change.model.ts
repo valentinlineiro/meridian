@@ -36,8 +36,10 @@ const VERDICT_OF_STATE = (s: GameState): Verdict =>
   s.kind === 'mejorando' ? verdictFor({ label: 'mejora_sostenida', pending: null })
     : s.kind === 'bajando' ? verdictFor({ label: 'deterioro', pending: null })
     : s.kind === 'senal' ? EVAL_VERDICTS['INDICIO'] // a pending candidate is a señal, not the direction it points to
-    : s.kind === 'pocos_datos' ? verdictFor({ label: 'datos_insuficientes', pending: null })
+    : s.kind === 'pocos_datos' ? (s.reason === 'sin_calibracion' ? SIN_CALIBRACION_PILL : verdictFor({ label: 'datos_insuficientes', pending: null }))
     : verdictFor({ label: 'estable', pending: null });
+// Not "Pocos datos": the player has nothing to record to unlock this; the game has no calibration yet.
+const SIN_CALIBRACION_PILL: Verdict = { state: 'few-data', dir: null, label: 'Sin calibración', pill: 'pill pill-draw', sentence: '' };
 const NO_CONCLUYENTE: Verdict = { state: 'no-signal', dir: null, label: 'No concluyente', pill: 'pill', sentence: '' };
 const SIN_CAMBIOS: Verdict = { state: 'no-signal', dir: null, label: 'Sin cambios', pill: 'pill', sentence: '' };
 
@@ -87,7 +89,8 @@ export function gamesChangeView(c: GamesChange): GamesChangeView {
   const heading = c.mode === 'current-only' ? 'Games · estado actual' : c.mode === 'invalid-window' || c.elapsedDays === null ? 'Games'
     : `Games · ${short(c.since!)} → ${short(c.until)} (${days(c.elapsedDays)})`;
   const built = c.mode === 'invalid-window' ? [] : c.games.map((g) => ({ game: g.game, ...rowOf(g, c) }));
-  built.sort((a, b) => a.group - b.group || a.game.localeCompare(b.game));
+  const rank = (v: Verdict) => VERDICT_ORDER.indexOf(verdictKey(v));
+  built.sort((a, b) => a.group - b.group || rank(a.verdict) - rank(b.verdict) || a.game.localeCompare(b.game));
   const notice = c.mode === 'invalid-window' ? 'Esta ventana es demasiado corta para comparar.'
     : c.games.length === 0 ? 'Aún no hay partidas de Games.'
     : c.mode === 'compare' && c.playedDaysInWindow === 0 ? 'No registraste Games en este periodo.' : null;
