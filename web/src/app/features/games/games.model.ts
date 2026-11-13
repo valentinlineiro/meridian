@@ -201,7 +201,7 @@ export function overview(rows: { name: string; verdict: Verdict }[]) {
   const n = rows.length;
   const counts = [[down, 'bajando', 'down'], [flat, flat.length === 1 ? 'estable' : 'estables', 'flat'], [few, 'con pocos datos', 'few'], [up, 'mejorando', 'up']] as const;
   return {
-    big: `${up.length} de ${n}`, cap: up.length === 1 ? 'juego mejora' : 'juegos mejoran',
+    big: `${up.length} de ${n}`, cap: (up.length === 1 ? 'juego mejora' : 'juegos mejoran') + ' frente a tu histórico reciente',
     segments: counts.flatMap(([l, , kind]) => l.map(() => kind)),
     aria: `${n === 1 ? 'Estado del juego' : `Estado de los ${n} juegos`}: ${counts.filter(([l]) => l.length).map(([l, t]) => `${l.length} ${t}`).join(', ')}.`,
     sentence: [down.length && `${names(down)} ${down.length > 1 ? 'bajan' : 'baja'}`, up.length && `${names(up)} ${up.length > 1 ? 'mejoran' : 'mejora'}`,

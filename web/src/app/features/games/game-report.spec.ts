@@ -58,6 +58,14 @@ describe('GameReport', () => {
     const weekly = Array.from({ length: 12 }, (_, i) => ({ weekStart: `2026-08-${String(3 + i).padStart(2, '0')}`, n: 7, nWithAvg: 7, medianSec: 70 - i, medianAvgSec: 65, medianEff: 1.1 }));
     const series = [{ date: '2026-11-08', eff: 1.5, roll: 1 }, { date: '2026-11-09', eff: 1.0, roll: 1 }, { date: '2026-11-10', eff: 0.7, roll: 1 }];
 
+    it('shouldOpenWithYourTrendBeforeTheLinkedInComparison', async () => {
+      await open(summary({ queens: queens({ series }) }));
+      const card = el.querySelector('#gameReportFigures')!;
+      expect(card.firstElementChild!.textContent).toContain('Tu tendencia');
+      expect(card.querySelector('.gr-ref')!.textContent).toContain('Frente a la media de LinkedIn');
+      expect(card.querySelector('#gameReportVerdictSentence')!.compareDocumentPosition(card.querySelector('.gr-ref')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
     it('shouldHeadWithTheBigNumberTheKeyFiguresAndTheVerdictSentence', async () => {
       await open(summary({ queens: queens({ series }) }));
       expect(text('gameFigBig')).toBe('+104 %');

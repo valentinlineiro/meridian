@@ -1,19 +1,22 @@
 <div class="hero-card" id="gameReportFigures">
-  <div class="u-d-flex u-jc-space-between u-ai-center u-wrap-wrap u-gap-8">
-    <div class="muted u-fs-xs u-tt-uppercase u-ls-p05em">Frente a la media de LinkedIn · {{ rangeName() }}</div>
-    @if (verdict(); as v) {<app-verdict [verdict]="v" />}
-  </div>
-  @if (figs(); as f) {
-    <div class="gr-n u-mt-8"><span class="gr-fig" id="gameFigBig">{{ f.big }}</span><span class="muted" id="gameFigCap">{{ f.cap }}</span>@if (f.delta) {<span class="gr-delta muted" id="gameFigDelta">{{ f.delta }}</span>}</div>
+  @if (verdict(); as v) {
+    <div class="muted u-fs-xs u-tt-uppercase u-ls-p05em">Tu tendencia</div>
+    <div class="u-mt-8"><app-verdict [verdict]="v" /></div>
+    <p class="gr-trend u-m-0 u-mt-8" id="gameReportVerdictSentence">{{ v.sentence }}</p>
   }
-  @if (bars(); as b) {<div class="u-mt-10"><app-result-bars [data]="b" /></div>}
+  <div class="gr-ref u-mt-14">
+    <div class="muted u-fs-xs u-tt-uppercase u-ls-p05em">Frente a la media de LinkedIn · {{ rangeName() }}</div>
+    @if (figs(); as f) {
+      <div class="gr-n u-mt-8"><span class="gr-fig" id="gameFigBig">{{ f.big }}</span><span class="muted" id="gameFigCap">{{ f.cap }}</span>@if (f.delta) {<span class="gr-delta muted" id="gameFigDelta">{{ f.delta }}</span>}</div>
+    }
+    @if (bars(); as b) {<div class="u-mt-10"><app-result-bars [data]="b" /></div>}
+  </div>
   <div class="gr-kpis">
     <div><span class="muted">Tiempo normal</span><b id="gameFigTime">{{ time() }}</b></div>
     <div><span class="muted">Mejor marca</span><b id="gameFigBest">{{ best() }}</b></div>
     <div><span class="muted">Partidas</span><b id="gameFigGames">{{ x().n }}</b></div>
     <div><span class="muted">Racha</span><b id="gameFigStreak">{{ streak()?.now ?? '—' }}</b></div>
   </div>
-  @if (verdict(); as v) {<p class="u-m-0 u-mt-10" id="gameReportVerdictSentence">{{ v.sentence }}</p>}
 </div>
 
 <div class="gr-charts u-mt-12">

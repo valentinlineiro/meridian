@@ -517,7 +517,7 @@ describe('Games', () => {
     it('shouldCountHowManyGamesImproveAndNameThemInOneSentence', async () => {
       await open({ tango: down, queens: up, zip: game(), mini_sudoku: few });
       expect(text('gamesOverviewBig')).toBe('1 de 4');
-      expect(text('gamesOverviewCap')).toBe('juego mejora');
+      expect(text('gamesOverviewCap')).toBe('juego mejora frente a tu histórico reciente');
       expect(text('gamesOverviewSentence')).toBe('Tango baja. Queens mejora. Zip, sin cambios. Mini Sudoku, pocos datos.');
     });
 
@@ -531,7 +531,7 @@ describe('Games', () => {
     it('shouldJoinSeveralNamesAndUseThePlural', async () => {
       await open({ queens: up, zip: up, tango: up });
       expect(text('gamesOverviewBig')).toBe('3 de 3');
-      expect(text('gamesOverviewCap')).toBe('juegos mejoran');
+      expect(text('gamesOverviewCap')).toBe('juegos mejoran frente a tu histórico reciente');
       expect(text('gamesOverviewSentence')).toBe('Queens, Tango y Zip mejoran.');
     });
 
@@ -552,6 +552,15 @@ describe('Games', () => {
       expect(zip.querySelector('.gc-cap')!.textContent!.trim()).toBe('más rápido que la media');
       expect(zip.textContent).toContain('Estable');
       expect(zip.querySelector('.gc-line, .gc-delta')).toBeNull(); // the sentence and the change live in the report
+    });
+
+    it('shouldLeadEachRowWithTheTrendSentenceAndLabelTheAverageComparisonAsLinkedIn', async () => {
+      await open({ zip: game() });
+      const zip = rowOf('Zip');
+      const kids = [...zip.children].map((c) => c.className.split(' ')[0]);
+      expect(kids.indexOf('gc-trend')).toBeLessThan(kids.indexOf('gc-n'));
+      expect(zip.querySelector('.gc-trend')!.textContent!.trim()).toBe('No hay cambios en las últimas 4 semanas.');
+      expect(zip.querySelector('.gc-ref')!.textContent!.trim()).toBe('LinkedIn');
     });
 
     it('shouldSayMoreSlowAndShowADashWhenTheMedianSpeedIsBelowOrMissing', async () => {
