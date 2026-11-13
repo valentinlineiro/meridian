@@ -551,12 +551,13 @@ describe('Languages', () => {
       }
     });
 
-    it('shouldKeepTheLimitsNoticeAsAClosedDisclosureAboveTheCourseHero', async () => {
+    it('shouldKeepTheLimitsNoticeAsAClosedDisclosureBelowTheDataAndAboveTheMethodology', async () => {
       await open();
       const limits = q('details#langLimitsCard') as HTMLDetailsElement;
       expect(limits.open).toBe(false);
       expect(limits.querySelector('summary')!.textContent).toContain('Lo que estos datos no pueden decir');
-      expect(limits.compareDocumentPosition(q('#langCourseHero')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(q('#langCourseHero')!.compareDocumentPosition(limits) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(limits.compareDocumentPosition(q('#langMethodology')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     });
 
     describe('the week against your own pace (same rule as Hoy)', () => {

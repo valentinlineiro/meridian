@@ -34,7 +34,7 @@ export const PERIODS: { k: PeriodKey; l: string; phrase: string }[] = [
 // changed": not seeing a change is not proof that there was none.
 export type VerdictState = 'confirmed' | 'possible' | 'few-data' | 'no-signal';
 export interface Verdict { state: VerdictState; dir: 'up' | 'down' | null; label: string; pill: string; sentence: string }
-type Engine = { label: string; pending: string | null };
+type Engine = { label: string; pending: string | null; reason?: string | null };
 const dirOf = (label: string | null): 'up' | 'down' | null => label === 'mejora_sostenida' ? 'up' : label === 'deterioro' ? 'down' : null;
 
 export function verdictFor(e: Engine): Verdict {
@@ -48,7 +48,7 @@ export function verdictFor(e: Engine): Verdict {
     case 'deterioro': return { state: 'confirmed', dir: 'down', label: 'Bajando', pill: 'pill pill-warn', sentence: 'Vas más lento que antes, y se ha repetido dos semanas seguidas.' };
     case 'mejora_sostenida': return { state: 'confirmed', dir: 'up', label: 'Mejorando', pill: 'pill pill-win', sentence: 'Vas más rápido que antes, y se ha repetido dos semanas seguidas.' };
     case 'estable': return { state: 'no-signal', dir: null, label: 'Estable', pill: 'pill', sentence: `No hay cambios en ${PERIODS[1].phrase}.` };
-    default: return { state: 'few-data', dir: null, label: 'Pocos datos', pill: 'pill pill-draw', sentence: 'Faltan partidas para valorar este juego.' };
+    default: return { state: 'few-data', dir: null, label: 'Pocos datos', pill: 'pill pill-draw', sentence: e.reason === 'sin_calibracion' ? 'Todavía no hay calibración para valorar este juego.' : 'Faltan resultados: hacen falta (con la media del día) en 6 de cada 10 días, 68 de los últimos 112.' };
   }
 }
 
