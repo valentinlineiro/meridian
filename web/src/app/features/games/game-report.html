@@ -38,7 +38,7 @@
       @if (d.overallY) {<line x1="0" [attr.y1]="d.overallY" x2="330" [attr.y2]="d.overallY" stroke="var(--selected-line)" stroke-dasharray="4 4"/>}
       @for (b of d.bars; track b.day) {
         <g [attr.data-day]="b.day" [attr.data-enough]="b.enough">
-          <title>{{ b.day }}: {{ b.text }} (n = {{ b.n }})</title>
+          <title>{{ b.tip }}</title>
           <rect [attr.x]="b.x" [attr.y]="b.y" width="34" [attr.height]="b.h" rx="4" [attr.fill]="!b.enough ? 'var(--line-strong)' : b.stands ? 'var(--err)' : 'var(--info)'"/>
           <text [attr.x]="b.cx" [attr.y]="b.ty" font-size="11" fill="var(--text-2)" text-anchor="middle">{{ b.text }}</text>
           <text [attr.x]="b.cx" y="112" font-size="11" fill="var(--muted)" text-anchor="middle">{{ b.letter }}</text>
@@ -95,14 +95,8 @@
     <p class="muted" id="gameReportWeeksWindow">Ventana fija: últimos 90 días, una barra por semana. Las barras discontinuas son semanas incompletas.</p>
   } @else {<p class="muted" id="gameReportWeeksWindow">No disponible</p>}
 
-  <p class="u-m-16-0-4"><b>Por día de la semana</b> <span class="muted">— partidas en las que no le ganas a la media</span></p>
+  <p class="u-m-16-0-4"><b>Por día de la semana</b> <span class="muted">— cómo leer el gráfico de arriba (victorias y derrotas de cada día, al pasar el ratón)</span></p>
   @if (weekdays(); as d) {
-    <div class="gr-days" id="gameReportWeekdays">
-      @for (r of d.rows; track r.day) {
-        <div class="gr-day"><span>{{ r.day }}</span><div class="bar"><i [class]="r.stands ? 'bar-hot' : 'bar-err'" [style.width.%]="r.enough && r.rate !== null ? r.rate * 100 : 0"></i></div>
-          <span class="gr-txt">@if (r.enough && r.rate !== null) {<b>{{ pct(r.rate) }}</b> · {{ count(r.losses, 'derrota') }}, {{ count(r.wins, 'victoria') }}@if (r.stands) { · <b>destaca</b>}} @else {— · pocas partidas (n = {{ r.n }})}</span></div>
-      }
-    </div>
     <p class="muted" id="gameReportWeekdaysWindow">Ventana fija: todo el histórico. «Destaca» es que el límite inferior del intervalo de derrotas de ese día supera la tasa de derrotas del juego.</p>
     <p class="muted" id="gameReportWeekdaysNote">Entre semana la media es mucho más rápida, así que perder un lunes no es lo mismo que perder un domingo.</p>
   } @else {<p class="muted" id="gameReportWeekdaysWindow">No disponible</p>}

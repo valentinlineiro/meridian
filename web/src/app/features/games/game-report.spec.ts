@@ -104,7 +104,7 @@ describe('GameReport', () => {
       const more = el.querySelector<HTMLDetailsElement>('#gameReportMore')!;
       expect(more.open).toBe(false);
       expect(more.querySelector('#gameReportHero')).not.toBeNull();
-      expect(more.querySelector('#gameReportWeekdays')).not.toBeNull();
+      expect(more.querySelector('#gameReportWeekdaysNote')).not.toBeNull();
     });
   });
 
@@ -124,27 +124,20 @@ describe('GameReport', () => {
       expect(weeks.map((w) => w.getAttribute('data-complete')).filter((c) => c === 'false')).toHaveLength(2);
       expect(weeks[3].textContent).toContain('100'); // the value is printed, not a tooltip
     });
-    it('shouldListWinsAndLossesPerWeekdayAndSayWhichDayStandsOut', async () => {
+    it('shouldGiveWinsAndLossesPerWeekdayInTheChartAndNotRepeatThemInATable', async () => {
       await open(summary({ queens: queens() }));
-      const rows = [...el.querySelectorAll('#gameReportWeekdays .gr-day')].map((r) => r.textContent!.replace(/\s+/g, ' ').trim());
-      expect(rows).toHaveLength(7);
-      expect(rows[0]).toContain('lunes');
-      expect(rows[0]).toContain('54 %');
-      expect(rows[0]).toContain('14 derrotas, 12 victorias');
-      expect(rows[0]).toContain('destaca');
-      expect(rows[1]).not.toContain('destaca');
-      expect(rows[3]).toContain('n = 5'); // too few results: no percentage
-      expect(rows[3]).not.toContain('%');
+      const tips = [...el.querySelectorAll('#gameChartWeekdays [data-day] title')].map((t) => t.textContent);
+      expect(tips[0]).toBe('lunes: 46 % · 14 derrotas, 12 victorias');
+      expect(tips[3]).toBe('jueves: pocas partidas (n = 5)');
+      expect(el.querySelector('#gameReportWeekdays')).toBeNull();
       expect(text('gameReportWeekdaysNote')).toContain('Entre semana la media es mucho más rápida');
     });
     it('shouldUseTheSingularForOneLossOrOneWin', async () => {
       const cells = [0, 1, 2, 3, 4, 5, 6].map((d) => cell(d, 10, d === 4 ? 1 : d === 5 ? 9 : 5, 0, .9));
       await open(summary({ queens: queens({ losses: { losses: 41, near: 0, cells } }) }));
-      const rows = [...el.querySelectorAll('#gameReportWeekdays .gr-day')].map((r) => r.textContent!.replace(/\s+/g, ' '));
-      expect(rows[4]).toContain('1 derrota, 9 victorias');
-      expect(rows[4]).not.toContain('1 derrotas');
-      expect(rows[5]).toContain('9 derrotas, 1 victoria');
-      expect(rows[5]).not.toContain('1 victorias');
+      const tips = [...el.querySelectorAll('#gameChartWeekdays [data-day] title')].map((t) => t.textContent);
+      expect(tips[4]).toContain('1 derrota, 9 victorias');
+      expect(tips[5]).toContain('9 derrotas, 1 victoria');
     });
     it('shouldNotPrintAZeroStreakWhenTheManualLogIsStale', async () => {
       const stale = { ...summary({ queens: queens({ beatStreak: { current: 0, max: 13 } }) }), playStreak: { current: 0, max: 13 }, to: '2026-11-03' } as unknown as Summary;
@@ -200,7 +193,7 @@ describe('GameReport', () => {
 
   it('shouldApplyThePeriodOnlyToTheBlocksThatDependOnIt', async () => {
     await open(summary({ queens: queens() }), 'queens', '28');
-    const weeksBefore = el.querySelector('#gameReportWeeks')!.innerHTML, daysBefore = el.querySelector('#gameReportWeekdays')!.innerHTML;
+    const weeksBefore = el.querySelector('#gameReportWeeks')!.innerHTML, daysBefore = el.querySelector('#gameChartWeekdays')!.innerHTML;
     const rangeBefore = text('gameReportRange'), factsBefore = text('gameReportFacts');
     fixture.componentRef.setInput('range', '7');
     await fixture.whenStable();
@@ -208,7 +201,7 @@ describe('GameReport', () => {
     expect(text('gameReportRange')).toContain('0:41 – 0:52'); // 40.5 and 51.5 rounded
     expect(text('gameReportFacts')).not.toBe(factsBefore);
     expect(el.querySelector('#gameReportWeeks')!.innerHTML).toBe(weeksBefore);
-    expect(el.querySelector('#gameReportWeekdays')!.innerHTML).toBe(daysBefore);
+    expect(el.querySelector('#gameChartWeekdays')!.innerHTML).toBe(daysBefore);
     expect(text('gameReportWeeksWindow')).toContain('90 días');
     expect(text('gameReportWeekdaysWindow')).toContain('todo el histórico');
   });
