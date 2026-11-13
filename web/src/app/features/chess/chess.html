@@ -43,6 +43,9 @@
       @for (k of x.kpis; track k.label) { <m-kpi [label]="k.label" [value]="k.value" [sub]="k.sub" /> }
     }
   </section>
+  <div class="card u-mt-12" id="evoCard"><h2>Evolución · ELO</h2><div class="muted u-fs-xs">ELO observado en sincronizaciones</div>
+    <div id="evo">@if (x) {@if (x.evo; as e) {<m-sparkline [points]="e.points" />} @else {<div class="muted">No disponible</div>}}</div>
+    <div class="muted u-mt-6" id="evoNote">{{ x?.evo?.note }}</div></div>
   <div class="card u-mt-12" id="formCard"><h2>Forma actual</h2>
     <div class="u-d-flex u-gap-6 u-ai-center u-wrap-wrap u-mb-10">
       <app-segmented label="Últimas partidas" caption="Últimas" idPrefix="b" [options]="recentOptions" [value]="'' + (recentN() ?? 50)" (picked)="setRecent(+$event)" />
@@ -85,9 +88,6 @@
 
   <app-section sectionId="cg-evo" title="Evolución y detalle" [open]="false" #cgEvo>
     <div class="grid2">
-      <div class="card" id="evoCard"><h2>Evolución · ELO</h2><div class="muted u-fs-xs">ELO observado en sincronizaciones</div>
-        <div id="evo">@if (x) {@if (x.evo; as e) {<m-sparkline [points]="e.points" />} @else {<div class="muted">No disponible</div>}}</div>
-        <div class="muted u-mt-6" id="evoNote">{{ x?.evo?.note }}</div></div>
       <div class="card" id="resCard"><h2>Resultados</h2>
         <div id="res">@if (x) {@if (x.counts; as c) {<m-donut [wins]="c.w" [losses]="c.l" [draws]="c.d" />} @else {<div class="muted">—</div>}}</div>
         <div class="muted u-mt-8" id="lossContext">{{ x?.res?.loss }}</div><div class="muted u-mt-4" id="lossRateNote">{{ x?.res?.rate }}</div><div class="muted u-mt-4" id="drawContext">{{ x?.res?.draw }}</div></div>
