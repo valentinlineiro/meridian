@@ -30,6 +30,7 @@ Se reutiliza el de `web/src/app/core/words.ts`: Confirmado, Señal, Sin cambios,
 ## 4. Ventana
 
 - La comparación usa **exactamente dos fechas de juego** (`since`, `until`, formato `YYYY-MM-DD`) y la interfaz **las muestra** con su duración: «8 oct → 13 nov (36 días)».
+- **Semántica de las fechas.** Cada fecha es el **cierre de ese día**, inclusive: el estado inicial se evalúa con el historial hasta el final de `since` (incluido) y el estado final con el historial hasta el final de `until` (incluido). El intervalo comparado es `(since, until]`: lo que ocurre **después** de `since` y hasta `until`. Su duración es el **tiempo transcurrido** (`until − since`), no el número de días naturales contados con ambos extremos: del 8 oct al 13 nov son 36 días (con ambos extremos serían 37). La interfaz nunca debe mostrar el recuento inclusivo.
 - «Desde última visita» no registra visitas automáticamente: es un ancla que fija el usuario con «Marcar como visto» (`PUT /api/me/changes-anchor`). Este diseño no depende de ese nombre: consume las dos fechas que resuelva la ventana elegida. Renombrar el botón queda fuera.
 - Conversión de instante a fecha de juego: se usa la misma zona horaria que ya usa el resumen de Games (`tz`). *Decisión mía; ver §9.*
 - «Todo el historial»: **modo estado actual**. Una fila por juego con su veredicto de hoy y sin comparación ni transición.
@@ -123,7 +124,7 @@ Pruebas por resultado, con nombres `shouldXWhenY`:
 2. R1–R5 se aplican en orden; en concreto, estados publicables iguales con señal final dan `SEÑAL` y **nunca** `SIN_CAMBIOS`.
 3. Transición confirmada + señal final: solo aparece la transición (sin duplicar).
 4. Una transición hacia o desde `POCOS_DATOS` nunca se llama mejora, deterioro ni cambio.
-5. **Sin fuga de futuro:** el estado inicial calculado con el historial completo y con el truncado a `since` es el mismo.
+5. **Sin fuga de futuro, con un caso que debe fallar si se filtra mal.** Fixture adversarial: un juego cuyo veredicto en `since` es distinto según incluya o no observaciones posteriores (p. ej. sin esas observaciones el candidato en `since` es `ESTABLE`; con ellas pasaría a `BAJANDO`). Debe cumplirse: (a) el estado inicial con el historial completo y con el truncado a `since` es **exactamente el mismo**; (b) un doble de prueba que omita el truncado y use la misma fixture **sí produce un estado distinto**. (b) demuestra que la prueba detecta el defecto y no solo que pasa con datos inocuos. Se repite para `since − 7 días` (la confirmación) y para el fin exacto del día `since` (una partida registrada en `since` cuenta; una en `since + 1` no).
 6. `Todo el historial` no devuelve transiciones.
 7. Ventana inválida (N7) y cero partidas (N6) tienen su texto.
 8. La página ya no muestra «No hay actividad registrada» como afirmación global; esa frase pasa al bloque plegado «Actividad».
@@ -148,5 +149,6 @@ Decisiones mías, a revisar:
 
 Abierto para la implementación:
 - Si el estado a `since − 7 días` coincide con lo que se mostró ese día (ver §7).
+- Los límites de fecha ya están fijados en §4 (cierre de día inclusivo; intervalo `(since, until]`).
 - La redacción final de los textos.
 - Si «Actividad» plegado se recuerda entre visitas.
