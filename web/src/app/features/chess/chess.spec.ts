@@ -452,7 +452,7 @@ describe('Chess', () => {
     it('shouldShowNothingMisleadingWhenNoThreatIsAnalysedOrFound', async () => {
       const z = { faced: 0, neutralized: 0, missed: 0, unpunished: 0, rate: null };
       await t.open(chessApi({ '/api/stats/threats': { ...THREATS, analysed: 0, pending: 1643, invalid: 0, unknownVersion: 0, gamesWithMissed: 0, totals: z } }));
-      expect(t.text('threatsMain')).toBe('Todavía no hay partidas analizadas; se calcula en cuanto el motor analice alguna');
+      expect(t.text('threatsMain')).toBe('Todavía no hay partidas analizadas; el motor las analiza solo tras cada sincronización');
       expect(t.text('threatsNote')).toContain('1643 partidas sin analizar');
       expect(t.el().querySelector('#threatsMissedBtn')).toBeNull();
     });
@@ -936,7 +936,7 @@ describe('EngineProfile', () => {
   it('shouldShowNothingMisleadingWhenNothingIsAnalysedYet', async () => {
     await render({ ...PROFILE, since: null, before: sec(), after: sec() }, 'cut');
     await render(EMPTY);
-    expect(text('profileKpis')).toBe('Todavía no hay partidas analizadas; el perfil aparece en cuanto el motor analice la primera');
+    expect(text('profileKpis')).toBe('Todavía no hay partidas analizadas; el motor las analiza solo tras cada sincronización y el perfil aparecerá aquí');
     expect(text('profileNote')).toContain('1648 partidas sin analizar');
     expect(text('profileContext')).toBe('Calculado con Stockfish sobre tus partidas guardadas.');
     for (const id of ['profileVerdict', 'profilePhases', 'profileColors', 'profileTrend', 'profileCut', 'profileDecisive', 'profileConversion', 'profileWorst', 'profileBest']) expect(text(id)).toBe('');
