@@ -2,7 +2,7 @@
 // Nothing here is computed beyond formatting: labels, bands and arrows come from the server's contract.
 import { fmtDate } from '../../core/format';
 import { resultBars } from '../../shared/result-bars';
-import { attentionOrder, GAME_NAMES, gameName, gdays, PERIODS, PeriodKey, typicalTime, Verdict, verdictFor } from '../../core/words';
+import { attentionOrder, GAME_NAMES, gameName, gdays, PERIODS, PeriodKey, Verdict, verdictFor } from '../../core/words';
 
 export type Range = PeriodKey;
 export type Label = 'mejora_sostenida' | 'estable' | 'deterioro' | 'datos_insuficientes';
@@ -173,18 +173,33 @@ export function lossRows(s: Summary) {
   return { rows, days: DAYS.map((d) => d.slice(0, 3)), sentence: w ? `Donde más pierdes: ${gameName(w.k)} los ${DAYS[w.c.dow]} (${gpct(w.c.rate)}, ${w.c.n} partidas).` : 'Aún no hay ningún día con partidas suficientes para decir dónde pierdes más.' };
 }
 
-/** The first look: per game a verdict, the speed against the average as one big number, the verdict's own sentence (it never contradicts the pill) and the last 14 results as bars. */
+/** The first look: per game a verdict, the speed against the average as one big number and the last 14 results as bars. The sentence and the change live in the report. */
 export function summaryRows(s: Summary, range: Range) {
   return cardOrder(s).flatMap((k) => { try { return [row(k)]; } catch { return []; } }); // a malformed game drops its own row only
   function row(k: string) {
     const x = s.games[k]!, w = x.windows[range];
-    const m = w.eff.median, e = w.delta?.effRel?.value;
+    const m = w.eff.median;
     return {
-      k, name: gameName(k), verdict: verdictOf(x), line: verdictOf(x).sentence, bars: resultBars(x.series),
+      k, name: gameName(k), verdict: verdictOf(x), bars: resultBars(x.series),
       big: m == null ? '—' : gsigned((m - 1) * 100, ' %'),
       cap: m == null ? 'aún sin media' : m > 1 ? 'más rápido que la media' : m < 1 ? 'más lento que la media' : 'igual que la media',
-      delta: e == null ? '' : gsigned(e * 100, ' %') + ' frente al periodo anterior',
-      time: typicalTime(w.time.median, null, null).main,
     };
   }
+}
+
+const names = (n: string[]) => n.length < 2 ? n.join('') : n.slice(0, -1).join(', ') + ' y ' + n[n.length - 1];
+/** "How you are doing": how many games improve, one segment per game (worst first) and one sentence that names them. Null with no games. */
+export function overview(rows: { name: string; verdict: Verdict }[]) {
+  if (!rows.length) return null;
+  const by = (f: (v: Verdict) => boolean) => rows.filter((r) => f(r.verdict)).map((r) => r.name).sort((a, b) => a.localeCompare(b, 'es'));
+  const down = by((v) => v.dir === 'down'), flat = by((v) => v.state === 'no-signal'), few = by((v) => v.state === 'few-data'), up = by((v) => v.dir === 'up');
+  const n = rows.length;
+  const counts = [[down, 'bajando', 'down'], [flat, flat.length === 1 ? 'estable' : 'estables', 'flat'], [few, 'con pocos datos', 'few'], [up, 'mejorando', 'up']] as const;
+  return {
+    big: `${up.length} de ${n}`, cap: up.length === 1 ? 'juego mejora' : 'juegos mejoran',
+    segments: counts.flatMap(([l, , kind]) => l.map(() => kind)),
+    aria: `${n === 1 ? 'Estado del juego' : `Estado de los ${n} juegos`}: ${counts.filter(([l]) => l.length).map(([l, t]) => `${l.length} ${t}`).join(', ')}.`,
+    sentence: [down.length && `${names(down)} ${down.length > 1 ? 'bajan' : 'baja'}`, up.length && `${names(up)} ${up.length > 1 ? 'mejoran' : 'mejora'}`,
+      flat.length && `${names(flat)}, sin cambios`, few.length && `${names(few)}, pocos datos`].filter(Boolean).join('. ') + '.',
+  };
 }

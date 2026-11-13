@@ -232,7 +232,6 @@ header{padding-top:calc(14px + env(safe-area-inset-top))}
 .wkbeat i{display:block;width:100%;max-width:26px;min-height:2px;background:var(--ok);border-radius:var(--r-sm) var(--r-sm) 0 0}.wkbeat span{font-size:var(--fs-xs);color:var(--muted)}
 .wkbeat [data-complete=false] i{background:transparent;border:1px dashed var(--line-strong)}
 .gtable tr[data-selected=true]>td{background:var(--selected)}
-@media(max-width:760px){.gc-h a{display:inline-flex;align-items:center;min-height:44px}} /* the game name is a link: a touch target on phones */
 .gr-day{display:grid;grid-template-columns:5.5rem minmax(0,1fr);gap:2px 10px;align-items:center;padding:6px 0;font-size:var(--fs-md)}.gr-day .gr-txt{grid-column:2;color:var(--text-2)}
 @media(min-width:761px){.gr-day{grid-template-columns:5.5rem minmax(0,1fr) 17rem}.gr-day .gr-txt{grid-column:auto;text-align:right}}
 @media(max-width:760px){#gameReportLevel thead{display:none}} /* the stacked cells carry their own labels */
@@ -342,17 +341,21 @@ app-tab-bar{display:none}
 .brand a{color:inherit;text-decoration:none}.brand a:focus-visible{outline:2px solid var(--link);outline-offset:2px;border-radius:var(--r-sm)}
 .side-menu ul,.sheet ul{list-style:none;margin:0;padding:0}
 
-/* Games: one card per game (big number, bars of the last results, one sentence) */
-.gcs{display:grid;gap:12px}
-.gc{display:grid;gap:8px;padding:16px}
-.gc-h{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}
-.gc-n{display:flex;align-items:baseline;gap:4px 8px;flex-wrap:wrap}.gc-big{font-size:var(--fs-display);font-weight:800;line-height:1;font-variant-numeric:tabular-nums}.gc-delta{margin-left:auto}
+/* Games: one compact row per game (name and verdict, big number, bars of the last results); the whole row is the link to the report */
+.gcs{display:grid;gap:8px}
+.gc{display:grid;grid-template-columns:minmax(0,1fr) auto 84px;gap:4px 12px;align-items:center;min-height:64px;padding:10px 12px;color:inherit;text-decoration:none}
+.gc-name{display:grid;justify-items:start;gap:4px}
+.gc-n{display:grid;justify-items:end}.gc-big{font-size:var(--fs-h);font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums}.gc-cap{font-size:var(--fs-xs);text-align:right}
+.gc .gbars{height:28px;gap:2px}
 .gbars{display:grid;grid-template-columns:repeat(14,minmax(0,1fr));gap:3px;height:56px;position:relative}
 .gbars::before{content:"";position:absolute;left:0;right:0;top:50%;border-top:1px dashed var(--selected-line)}
 .gb{display:grid;grid-template-rows:1fr 1fr}.gb-up,.gb-dn{display:flex}.gb-up{align-items:flex-end}.gb-dn{align-items:flex-start}
 .gb i{display:block;width:100%;border-radius:var(--r-sm)}
-.gc-line{margin:0;font-size:var(--fs-lg)}
 @media(min-width:761px){.gcs{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Games overview: how many games improve, one segment per game */
+.go{display:grid;gap:8px;margin-top:14px}.go-n{display:flex;align-items:baseline;gap:8px}.go-n .gc-big{font-size:var(--fs-display)}
+.go-bar{display:flex;gap:4px}.go-bar span{flex:1;height:10px;border-radius:5px}.go-down{background:var(--err)}.go-flat,.go-few{background:var(--neutral)}.go-few{opacity:.5}.go-up{background:var(--ok)}
 
 /* Games header: today's log first, the streak as a small line, the long-run facts as a footer */
 .gh-top{display:flex;justify-content:space-between;align-items:baseline;gap:4px 12px;flex-wrap:wrap}.gh-top b{font-size:var(--fs-xl)}
