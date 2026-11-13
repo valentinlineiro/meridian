@@ -129,3 +129,12 @@ Commit auditado: `564d838` (main). Sin cambios de código; solo este informe y l
 5. H9–H13 solo si sobran.
 
 **Pendiente:** repetir H3, H7, H8 y H13 con datos de producción (requiere acceso de lectura que no se me ha concedido) antes de dar prioridad definitiva.
+
+## Actualización (2026-11-13): contraste con datos de producción
+
+Export de solo lectura (matches, elo_observations, account_observations, xp_summaries, snapshots).
+
+- **H8** era sobre todo artefacto del demo: datos al día (última observación 2026-11-13, racha 1126, 142 días de XP seguidos). Baja a P3; queda solo mover el aviso de limitaciones.
+- **H3** se confirma en lo estructural (cuatro cifras de acierto distintas: 62,2 / 64,0 / 66,1 / 67,0 %). "Anteriores · 10" y "0 vs primera lectura" eran demo (real: 50 vs 50 partidas, ELO 992 → 900). Resuelto en #201 y #202.
+- **H6, H7:** resueltos en #200.
+- **Siguen abiertos:** H13 (requiere las tablas de Games, no exportadas); umbral en la frase "Pocos datos" de Games; confirmar si el análisis del motor es automático antes de decirlo en la interfaz.
