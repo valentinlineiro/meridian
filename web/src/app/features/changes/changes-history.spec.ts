@@ -24,7 +24,7 @@ describe('Changes: the whole history is a period', () => {
       if (!p.length) return;
       for (const r of p) {
         asked.push(r.request.url);
-        r.flush(r.request.url === '/api/trajectory' ? history : r.request.url === '/api/what-changed' ? quiet : r.request.url === '/api/languages' ? { courses: [] } : { ok: true, seenThrough: null });
+        r.flush(r.request.url === '/api/trajectory' ? history : r.request.url === '/api/what-changed' ? quiet : r.request.url === '/api/me/linkedin-games/changes' ? { ok: true, change: { mode: r.request.params.has('since') ? 'compare' : 'current-only', since: r.request.params.get('since'), until: r.request.params.get('until'), elapsedDays: null, playedDaysInWindow: null, games: [] } } : r.request.url === '/api/languages' ? { courses: [] } : { ok: true, seenThrough: null });
       }
       await tick();
     }
@@ -47,6 +47,14 @@ describe('Changes: the whole history is a period', () => {
   });
   afterEach(() => http.verify());
 
+  it('shouldShowTheCurrentStateOfGamesWithoutASinceWhenTheHistoryIsPicked', async () => {
+    await open();
+    await pick('Todo el historial');
+    const games = http.match(() => false); // nothing pending: the request was answered by serve()
+    expect(games).toEqual([]);
+    expect(el.querySelector('#changesGamesHeading')!.textContent).toBe('Games · estado actual');
+  });
+
   it('shouldOfferTheWholeHistoryNextToTheOtherPeriods', async () => {
     await open();
     expect(buttons().map((b) => b.textContent!.trim())).toEqual(['Últimos 7 días', 'Últimos 30 días', 'Desde última visita', 'Todo el historial']);
@@ -55,7 +63,7 @@ describe('Changes: the whole history is a period', () => {
   it('shouldShowTheTrajectoryAndNotAskWhatChangedWhenTheHistoryIsPicked', async () => {
     await open();
     await pick('Todo el historial');
-    expect(asked).toEqual(['/api/trajectory']);
+    expect(asked.sort()).toEqual(['/api/me/linkedin-games/changes', '/api/trajectory']);
     expect(pressed()).toEqual(['Todo el historial']);
     expect(el.querySelector('#trajectoryTab')).not.toBeNull();
     expect(el.querySelector('#changesFindings')).toBeNull();
@@ -72,7 +80,7 @@ describe('Changes: the whole history is a period', () => {
 
   it('shouldOpenOnTheHistoryWhenTheUrlSaysSoWithoutReadingTheVisitAnchor', async () => {
     await open('historial');
-    expect(asked).toEqual(['/api/trajectory']);
+    expect(asked.sort()).toEqual(['/api/me/linkedin-games/changes', '/api/trajectory']);
     expect(pressed()).toEqual(['Todo el historial']);
   });
 

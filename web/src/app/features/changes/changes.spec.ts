@@ -38,9 +38,15 @@ const quietPayload = (evaluations: unknown[]): Any => ({
 const activePayload: Any = { ...quietPayload([evaluation]), languages: { ...quietPayload([])['languages'], xpGained: 40, sessionsCount: 2 } };
 const withXp = (xp: number): Any => ({ ...activePayload, languages: { ...activePayload['languages'], xpGained: xp } });
 
+const NO_GAMES: Any = { ok: true, change: { mode: 'compare', since: '2026-10-01', until: '2026-10-08', elapsedDays: 7, playedDaysInWindow: 0, games: [] } };
+const ZIP_DOWN: Any = { ok: true, change: { mode: 'compare', since: '2026-10-01', until: '2026-10-08', elapsedDays: 7, playedDaysInWindow: 5, games: [
+  { game: 'zip', from: { kind: 'estable' }, to: { kind: 'bajando' }, outcome: { kind: 'cambio_confirmado', from: { kind: 'estable' }, to: { kind: 'bajando' } } }] } };
+
 interface Server {
   anchor: string | null; getStatus: number | typeof NET; putStatus: number;
   puts: string[]; anchorReads: number; whatChanged: { since: string; until: string }[]; langReads: number;
+  /** The /api/me/linkedin-games/changes requests (since is null in the history mode) and its answer. */
+  gamesAsked: { since: string | null; until: string }[]; gamesChange: Reply;
   /** The /api/what-changed answer for a window (default: a quiet body whose until is `shownUntil` or the one asked for). */
   wc: (since: string, until: string) => Reply; langs: Reply; shownUntil?: string;
 }
@@ -79,12 +85,13 @@ describe('Changes', () => {
       return answer(r, server.wc(since, until));
     }
     if (url === '/api/languages') { server.langReads++; return answer(r, server.langs); }
+    if (url === '/api/me/linkedin-games/changes') { server.gamesAsked.push({ since: r.request.params.get('since'), until: r.request.params.get('until')! }); return answer(r, server.gamesChange); }
     throw new Error('unexpected request ' + method + ' ' + url);
   };
   /** Answers every request until none is left (the legacy fake server). */
   const settle = async () => { await tick(); for (let i = 0; i < 20; i++) { const p = pending(); if (!p.length) return; p.forEach(handle); await tick(); } };
   const setup = (o: Partial<Server> = {}) => {
-    server = { anchor: null, getStatus: 200, putStatus: 200, puts: [], anchorReads: 0, whatChanged: [], langReads: 0, langs: { courses: [] }, ...o,
+    server = { anchor: null, getStatus: 200, putStatus: 200, puts: [], anchorReads: 0, whatChanged: [], langReads: 0, langs: { courses: [] }, gamesAsked: [], gamesChange: NO_GAMES, ...o,
       wc: o.wc ?? ((since, until) => quiet(since, server.shownUntil ?? until)) };
     return server;
   };
@@ -113,7 +120,7 @@ describe('Changes', () => {
     TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
     http = TestBed.inject(HttpTestingController);
   });
-  afterEach(() => { vi.useRealTimers(); http.verify(); }); // real timers first: a failed verify must not leave fake ones to the next file
+  afterEach(() => { vi.useRealTimers(); http.match((r) => r.url === '/api/me/linkedin-games/changes'); /* the Games section asks on its own: tests about the evaluations need not answer it */ http.verify(); }); // real timers first: a failed verify must not leave fake ones to the next file
 
   describe('Frontend What Changed Navigation & Visual Engine', () => {
     it('shouldParseChangesHashRouteWhenHashIsChanges', () => {
@@ -123,8 +130,31 @@ describe('Changes', () => {
     it('shouldIncludeChangesTabSectionWithRequiredContainersWhenRendered', async () => {
       await open();
       for (const id of ['changesTab', 'changesHeader', 'changesFindings', 'changesActivity']) expect(el.querySelector('#' + id)).not.toBeNull();
-      expect(empty()).not.toBeNull(); // the quiet window says so
+      expect(empty()).toBeNull(); // a quiet window is not a page-level claim: it is said inside the folded Actividad block
+      expect(activity()).toContain('Sin actividad registrada de ajedrez ni idiomas');
       expect(el.querySelector('.tab-panel, [hidden]')).toBeNull(); // ruling 1
+    });
+
+    it('shouldFoldTheActivityBlockByDefault', async () => {
+      await open({ wc: () => activePayload });
+      const block = el.querySelector<HTMLDetailsElement>('#changesActivity details')!;
+      expect(block).not.toBeNull();
+      expect(block.open).toBe(false);
+      expect(block.querySelector('summary')!.textContent).toContain('Actividad en la ventana');
+    });
+
+    it('shouldShowTheGamesSectionWhenChessAndLanguagesHaveNoActivity', async () => {
+      await open({ gamesChange: ZIP_DOWN }); // the quiet default: nothing in chess or languages
+      expect(empty()).toBeNull(); // the old page-level "no activity" claim ignored Games
+      expect(text('#changesGames')).toContain('Zip: de Estable a Bajando');
+    });
+
+    it('shouldAskGamesForTheSamePlayDatesAsTheWindowShown', async () => {
+      await open();
+      await click('Últimos 7 días');
+      const last = server.gamesAsked.at(-1)!;
+      expect(last.since).toBe('2026-10-01');
+      expect(last.until).toBe('2026-10-08');
     });
 
     it('shouldRenderEmptyStateWhenNoActivityRecordedInInterval', async () => {
@@ -132,9 +162,10 @@ describe('Changes', () => {
         chess: { gamesCount: 0, ratingDelta: 0, baselineRating: 1200, currentRating: 1200, intervalWinRate: null },
         languages: { xpGained: 0, sessionsCount: 0, totalSessionMinutes: 0, baselineCourseId: 'DUOLINGO_EN_ES', currentCourseId: 'DUOLINGO_EN_ES', courseChanged: false },
         streak: { baselineStreak: 50, currentStreak: 50, streakDelta: 0, status: 'active' } }) });
-      expect(empty()!.textContent).toBe('No hay actividad registrada entre 2026-09-24 00:00 UTC y 2026-10-01 00:00 UTC.');
+      expect(empty()).toBeNull();
+      expect(activity()).toContain('Sin actividad registrada de ajedrez ni idiomas entre 2026-09-24 00:00 UTC y 2026-10-01 00:00 UTC.');
       expect(el.querySelector('#changesFindings')!.children.length).toBe(0);
-      expect(el.querySelector('#changesActivity')!.children.length).toBe(0);
+      expect(el.querySelectorAll('#changesActivity .row')).toHaveLength(0); // the block only says it was quiet
     });
 
     it('shouldRenderDeltaCardsAndFindingsWhenActivityExistsInInterval', async () => {
@@ -176,7 +207,7 @@ describe('Changes', () => {
       await open({ wc: () => ({ ...quiet('2026-09-24T00:00:00.000Z', '2026-10-01T00:00:00.000Z'),
         chess: { gamesCount: 3, ratingDelta: null, baselineRating: 800, currentRating: null, intervalWinRate: null, historicalDelta: null },
         languages: { xpGained: 0, sessionsCount: 2, totalSessionMinutes: 4, baselineCourseId: null, currentCourseId: null, courseChanged: false } }) });
-      expect(el.querySelectorAll('#changesActivity h2').length).toBe(1);
+      expect(el.querySelectorAll('#changesActivity details')).toHaveLength(1);
       const titles = [...el.querySelectorAll('#changesActivity .muted')].map((d) => d.textContent);
       for (const title of ['Ajedrez', 'Idiomas', 'Racha']) expect(titles).toContain(title);
       expect(row('Racha actual')).toBe('🔥 —');
@@ -468,9 +499,10 @@ describe('Changes', () => {
   describe('what changed: a quiet window still says what could not be judged', () => {
     it('shouldKeepTheEvaluationsWhenTheWindowHasNoActivity', async () => {
       await open({ wc: () => quietPayload([evaluation]) });
-      expect(empty()!.textContent).toMatch(/^No hay actividad registrada entre/);
+      expect(empty()).toBeNull();
+      expect(activity()).toMatch(/^Actividad en la ventana\s*Sin actividad registrada de ajedrez ni idiomas entre/);
       expect(findings()).toContain('Pocos datos');
-      expect(el.querySelector('#changesActivity')!.children.length).toBe(0);
+      expect(el.querySelectorAll('#changesActivity .row')).toHaveLength(0); // the block only says it was quiet
     });
   });
 
@@ -496,7 +528,7 @@ describe('Changes', () => {
       mode = 'net';
       await click('Últimos 30 días');
       expect(empty()!.textContent).toBe('Error de conexión al cargar cambios.');
-      expect(empty()!.textContent).not.toContain('No hay actividad');
+      expect(activity()).not.toContain('Sin actividad registrada');
       expect(el.querySelector('#changesActivity')!.children.length).toBe(0);
     });
 
@@ -724,7 +756,7 @@ describe('Changes', () => {
 
     it('shouldUseTheRequestedWindowInTheEmptyCopyWhenTheIntervalIsMissing', async () => {
       await open({ wc: () => ({ ...quietPayload([]), interval: undefined }) });
-      expect(empty()!.textContent).toBe('No hay actividad registrada entre 2026-10-01 12:00 UTC y 2026-10-08 12:00 UTC.');
+      expect(activity()).toContain('Sin actividad registrada de ajedrez ni idiomas entre 2026-10-01 12:00 UTC y 2026-10-08 12:00 UTC.');
     });
   });
 

@@ -73,3 +73,6 @@ export function sparkPoints(v: number[]): string {
   const lo = Math.min(...v), hi = Math.max(...v), r = (hi - lo) || 1;
   return v.map((y, i) => (i / (v.length - 1) * 100).toFixed(1) + ',' + (22 - (y - lo) / r * 20).toFixed(1)).join(' ');
 }
+
+/** The calendar date (YYYY-MM-DD), in the browser's timezone, of an instant: the day a player calls it. */
+export const localDateOf = (when: string | Date): string => new Date(when).toLocaleDateString('sv-SE');

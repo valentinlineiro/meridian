@@ -8,8 +8,10 @@ import { ApiClient } from '../../core/api-client';
 import { Course, es } from '../../core/courses';
 import { fmtDelta, pc1 } from '../../core/format';
 import { list, safe } from '../../core/guard';
+import { Section } from '../../shared/section';
 import { Segmented } from '../../shared/segmented';
 import { EvalFinding, Evaluation, EvaluationCards } from '../evaluations/evaluation-cards';
+import { GamesChangeCard } from './games-change';
 import { Trajectory } from './trajectory';
 
 // Port of the Qué cambió tab (src/frontend.ts:472–477; src/dashboard.client.js fmtWhen, putChangesAnchor, loadChangesAnchor,
@@ -116,23 +118,24 @@ function activityView(d: Rec, catalog: Course[]) {
 
 /** renderWhatChanged: what the body area says for one answer. */
 function bodyView(b: Body, w: Win) {
-  if ('error' in b) return { empty: b.error, findings: null, activity: null };
+  if ('error' in b) return { empty: b.error, quiet: '', findings: null, activity: null };
   const d = b.data;
-  if (!isObj(d) || !d['chess'] || !d['languages'] || !d['streak']) return { empty: INCOMPLETE, findings: null, activity: null };
+  if (!isObj(d) || !d['chess'] || !d['languages'] || !d['streak']) return { empty: INCOMPLETE, quiet: '', findings: null, activity: null };
   const fs = d['findings'];
   const isEmpty = (fs == null || (Array.isArray(fs) && fs.length === 0)) && d['chess'].gamesCount === 0 && d['languages'].xpGained === 0 && d['languages'].sessionsCount === 0;
   const findings = safe(() => evaluationsView(d), 'na' as const);
   if (isEmpty) {
     const iv: Rec = isObj(d['interval']) ? d['interval'] : {};
     // the evaluations are the answer to "could this window be judged?": a quiet window keeps them (INSUFICIENTE, SIN INDICIO)
-    return { empty: 'No hay actividad registrada entre ' + utc(iv['since'] ?? w.since) + ' y ' + utc(iv['until'] ?? w.until) + '.', findings, activity: null };
+    // said inside the folded Actividad block, about chess and languages only: Games answers for itself (a page-level "no activity" ignored it)
+    return { empty: '', quiet: 'Sin actividad registrada de ajedrez ni idiomas entre ' + utc(iv['since'] ?? w.since) + ' y ' + utc(iv['until'] ?? w.until) + '.', findings, activity: null };
   }
-  return { empty: '', findings, activity: safe(() => activityView(d, b.catalog), 'na' as const) };
+  return { empty: '', quiet: '', findings, activity: safe(() => activityView(d, b.catalog), 'na' as const) };
 }
 
 @Component({
   selector: 'app-changes',
-  imports: [EvaluationCards, NgTemplateOutlet, Segmented, Trajectory],
+  imports: [EvaluationCards, GamesChangeCard, NgTemplateOutlet, Section, Segmented, Trajectory],
   template: `
     @let v = view();
     <section id="changesTab">
@@ -149,7 +152,7 @@ function bodyView(b: Body, w: Win) {
           <app-segmented class="u-d-block u-mt-12" label="Periodo" [options]="windows" [value]="v.header.value" (picked)="choose($event)" />
         </div>
       }</div>
-      @if (v?.header?.history) {<app-trajectory />} @else {
+      @if (v?.header?.history) {<app-trajectory /><app-games-change [until]="nowIso" />} @else {
       @let b = v?.body;
       @if (b?.empty) {<div id="changesEmpty" class="empty">{{ b!.empty }}</div>}
       <div class="u-mb-16" id="changesFindings">@if (b?.findings; as f) {
@@ -166,9 +169,9 @@ function bodyView(b: Body, w: Win) {
           @if (f.findingsNa) {<ng-container *ngTemplateOutlet="na; context: { $implicit: 'Hallazgos' }" />}
         }
       }</div>
+      @if (v?.win; as w) {<app-games-change [since]="w.since" [until]="w.until" />}
       <div id="changesActivity">@if (b?.activity; as a) {
-        <div class="card">
-          <h2>Actividad en la ventana</h2>
+        <app-section title="Actividad en la ventana" [open]="false">
           @if (a === 'na') {<div class="muted u-fs-sm">No disponible</div>} @else {
             <div class="muted u-fs-sm u-mb-10">Datos que contextualizan las evaluaciones.</div>
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px">
@@ -181,7 +184,9 @@ function bodyView(b: Body, w: Win) {
               }
             </div>
           }
-        </div>
+        </app-section>
+      } @else if (b?.quiet) {
+        <app-section title="Actividad en la ventana" [open]="false"><div class="muted u-fs-sm">{{ b!.quiet }}</div></app-section>
       }</div>
       }
     </section>
@@ -201,6 +206,8 @@ export class Changes {
     source: () => (this.w() === '7' ? 7 : this.w() === '30' ? 30 : 0),
     computation: (days, prev) => (prev && prev.value.days === days ? prev.value : { days: days as Choice['days'] }),
   });
+  /** The instant the whole-history view reads Games' current state at. */
+  protected readonly nowIso = new Date().toISOString();
   protected readonly saving = signal(false);
   /** The save failed: the button says so until another window is shown. */
   protected readonly markFailed = linkedSignal({ source: this.choice, computation: () => false });
@@ -228,10 +235,10 @@ export class Changes {
   });
 
   protected readonly view = computed(() => {
-    if (this.history()) return { header: HISTORY_HEADER, body: null };
+    if (this.history()) return { header: HISTORY_HEADER, body: null, win: null };
     if (!this.state.hasValue()) return null;
     const s = this.state.value();
-    return { header: headerView(s.win), body: s.body ? bodyView(s.body, s.win) : null };
+    return { header: headerView(s.win), body: s.body ? bodyView(s.body, s.win) : null, win: s.win };
   });
 
   /** What is marked is what was shown: the until of the answer on screen, not the time of the click. Null while there is none. */

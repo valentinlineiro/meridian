@@ -175,6 +175,35 @@ describe("linkedin games manual entry over HTTP and D1", () => {
     const res = await worker.fetch(new Request(`${BASE}/api/me/linkedin-games/summary?today=2026-13-45`, { headers: { cookie: await cookie() } }), env);
     expect(res.status).toBe(400);
   });
+
+  const changes = async (qs: string, headers: Record<string, string> | null = null) =>
+    worker.fetch(new Request(`${BASE}/api/me/linkedin-games/changes?${qs}`, { headers: headers ?? { cookie: await cookie() } }), env);
+
+  it("shouldAnswerTheChangeBetweenTwoDatesForTheOwner", async () => {
+    seedZip(); // 170 days ending 2026-10-14
+    const res = await changes("since=2026-10-07&until=2026-10-14");
+    expect(res.status).toBe(200);
+    const body: any = await res.json();
+    expect(body.change).toMatchObject({ mode: "compare", since: "2026-10-07", until: "2026-10-14", elapsedDays: 7, playedDaysInWindow: 7 });
+    expect(body.change.games[0]).toMatchObject({ game: "zip" });
+    expect(body.change.games[0].outcome.kind).toBe("sin_cambios");
+  });
+
+  it("shouldAnswerCurrentOnlyWhenThereIsNoSince", async () => {
+    seedZip();
+    const body: any = await (await changes("until=2026-10-14")).json();
+    expect(body.change).toMatchObject({ mode: "current-only", since: null });
+    expect(body.change.games[0]).toMatchObject({ game: "zip", from: null, outcome: null });
+  });
+
+  it("shouldAnswer400WhenADateIsNotARealDate", async () => {
+    expect((await changes("since=2026-13-45&until=2026-10-14")).status).toBe(400);
+    expect((await changes("since=2026-10-07&until=nope")).status).toBe(400);
+  });
+
+  it("shouldAnswer401WhenThereIsNoSessionForTheChange", async () => {
+    expect((await changes("until=2026-10-14", {})).status).toBe(401);
+  });
 });
 
 describe("linkedin games import over HTTP and D1", () => {

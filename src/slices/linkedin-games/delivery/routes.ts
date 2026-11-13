@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { InvalidCommandError } from "../../../application/errors.ts";
 import type { Container } from "../../../kernel/container.ts";
-import { EXPORT_GAME_RESULTS, GET_DAY, GET_SUMMARY, IMPORT_GAME_RESULTS, RECORD_GAME_RESULT } from "../module.ts";
+import { EXPORT_GAME_RESULTS, GET_DAY, GET_GAMES_CHANGE, GET_SUMMARY, IMPORT_GAME_RESULTS, RECORD_GAME_RESULT } from "../module.ts";
 
 type Vars = { Variables: { email: string | null; container: Container } };
 const body = z.object({
@@ -28,6 +28,13 @@ linkedinGamesRoutes.get("/summary", async (c) => {
   const today = c.req.query("today") ?? new Date().toISOString().slice(0, 10);
   const summary = await c.get("container").resolve(GET_SUMMARY).execute({ ownerEmail: c.get("email")!, today });
   return c.json({ ok: true, summary });
+});
+
+// What changed in each game between two play dates (each one closes its day); without `since`, only the current state of each game.
+linkedinGamesRoutes.get("/changes", async (c) => {
+  const until = c.req.query("until") ?? new Date().toISOString().slice(0, 10);
+  const change = await c.get("container").resolve(GET_GAMES_CHANGE).execute({ ownerEmail: c.get("email")!, since: c.req.query("since") ?? null, until });
+  return c.json({ ok: true, change });
 });
 
 linkedinGamesRoutes.get("/export.csv", async (c) => {
