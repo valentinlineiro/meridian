@@ -130,13 +130,22 @@ describe('Changes', () => {
     it('shouldIncludeChangesTabSectionWithRequiredContainersWhenRendered', async () => {
       await open();
       for (const id of ['changesTab', 'changesHeader', 'changesFindings', 'changesActivity']) expect(el.querySelector('#' + id)).not.toBeNull();
-      expect(empty()).not.toBeNull(); // the quiet window says so
+      expect(empty()).toBeNull(); // a quiet window is not a page-level claim: it is said inside the folded Actividad block
+      expect(activity()).toContain('Sin actividad registrada de ajedrez ni idiomas');
       expect(el.querySelector('.tab-panel, [hidden]')).toBeNull(); // ruling 1
+    });
+
+    it('shouldFoldTheActivityBlockByDefault', async () => {
+      await open({ wc: () => activePayload });
+      const block = el.querySelector<HTMLDetailsElement>('#changesActivity details')!;
+      expect(block).not.toBeNull();
+      expect(block.open).toBe(false);
+      expect(block.querySelector('summary')!.textContent).toContain('Actividad en la ventana');
     });
 
     it('shouldShowTheGamesSectionWhenChessAndLanguagesHaveNoActivity', async () => {
       await open({ gamesChange: ZIP_DOWN }); // the quiet default: nothing in chess or languages
-      expect(empty()).not.toBeNull();
+      expect(empty()).toBeNull(); // the old page-level "no activity" claim ignored Games
       expect(text('#changesGames')).toContain('Zip: de Estable a Bajando');
     });
 
@@ -153,9 +162,10 @@ describe('Changes', () => {
         chess: { gamesCount: 0, ratingDelta: 0, baselineRating: 1200, currentRating: 1200, intervalWinRate: null },
         languages: { xpGained: 0, sessionsCount: 0, totalSessionMinutes: 0, baselineCourseId: 'DUOLINGO_EN_ES', currentCourseId: 'DUOLINGO_EN_ES', courseChanged: false },
         streak: { baselineStreak: 50, currentStreak: 50, streakDelta: 0, status: 'active' } }) });
-      expect(empty()!.textContent).toBe('No hay actividad registrada entre 2026-09-24 00:00 UTC y 2026-10-01 00:00 UTC.');
+      expect(empty()).toBeNull();
+      expect(activity()).toContain('Sin actividad registrada de ajedrez ni idiomas entre 2026-09-24 00:00 UTC y 2026-10-01 00:00 UTC.');
       expect(el.querySelector('#changesFindings')!.children.length).toBe(0);
-      expect(el.querySelector('#changesActivity')!.children.length).toBe(0);
+      expect(el.querySelectorAll('#changesActivity .row')).toHaveLength(0); // the block only says it was quiet
     });
 
     it('shouldRenderDeltaCardsAndFindingsWhenActivityExistsInInterval', async () => {
@@ -197,7 +207,7 @@ describe('Changes', () => {
       await open({ wc: () => ({ ...quiet('2026-09-24T00:00:00.000Z', '2026-10-01T00:00:00.000Z'),
         chess: { gamesCount: 3, ratingDelta: null, baselineRating: 800, currentRating: null, intervalWinRate: null, historicalDelta: null },
         languages: { xpGained: 0, sessionsCount: 2, totalSessionMinutes: 4, baselineCourseId: null, currentCourseId: null, courseChanged: false } }) });
-      expect(el.querySelectorAll('#changesActivity h2').length).toBe(1);
+      expect(el.querySelectorAll('#changesActivity details')).toHaveLength(1);
       const titles = [...el.querySelectorAll('#changesActivity .muted')].map((d) => d.textContent);
       for (const title of ['Ajedrez', 'Idiomas', 'Racha']) expect(titles).toContain(title);
       expect(row('Racha actual')).toBe('🔥 —');
@@ -489,9 +499,10 @@ describe('Changes', () => {
   describe('what changed: a quiet window still says what could not be judged', () => {
     it('shouldKeepTheEvaluationsWhenTheWindowHasNoActivity', async () => {
       await open({ wc: () => quietPayload([evaluation]) });
-      expect(empty()!.textContent).toMatch(/^No hay actividad registrada entre/);
+      expect(empty()).toBeNull();
+      expect(activity()).toMatch(/^Actividad en la ventana\s*Sin actividad registrada de ajedrez ni idiomas entre/);
       expect(findings()).toContain('Pocos datos');
-      expect(el.querySelector('#changesActivity')!.children.length).toBe(0);
+      expect(el.querySelectorAll('#changesActivity .row')).toHaveLength(0); // the block only says it was quiet
     });
   });
 
@@ -517,7 +528,7 @@ describe('Changes', () => {
       mode = 'net';
       await click('Últimos 30 días');
       expect(empty()!.textContent).toBe('Error de conexión al cargar cambios.');
-      expect(empty()!.textContent).not.toContain('No hay actividad');
+      expect(activity()).not.toContain('Sin actividad registrada');
       expect(el.querySelector('#changesActivity')!.children.length).toBe(0);
     });
 
@@ -745,7 +756,7 @@ describe('Changes', () => {
 
     it('shouldUseTheRequestedWindowInTheEmptyCopyWhenTheIntervalIsMissing', async () => {
       await open({ wc: () => ({ ...quietPayload([]), interval: undefined }) });
-      expect(empty()!.textContent).toBe('No hay actividad registrada entre 2026-10-01 12:00 UTC y 2026-10-08 12:00 UTC.');
+      expect(activity()).toContain('Sin actividad registrada de ajedrez ni idiomas entre 2026-10-01 12:00 UTC y 2026-10-08 12:00 UTC.');
     });
   });
 

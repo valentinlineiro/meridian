@@ -8,6 +8,7 @@ import { ApiClient } from '../../core/api-client';
 import { Course, es } from '../../core/courses';
 import { fmtDelta, pc1 } from '../../core/format';
 import { list, safe } from '../../core/guard';
+import { Section } from '../../shared/section';
 import { Segmented } from '../../shared/segmented';
 import { EvalFinding, Evaluation, EvaluationCards } from '../evaluations/evaluation-cards';
 import { GamesChangeCard } from './games-change';
@@ -117,23 +118,24 @@ function activityView(d: Rec, catalog: Course[]) {
 
 /** renderWhatChanged: what the body area says for one answer. */
 function bodyView(b: Body, w: Win) {
-  if ('error' in b) return { empty: b.error, findings: null, activity: null };
+  if ('error' in b) return { empty: b.error, quiet: '', findings: null, activity: null };
   const d = b.data;
-  if (!isObj(d) || !d['chess'] || !d['languages'] || !d['streak']) return { empty: INCOMPLETE, findings: null, activity: null };
+  if (!isObj(d) || !d['chess'] || !d['languages'] || !d['streak']) return { empty: INCOMPLETE, quiet: '', findings: null, activity: null };
   const fs = d['findings'];
   const isEmpty = (fs == null || (Array.isArray(fs) && fs.length === 0)) && d['chess'].gamesCount === 0 && d['languages'].xpGained === 0 && d['languages'].sessionsCount === 0;
   const findings = safe(() => evaluationsView(d), 'na' as const);
   if (isEmpty) {
     const iv: Rec = isObj(d['interval']) ? d['interval'] : {};
     // the evaluations are the answer to "could this window be judged?": a quiet window keeps them (INSUFICIENTE, SIN INDICIO)
-    return { empty: 'No hay actividad registrada entre ' + utc(iv['since'] ?? w.since) + ' y ' + utc(iv['until'] ?? w.until) + '.', findings, activity: null };
+    // said inside the folded Actividad block, about chess and languages only: Games answers for itself (a page-level "no activity" ignored it)
+    return { empty: '', quiet: 'Sin actividad registrada de ajedrez ni idiomas entre ' + utc(iv['since'] ?? w.since) + ' y ' + utc(iv['until'] ?? w.until) + '.', findings, activity: null };
   }
-  return { empty: '', findings, activity: safe(() => activityView(d, b.catalog), 'na' as const) };
+  return { empty: '', quiet: '', findings, activity: safe(() => activityView(d, b.catalog), 'na' as const) };
 }
 
 @Component({
   selector: 'app-changes',
-  imports: [EvaluationCards, GamesChangeCard, NgTemplateOutlet, Segmented, Trajectory],
+  imports: [EvaluationCards, GamesChangeCard, NgTemplateOutlet, Section, Segmented, Trajectory],
   template: `
     @let v = view();
     <section id="changesTab">
@@ -169,8 +171,7 @@ function bodyView(b: Body, w: Win) {
       }</div>
       @if (v?.win; as w) {<app-games-change [since]="w.since" [until]="w.until" />}
       <div id="changesActivity">@if (b?.activity; as a) {
-        <div class="card">
-          <h2>Actividad en la ventana</h2>
+        <app-section title="Actividad en la ventana" [open]="false">
           @if (a === 'na') {<div class="muted u-fs-sm">No disponible</div>} @else {
             <div class="muted u-fs-sm u-mb-10">Datos que contextualizan las evaluaciones.</div>
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px">
@@ -183,7 +184,9 @@ function bodyView(b: Body, w: Win) {
               }
             </div>
           }
-        </div>
+        </app-section>
+      } @else if (b?.quiet) {
+        <app-section title="Actividad en la ventana" [open]="false"><div class="muted u-fs-sm">{{ b!.quiet }}</div></app-section>
       }</div>
       }
     </section>
