@@ -355,7 +355,7 @@ app-tab-bar{display:none}
 
 /* Games overview: how many games improve, one segment per game */
 .go{display:grid;gap:8px;margin-top:14px}.go-n{display:flex;align-items:baseline;gap:8px}.go-n .gc-big{font-size:var(--fs-display)}
-.go-bar{display:flex;gap:4px}.go-bar span{flex:1;height:10px;border-radius:5px}.go-down{background:var(--err)}.go-flat,.go-few{background:var(--neutral)}.go-few{opacity:.5}.go-up{background:var(--ok)}
+.go-bar{display:flex;gap:4px}.go-bar span{flex:1;height:10px;border-radius:var(--r-pill)}.go-down{background:var(--err)}.go-flat,.go-few{background:var(--neutral)}.go-few{opacity:.5}.go-up{background:var(--ok)}
 
 /* Games header: today's log first, the streak as a small line, the long-run facts as a footer */
 .gh-top{display:flex;justify-content:space-between;align-items:baseline;gap:4px 12px;flex-wrap:wrap}.gh-top b{font-size:var(--fs-xl)}
