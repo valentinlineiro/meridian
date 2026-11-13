@@ -61,8 +61,8 @@ function form(r: Recent | null | undefined) {
   if (r === null) return null;
   if (!r.before) return undefined; // legacy renderForm draws nothing without the games before the window
   const side = (x: Recent | Partial<Recent>, head: string) => ({
-    head, wr: pctCi(x.winRate, x.winRateCi) + ' WR',
-    detail: `${x.scoreRate != null ? pc1(x.scoreRate * 100) : '—'} score · ${x.wins}W ${x.losses}L ${x.draws}D`,
+    head, wr: pctCi(x.winRate, x.winRateCi) + ' de victorias',
+    detail: `${x.scoreRate != null ? pc1(x.scoreRate * 100) : '—'} de puntuación · ${x.wins}W ${x.losses}L ${x.draws}D`,
   });
   return {
     now: side(r, 'Últimas ' + r.games), before: side(r.before, 'Anteriores · ' + r.before.games),
@@ -145,7 +145,7 @@ function view(d: ChessData) {
     syncMeta: last?.createdAt ? 'Ajedrez · actualizado ' + last.createdAt.slice(0, 10) : '',
     kpis: [
       { label: 'Partidas', value: s.games != null ? es(s.games) : '—', sub: '' },
-      { label: 'Score', value: s.scoreRate != null ? pc1(s.scoreRate * 100) : '—', sub: 'victoria 1 · tablas 0,5' },
+      { label: 'Puntuación', value: s.scoreRate != null ? pc1(s.scoreRate * 100) : '—', sub: 'victoria 1 · tablas 0,5' },
     ],
     streakNow: s.currentStreak ? `Resultados seguidos: ${s.currentStreak} ${streakWord(s.currentStreak, s.currentStreakKind)}` : '',
     streakBest: 'Mejor serie: ' + (s.longestWin != null ? s.longestWin + 'W' : '—') + (s.longestLoss ? ` · Peor: ${s.longestLoss}L` : ''),

@@ -134,7 +134,7 @@ describe('Chess', () => {
   describe('layout (tests/ux-viewport.test.ts)', () => {
     it('shouldOrderSectionsLogicallyAndKeepTheOpponentEloCollapsed', async () => {
       await t.open();
-      const ids = ['kpis', 'formCard', 'cg-comp', 'colCard', 'oppCard', 'cg-evo', 'evoCard', 'resCard', 'eloDetails', 'mb'];
+      const ids = ['kpis', 'evoCard', 'formCard', 'cg-comp', 'colCard', 'oppCard', 'cg-evo', 'resCard', 'eloDetails', 'mb'];
       const els = ids.map((id) => t.el().querySelector('#' + id)!);
       expect(els.every(Boolean)).toBe(true);
       for (let i = 1; i < els.length; i++) expect(els[i - 1].compareDocumentPosition(els[i]) & Node.DOCUMENT_POSITION_FOLLOWING, ids[i]).toBeTruthy();
@@ -222,7 +222,7 @@ describe('Chess', () => {
     it('shouldNotRepeatEloAndWinRateInTheKpis', async () => {
       await t.open();
       const kpis = [...t.el().querySelectorAll('#kpis m-kpi')].map((k) => k.textContent);
-      expect(kpis).toEqual(['Partidas100', 'Score65,0 %victoria 1 · tablas 0,5']);
+      expect(kpis).toEqual(['Partidas100', 'Puntuación65,0 %victoria 1 · tablas 0,5']);
     });
 
     it('shouldShowTheCurrentBestAndWorstStreak', async () => {
@@ -239,12 +239,12 @@ describe('Chess', () => {
       await t.open();
       const form = t.text('form');
       expect(form).toContain('Últimas 50');
-      expect(form).toContain('50,0 % [36–64] WR');
-      expect(form).toContain('55,0 % score · 25W 20L 5D');
+      expect(form).toContain('50,0 % [36–64] de victorias');
+      expect(form).toContain('55,0 % de puntuación · 25W 20L 5D');
       expect(form).toContain('+2,5 puntos de % (entre −23,0 y +25,4) · sin evidencia suficiente vs anteriores');
       expect(form).toContain('Anteriores · 50');
       expect(form).not.toMatch(/score vs anteriores|vs\s+hist/); // the delta is against the earlier games, and only for the win rate
-      expect(form).toContain('50,0 % [40–70] WR');
+      expect(form).toContain('50,0 % [40–70] de victorias');
       expect(t.el().querySelector('#b50')!.getAttribute('aria-pressed')).toBe('true');
     });
 
