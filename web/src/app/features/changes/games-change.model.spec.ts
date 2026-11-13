@@ -23,6 +23,10 @@ describe('gamesChangeView', () => {
     expect(textOf(c)).toEqual(['Queens: posible mejora. Se confirma si se repite la semana que viene.']);
     expect(textOf(change([row('queens', flat, sigDown, { kind: 'senal', to: sigDown })]))[0]).toBe('Queens: posible empeoramiento. Se confirma si se repite la semana que viene.');
   });
+  it('shouldNameTheSenalInsteadOfSayingEstableWhenEvidenceIsGainedTowardsASenal', () => {
+    const c = change([row('queens', few, sigDown, { kind: 'evidencia', sub: 'ganada', from: few, to: sigDown })]);
+    expect(textOf(c)).toEqual(['Queens: ahora hay datos suficientes. Hay una señal de empeoramiento, aún sin confirmar. El 8 oct no había base para compararlo.']);
+  });
   it('shouldLabelASenalPillAsSenalAndNeverAsTheDirection', () => {
     const v = gamesChangeView(change([row('queens', flat, sigDown, { kind: 'senal', to: sigDown })]));
     expect(v.rows[0]!.verdict.label).toBe('Señal');

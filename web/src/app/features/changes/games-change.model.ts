@@ -68,7 +68,7 @@ function rowOf(r: GameChangeRow, c: GamesChange) {
     case 'evidencia': {
       const v = VERDICT_OF_STATE(o.to);
       if (isUncalibrated(o.to)) return { verdict: v, group: 4, text: `${name}: ${SIN_CALIBRACION}` };
-      const text = o.sub === 'ganada' ? `${name}: ahora hay datos suficientes. Está ${label(o.to)}. El ${since} no había base para compararlo.`
+      const text = o.sub === 'ganada' ? `${name}: ahora hay datos suficientes. ${o.to.kind === 'senal' ? `Hay una señal de ${o.to.dir === 'mejorando' ? 'mejora' : 'empeoramiento'}, aún sin confirmar` : `Está ${label(o.to)}`}. El ${since} no había base para compararlo.`
         : o.sub === 'perdida' ? `${name}: ya no hay datos suficientes para valorarlo.` : `${name}: pocos datos para comparar.`;
       return { verdict: v, group: 4, text };
     }
