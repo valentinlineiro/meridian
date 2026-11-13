@@ -380,3 +380,17 @@ app-tab-bar{display:none}
 .lgreg-row input{min-height:44px;text-align:center;font-size:var(--fs-xl);font-weight:700}
 .lgreg-err{grid-column:1/-1;color:var(--loss-fg);font-size:var(--fs-sm)}
 .lgreg-save{width:100%;min-height:48px;margin-top:12px}
+
+/* Game report: the first look (big number, key figures) and the three charts */
+.gr-fig{font-size:var(--fs-display);font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+.gr-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+.gr-kpis div{display:grid;gap:2px;font-size:var(--fs-sm)}.gr-kpis b{font-size:var(--fs-xl);font-variant-numeric:tabular-nums}
+.gr-svg{display:block;max-height:180px;margin-top:8px}
+.gr-legend{display:flex;gap:16px;flex-wrap:wrap;font-size:var(--fs-md);color:var(--text-2)}.gr-legend span{display:inline-flex;align-items:center;gap:6px}
+.gr-key{display:inline-block;width:16px;height:0;border-top:3px solid var(--info);border-radius:var(--r-sm)}.gr-key-ref{border-top:2px dashed var(--muted)}
+.gr-split{display:flex;gap:2px;height:14px;margin-top:10px;border-radius:var(--r-pill);overflow:hidden}
+.gr-split span{min-width:4px}.gs-up{background:var(--ok)}.gs-eq{background:var(--neutral)}.gs-dn{background:var(--err)}
+.gr-splitlegend{display:flex;gap:8px 16px;flex-wrap:wrap;margin-top:8px;font-size:var(--fs-md);color:var(--text-2)}
+.gr-splitlegend span{display:inline-flex;align-items:center;gap:6px}.gr-splitlegend i{display:inline-block;width:10px;height:10px;border-radius:var(--r-sm)}
+.gr-n{display:flex;align-items:baseline;gap:4px 8px;flex-wrap:wrap}.gr-delta{margin-left:auto}
+.gr-charts{display:grid;gap:12px}@media(min-width:761px){.gr-charts{grid-template-columns:repeat(2,minmax(0,1fr))}.gr-charts #gameChartSplit{grid-column:1/-1}}

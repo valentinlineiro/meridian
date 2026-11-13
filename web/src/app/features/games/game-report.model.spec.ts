@@ -1,4 +1,4 @@
-import { diagnosisBlock, evidenceLines, evolutionFacts, extraLines, levelRows, MIN_WEEK_N, normalRange, reportSentence, secondsWeeks, weekdayReport, weeklyBeat } from './game-report.model';
+import { diagnosisBlock, evidenceLines, evolutionFacts, extraLines, levelRows, MIN_WEEK_N, normalRange, reportSentence, resultSplit, secondsWeeks, weekdayReport, weekdayWins, weeklyBeat, weeklyTimes } from './game-report.model';
 import { interpretationLines, type Game } from './games.model';
 
 // Synthetic fixtures: only the fields the report reads.
@@ -257,5 +257,51 @@ describe('diagnosisBlock: what stands out, as an association and never a cause',
     const f = [{ dimension: 'weekday', sign: 1, kind: 'debilidad', dow: 0, pAdjusted: 0.01 }, { dimension: 'regularity', sign: 1, kind: 'debilidad', dow: null, pAdjusted: 0.01 }];
     const all = JSON.stringify(diagnosisBlock(g(diag({ findings: f, watch: { dimension: 'weekday', p: .1, unconfirmed: true } }))));
     expect(all).not.toMatch(/efecto|causa|por culpa|debido/i);
+  });
+});
+
+describe('weeklyTimes: your time and the published average, week by week', () => {
+  const wk = (i: number, o: Record<string, unknown> = {}) => ({ weekStart: `2026-08-${String(i).padStart(2, '0')}`, n: 7, nWithAvg: 7, medianSec: 50 + i, medianAvgSec: 60, medianEff: 1.2, ...o });
+  it('shouldGiveTheLastTwelveWeeksOldestFirst', () => {
+    const g = game({ weekly: Array.from({ length: 14 }, (_, i) => wk(14 - i)) }); // given newest first
+    const r = weeklyTimes(g)!;
+    expect(r).toHaveLength(12);
+    expect([r[0]!.start, r[11]!.start]).toEqual(['2026-08-03', '2026-08-14']);
+    expect(r[11]).toEqual({ start: '2026-08-14', own: 64, ref: 60, n: 7, complete: true });
+  });
+  it('shouldKeepAWeekWithoutAverageAndMarkAThinWeekAsIncomplete', () => {
+    const r = weeklyTimes(game({ weekly: [wk(1, { medianAvgSec: null }), wk(2, { n: 2 })] }))!;
+    expect(r.map((w) => [w.ref, w.complete])).toEqual([[null, true], [60, false]]);
+  });
+  it('shouldSayNothingWithoutTheWeeklySeries', () => {
+    expect(weeklyTimes(game())).toBeNull();
+    expect(weeklyTimes(game({ weekly: [] }))).toBeNull();
+  });
+});
+
+describe('weekdayWins: how often you beat the average each weekday', () => {
+  it('shouldGiveTheShareOfWinsPerDayAndTheGamesOverallShare', () => {
+    const r = weekdayWins(game({ losses: lossesQueensLike }));
+    expect(r.rows.map((d) => d.letter)).toEqual(['L', 'M', 'X', 'J', 'V', 'S', 'D']);
+    expect(r.rows[0]).toMatchObject({ n: 26, stands: true });
+    expect(r.rows[0]!.rate).toBeCloseTo(12 / 26, 10);
+    expect(r.overall).toBeCloseTo(1 - 29 / 157, 5);
+  });
+  it('shouldNotGiveAShareForADayWithTooFewResults', () => {
+    expect(weekdayWins(game({ losses: lossesQueensLike })).rows[3]).toMatchObject({ n: 5, rate: null, stands: false });
+  });
+});
+
+describe('resultSplit: results above, in line with and below the average', () => {
+  const eff = (date: string, v: number) => ({ date, eff: v, roll: 1 });
+  const series = [eff('2026-09-01', 0.5), eff('2026-10-20', 1.2), eff('2026-10-25', 1.03), eff('2026-10-28', 0.96), eff('2026-11-01', 0.8), eff('2026-11-05', 1.5)];
+  it('shouldCountTheResultsOfThePeriodWithAFivePercentBandAsInLine', () => {
+    expect(resultSplit(game({ series }), '28', '2026-11-10')).toEqual({ above: 2, line: 2, below: 1, n: 5 });
+  });
+  it('shouldTakeTheWholeHistoryForAll', () => {
+    expect(resultSplit(game({ series }), 'all', '2026-11-10')).toEqual({ above: 2, line: 2, below: 2, n: 6 });
+  });
+  it('shouldSayNothingWhenThePeriodHasNoResults', () => {
+    expect(resultSplit(game({ series }), '7', '2026-11-30')).toBeNull();
   });
 });

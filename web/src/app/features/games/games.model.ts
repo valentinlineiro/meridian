@@ -177,14 +177,19 @@ export function lossRows(s: Summary) {
 export function summaryRows(s: Summary, range: Range) {
   return cardOrder(s).flatMap((k) => { try { return [row(k)]; } catch { return []; } }); // a malformed game drops its own row only
   function row(k: string) {
-    const x = s.games[k]!, w = x.windows[range];
-    const m = w.eff.median;
-    return {
-      k, name: gameName(k), verdict: verdictOf(x), bars: resultBars(x.series),
-      big: m == null ? '—' : gsigned((m - 1) * 100, ' %'),
-      cap: m == null ? 'aún sin media' : m > 1 ? 'más rápido que la media' : m < 1 ? 'más lento que la media' : 'igual que la media',
-    };
+    const x = s.games[k]!;
+    return { k, name: gameName(k), verdict: verdictOf(x), bars: resultBars(x.series), ...figures(x, range) };
   }
+}
+
+/** The big number of a game for a period: how much faster or slower than the LinkedIn average, and the change against the previous period (none when there is no previous one). */
+export function figures(x: Game, range: Range) {
+  const w = x.windows[range], m = w.eff.median, e = w.delta?.effRel?.value;
+  return {
+    big: m == null ? '—' : gsigned((m - 1) * 100, ' %'),
+    cap: m == null ? 'aún sin media' : m > 1 ? 'más rápido que la media' : m < 1 ? 'más lento que la media' : 'igual que la media',
+    delta: e == null ? '' : gsigned(e * 100, ' %') + ' frente al periodo anterior',
+  };
 }
 
 const names = (n: string[]) => n.length < 2 ? n.join('') : n.slice(0, -1).join(', ') + ' y ' + n[n.length - 1];

@@ -54,6 +54,60 @@ describe('GameReport', () => {
     expect(help).toContain('Tendencia:');
   });
 
+  describe('first look: the figures and three charts', () => {
+    const weekly = Array.from({ length: 12 }, (_, i) => ({ weekStart: `2026-08-${String(3 + i).padStart(2, '0')}`, n: 7, nWithAvg: 7, medianSec: 70 - i, medianAvgSec: 65, medianEff: 1.1 }));
+    const series = [{ date: '2026-11-08', eff: 1.5, roll: 1 }, { date: '2026-11-09', eff: 1.0, roll: 1 }, { date: '2026-11-10', eff: 0.7, roll: 1 }];
+
+    it('shouldHeadWithTheBigNumberTheKeyFiguresAndTheVerdictSentence', async () => {
+      await open(summary({ queens: queens({ series }) }));
+      expect(text('gameFigBig')).toBe('+104 %');
+      expect(text('gameFigCap')).toBe('más rápido que la media');
+      expect(text('gameFigTime')).toBe('0:43');
+      expect(text('gameFigBest')).toBe('0:19');
+      expect(text('gameFigGames')).toBe('177');
+      expect(text('gameFigStreak')).toMatch(/^1 día/);
+      expect(text('gameReportVerdictSentence')).toBe('No hay cambios en las últimas 4 semanas.');
+      expect(el.querySelector('#gameReportFigures .gbars')).not.toBeNull();
+    });
+
+    it('shouldDrawYourTimeAgainstTheAverageOverTwelveWeeks', async () => {
+      await open(summary({ queens: queens({ weekly }) }));
+      const svg = el.querySelector('#gameChartEvolution svg')!;
+      expect(svg.getAttribute('aria-label')).toBe('Tiempo mediano semanal, tuyo y de la media de LinkedIn, en las últimas 12 semanas: de 1:10 a 0:59.');
+      expect(svg.querySelectorAll('polyline')).toHaveLength(2);
+      expect(text('gameChartEvolution')).toContain('menos es mejor');
+    });
+
+    it('shouldSayTheWeeklySeriesIsUnavailableInsteadOfDrawingAnEmptyChart', async () => {
+      await open(summary({ queens: queens() }));
+      expect(el.querySelector('#gameChartEvolution svg')).toBeNull();
+      expect(text('gameChartEvolution')).toContain('No disponible');
+    });
+
+    it('shouldDrawOneBarPerWeekdayAndFadeTheDaysWithTooFewResults', async () => {
+      await open(summary({ queens: queens() }));
+      const bars = [...el.querySelectorAll('#gameChartWeekdays [data-day]')];
+      expect(bars).toHaveLength(7);
+      expect(bars[3]!.getAttribute('data-enough')).toBe('false'); // Thursday: 5 results
+      expect(bars[0]!.getAttribute('data-enough')).toBe('true');
+      expect(text('gameChartWeekdays')).toContain('46 %'); // Monday: 12 of 26
+    });
+
+    it('shouldSplitTheResultsAboveInLineAndBelowTheAverage', async () => {
+      await open(summary({ queens: queens({ series }) }));
+      expect([text('gameSplitAbove'), text('gameSplitLine'), text('gameSplitBelow')]).toEqual(['1 · 33 %', '1 · 33 %', '1 · 33 %']);
+      expect(el.querySelector('#gameSplitBar')!.getAttribute('aria-label')).toBe('Resultados de las últimas 4 semanas (3 partidas con media): 1 por encima, 1 en línea y 1 por debajo.');
+    });
+
+    it('shouldKeepTheDetailsClosedUnderMasDetalle', async () => {
+      await open(summary({ queens: queens({ series }) }));
+      const more = el.querySelector<HTMLDetailsElement>('#gameReportMore')!;
+      expect(more.open).toBe(false);
+      expect(more.querySelector('#gameReportHero')).not.toBeNull();
+      expect(more.querySelector('#gameReportWeekdays')).not.toBeNull();
+    });
+  });
+
   describe('regularidad', () => {
     it('shouldGiveTheNormalRangeWithItsNAndTheBestTime', async () => {
       await open(summary({ queens: queens() }));
