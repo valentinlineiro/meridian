@@ -137,4 +137,5 @@ Export de solo lectura (matches, elo_observations, account_observations, xp_summ
 - **H8** era sobre todo artefacto del demo: datos al día (última observación 2026-11-13, racha 1126, 142 días de XP seguidos). Baja a P3; queda solo mover el aviso de limitaciones.
 - **H3** se confirma en lo estructural (cuatro cifras de acierto distintas: 62,2 / 64,0 / 66,1 / 67,0 %). "Anteriores · 10" y "0 vs primera lectura" eran demo (real: 50 vs 50 partidas, ELO 992 → 900). Resuelto en #201 y #202.
 - **H6, H7:** resueltos en #200.
-- **Siguen abiertos:** H13 (requiere las tablas de Games, no exportadas); umbral en la frase "Pocos datos" de Games; confirmar si el análisis del motor es automático antes de decirlo en la interfaz.
+- **H13** descartado con datos reales (lectura acotada de las 180 filas `linkedin-games` de `snapshots`): Zip tiene mediana 0:16 y mejor marca 0:04 (2026-10-19, del histórico v48), dentro de una cola baja continua (11 partidas de 6 s o menos). El 0:05 frente a 0:51 era demo; no hace falta filtrar atípicos.
+- **Siguen abiertos:** umbral en la frase "Pocos datos" de Games; confirmar si el análisis del motor es automático antes de decirlo en la interfaz.
