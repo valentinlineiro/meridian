@@ -61,11 +61,11 @@ export function weeklyTimes(x: Game): { start: string; own: number; ref: number 
 }
 
 /** The share of results per weekday that beat the average (the complement of the loss cells), with the game's overall share; a day with too few results has no share. */
-export function weekdayWins(x: Game): { rows: { letter: string; day: string; n: number; rate: number | null; stands: boolean }[]; overall: number | null } {
+export function weekdayWins(x: Game): { rows: { letter: string; day: string; n: number; wins: number; losses: number; rate: number | null; stands: boolean }[]; overall: number | null } {
   const r = weekdayReport(x);
   return {
     overall: r.overallRate == null ? null : 1 - r.overallRate,
-    rows: r.rows.map((d, i) => ({ letter: 'LMXJVSD'[i]!, day: d.day, n: d.n, rate: d.enough && d.rate != null ? 1 - d.rate : null, stands: d.stands })),
+    rows: r.rows.map((d, i) => ({ letter: 'LMXJVSD'[i]!, day: d.day, n: d.n, wins: d.wins, losses: d.losses, rate: d.enough && d.rate != null ? 1 - d.rate : null, stands: d.stands })),
   };
 }
 

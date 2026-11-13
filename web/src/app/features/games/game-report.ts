@@ -83,7 +83,7 @@ export class GameReport {
     const Y = (v: number) => 90 - v * 70;
     return {
       overallY: r.overall == null ? null : Y(r.overall).toFixed(1),
-      bars: r.rows.map((d, i) => { const h = d.rate == null ? 3 : Math.max(3, d.rate * 70); return { x: 4 + i * 46.5, cx: 21 + i * 46.5, y: (90 - h).toFixed(1), h, ty: (90 - h - 5).toFixed(1), letter: d.letter, day: d.day, enough: d.rate != null, stands: d.stands, text: d.rate == null ? '—' : this.pct(d.rate), n: d.n }; }),
+      bars: r.rows.map((d, i) => { const h = d.rate == null ? 3 : Math.max(3, d.rate * 70); return { x: 4 + i * 46.5, cx: 21 + i * 46.5, y: (90 - h).toFixed(1), h, ty: (90 - h - 5).toFixed(1), letter: d.letter, day: d.day, enough: d.rate != null, stands: d.stands, text: d.rate == null ? '—' : this.pct(d.rate), n: d.n, tip: d.rate == null ? `${d.day}: pocas partidas (n = ${d.n})` : `${d.day}: ${this.pct(d.rate)} · ${this.count(d.losses, 'derrota')}, ${this.count(d.wins, 'victoria')}` }; }),
     };
   }, null));
 
