@@ -12,7 +12,7 @@ import { ResultBars } from '../../shared/result-bars';
 import { Section } from '../../shared/section';
 import { Segmented } from '../../shared/segmented';
 import { VerdictPill } from '../../shared/verdict';
-import { Day, defaultTrajGame, GAME_NAMES, gameName, difficultyGrid, gamesHero, summaryRows, localToday, lossRows, Range, RANGES, Summary, trajectory } from './games.model';
+import { Day, defaultTrajGame, GAME_NAMES, gameName, difficultyGrid, gamesHero, overview, summaryRows, localToday, lossRows, Range, RANGES, Summary, trajectory } from './games.model';
 
 // Port of the LinkedIn Games tab (src/frontend.ts:489–520, src/dashboard.client.js:1787–1971).
 const orNull = <T>(o: Observable<T>) => o.pipe(catchError(() => of(null)));
@@ -89,6 +89,7 @@ export class Games {
   protected readonly loss = computed(() => { const s = this.summary(); return s ? safe(() => lossRows(s) ?? null, null) : undefined; });
   protected readonly diff = computed(() => { const s = this.summary(); return s ? safe(() => difficultyGrid(s) ?? null, null) : undefined; });
   protected readonly rows = computed(() => { const s = this.summary(), range = this.range(); return s ? safe(() => summaryRows(s, range), []) : []; });
+  protected readonly overview = computed(() => safe(() => overview(this.rows()), null));
   /** undefined: nothing to draw (loading, failed, no games); null: the trajectory could not be read. */
   protected readonly traj = computed(() => {
     const s = this.summary(), range = this.range(), pick = this.trajPick();

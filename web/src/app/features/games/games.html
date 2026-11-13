@@ -20,6 +20,13 @@
       <b id="gamesHeroToday">{{ todayTitle() }}</b>
       <span class="muted"><span id="gamesHeroStreakLabel" class="sr-only">{{ h.label }}</span><span id="gamesHeroStreak">{{ h.streak }}</span></span>
     </div>
+    @if (overview(); as o) {
+      <div id="gamesOverview" class="go">
+        <div class="go-n"><span class="gc-big" id="gamesOverviewBig">{{ o.big }}</span><span class="muted" id="gamesOverviewCap">{{ o.cap }}</span></div>
+        <div id="gamesOverviewBar" class="go-bar" role="img" [attr.aria-label]="o.aria">@for (k of o.segments; track $index) {<span [class]="'go-' + k"></span>}</div>
+        <p class="u-m-0" id="gamesOverviewSentence">{{ o.sentence }}</p>
+      </div>
+    }
     <div class="muted u-fs-xs u-mt-8">Toca un juego para empezar a escribirlo</div>
     <div id="gamesToday" class="chips u-mt-6">@for (c of chips(); track c.k) {<button type="button" [class]="'pill ' + (c.done ? 'pill-win' : 'pill-scope')" [attr.data-game]="c.k" (click)="quick.prefill(c.name)">{{ c.text }}</button>}</div>
     <div class="u-mt-14"><app-games-quick-entry #quick (saved)="data.reload()" /></div>
@@ -30,19 +37,18 @@
   <app-section title="Tus juegos" sectionId="cg-games-now">
     <div id="gamesNow" class="gcs">
       @for (r of rows(); track r.k) {
-        <div class="gc card">
-          <div class="gc-h"><b><a [routerLink]="['/games', r.k]" [attr.aria-label]="'Informe de ' + r.name">{{ r.name }}</a></b><app-verdict [verdict]="r.verdict" /></div>
-          <div class="gc-n"><span class="gc-big">{{ r.big }}</span><span class="gc-cap muted">{{ r.cap }}</span>@if (r.delta) {<span class="gc-delta muted">{{ r.delta }}</span>}</div>
+        <a class="gc card" [routerLink]="['/games', r.k]">
+          <span class="gc-name"><b>{{ r.name }}</b><app-verdict [verdict]="r.verdict" /></span>
+          <span class="gc-n"><span class="gc-big">{{ r.big }}</span><span class="gc-cap muted">{{ r.cap }}</span></span>
           <app-result-bars [data]="r.bars" />
-          <p class="gc-line">{{ r.line }}<span class="muted"> · Tiempo normal {{ r.time }}</span></p>
-        </div>
+        </a>
       }
     </div>
     <app-help label="Cómo leerlo">
       <p>El número grande es lo más rápido o lento que vas frente a la media de LinkedIn, en el periodo elegido. Cada barra es una de tus últimas 14 partidas con media: hacia arriba, mejor que la media ese día; hacia abajo, peor; cuanto más alta, mayor la diferencia. La etiqueta (Mejorando, Estable, Bajando) se confirma cuando el cambio se repite dos semanas seguidas; hasta entonces la frase te dice que queda por confirmar. «Estable» significa que con los datos de este periodo no hay un cambio medible, no que sea imposible que lo haya. «Pocos datos»: faltan partidas para valorar. Debajo, «Más detalle» tiene las tablas y los gráficos.</p>
     </app-help>
   </app-section>
-  <app-section title="Dónde pierdes" sectionId="cg-games-loss">
+  <app-section title="Dónde pierdes" sectionId="cg-games-loss" [open]="false">
     @if (loss(); as l) {
       <p class="loss-note" id="gamesLossNote">{{ l.sentence }}</p>
       <div class="tblwrap" tabindex="0" role="region" aria-label="Derrotas por juego y día de la semana (desplazable)"><table class="gtable gloss" id="gamesLoss"><caption class="sr-only">Porcentaje de partidas en las que no le ganas a la media, por juego y día de la semana. Un guion es que hay pocas partidas.</caption>

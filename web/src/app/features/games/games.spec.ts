@@ -70,10 +70,9 @@ describe('Games', () => {
   describe('the list links to each report', () => {
     it('shouldLinkEachGameRowToItsReport', async () => {
       await open({ queens: game(), zip: game() });
-      const links = [...el.querySelectorAll('#gamesNow .gc-h a')];
+      const links = [...el.querySelectorAll('#gamesNow a.gc')];
       expect(links.map((a) => a.getAttribute('href')).sort()).toEqual(['/games/queens', '/games/zip']);
-      expect(links.map((a) => a.getAttribute('aria-label')).sort()).toEqual(['Informe de Queens', 'Informe de Zip']);
-      expect(links.map((a) => a.textContent!.trim()).sort()).toEqual(['Queens', 'Zip']); // the visible name is the link
+      expect(links.every((a) => a.textContent!.includes('Queens') || a.textContent!.includes('Zip'))).toBe(true); // the whole row is the link, its name is its text
     });
   });
 
@@ -514,26 +513,49 @@ describe('Games', () => {
     });
 
   });
+  describe('how you are doing (the overview card)', () => {
+    const down = game({ interpretation: interp({ label: 'deterioro', reason: 'sostenido', candidate: 'deterioro', previousCandidate: 'deterioro' }) });
+    const up = game({ interpretation: interp({ label: 'mejora_sostenida', candidate: 'mejora_sostenida', previousCandidate: 'mejora_sostenida' }) });
+    const few = game({ interpretation: interp({ label: 'datos_insuficientes', reason: 'cobertura_insuficiente' }) });
+
+    it('shouldCountHowManyGamesImproveAndNameThemInOneSentence', async () => {
+      await open({ tango: down, queens: up, zip: game(), mini_sudoku: few });
+      expect(text('gamesOverviewBig')).toBe('1 de 4');
+      expect(text('gamesOverviewCap')).toBe('juego mejora');
+      expect(text('gamesOverviewSentence')).toBe('Tango baja. Queens mejora. Zip, sin cambios. Mini Sudoku, pocos datos.');
+    });
+
+    it('shouldDrawOneSegmentPerGameAndSayTheCountsToAScreenReader', async () => {
+      await open({ tango: down, queens: up, zip: game(), mini_sudoku: few });
+      const bar = el.querySelector('#gamesOverviewBar')!;
+      expect(bar.querySelectorAll('span')).toHaveLength(4);
+      expect(bar.getAttribute('aria-label')).toBe('Estado de los 4 juegos: 1 bajando, 1 estable, 1 con pocos datos, 1 mejorando.');
+    });
+
+    it('shouldJoinSeveralNamesAndUseThePlural', async () => {
+      await open({ queens: up, zip: up, tango: up });
+      expect(text('gamesOverviewBig')).toBe('3 de 3');
+      expect(text('gamesOverviewCap')).toBe('juegos mejoran');
+      expect(text('gamesOverviewSentence')).toBe('Queens, Tango y Zip mejoran.');
+    });
+
+    it('shouldShowNothingWhenThereAreNoGames', async () => {
+      await open({});
+      expect(el.querySelector('#gamesOverview')).toBeNull();
+    });
+  });
+
   describe('first look', () => {
     const withSeries = (effs: number[]) => effs.map((eff, i) => ({ date: `2026-10-${String(10 + i).padStart(2, '0')}`, eff, roll: 1.2 }));
     const rowOf = (name: string) => [...el.querySelectorAll('#gamesNow .gc')].find((r) => r.textContent!.includes(name))!;
 
-    it('shouldShowTheBigNumberTheChangeAndTheSentenceOfEachGame', async () => {
+    it('shouldShowTheVerdictAndTheBigNumberOfEachGameAsOneCompactRow', async () => {
       await open({ zip: game(), tango: game() });
       const zip = rowOf('Zip');
       expect(zip.querySelector('.gc-big')!.textContent!.trim()).toBe('+13 %');
       expect(zip.querySelector('.gc-cap')!.textContent!.trim()).toBe('más rápido que la media');
-      expect(zip.querySelector('.gc-delta')!.textContent!.trim()).toBe('−13 % frente al periodo anterior');
-      expect(zip.textContent).toContain('No hay cambios en las últimas 4 semanas.');
-      expect(zip.textContent).toContain('Tiempo normal 0:52');
-    });
-
-    it('shouldSayTheSentenceOfTheVerdictSoItNeverContradictsThePill', async () => {
-      const down = game({ interpretation: interp({ label: 'deterioro', reason: 'reciente', candidate: 'deterioro', previousCandidate: 'deterioro' }) });
-      await open({ tango: down });
-      const row = rowOf('Tango');
-      expect(row.querySelector('.gc-line')!.textContent).toContain('Vas más lento que antes, y se ha repetido dos semanas seguidas.');
-      expect(row.textContent).not.toContain('de lo normal'); // the difficulty-adjusted form is another frame: it lives in the report
+      expect(zip.textContent).toContain('Estable');
+      expect(zip.querySelector('.gc-line, .gc-delta')).toBeNull(); // the sentence and the change live in the report
     });
 
     it('shouldSayMoreSlowAndShowADashWhenTheMedianSpeedIsBelowOrMissing', async () => {
@@ -545,12 +567,6 @@ describe('Games', () => {
       expect(rowOf('Zip').querySelector('.gc-big')!.textContent!.trim()).toBe('−6 %');
       expect(rowOf('Zip').querySelector('.gc-cap')!.textContent!.trim()).toBe('más lento que la media');
       expect(rowOf('Tango').querySelector('.gc-big')!.textContent!.trim()).toBe('—');
-    });
-
-    it('shouldOmitTheChangeWhenThePeriodHasNoPreviousOne', async () => {
-      await open({ zip: game() });
-      await setRange('90');
-      expect(rowOf('Zip').querySelector('.gc-delta')).toBeNull();
     });
 
     it('shouldDrawTheLast14ResultsAsBarsWhoseHeightIsTheDistanceToTheAverage', async () => {
