@@ -24,6 +24,6 @@ export class ReviewSuggestion {
     if (b === null) return { text: 'Partida sugerida para revisión: ' + NA, game: null };
     const w = b.review?.worst?.[0];
     return w ? { text: 'Partida sugerida para revisión (mayor pérdida media por jugada): ', game: w }
-      : { text: 'Partidas sugeridas para revisión: disponibles tras el análisis de motor.', game: null };
+      : { text: 'Partidas sugeridas para revisión: aparecerán en cuanto el motor haya analizado alguna partida.', game: null };
   });
 }

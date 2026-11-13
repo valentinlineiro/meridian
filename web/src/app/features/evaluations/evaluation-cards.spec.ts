@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { EvalFinding, Evaluation, EvaluationCards, evalState } from './evaluation-cards';
+import { EvalFinding, Evaluation, EvaluationCards, evalState, evaluationCards } from './evaluation-cards';
 import { CHANGES, SALIENCE_GRID } from './evaluation-fixtures';
 
 // Port of the card parts of tests/frontendEvaluations.test.ts. Legacy rendered renderEvaluations(payload) to a string; here
@@ -63,6 +63,11 @@ describe('evaluation cards (P0)', () => {
     const h = html(CHANGES.histZero);
     expect(h).toContain('Pocos datos');
     expect(h).toContain('Aún no tenemos suficientes días anteriores para saber cuál es tu XP normal.');
+  });
+
+  it('shouldSayWhatIsMissingInTheCollapsedSummaryWhenInsuficiente', () => {
+    const c = evaluationCards(copy(CHANGES.histZero).evaluations, () => undefined, WIN).find((x) => !x.na && x.state === 'INSUFICIENTE');
+    expect(c && !c.na && c.summary).toBe('Aún no tenemos suficientes días anteriores para saber cuál es tu XP normal.');
   });
 
   it('shouldMarkSinIndicioWhenEffectIsBelowCriterion', () => {

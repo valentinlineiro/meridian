@@ -17,7 +17,7 @@ function threats(th: Threats | null | undefined) {
   if (th.invalid) notes.push(th.invalid + ' no se pudieron reproducir');
   if (th.unknownVersion) notes.push(th.unknownVersion + ' con un formato que este panel no entiende');
   return {
-    main: !th.analysed ? 'Todavía no hay partidas analizadas' : !faced ? 'Sin amenazas de mate en 1 en las partidas analizadas'
+    main: !th.analysed ? 'Todavía no hay partidas analizadas; se calcula en cuanto el motor analice alguna' : !faced ? 'Sin amenazas de mate en 1 en las partidas analizadas'
       : `Neutralizadas ${frac(tt)} · te mataron ${tt.missed} · el rival no las jugó ${tt.unpunished}`,
     phases: faced && th.byPhase ? (Object.keys(PHASE_NAMES) as (keyof typeof PHASE_NAMES)[]).map((k) => PHASE_NAMES[k] + ' ' + (th.byPhase![k].faced ? frac(th.byPhase![k]) : 'sin amenazas')).join(' · ') : '',
     trend: faced && th.recent?.faced ? `Últimas ${th.recent.games} partidas analizadas: ${frac(th.recent)}` + (th.rest?.games && th.rest.faced ? ` · el resto (${th.rest.games}): ${frac(th.rest)}` : '') : '',

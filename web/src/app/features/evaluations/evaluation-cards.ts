@@ -150,7 +150,7 @@ export function evaluationCard(e: Evaluation, state: EvalStateName, finding: Eva
   const collapsed = state === 'INSUFICIENTE' || state === 'SIN INDICIO';
   return {
     na: false, title: meta.title, state, verdict: EVAL_VERDICTS[state], scope: meta.scope,
-    collapsed, summary: collapsed ? (cv?.summary || EVAL_VERDICTS[state].sentence) : '',
+    collapsed, summary: collapsed ? (cv?.summary || (state === 'INSUFICIENTE' && rs.length ? reasonText(e, rs[0]!) : '') || EVAL_VERDICTS[state].sentence) : '',
     finding: claim,
     observed: claim ? '' : observed(e.id, m),
     color: claim ? null : cv?.cc ?? null,

@@ -180,7 +180,7 @@ describe('Chess', () => {
       await t.open(chessApi({ '/api/stats/summary': { ...summary, currentStreak: 1, currentStreakKind: 'win' } }));
       expect(t.el().querySelector('#chessHeroStreak')!.className.replace(/ ?u-\S+/g, '').trim()).toBe('pill pill-win');
       expect(t.text('chessHeroStreak')).toBe('🔥 1 victoria consecutiva');
-      expect(t.text('streak')).toContain('Racha actual: 1 victoria');
+      expect(t.text('streak')).toContain('Resultados seguidos: 1 victoria');
     });
 
     it('shouldSaySinRachaActivaWhenThereIsNoStreak', async () => {
@@ -227,12 +227,12 @@ describe('Chess', () => {
 
     it('shouldShowTheCurrentBestAndWorstStreak', async () => {
       await t.open();
-      expect(t.text('streak')).toBe('Racha actual: 3 derrotas · Mejor racha: 5W · Peor: 2L');
+      expect(t.text('streak')).toBe('Resultados seguidos: 3 derrotas · Mejor serie: 5W · Peor: 2L');
     });
 
     it('shouldNotShowZeroForAStreakTheSourceDidNotReport', async () => {
       await t.open(chessApi({ '/api/stats/summary': { ...summary, currentStreak: 0, longestWin: null, longestLoss: null } }));
-      expect(t.text('streak')).toBe('Mejor racha: —');
+      expect(t.text('streak')).toBe('Mejor serie: —');
     });
 
     it('shouldShowTheWindowAndTheGamesBeforeItWithTheirIntervalsAndTheDelta', async () => {
@@ -453,7 +453,7 @@ describe('Chess', () => {
     it('shouldShowNothingMisleadingWhenNoThreatIsAnalysedOrFound', async () => {
       const z = { faced: 0, neutralized: 0, missed: 0, unpunished: 0, rate: null };
       await t.open(chessApi({ '/api/stats/threats': { ...THREATS, analysed: 0, pending: 1643, invalid: 0, unknownVersion: 0, gamesWithMissed: 0, totals: z } }));
-      expect(t.text('threatsMain')).toBe('Todavía no hay partidas analizadas');
+      expect(t.text('threatsMain')).toBe('Todavía no hay partidas analizadas; se calcula en cuanto el motor analice alguna');
       expect(t.text('threatsNote')).toContain('1643 partidas sin analizar');
       expect(t.el().querySelector('#threatsMissedBtn')).toBeNull();
     });
@@ -937,7 +937,7 @@ describe('EngineProfile', () => {
   it('shouldShowNothingMisleadingWhenNothingIsAnalysedYet', async () => {
     await render({ ...PROFILE, since: null, before: sec(), after: sec() }, 'cut');
     await render(EMPTY);
-    expect(text('profileKpis')).toBe('Todavía no hay partidas analizadas');
+    expect(text('profileKpis')).toBe('Todavía no hay partidas analizadas; el perfil aparece en cuanto el motor analice la primera');
     expect(text('profileNote')).toContain('1648 partidas sin analizar');
     expect(text('profileContext')).toBe('Calculado con Stockfish sobre tus partidas guardadas.');
     for (const id of ['profileVerdict', 'profilePhases', 'profileColors', 'profileTrend', 'profileCut', 'profileDecisive', 'profileConversion', 'profileWorst', 'profileBest']) expect(text(id)).toBe('');
