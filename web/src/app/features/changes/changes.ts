@@ -10,6 +10,7 @@ import { fmtDelta, pc1 } from '../../core/format';
 import { list, safe } from '../../core/guard';
 import { Segmented } from '../../shared/segmented';
 import { EvalFinding, Evaluation, EvaluationCards } from '../evaluations/evaluation-cards';
+import { GamesChangeCard } from './games-change';
 import { Trajectory } from './trajectory';
 
 // Port of the Qué cambió tab (src/frontend.ts:472–477; src/dashboard.client.js fmtWhen, putChangesAnchor, loadChangesAnchor,
@@ -132,7 +133,7 @@ function bodyView(b: Body, w: Win) {
 
 @Component({
   selector: 'app-changes',
-  imports: [EvaluationCards, NgTemplateOutlet, Segmented, Trajectory],
+  imports: [EvaluationCards, GamesChangeCard, NgTemplateOutlet, Segmented, Trajectory],
   template: `
     @let v = view();
     <section id="changesTab">
@@ -149,7 +150,7 @@ function bodyView(b: Body, w: Win) {
           <app-segmented class="u-d-block u-mt-12" label="Periodo" [options]="windows" [value]="v.header.value" (picked)="choose($event)" />
         </div>
       }</div>
-      @if (v?.header?.history) {<app-trajectory />} @else {
+      @if (v?.header?.history) {<app-trajectory /><app-games-change [until]="nowIso" />} @else {
       @let b = v?.body;
       @if (b?.empty) {<div id="changesEmpty" class="empty">{{ b!.empty }}</div>}
       <div class="u-mb-16" id="changesFindings">@if (b?.findings; as f) {
@@ -166,6 +167,7 @@ function bodyView(b: Body, w: Win) {
           @if (f.findingsNa) {<ng-container *ngTemplateOutlet="na; context: { $implicit: 'Hallazgos' }" />}
         }
       }</div>
+      @if (v?.win; as w) {<app-games-change [since]="w.since" [until]="w.until" />}
       <div id="changesActivity">@if (b?.activity; as a) {
         <div class="card">
           <h2>Actividad en la ventana</h2>
@@ -201,6 +203,8 @@ export class Changes {
     source: () => (this.w() === '7' ? 7 : this.w() === '30' ? 30 : 0),
     computation: (days, prev) => (prev && prev.value.days === days ? prev.value : { days: days as Choice['days'] }),
   });
+  /** The instant the whole-history view reads Games' current state at. */
+  protected readonly nowIso = new Date().toISOString();
   protected readonly saving = signal(false);
   /** The save failed: the button says so until another window is shown. */
   protected readonly markFailed = linkedSignal({ source: this.choice, computation: () => false });
@@ -228,10 +232,10 @@ export class Changes {
   });
 
   protected readonly view = computed(() => {
-    if (this.history()) return { header: HISTORY_HEADER, body: null };
+    if (this.history()) return { header: HISTORY_HEADER, body: null, win: null };
     if (!this.state.hasValue()) return null;
     const s = this.state.value();
-    return { header: headerView(s.win), body: s.body ? bodyView(s.body, s.win) : null };
+    return { header: headerView(s.win), body: s.body ? bodyView(s.body, s.win) : null, win: s.win };
   });
 
   /** What is marked is what was shown: the until of the answer on screen, not the time of the click. Null while there is none. */

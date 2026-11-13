@@ -38,9 +38,15 @@ const quietPayload = (evaluations: unknown[]): Any => ({
 const activePayload: Any = { ...quietPayload([evaluation]), languages: { ...quietPayload([])['languages'], xpGained: 40, sessionsCount: 2 } };
 const withXp = (xp: number): Any => ({ ...activePayload, languages: { ...activePayload['languages'], xpGained: xp } });
 
+const NO_GAMES: Any = { ok: true, change: { mode: 'compare', since: '2026-10-01', until: '2026-10-08', elapsedDays: 7, playedDaysInWindow: 0, games: [] } };
+const ZIP_DOWN: Any = { ok: true, change: { mode: 'compare', since: '2026-10-01', until: '2026-10-08', elapsedDays: 7, playedDaysInWindow: 5, games: [
+  { game: 'zip', from: { kind: 'estable' }, to: { kind: 'bajando' }, outcome: { kind: 'cambio_confirmado', from: { kind: 'estable' }, to: { kind: 'bajando' } } }] } };
+
 interface Server {
   anchor: string | null; getStatus: number | typeof NET; putStatus: number;
   puts: string[]; anchorReads: number; whatChanged: { since: string; until: string }[]; langReads: number;
+  /** The /api/me/linkedin-games/changes requests (since is null in the history mode) and its answer. */
+  gamesAsked: { since: string | null; until: string }[]; gamesChange: Reply;
   /** The /api/what-changed answer for a window (default: a quiet body whose until is `shownUntil` or the one asked for). */
   wc: (since: string, until: string) => Reply; langs: Reply; shownUntil?: string;
 }
@@ -79,12 +85,13 @@ describe('Changes', () => {
       return answer(r, server.wc(since, until));
     }
     if (url === '/api/languages') { server.langReads++; return answer(r, server.langs); }
+    if (url === '/api/me/linkedin-games/changes') { server.gamesAsked.push({ since: r.request.params.get('since'), until: r.request.params.get('until')! }); return answer(r, server.gamesChange); }
     throw new Error('unexpected request ' + method + ' ' + url);
   };
   /** Answers every request until none is left (the legacy fake server). */
   const settle = async () => { await tick(); for (let i = 0; i < 20; i++) { const p = pending(); if (!p.length) return; p.forEach(handle); await tick(); } };
   const setup = (o: Partial<Server> = {}) => {
-    server = { anchor: null, getStatus: 200, putStatus: 200, puts: [], anchorReads: 0, whatChanged: [], langReads: 0, langs: { courses: [] }, ...o,
+    server = { anchor: null, getStatus: 200, putStatus: 200, puts: [], anchorReads: 0, whatChanged: [], langReads: 0, langs: { courses: [] }, gamesAsked: [], gamesChange: NO_GAMES, ...o,
       wc: o.wc ?? ((since, until) => quiet(since, server.shownUntil ?? until)) };
     return server;
   };
@@ -113,7 +120,7 @@ describe('Changes', () => {
     TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
     http = TestBed.inject(HttpTestingController);
   });
-  afterEach(() => { vi.useRealTimers(); http.verify(); }); // real timers first: a failed verify must not leave fake ones to the next file
+  afterEach(() => { vi.useRealTimers(); http.match((r) => r.url === '/api/me/linkedin-games/changes'); /* the Games section asks on its own: tests about the evaluations need not answer it */ http.verify(); }); // real timers first: a failed verify must not leave fake ones to the next file
 
   describe('Frontend What Changed Navigation & Visual Engine', () => {
     it('shouldParseChangesHashRouteWhenHashIsChanges', () => {
@@ -125,6 +132,20 @@ describe('Changes', () => {
       for (const id of ['changesTab', 'changesHeader', 'changesFindings', 'changesActivity']) expect(el.querySelector('#' + id)).not.toBeNull();
       expect(empty()).not.toBeNull(); // the quiet window says so
       expect(el.querySelector('.tab-panel, [hidden]')).toBeNull(); // ruling 1
+    });
+
+    it('shouldShowTheGamesSectionWhenChessAndLanguagesHaveNoActivity', async () => {
+      await open({ gamesChange: ZIP_DOWN }); // the quiet default: nothing in chess or languages
+      expect(empty()).not.toBeNull();
+      expect(text('#changesGames')).toContain('Zip: de Estable a Bajando');
+    });
+
+    it('shouldAskGamesForTheSamePlayDatesAsTheWindowShown', async () => {
+      await open();
+      await click('Últimos 7 días');
+      const last = server.gamesAsked.at(-1)!;
+      expect(last.since).toBe('2026-10-01');
+      expect(last.until).toBe('2026-10-08');
     });
 
     it('shouldRenderEmptyStateWhenNoActivityRecordedInInterval', async () => {
