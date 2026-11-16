@@ -10,6 +10,7 @@ import { fmtDelta, pc1 } from '../../core/format';
 import { list, safe } from '../../core/guard';
 import { Section } from '../../shared/section';
 import { Segmented } from '../../shared/segmented';
+import { ErrorBlock } from '../../shared/error-block';
 import { EvalFinding, Evaluation, EvaluationCards } from '../evaluations/evaluation-cards';
 import { GamesChangeCard } from './games-change';
 import { Trajectory } from './trajectory';
@@ -22,9 +23,9 @@ type Rec = Record<string, any>;
 const DAY = 24 * 60 * 60 * 1000;
 const ANCHOR_URL = '/api/me/changes-anchor';
 const LEGACY_KEY = 'lastVisitedAt'; // the old manual button's value in this browser, migrated once to the server anchor
-const ERR_HTTP = 'Error al cargar cambios (/api/what-changed).';
-const ERR_NET = 'Error de conexión al cargar cambios.';
-const INCOMPLETE = 'Respuesta incompleta al cargar cambios (/api/what-changed).';
+const ERR_HTTP = 'No pudimos cargar los cambios.';
+const ERR_NET = 'Sin conexión. Comprueba la red y pulsa Reintentar.';
+const INCOMPLETE = 'Los cambios llegaron incompletos. Pulsa Reintentar.';
 
 const isObj = (v: unknown): v is Rec => !!v && typeof v === 'object' && !Array.isArray(v);
 const fin = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
@@ -135,7 +136,7 @@ function bodyView(b: Body, w: Win) {
 
 @Component({
   selector: 'app-changes',
-  imports: [EvaluationCards, GamesChangeCard, NgTemplateOutlet, Section, Segmented, Trajectory],
+  imports: [ErrorBlock, EvaluationCards, GamesChangeCard, NgTemplateOutlet, Section, Segmented, Trajectory],
   template: `
     @let v = view();
     <section id="changesTab">
@@ -154,7 +155,7 @@ function bodyView(b: Body, w: Win) {
       }</div>
       @if (v?.header?.history) {<app-trajectory /><app-games-change [until]="nowIso" />} @else {
       @let b = v?.body;
-      @if (b?.empty) {<div id="changesEmpty" class="empty">{{ b!.empty }}</div>}
+      @if (b?.empty || retrying()) {<app-error-block id="changesEmpty" [message]="errorText()" [loading]="retrying()" [again]="retried()" (retry)="retry()" />}
       <div class="u-mb-16" id="changesFindings">@if (b?.findings; as f) {
         @if (f === 'na') {<ng-container *ngTemplateOutlet="na; context: { $implicit: 'Evaluaciones' }" />} @else {
           <h2 class="u-m-18-0-10">{{ f.head }}</h2>
@@ -250,7 +251,18 @@ export class Changes {
   });
 
   protected readonly windows = [{ k: '7', l: 'Últimos 7 días' }, { k: '30', l: 'Últimos 30 días' }, { k: '0', l: 'Desde última visita' }, { k: 'all', l: 'Todo el historial' }];
+  /** The retry of a failed answer: the block stays on screen, disabled, while it runs, and says so if it fails again. */
+  protected readonly retried = signal(false);
+  private readonly lastError = signal('');
+  protected readonly retrying = computed(() => this.retried() && this.state.isLoading());
+  protected readonly errorText = computed(() => this.view()?.body?.empty || this.lastError());
+  protected retry(): void {
+    this.lastError.set(this.view()?.body?.empty ?? '');
+    this.retried.set(true);
+    this.state.reload();
+  }
   protected choose(k: string): void {
+    this.retried.set(false);
     const history = k === 'all';
     this.history.set(history);
     if (!history) this.choice.set({ days: k === '7' ? 7 : k === '30' ? 30 : 0 });

@@ -363,7 +363,8 @@ app-tab-bar{display:none}
 #gamesToday .pill{text-transform:none;letter-spacing:0;font-weight:600}
 
 /* Hoy: one card per domain (big number, change, a chart with its scale, one sentence) */
-.hcs{display:grid;gap:12px}.hc-wrap{display:grid;gap:8px;align-content:start}.hc-act{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.hcs{display:grid;gap:12px}.sk{display:block;height:12px;border-radius:var(--r-sm);background:var(--line)}.sk-t{width:40%}.sk-n{width:25%;height:28px}
+.hc-wrap{display:grid;gap:8px;align-content:start}.hc-act{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 @media(min-width:1000px){.hcs{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .hc{display:grid;gap:8px;align-content:start;padding:16px;color:inherit}a.hc:hover{background:var(--hover);text-decoration:none}
 .hc-h{display:flex;gap:8px;align-items:center;flex-wrap:wrap}

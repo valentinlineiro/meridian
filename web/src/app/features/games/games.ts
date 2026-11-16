@@ -7,6 +7,7 @@ import { safe } from '../../core/guard';
 import { GameReport } from './game-report';
 import { GamesChart } from './games-chart';
 import { GamesRegister } from '../../shared/games-register/games-register';
+import { ErrorBlock } from '../../shared/error-block';
 import { Help } from '../../shared/help';
 import { ResultBars } from '../../shared/result-bars';
 import { Section } from '../../shared/section';
@@ -21,7 +22,7 @@ const HERO_IDLE = { label: 'LinkedIn Games · racha actual', streak: '—', meta
 
 @Component({
   selector: 'app-games',
-  imports: [GameReport, GamesChart, GamesRegister, Help, ResultBars, RouterLink, Section, Segmented, VerdictPill],
+  imports: [ErrorBlock, GameReport, GamesChart, GamesRegister, Help, ResultBars, RouterLink, Section, Segmented, VerdictPill],
   templateUrl: './games.html',
 })
 export class Games {
@@ -76,7 +77,7 @@ export class Games {
   }
   protected readonly note = computed(() => {
     const r = this.loaded();
-    return !r ? '' : this.summary() === null ? 'No se pudo cargar el resumen.' : r.d === null ? 'No se pudo cargar el día.' : '';
+    return !r || this.summary() === null ? '' : r.d === null ? 'No se pudo cargar el día.' : '';
   });
   protected readonly hero = computed(() => {
     const s = this.summary();

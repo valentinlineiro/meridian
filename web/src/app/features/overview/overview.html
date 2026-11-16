@@ -7,6 +7,12 @@
   @let c = d?.chess;
   @let l = d?.lang;
   @let g = d?.games;
+  @if (!d) {
+    <div class="hcs" role="status" aria-busy="true">
+      <span class="sr-only">Cargando tu resumen</span>
+      @for (n of [1, 2, 3]; track n) { <div class="hc card" aria-hidden="true"><i class="sk sk-t"></i><i class="sk sk-n"></i><i class="sk"></i></div> }
+    </div>
+  } @else {
   <div class="hcs">
     <a class="hc card" id="overviewChessRow" routerLink="/chess">
       <div class="hc-h"><b>Ajedrez</b>@if (c?.verdict; as vd) {<app-verdict [verdict]="vd" />}@if (c?.freshChip; as f) {<span id="overviewChessFresh" class="pill" [class.pill-warn]="f.stale">{{ f.text }}</span>}</div>
@@ -38,5 +44,7 @@
       </div>
     </div>
   </div>
+  }
+  @if (failed()) { <app-error-block class="u-d-block u-mt-12" message="Algunas secciones no cargaron." [loading]="data.isLoading()" (retry)="data.reload()" /> }
   <app-games-register [day]="day()" (saved)="saved($event)" (reread)="openRegister()" />
 </section>

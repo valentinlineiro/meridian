@@ -520,14 +520,31 @@ describe('Changes', () => {
       await click('Últimos 30 días');
       expect(el.querySelector('#changesFindings')!.children.length).toBe(0);
       expect(el.querySelector('#changesActivity')!.children.length).toBe(0);
-      expect(empty()!.textContent).toBe('Error al cargar cambios (/api/what-changed).');
+      expect(empty()!.textContent).toContain('No pudimos cargar los cambios.');
+    });
+
+    it('shouldOfferARetryThatLoadsAgainAndAdmitsItWhenItFailsAgain', async () => {
+      await boot();
+      mode = 'fail';
+      await click('Últimos 30 días');
+      expect(empty()!.textContent).toContain('No pudimos cargar los cambios.');
+      const retry = () => empty()!.querySelector('button')!;
+      expect(retry().textContent).toBe('Reintentar');
+      retry().click();
+      await settle();
+      expect(empty()!.textContent).toContain('Sigue sin cargar. Inténtalo en un minuto.');
+      mode = 'ok';
+      retry().click();
+      await settle();
+      expect(empty()).toBeNull();
+      expect(findings()).toContain('Pocos datos');
     });
 
     it('shouldSayConnectionErrorAndNeverTheQuietCopyWhenTheRequestGetsNoAnswer', async () => {
       await boot();
       mode = 'net';
       await click('Últimos 30 días');
-      expect(empty()!.textContent).toBe('Error de conexión al cargar cambios.');
+      expect(empty()!.textContent).toContain('Sin conexión. Comprueba la red y pulsa Reintentar.');
       expect(activity()).not.toContain('Sin actividad registrada');
       expect(el.querySelector('#changesActivity')!.children.length).toBe(0);
     });
@@ -537,12 +554,12 @@ describe('Changes', () => {
       mode = 'malformed';
       await click('Últimos 30 días');
       expect(el.querySelector('#changesFindings')!.children.length).toBe(0);
-      expect(empty()!.textContent).toBe('Respuesta incompleta al cargar cambios (/api/what-changed).');
+      expect(empty()!.textContent).toContain('Los cambios llegaron incompletos. Pulsa Reintentar.');
     });
 
     it('shouldSayIncompleteWhenTheBodyIsNotAnObject', async () => {
       await open({ wc: () => 'x' as unknown as Any });
-      expect(empty()!.textContent).toMatch(/incompleta/);
+      expect(empty()!.textContent).toMatch(/incompletos/);
     });
 
     it('shouldShowNeitherCopyWhileLoading', async () => {
@@ -612,7 +629,7 @@ describe('Changes', () => {
       await vi.advanceTimersByTimeAsync(10_000);
       await step();
       expect(wc.cancelled).toBe(true);
-      expect(empty()!.textContent).toBe('Error de conexión al cargar cambios.');
+      expect(empty()!.textContent).toContain('Sin conexión. Comprueba la red y pulsa Reintentar.');
     });
 
     it('shouldKeepTheLaterWindowWhenAnEarlierRequestTimesOutAfterIt', async () => {

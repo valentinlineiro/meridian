@@ -3,7 +3,7 @@
     <a routerLink="/games" class="muted gr-back">← Todos los juegos</a>
     <h1>{{ gameName(g) }}</h1>
     @if (summary() === null) {
-      <div class="muted" role="alert">No disponible</div>
+      <app-error-block message="No pudimos cargar tus juegos." [loading]="data.isLoading()" (retry)="data.reload()" />
     } @else if (summary(); as s) {
       @if (s.games[g]) {
         <app-segmented groupId="gamesRange" label="Periodo de análisis" caption="Periodo" idPrefix="gr-" [options]="ranges" [value]="range()" (picked)="pickRange($event)" />
@@ -14,6 +14,7 @@
     }
   } @else {
   <h1 class="sr-only">LinkedIn Games</h1>
+  @if (summary() === null) { <app-error-block message="No pudimos cargar tus juegos." [loading]="data.isLoading()" (retry)="data.reload()" /> }
   @let h = hero();
   <div class="hero-card gh" id="gamesHero">
     <div class="gh-top">
