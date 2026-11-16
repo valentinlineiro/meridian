@@ -6,6 +6,7 @@ import { GetSummary } from "./application/GetSummary.ts";
 import { GetDay } from "./application/GetDay.ts";
 import { ImportGameResults } from "./application/ImportGameResults.ts";
 import { RecordGameResult } from "./application/RecordGameResult.ts";
+import { SaveDay } from "./application/SaveDay.ts";
 import { D1DayRecordStore } from "./infrastructure/D1DayRecordStore.ts";
 import { D1OwnerLookup } from "./infrastructure/D1OwnerLookup.ts";
 import type { DayRecordStore } from "./ports/DayRecordStore.ts";
@@ -19,6 +20,7 @@ export const GET_GAMES_CHANGE = new Token<GetGamesChange>("GetGamesChange");
 export const GET_SUMMARY = new Token<GetSummary>("GetSummary");
 export const IMPORT_GAME_RESULTS = new Token<ImportGameResults>("ImportGameResults");
 export const RECORD_GAME_RESULT = new Token<RecordGameResult>("RecordGameResult");
+export const SAVE_DAY = new Token<SaveDay>("SaveDay");
 
 export function registerLinkedinGames(c: Container): void {
   c.register(OWNER_LOOKUP, (k) => new D1OwnerLookup(k.resolve(DB)))
@@ -28,5 +30,6 @@ export function registerLinkedinGames(c: Container): void {
     .register(GET_GAMES_CHANGE, (k) => new GetGamesChange(k.resolve(OWNER_LOOKUP), k.resolve(DAY_RECORD_STORE)))
     .register(GET_SUMMARY, (k) => new GetSummary(k.resolve(OWNER_LOOKUP), k.resolve(DAY_RECORD_STORE)))
     .register(IMPORT_GAME_RESULTS, (k) => new ImportGameResults(k.resolve(OWNER_LOOKUP), k.resolve(DAY_RECORD_STORE), k.resolve(CLOCK)))
-    .register(RECORD_GAME_RESULT, (k) => new RecordGameResult(k.resolve(OWNER_LOOKUP), k.resolve(DAY_RECORD_STORE), k.resolve(CLOCK)));
+    .register(RECORD_GAME_RESULT, (k) => new RecordGameResult(k.resolve(OWNER_LOOKUP), k.resolve(DAY_RECORD_STORE), k.resolve(CLOCK)))
+    .register(SAVE_DAY, (k) => new SaveDay(k.resolve(OWNER_LOOKUP), k.resolve(DAY_RECORD_STORE), k.resolve(CLOCK)));
 }

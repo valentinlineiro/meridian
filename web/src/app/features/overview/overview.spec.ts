@@ -232,4 +232,42 @@ describe('Overview', () => {
     const el = await open({ ...fullApi(), '/api/me/linkedin-games/summary': FAIL });
     expect(el.querySelector('#overviewGamesRow')!.getAttribute('href')).toBe('/games');
   });
+
+  describe('the daily register', () => {
+    const withTo = (to: string | null) => ({ ...fullApi(), '/api/me/linkedin-games/summary': { summary: { days: 57, from: '2026-09-01', to, playStreak: null, games: { zip: game('estable') } } } });
+    const button = (el: HTMLElement) => el.querySelector<HTMLButtonElement>('#overviewGamesRegister')!;
+
+    it('shouldOfferToRegisterTodayBesideTheGamesRowWhenNothingIsLoggedToday', async () => {
+      const el = await open(withTo('2026-01-01'));
+      expect(button(el).textContent!.trim()).toBe('Registrar hoy');
+      expect(el.querySelector('#overviewGamesRow')!.contains(button(el))).toBe(false); // outside the link
+    });
+
+    it('shouldOfferToEditWhenTodayHasAnEntry', async () => {
+      const el = await open(withTo(new Date().toLocaleDateString('sv-SE')));
+      expect(button(el).textContent!.trim()).toBe('Editar lo de hoy');
+    });
+
+    it('shouldReadTodaysRecordAndOpenTheSheetOverItWhenTheButtonIsPressed', async () => {
+      const el = await open(withTo('2026-01-01'));
+      button(el).click();
+      const r = http.expectOne((q) => q.url === '/api/me/linkedin-games' && q.params.has('date'));
+      r.flush({ ok: true, day: { games: { zip: { score: '0:48', avg: null } } } });
+      TestBed.tick();
+      await new Promise((x) => setTimeout(x));
+      TestBed.tick();
+      expect(el.querySelector('dialog')!.hasAttribute('open')).toBe(true);
+      expect(el.querySelector<HTMLInputElement>('#lgReg-zip-score')!.value).toBe('0:48');
+    });
+
+    it('shouldOpenTheSheetEmptyAndSayItWhenTodaysRecordCannotBeRead', async () => {
+      const el = await open(withTo('2026-01-01'));
+      button(el).click();
+      http.expectOne((q) => q.url === '/api/me/linkedin-games').flush({ ok: false }, { status: 500, statusText: 'x' });
+      TestBed.tick();
+      await new Promise((x) => setTimeout(x));
+      TestBed.tick();
+      expect(el.querySelector('#lgRegUnread')).not.toBeNull();
+    });
+  });
 });

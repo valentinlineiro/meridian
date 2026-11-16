@@ -1,4 +1,4 @@
-import { Component, computed, inject } from '@angular/core';
+import { afterNextRender, ApplicationRef, Component, computed, inject, signal, viewChild } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { catchError, forkJoin, map, Observable, of } from 'rxjs';
@@ -8,6 +8,8 @@ import { Langs, XpDay } from '../../core/courses';
 import { ResultBars } from '../../shared/result-bars';
 import { Sparkline } from '../../shared/sparkline';
 import { VerdictPill } from '../../shared/verdict';
+import { GamesRegister } from '../games/games-register';
+import { Day, localToday } from '../games/games.model';
 import { chessRow, ChessRecentIn, ChessSummaryIn, gamesRow, GamesSummaryIn, syncChip, TimelineIn } from './overview.model';
 import { xpBars, xpSummary, xpWeek, xpWeekLine } from '../../core/xp-week';
 
@@ -51,13 +53,13 @@ function view(d: OverviewData, now: number) {
       bars, aria: xb?.aria ?? '',
       freshChip: syncChip(xpSynced, now),
     },
-    games: { line: d.games ? g?.line ?? NA : NA, verdict: g?.verdict ?? null, streak: g?.streak ?? '', link: g?.link ?? '/games', focus: g?.focus ?? null },
+    games: { registered: !!d.games && d.games.to === localToday(), line: d.games ? g?.line ?? NA : NA, verdict: g?.verdict ?? null, streak: g?.streak ?? '', link: g?.link ?? '/games', focus: g?.focus ?? null },
   };
 }
 
 @Component({
   selector: 'app-overview',
-  imports: [ResultBars, RouterLink, Sparkline, VerdictPill],
+  imports: [GamesRegister, ResultBars, RouterLink, Sparkline, VerdictPill],
   templateUrl: './overview.html',
 })
 export class Overview {
@@ -66,6 +68,32 @@ export class Overview {
 
   protected readonly data = rxResource<OverviewData, unknown>({ stream: () => this.load() });
   protected readonly v = computed(() => { const d = this.data.value(); return d ? view(d, Date.now()) : null; });
+
+  private readonly app = inject(ApplicationRef);
+  private readonly reg = viewChild.required(GamesRegister);
+  /** Today's stored games for the sheet; null when the day could not be read. */
+  protected readonly day = signal<Day['games'] | null>(null);
+  /** What the last save from here did, said once in a status region. */
+  protected readonly note = signal('');
+
+  constructor() {
+    // A sheet interrupted by a login redirect or a reload comes back by itself with what was typed.
+    afterNextRender(() => { if (GamesRegister.hasDraft()) this.openRegister(); });
+  }
+
+  /** Reads today's record, then opens the sheet over it. A failed read opens the sheet empty and says so; nothing stored is touched. */
+  protected openRegister(): void {
+    this.api.get<{ day?: Day }>('/api/me/linkedin-games', { date: localToday() }).subscribe({
+      next: (r) => this.show(r.day?.games ?? {}),
+      error: () => this.show(null),
+    });
+  }
+  private show(day: Day['games'] | null): void {
+    this.day.set(day);
+    this.app.tick(); // the sheet reads its input when it opens
+    this.reg().open();
+  }
+  protected saved(note: string): void { this.note.set(note); this.data.reload(); }
 
   private load(): Observable<OverviewData> {
     const stat = this.stats.session();

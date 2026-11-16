@@ -19,7 +19,7 @@ header{position:sticky;top:0;z-index:10;background:var(--surface);border-bottom:
 .h-left .brand{margin:0;font-weight:700;font-size:var(--fs-h);letter-spacing:.02em;display:flex;gap:8px;align-items:center}
 .h-left small{color:var(--muted);font-size:var(--fs-sm);display:block;margin-top:2px}
 .btn{border:1px solid transparent;border-radius:var(--r-md);padding:8px 14px;font-weight:600;cursor:pointer;font-size:var(--fs-md)}
-.btn-p{background:var(--accent);color:var(--on-accent)}.btn-p:hover{background:var(--accent-hover)}
+.btn-p{background:var(--accent);color:var(--on-accent)}.btn-p:disabled{opacity:.5;cursor:default}.btn-p:hover{background:var(--accent-hover)}
 .btn-g{background:var(--line);color:var(--text-2);border:1px solid var(--line-strong)}.btn-g:disabled{opacity:.5;cursor:default}
 .btn[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 main{max-width:1120px;margin:0 auto;padding:20px 16px 40px}
@@ -363,7 +363,7 @@ app-tab-bar{display:none}
 #gamesToday .pill{text-transform:none;letter-spacing:0;font-weight:600}
 
 /* Hoy: one card per domain (big number, change, a chart with its scale, one sentence) */
-.hcs{display:grid;gap:12px}
+.hcs{display:grid;gap:12px}.hc-wrap{display:grid;gap:8px;align-content:start}.hc-act{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 @media(min-width:1000px){.hcs{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .hc{display:grid;gap:8px;align-content:start;padding:16px;color:inherit}a.hc:hover{background:var(--hover);text-decoration:none}
 .hc-h{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
@@ -380,6 +380,9 @@ app-tab-bar{display:none}
 .lgreg-row input{min-height:44px;text-align:center;font-size:var(--fs-xl);font-weight:700}
 .lgreg-err{grid-column:1/-1;color:var(--loss-fg);font-size:var(--fs-sm)}
 .lgreg-save{width:100%;min-height:48px;margin-top:12px}
+.lgreg-note{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0;padding:10px 12px;border:1px solid var(--line-strong);border-radius:var(--r-md);background:var(--sunken)}.lgreg-note p{flex:1 0 100%}
+.lgreg-gone{grid-column:2}
+.lgreg-row input[aria-invalid=true]{border-color:var(--loss-fg)}
 
 /* Game report: the first look (big number, key figures) and the three charts */
 .gr-fig{font-size:var(--fs-display);font-weight:800;line-height:1;font-variant-numeric:tabular-nums}

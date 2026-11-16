@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { InvalidCommandError } from "../../../application/errors.ts";
 import type { Container } from "../../../kernel/container.ts";
-import { EXPORT_GAME_RESULTS, GET_DAY, GET_GAMES_CHANGE, GET_SUMMARY, IMPORT_GAME_RESULTS, RECORD_GAME_RESULT } from "../module.ts";
+import { EXPORT_GAME_RESULTS, GET_DAY, GET_GAMES_CHANGE, GET_SUMMARY, IMPORT_GAME_RESULTS, RECORD_GAME_RESULT, SAVE_DAY } from "../module.ts";
 
 type Vars = { Variables: { email: string | null; container: Container } };
 const body = z.object({
@@ -15,6 +15,13 @@ const body = z.object({
 });
 
 const importBody = z.object({ text: z.string().max(50_000), today: z.string(), apply: z.boolean().optional(), tz: z.string().max(64).optional() });
+
+const dayBody = z.object({
+  date: z.string(),
+  tz: z.string().max(64).optional(),
+  set: z.array(z.object({ game: z.string(), score: z.string(), avg: z.string().nullish() })).max(6),
+  remove: z.array(z.string()).max(6),
+});
 
 export const linkedinGamesRoutes = new Hono<Vars>();
 
@@ -55,4 +62,13 @@ linkedinGamesRoutes.post("/import", async (c) => {
   if (!parsed.success) throw new InvalidCommandError("text and today are required strings; apply must be a boolean");
   const result = await c.get("container").resolve(IMPORT_GAME_RESULTS).execute({ ownerEmail: c.get("email")!, ...parsed.data, apply: parsed.data.apply === true });
   return c.json({ ok: true, ...result });
+});
+
+// The register sheet's save (contract L14): games to set (avg null clears the average) and games to remove, one version of the day.
+// Invalid entries answer 422 with { game, field, reason } for each and write nothing.
+linkedinGamesRoutes.put("/day", async (c) => {
+  const parsed = dayBody.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) throw new InvalidCommandError("date, set and remove are required; set takes game, score and optional avg");
+  const result = await c.get("container").resolve(SAVE_DAY).execute({ ownerEmail: c.get("email")!, ...parsed.data });
+  return result.errors.length ? c.json({ ok: false, errors: result.errors }, 422) : c.json({ ok: true, games: result.games, removed: result.removed });
 });

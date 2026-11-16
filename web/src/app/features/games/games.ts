@@ -1,4 +1,4 @@
-import { Component, computed, inject, input, linkedSignal, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, linkedSignal, signal, untracked, viewChild } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
 import { catchError, forkJoin, Observable, of } from 'rxjs';
@@ -61,6 +61,19 @@ export class Games {
     const s = r.s?.summary;
     return s && typeof s.games === 'object' && s.games !== null ? s : null;
   });
+  private readonly reg = viewChild.required(GamesRegister);
+  /** What the last save did ("Guardado: Zip 0:48."), until the next one. */
+  protected readonly saveNote = signal('');
+  protected saved(note: string): void { this.saveNote.set(note); this.data.reload(); }
+  private draftChecked = false;
+  constructor() {
+    // A sheet interrupted by a login redirect or a reload comes back by itself, once today's record has been read.
+    effect(() => {
+      if (!this.loaded() || this.draftChecked) return;
+      this.draftChecked = true;
+      if (GamesRegister.hasDraft()) untracked(() => this.reg().open());
+    });
+  }
   protected readonly note = computed(() => {
     const r = this.loaded();
     return !r ? '' : this.summary() === null ? 'No se pudo cargar el resumen.' : r.d === null ? 'No se pudo cargar el día.' : '';

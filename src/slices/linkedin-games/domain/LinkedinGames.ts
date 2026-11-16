@@ -4,8 +4,10 @@ import { DomainError } from "../../../kernel/errors.ts";
 export const GAME_KEYS = ["wend", "tango", "zip", "patches", "mini_sudoku", "queens"] as const;
 export type GameKey = (typeof GAME_KEYS)[number];
 
+export type GameField = "game" | "score" | "avg" | "date";
+
 export class InvalidGameResult extends DomainError {
-  constructor(message: string) {
+  constructor(message: string, readonly field: GameField = "game") {
     super("INVALID_GAME_RESULT", message);
   }
 }
@@ -16,9 +18,9 @@ export class InvalidPlayDate extends DomainError {
   }
 }
 
-const secondsOf = (t: string): number => {
+const secondsOf = (t: string, field: "score" | "avg"): number => {
   const m = /^(\d{1,2}):([0-5]\d)$/.exec(t);
-  if (!m) throw new InvalidGameResult(`"${t}" is not a time as M:SS`);
+  if (!m) throw new InvalidGameResult(`"${t}" is not a time as M:SS`, field);
   return Number(m[1]) * 60 + Number(m[2]);
 };
 
@@ -57,11 +59,11 @@ export interface GameEntry {
 export function gameEntry(game: string, input: { score: string; avg?: string | null; number?: number | null }): GameEntry {
   if (!(GAME_KEYS as readonly string[]).includes(game)) throw new InvalidGameResult(`unknown game "${game}"`);
   const number = input.number ?? null;
-  if (number !== null && !(Number.isInteger(number) && number > 0)) throw new InvalidGameResult("the puzzle number must be a positive integer");
-  const entry: GameEntry = { number, score: input.score.trim(), scoreSeconds: secondsOf(input.score.trim()) };
+  if (number !== null && !(Number.isInteger(number) && number > 0)) throw new InvalidGameResult("the puzzle number must be a positive integer", "game");
+  const entry: GameEntry = { number, score: input.score.trim(), scoreSeconds: secondsOf(input.score.trim(), "score") };
   if (input.avg != null && input.avg.trim() !== "") {
     entry.avg = input.avg.trim();
-    entry.avgSeconds = secondsOf(entry.avg);
+    entry.avgSeconds = secondsOf(entry.avg, "avg");
   }
   return entry;
 }

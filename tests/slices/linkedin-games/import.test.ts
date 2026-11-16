@@ -98,6 +98,11 @@ describe("ImportGameResults", () => {
     expect(store.versions).toHaveLength(0);
   });
 
+  it("shouldNameTheFieldOfEachLineError", async () => {
+    const r = await run("foo, 6, 12\nZ, 6000, 12\nQ, 6, 6000\nhola\n2026-11-10\nT, 5, 9");
+    expect(r.errors.map((e) => e.field)).toEqual(["game", "score", "avg", "line", "date"]);
+  });
+
   it("shouldFailWhenTheOwnerHasNoAccount", async () => {
     await expect(importer.execute({ ownerEmail: "nobody@example.com", text: "Z, 6, 12", today: TODAY, apply: true })).rejects.toBeInstanceOf(NotFoundError);
   });

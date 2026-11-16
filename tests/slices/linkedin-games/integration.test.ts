@@ -244,3 +244,35 @@ describe("linkedin games import over HTTP and D1", () => {
     expect((await imp({ text })).status).toBe(400);
   });
 });
+
+describe("linkedin games day save over HTTP and D1", () => {
+  const save = async (body: unknown, headers: Record<string, string> = {}) =>
+    worker.fetch(new Request(`${BASE}/api/me/linkedin-games/day`, { method: "PUT", headers: { cookie: await cookie(), ...SAME, ...headers }, body: JSON.stringify(body) }), env);
+  const date = new Date().toISOString().slice(0, 10);
+
+  it("shouldStoreRemoveAndKeepOneVersionPerChangeWhenTheSheetSaves", async () => {
+    const first = await save({ date, set: [{ game: "zip", score: "0:48", avg: "0:53" }, { game: "queens", score: "1:12" }], remove: [] });
+    expect(await first.json()).toMatchObject({ ok: true, games: [{ game: "zip", status: "new" }, { game: "queens", status: "new" }], removed: [] });
+    expect(rows()).toHaveLength(1);
+    await save({ date, set: [{ game: "zip", score: "0:48", avg: "0:53" }], remove: [] });
+    expect(rows()).toHaveLength(1);
+    const removed = await save({ date, set: [], remove: ["queens"] });
+    expect(await removed.json()).toMatchObject({ ok: true, removed: ["queens"] });
+    expect(Object.keys((await (await get(date)).json() as { day: { games: object } }).day.games)).toEqual(["zip"]);
+  });
+
+  it("shouldAnswer422WithGameAndFieldAndWriteNothingWhenAnEntryIsInvalid", async () => {
+    const r = await save({ date, set: [{ game: "zip", score: "106" }], remove: [] });
+    expect(r.status).toBe(422);
+    expect(await r.json()).toMatchObject({ ok: false, errors: [{ game: "zip", field: "score" }] });
+    expect(rows()).toHaveLength(0);
+  });
+
+  it("shouldRefuseTheImportTokenAloneAndACrossSiteRequestAndABodyWithoutSet", async () => {
+    const machine = await worker.fetch(new Request(`${BASE}/api/me/linkedin-games/day`, { method: "PUT", headers: { authorization: "Bearer t", ...SAME }, body: JSON.stringify({ date, set: [], remove: [] }) }), env);
+    expect(machine.status).toBe(401);
+    expect((await save({ date, set: [{ game: "zip", score: "0:48" }], remove: [] }, { "sec-fetch-site": "cross-site" })).status).toBeGreaterThanOrEqual(400);
+    expect((await save({ date })).status).toBe(400);
+    expect(rows()).toHaveLength(0);
+  });
+});

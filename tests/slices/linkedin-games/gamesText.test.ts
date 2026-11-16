@@ -22,7 +22,7 @@ describe("parseGamesText", () => {
   it("shouldAcceptFullNamesClockTimesSpacesAccentsAndAMissingAverage", () => {
     const { entries, errors } = parseGamesText("Mini Sudoku 1:05 2:10\nzip, 0:06\nTÁNGO 43 51\nPinpoint, 3, 4", TODAY);
     expect(entries.map((e) => [e.game, e.score, e.avg])).toEqual([["mini_sudoku", "1:05", "2:10"], ["zip", "0:06", null], ["tango", "0:43", "0:51"]]);
-    expect(errors).toEqual([{ line: 4, text: "Pinpoint, 3, 4", reason: expect.stringContaining("juego desconocido") }]); // not audited yet
+    expect(errors).toEqual([{ line: 4, text: "Pinpoint, 3, 4", field: "game", reason: expect.stringContaining("juego desconocido") }]); // not audited yet
   });
 
   it("shouldSwitchDateOnADateLineAndUnderstandHoyAndAyer", () => {
