@@ -199,11 +199,14 @@ describe('Overview', () => {
     });
   });
 
-  it('shouldShowPlaceholdersNotZerosWhenNothingHasAnsweredYet', async () => {
+  it('shouldShowSkeletonsNotDashesOrZerosWhileNothingHasAnsweredYet', async () => {
     await harness.navigateByUrl('/overview');
     const el = harness.routeNativeElement as HTMLElement;
-    for (const id of ['overviewChessForm', 'overviewLangXp', 'overviewGamesLine', 'overviewChessBig', 'overviewLangBig']) expect(text(el, id)).toBe('—');
+    expect(el.querySelectorAll('.hc .sk')).toHaveLength(9); // told apart from "No disponible": a slow load is not missing data
+    expect(el.querySelector('[role=status]')!.textContent).toContain('Cargando tu resumen');
+    expect(el.querySelector('#overviewChessBig')).toBeNull();
     expect(el.textContent).not.toContain('0 XP');
+    expect(el.textContent).not.toContain('No disponible');
   });
 
   it('shouldCancelItsRequestsWhenLeaving', async () => {
@@ -268,6 +271,31 @@ describe('Overview', () => {
       await new Promise((x) => setTimeout(x));
       TestBed.tick();
       expect(el.querySelector('#lgRegUnread')).not.toBeNull();
+    });
+  });
+
+  describe('when a section did not load', () => {
+    it('shouldShowOneRetryForThePageAndNoneWhenEverythingLoaded', async () => {
+      expect((await open(fullApi())).querySelector('app-error-block')).toBeNull();
+    });
+
+    it('shouldShowASingleBlockWhateverNumberOfRowsFailedAndReloadEverythingOnRetry', async () => {
+      const api = { ...fullApi(), '/api/languages': FAIL, '/api/me/linkedin-games/summary': FAIL };
+      const el = await open(api);
+      expect(el.querySelectorAll('app-error-block')).toHaveLength(1);
+      expect(el.querySelector('app-error-block')!.textContent).toContain('Algunas secciones no cargaron.');
+      el.querySelector<HTMLButtonElement>('app-error-block button')!.click();
+      TestBed.tick();
+      await new Promise((x) => setTimeout(x));
+      const first = pending(); // http.match takes the requests off the queue: answer these below
+      expect(first.length).toBeGreaterThan(0);
+      for (let round = 0; round < 3; round++) {
+        for (const r of round === 0 ? first : pending()) r.flush(fullApi()[r.request.url] as object);
+        TestBed.tick();
+        await new Promise((x) => setTimeout(x));
+      }
+      TestBed.tick();
+      expect(el.querySelector('app-error-block')).toBeNull();
     });
   });
 });

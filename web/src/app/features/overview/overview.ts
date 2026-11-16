@@ -5,6 +5,7 @@ import { catchError, forkJoin, map, Observable, of } from 'rxjs';
 import { ApiClient } from '../../core/api-client';
 import { StatsService } from '../../core/stats.service';
 import { Langs, XpDay } from '../../core/courses';
+import { ErrorBlock } from '../../shared/error-block';
 import { ResultBars } from '../../shared/result-bars';
 import { Sparkline } from '../../shared/sparkline';
 import { VerdictPill } from '../../shared/verdict';
@@ -59,7 +60,7 @@ function view(d: OverviewData, now: number) {
 
 @Component({
   selector: 'app-overview',
-  imports: [GamesRegister, ResultBars, RouterLink, Sparkline, VerdictPill],
+  imports: [ErrorBlock, GamesRegister, ResultBars, RouterLink, Sparkline, VerdictPill],
   templateUrl: './overview.html',
 })
 export class Overview {
@@ -69,6 +70,8 @@ export class Overview {
   protected readonly data = rxResource<OverviewData, unknown>({ stream: () => this.load() });
   protected readonly v = computed(() => { const d = this.data.value(); return d ? view(d, Date.now()) : null; });
 
+  /** Any section that did not answer: one retry for the page, not one per row. */
+  protected readonly failed = computed(() => { const d = this.data.value(); return !!d && Object.values(d).some((x) => x === null); });
   private readonly app = inject(ApplicationRef);
   private readonly reg = viewChild.required(GamesRegister);
   /** Today's stored games for the sheet; null when the day could not be read. */

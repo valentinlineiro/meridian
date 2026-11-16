@@ -102,10 +102,10 @@ describe('Games', () => {
       expect(el.querySelector('app-game-report')).toBeNull();
     });
 
-    it('shouldSayNoDisponibleWhenTheSummaryFailsInReportMode', async () => {
+    it('shouldSayTheGamesDidNotLoadWithARetryWhenTheSummaryFailsInReportMode', async () => {
       await openReport(FAIL);
       expect(el.querySelector('h1')!.textContent).toBe('Queens');
-      expect(el.textContent).toContain('No disponible');
+      expect(el.querySelector('app-error-block')!.textContent).toContain('No pudimos cargar tus juegos.');
       expect(el.querySelector('app-game-report')).toBeNull();
     });
 
@@ -239,14 +239,15 @@ describe('Games', () => {
 
     it('shouldSayTheSummaryCouldNotBeLoadedWhenTheRequestFails', async () => {
       await open(FAIL);
-      expect(text('gamesNote')).toBe('No se pudo cargar el resumen.');
+      expect(el.querySelector('app-error-block')!.textContent).toContain('No pudimos cargar tus juegos.');
+      expect(el.querySelector('app-error-block button')!.textContent).toBe('Reintentar');
       expect(text('gamesHeroMeta')).toBe('—'); // never "Aún no hay datos."
       expect(el.querySelectorAll('#gamesList > section')).toHaveLength(0);
     });
 
     it('shouldSayTheSummaryCouldNotBeLoadedWhenTheBodyHasNoGames', async () => {
       await open({ ok: true, summary: { days: 3 } });
-      expect(text('gamesNote')).toBe('No se pudo cargar el resumen.');
+      expect(el.querySelector('app-error-block')!.textContent).toContain('No pudimos cargar tus juegos.');
     });
   });
 
