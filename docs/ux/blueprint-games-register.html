@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Games register: day-save blueprint</title>
+<style>
+:root {
+  --bg: #fafafc; --surface: #ffffff; --fg: #18182b; --fg-muted: #65657a;
+  --border: #d8d8e4; --accent: #4338ca;
+  --sans: "Hanken Grotesk", Inter, system-ui, -apple-system, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, monospace;
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px;
+  --s5: 20px; --s6: 24px; --s7: 32px; --s8: 48px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #18182b; --surface: #1f1f36; --fg: #f0f0f8; --fg-muted: #8888a8;
+    --border: #2a2a44; --accent: #7c6ff0;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #18182b; --surface: #1f1f36; --fg: #f0f0f8; --fg-muted: #8888a8;
+  --border: #2a2a44; --accent: #7c6ff0;
+}
+* { box-sizing: border-box; }
+body {
+  font-family: var(--sans); background: var(--bg); color: var(--fg);
+  padding: var(--s7); line-height: 1.5; margin: 0;
+}
+.visual-diagram {
+  margin: 0; padding: var(--s5);
+  background: var(--surface); border-radius: 8px;
+  border: 1px solid var(--border); overflow-x: auto;
+}
+.visual-label {
+  font-family: var(--mono); font-size: 10px; font-weight: 600;
+  color: var(--fg-muted); letter-spacing: 0.06em;
+  margin-bottom: var(--s4); text-transform: uppercase;
+}
+.blueprint-lane { padding: var(--s2) 0; }
+.blueprint-lane-label { margin-bottom: var(--s2); }
+.blueprint-lane-title {
+  font-family: var(--mono); font-size: 10px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--fg-muted);
+}
+.blueprint-lane-sub { font-size: 10px; color: var(--fg-muted); margin-left: var(--s2); }
+.blueprint-lane-nodes { display: flex; align-items: center; }
+.blueprint-node {
+  flex: 1; padding: var(--s2);
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 4px; text-align: center; min-width: 0;
+}
+.blueprint-node-step { font-family: var(--mono); font-size: 9px; color: var(--accent); font-weight: 600; }
+.blueprint-node-label { font-size: 11px; font-weight: 500; color: var(--fg); }
+.blueprint-node-end { border-color: var(--accent); }
+.blueprint-connector {
+  width: 12px; min-width: 12px; height: 1px;
+  background: var(--border); flex-shrink: 0;
+}
+.blueprint-line-of-interaction,
+.blueprint-line-of-visibility,
+.blueprint-line-of-support {
+  border-top: 1px dashed var(--border);
+  padding: 4px 0; text-align: right;
+}
+.blueprint-line-of-interaction span,
+.blueprint-line-of-visibility span,
+.blueprint-line-of-support span {
+  font-size: 9px; font-family: var(--mono);
+  text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--fg-muted); opacity: 0.5;
+}
+.blueprint-lane-services { display: flex; gap: var(--s2); flex-wrap: wrap; }
+.blueprint-service {
+  padding: var(--s2) var(--s3);
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 4px; flex: 1; min-width: 80px;
+}
+.blueprint-service-name { font-size: 11px; font-weight: 600; color: var(--fg); }
+.blueprint-service-detail { font-size: 10px; color: var(--fg-muted); margin-top: 1px; }
+.blueprint-service-infra { background: transparent; border-style: dashed; }
+.blueprint-lane-backstage { opacity: 0.85; }
+.blueprint-lane-support { opacity: 0.6; }
+
+/* page prose */
+main { max-width: 920px; margin: 0 auto; }
+h1 { font-size: 22px; margin: 0 0 var(--s4); }
+h2 { font-size: 16px; margin: var(--s7) 0 var(--s2); }
+p, li { font-size: 14px; }
+.muted { color: var(--fg-muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; margin: var(--s3) 0; }
+th, td { text-align: left; vertical-align: top; padding: var(--s2) var(--s3); border-bottom: 1px solid var(--border); }
+th { font-size: 11px; color: var(--fg-muted); text-transform: uppercase; letter-spacing: .05em; }
+code { font-family: var(--mono); font-size: 12px; }
+@media (max-width: 700px) { body { padding: var(--s4); } .blueprint-lane-nodes:not(.blueprint-lane-services) { flex-direction: column; align-items: stretch; } .blueprint-connector { width: 1px; height: 12px; align-self: center; } }
+</style>
+</head>
+<body>
+<main>
+<h1>Meridian's LinkedIn Games register: day-save blueprint</h1>
+
+<h2>System overview</h2>
+<p>The register is the only way results enter the Games section of Meridian. The owner types the day's times into a sheet on Hoy or on Games, and a Worker stores them as an append-only version of that day in the <code>snapshots</code> table. Every reading on the Games page, the Hoy row, Qué cambió and the CSV export is computed from the latest version of each day.</p>
+<p>This blueprint covers the save path after the redesign: one structured call that adds, changes and removes games for a day, errors that name the game and field, and what the save does when the connection or the session fails. The read path is unchanged apart from Hoy deriving its button label from the summary's <code>to</code>, which is the last day with a played game; the button reads "Editar lo de hoy" when <code>to</code> equals today's date.</p>
+
+<h2>Service blueprint</h2>
+
+<div class="visual-diagram">
+  <div class="visual-label">Service Blueprint: save today's results</div>
+
+  <div class="blueprint-lane">
+    <div class="blueprint-lane-label">
+      <span class="blueprint-lane-title">Frontstage</span>
+      <span class="blueprint-lane-sub">Owner, on a phone</span>
+    </div>
+    <div class="blueprint-lane-nodes">
+      <div class="blueprint-node">
+        <div class="blueprint-node-step">1</div>
+        <div class="blueprint-node-label">Opens the sheet from Hoy or Games</div>
+      </div>
+      <div class="blueprint-connector"></div>
+      <div class="blueprint-node">
+        <div class="blueprint-node-step">2</div>
+        <div class="blueprint-node-label">Types times, empties a stored row</div>
+      </div>
+      <div class="blueprint-connector"></div>
+      <div class="blueprint-node">
+        <div class="blueprint-node-step">3</div>
+        <div class="blueprint-node-label">Taps Guardar</div>
+      </div>
+      <div class="blueprint-connector"></div>
+      <div class="blueprint-node">
+        <div class="blueprint-node-step">4</div>
+        <div class="blueprint-node-label">Reads what changed</div>
+      </div>
+      <div class="blueprint-connector"></div>
+      <div class="blueprint-node blueprint-node-end">
+        <div class="blueprint-node-step">5</div>
+        <div class="blueprint-node-label">Hoy shows the new state</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="blueprint-line-of-interaction"><span>Line of interaction</span></div>
+
+  <div class="blueprint-lane">
+    <div class="blueprint-lane-label">
+      <span class="blueprint-lane-title">Frontstage</span>
+      <span class="blueprint-lane-sub">Browser, the part the owner sees</span>
+    </div>
+    <div class="blueprint-lane-nodes blueprint-lane-services">
+      <div class="blueprint-service">
+        <div class="blueprint-service-name">Register sheet</div>
+        <div class="blueprint-service-detail">Rows prefilled from the stored day; masks times; computes set, clear and remove against what was stored at open</div>
+      </div>
+      <div class="blueprint-service">
+        <div class="blueprint-service-name">Result note</div>
+        <div class="blueprint-service-detail">Status region on Hoy and Games, built from the per-game result</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="blueprint-line-of-visibility"><span>Line of visibility</span></div>
+
+  <div class="blueprint-lane blueprint-lane-backstage">
+    <div class="blueprint-lane-label">
+      <span class="blueprint-lane-title">Backstage</span>
+    </div>
+    <div class="blueprint-lane-nodes blueprint-lane-services">
+      <div class="blueprint-service">
+        <div class="blueprint-service-name">Access policy (router)</div>
+        <div class="blueprint-service-detail">Owner session and same-origin check for identity writes; the new path joins that list</div>
+      </div>
+      <div class="blueprint-service">
+        <div class="blueprint-service-name">Day save (new use case)</div>
+        <div class="blueprint-service-detail">Validates every row or none, merges into the latest version, applies set, clear and remove, appends only if the games changed</div>
+      </div>
+      <div class="blueprint-service">
+        <div class="blueprint-service-name">Text import (existing)</div>
+        <div class="blueprint-service-detail">Paste box; its errors gain a field code</div>
+      </div>
+      <div class="blueprint-service">
+        <div class="blueprint-service-name">Day and summary readers</div>
+        <div class="blueprint-service-detail">Latest version per day; summary's <code>to</code> drives the Hoy button</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="blueprint-line-of-support"><span>Line of support</span></div>
+
+  <div class="blueprint-lane blueprint-lane-support">
+    <div class="blueprint-lane-label">
+      <span class="blueprint-lane-title">Support</span>
+    </div>
+    <div class="blueprint-lane-nodes blueprint-lane-services">
+      <div class="blueprint-service blueprint-service-infra">
+        <div class="blueprint-service-name">D1 snapshots table</div>
+        <div class="blueprint-service-detail">One row per version; latest wins</div>
+      </div>
+      <div class="blueprint-service blueprint-service-infra">
+        <div class="blueprint-service-name">Shared ingest pipeline</div>
+        <div class="blueprint-service-detail">Checksum dedup; snapshot row written last</div>
+      </div>
+      <div class="blueprint-service blueprint-service-infra">
+        <div class="blueprint-service-name">Session cookie</div>
+        <div class="blueprint-service-detail">Signed, one owner</div>
+      </div>
+      <div class="blueprint-service blueprint-service-infra">
+        <div class="blueprint-service-name">Browser session storage</div>
+        <div class="blueprint-service-detail">Draft for the day</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p>Pain points in the current path, each described under State and failure analysis: removal has no path, the average cannot be cleared, the sheet builds text and maps errors back by line number, typed values live only in component memory, and a timed-out save reports failure.</p>
+
+<h2>Ecosystem and dependencies</h2>
+<table>
+  <tr><th>Piece</th><th>Relies on</th><th>Relied on by</th></tr>
+  <tr><td>Register sheet</td><td>Day reader (prefill), day save (write), session cookie, session storage (draft)</td><td>Hoy, Games</td></tr>
+  <tr><td>Day save</td><td>Access policy, <code>snapshots</code> through the shared ingest pipeline</td><td>Register sheet</td></tr>
+  <tr><td>Hoy button label</td><td>Summary's <code>to</code> compared with the browser's local date</td><td>Hoy</td></tr>
+  <tr><td>Every Games reading</td><td>Latest version of each day</td><td>Games page, Hoy row, Qué cambió, CSV export</td></tr>
+</table>
+<p>One person owns and operates all of it. Risk areas: the append-only table is the single store for every day, and the access policy fails closed, so a write path missing from its list is unreachable from the browser.</p>
+
+<h2>Process architecture</h2>
+<p><b>Save, step by step.</b> The sheet sends <code>PUT /api/me/linkedin-games/day</code> with <code>date</code>, <code>tz</code>, <code>today</code>, <code>set</code> (game to time and optional average, where <code>avg: null</code> clears a stored average and an absent <code>avg</code> keeps it) and <code>remove</code> (list of games). The server then:</p>
+<ol>
+  <li>Checks the owner session and the same-origin header.</li>
+  <li>Validates every row. Any invalid row, a game listed in both <code>set</code> and <code>remove</code>, or a future date, returns <code>422</code> with <code>errors[]</code> as <code>{ game, field, reason }</code> (field is <code>game</code>, <code>score</code>, <code>avg</code> or <code>date</code>) and writes nothing.</li>
+  <li>Reads the latest version of the day (or an empty day).</li>
+  <li>Applies <code>set</code> as today's merge, clears or removes as listed. A removed game's key is deleted from <code>games</code>, which readers already treat as "not collected".</li>
+  <li>Appends one version with a fresh <code>capturedAt</code> only if the games differ from the latest version.</li>
+  <li>Returns <code>{ ok: true, day, changes: [{ game, status }] }</code> with status <code>new</code>, <code>changed</code>, <code>removed</code> or <code>same</code>.</li>
+</ol>
+<p><b>Decision points.</b> Valid or not (all or nothing); changed or same (append or not). <b>Handoffs.</b> Sheet to Worker carries the diff, not the full day; Worker to the ingest pipeline carries the whole day, as contract L8 requires. <b>Timing.</b> The browser abandons any request after 10 seconds (<code>REQUEST_TIMEOUT_MS</code>); the server has no deadline of its own, so a request may finish after the browser gave up. <b>Exceptions.</b> Each is a row under State and failure analysis.</p>
+<p><b>Operational feasibility.</b> A save is one read of the latest version and at most one append, the same write cost as the per-game save and the text import today, and it never writes for an unchanged day. The refresh after a save is two reads (day, summary). One owner logging once a day is far below any D1 free-plan limit.</p>
+
+<h2>State and failure analysis</h2>
+<table>
+  <tr><th>System state</th><th>Trigger</th><th>What the register does</th></tr>
+  <tr><td>Healthy</td><td>Default</td><td>Sheet prefilled from the stored day; save works</td></tr>
+  <tr><td>Stored day unreadable</td><td>Day request fails</td><td>Sheet opens empty with the "no pudimos leer" line; removal controls off; save still adds and changes</td></tr>
+  <tr><td>Write path degraded</td><td>D1 overloaded or the Worker returns 5xx or 503</td><td>Reads may still work; save fails with a retry message; the draft stays</td></tr>
+  <tr><td>Offline</td><td>Browser reports no connection</td><td>Save disabled with the offline sentence; the draft stays</td></tr>
+  <tr><td>Session ended</td><td>API answers 401</td><td>Browser goes to login and returns to the same page; the draft restores</td></tr>
+</table>
+
+<table>
+  <tr><th>Failure</th><th>User impact</th><th>Data effect</th><th>Blast radius and recovery</th></tr>
+  <tr><td>Row not valid</td><td>Error on that field; focus on the first one</td><td>Nothing written</td><td>That save only. Fix and save again</td></tr>
+  <tr><td>Removal has no path</td><td>A mistaken result stays in every reading</td><td>Version without the game is the fix</td><td>Games page, Hoy, Qué cambió, export until fixed. Day save closes it</td></tr>
+  <tr><td>The average cannot be cleared</td><td>Emptying an average field changes nothing, so the screen shows a value that is not stored</td><td>Contract L10 keeps the stored average when the field is empty</td><td>One game's adjusted form. <code>avg: null</code> closes it</td></tr>
+  <tr><td>Sheet maps errors back by line number</td><td>An error can land on the wrong row after any change to the line builder</td><td>None</td><td>Sheet only. Structured errors close it</td></tr>
+  <tr><td>Timed-out save reports failure</td><td>The sheet says "No se pudo guardar" though the write may have landed</td><td>Possible new version</td><td>Repeating the save returns <code>same</code> for every game, so no duplicate. Message: "No sabemos si se guardó…"</td></tr>
+  <tr><td>Write fails inside the ingest pipeline</td><td>Save fails</td><td>The snapshot row is written last, so a failure earlier leaves only idempotent schema observations; the day is unchanged</td><td>That save. Retry re-applies</td></tr>
+  <tr><td>Two saves race (second device, or a retry while the first still runs)</td><td>None visible</td><td>Both read the same latest version and both append; per game the later version wins, identical saves leave identical content</td><td>One day. No conflict notice; accepted for a single owner</td></tr>
+  <tr><td>Remove a game that is already absent</td><td>Result note lists it as unchanged</td><td>No version</td><td>None</td></tr>
+  <tr><td>Last game removed</td><td>Hoy reads "Registrar hoy" again; the day drops out of readings</td><td>Latest version has <code>games: {}</code>; earlier versions stay</td><td>The day's readings only. Adding a game restores it</td></tr>
+  <tr><td>Session ended mid-edit</td><td>Redirect to login; after login the sheet reopens with the typed values and "Recuperamos lo que habías escrito."</td><td>Nothing written</td><td>The draft in session storage</td></tr>
+  <tr><td>Day record ends</td><td>None</td><td>Versions are never deleted or rewritten; the latest version is the day</td><td>History stays available for audit</td></tr>
+  <tr><td>Draft ends</td><td>None</td><td>Deleted on a successful save, on Descartar cambios, and when the browser tab closes; never sent to the server</td><td>Browser only</td></tr>
+</table>
+<p>Graceful degradation is inside the recovery column: a failed day read still allows adding, a failed refresh after a successful save keeps the saved state and offers Reintentar, and a failed save keeps every typed value.</p>
+
+<h2>Contract changes</h2>
+<p>Contract L8 (each capture is the day's cumulative; a partial capture would make a reader see fewer games) and L10 (no way to delete a field) conflict with removal and with clearing an average. A new rule L14 states that the owner's day save may delete a game's key and clear an average, that it does so only through <code>PUT /api/me/linkedin-games/day</code>, and that every other writer keeps L8 and L10. The access policy comment and its list gain the new path.</p>
+
+</main>
+</body>
+</html>

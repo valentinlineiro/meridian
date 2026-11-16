@@ -1,6 +1,6 @@
 import { NotFoundError } from "../../../application/errors.ts";
 import { DomainError } from "../../../kernel/errors.ts";
-import { assertNotFuture, assertPlayDate, emptyDay, gameEntry, playerToday, sameGames, sortKeys, withGame, type DayRecord, type GameKey } from "../domain/LinkedinGames.ts";
+import { assertNotFuture, assertPlayDate, emptyDay, gameEntry, InvalidGameResult, playerToday, sameGames, sortKeys, withGame, type DayRecord, type GameKey } from "../domain/LinkedinGames.ts";
 import { parseGamesText, type LineError, type ParsedEntry } from "../domain/GamesText.ts";
 import type { DayRecordStore } from "../ports/DayRecordStore.ts";
 import type { OwnerLookup } from "../ports/OwnerLookup.ts";
@@ -31,7 +31,7 @@ export class ImportGameResults {
         valid.push({ ...e, entry: gameEntry(e.game, { score: e.score, avg: e.avg }) });
       } catch (err) {
         if (!(err instanceof DomainError)) throw err;
-        errors.push({ line: e.line, text: `${e.date} ${e.game}`, reason: err.message });
+        errors.push({ line: e.line, text: `${e.date} ${e.game}`, reason: err.message, field: err instanceof InvalidGameResult ? err.field : "date" });
       }
     }
     errors.sort((a, b) => a.line - b.line);

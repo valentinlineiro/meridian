@@ -1,7 +1,8 @@
 import type { GameKey } from "./LinkedinGames.ts";
 
 export interface ParsedEntry { line: number; date: string; game: GameKey; score: string; avg: string | null }
-export interface LineError { line: number; text: string; reason: string }
+// field says which part of the line is wrong ("line" when the whole line is not understood), so the sheet can use its own sentence.
+export interface LineError { line: number; text: string; reason: string; field: "game" | "score" | "avg" | "date" | "line" }
 
 // The one place to teach the parser a game. Pinpoint and Crossclimb are not here on purpose: they need their own result shape
 // (guesses, not time) and an explicit decision first (contract L10).
@@ -57,16 +58,16 @@ export function parseGamesText(text: string, today: string): { entries: ParsedEn
     const line = i + 1;
     const t = raw.trim();
     if (!t) return;
-    const fail = (reason: string) => errors.push({ line, text: t, reason });
+    const fail = (reason: string, field: LineError["field"] = "line") => errors.push({ line, text: t, reason, field });
     // avgRaw is what was written (null / "" when nothing was): an omitted average is fine, one that is given must be a valid time.
     const push = (d: string, g: string, scoreRaw: string, avgRaw: string | null) => {
       const game = gameOf(g);
-      if (!game) return fail(`juego desconocido «${g}»`);
+      if (!game) return fail(`juego desconocido «${g}»`, "game");
       const score = clock(scoreRaw);
-      if (score === null) return fail(`mis segundos no válidos («${scoreRaw}»)`);
+      if (score === null) return fail(`mis segundos no válidos («${scoreRaw}»)`, "score");
       const given = avgRaw !== null && avgRaw !== "";
       const avg = given ? clock(avgRaw) : null;
-      if (given && avg === null) return fail(`media no válida («${avgRaw}»)`);
+      if (given && avg === null) return fail(`media no válida («${avgRaw}»)`, "avg");
       entries.push({ line, date: d, game, score, avg });
     };
 
@@ -74,7 +75,7 @@ export function parseGamesText(text: string, today: string): { entries: ParsedEn
       if (MARKDOWN_RULE.test(t) && t.includes("-")) return;
       const c = cells(t, table.delim);
       const d = /^(\d{4}-\d{2}-\d{2})(?:[ T].*)?$/.exec(c[table.fecha] ?? "")?.[1];
-      if (!d) return fail("fecha no válida (se espera AAAA-MM-DD)");
+      if (!d) return fail("fecha no válida (se espera AAAA-MM-DD)", "date");
       return push(d, c[table.juego] ?? "", c[table.mi] ?? "", c[table.media] ?? null);
     }
 

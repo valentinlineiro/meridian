@@ -22,14 +22,21 @@
       <p class="hc-line" id="overviewLangXp">{{ l?.line ?? '—' }}</p>
     </a>
 
-    <a class="hc card" id="overviewGamesRow" [routerLink]="g?.link ?? '/games'">
-      <div class="hc-h"><b>LinkedIn Games</b>@if (g?.verdict; as vd) {<app-verdict [verdict]="vd" />}<span class="grow-tag">registro manual</span></div>
-      @if (g?.focus; as f) {
-        <div class="hc-n"><span class="hc-big" id="overviewGamesBig">{{ f.big }}</span><span class="muted" id="overviewGamesCap">{{ f.cap }}</span></div>
-        <app-result-bars [data]="f.bars" />
-      }
-      <p class="hc-line" id="overviewGamesLine">{{ g?.line ?? '—' }}</p>
-      <p class="muted hc-sub" id="overviewGamesStreak">{{ g?.streak }}</p>
-    </a>
+    <div class="hc-wrap">
+      <a class="hc card" id="overviewGamesRow" [routerLink]="g?.link ?? '/games'">
+        <div class="hc-h"><b>LinkedIn Games</b>@if (g?.verdict; as vd) {<app-verdict [verdict]="vd" />}<span class="grow-tag">registro manual</span></div>
+        @if (g?.focus; as f) {
+          <div class="hc-n"><span class="hc-big" id="overviewGamesBig">{{ f.big }}</span><span class="muted" id="overviewGamesCap">{{ f.cap }}</span></div>
+          <app-result-bars [data]="f.bars" />
+        }
+        <p class="hc-line" id="overviewGamesLine">{{ g?.line ?? '—' }}</p>
+        <p class="muted hc-sub" id="overviewGamesStreak">{{ g?.streak }}</p>
+      </a>
+      <div class="hc-act">
+        <button id="overviewGamesRegister" type="button" [class]="'btn ' + (g?.registered ? 'btn-g' : 'btn-p')" (click)="openRegister()">{{ g?.registered ? 'Editar lo de hoy' : 'Registrar hoy' }}</button>
+        <p id="overviewGamesNote" class="muted hc-sub u-m-0" role="status">{{ note() }}</p>
+      </div>
+    </div>
   </div>
+  <app-games-register [day]="day()" (saved)="saved($event)" (reread)="openRegister()" />
 </section>
