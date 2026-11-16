@@ -6,7 +6,7 @@ import { ApiClient } from '../../core/api-client';
 import { safe } from '../../core/guard';
 import { GameReport } from './game-report';
 import { GamesChart } from './games-chart';
-import { GamesRegister } from './games-register';
+import { GamesRegister } from '../../shared/games-register/games-register';
 import { Help } from '../../shared/help';
 import { ResultBars } from '../../shared/result-bars';
 import { Section } from '../../shared/section';

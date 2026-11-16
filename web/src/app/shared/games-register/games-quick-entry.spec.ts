@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { GamesQuickEntry } from './games-quick-entry';
-import { localToday } from './games.model';
+import { localToday } from '../../core/format';
 
 const URL = '/api/me/linkedin-games/import';
 const day = (games: { game: string; score: string; avg: string | null; status: string }[]) => ({ ok: true, applied: false, errors: [], days: [{ date: localToday(), games }] });

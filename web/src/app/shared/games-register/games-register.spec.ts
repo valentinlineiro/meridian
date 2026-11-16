@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { GamesRegister } from './games-register';
-import { localToday } from './games.model';
+import { localToday } from '../../core/format';
 
 const URL = '/api/me/linkedin-games/day';
 const answer = (o: Record<string, unknown> = {}) => ({ ok: true, games: [{ game: 'zip', score: '0:48', avg: null, status: 'new' }], removed: [], ...o });

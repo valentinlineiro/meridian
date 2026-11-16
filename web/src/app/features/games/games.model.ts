@@ -1,6 +1,6 @@
 // Port of the LinkedIn Games view builders (src/dashboard.client.js:1787–1943). Pure: the range is a parameter, not a global.
 // Nothing here is computed beyond formatting: labels, bands and arrows come from the server's contract.
-import { fmtDate, localDateOf } from '../../core/format';
+import { fmtDate, localToday } from '../../core/format';
 import { resultBars } from '../../shared/result-bars';
 import { attentionOrder, GAME_NAMES, gameName, gdays, PERIODS, PeriodKey, Verdict, verdictFor } from '../../core/words';
 
@@ -54,8 +54,7 @@ export { GAME_NAMES, gameName, gdays };
 export const RANGES: { k: Range; l: string }[] = PERIODS.map(({ k, l }) => ({ k, l }));
 export const RANGE_NAMES = Object.fromEntries(PERIODS.map((p) => [p.k, p.phrase])) as Record<Range, string>;
 
-/** The browser's calendar day (sv-SE formats as YYYY-MM-DD), not UTC: a result logged at 01:00 belongs to today. */
-export const localToday = (): string => localDateOf(new Date());
+export { localToday };
 
 const gnum = (v: number | null, d: number) => v == null ? '—' : v.toLocaleString('es-ES', { maximumFractionDigits: d });
 const gpct = (r: number | null) => r == null ? '—' : Math.round(r * 100) + ' %';

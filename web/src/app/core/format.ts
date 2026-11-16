@@ -76,3 +76,6 @@ export function sparkPoints(v: number[]): string {
 
 /** The calendar date (YYYY-MM-DD), in the browser's timezone, of an instant: the day a player calls it. */
 export const localDateOf = (when: string | Date): string => new Date(when).toLocaleDateString('sv-SE');
+
+/** The browser's calendar day (sv-SE formats as YYYY-MM-DD), not UTC: a result logged at 01:00 belongs to today. */
+export const localToday = (): string => localDateOf(new Date());

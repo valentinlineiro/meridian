@@ -8,8 +8,8 @@ import { Langs, XpDay } from '../../core/courses';
 import { ResultBars } from '../../shared/result-bars';
 import { Sparkline } from '../../shared/sparkline';
 import { VerdictPill } from '../../shared/verdict';
-import { GamesRegister } from '../games/games-register';
-import { Day, localToday } from '../games/games.model';
+import { GamesRegister } from '../../shared/games-register/games-register';
+import { localToday } from '../../core/format';
 import { chessRow, ChessRecentIn, ChessSummaryIn, gamesRow, GamesSummaryIn, syncChip, TimelineIn } from './overview.model';
 import { xpBars, xpSummary, xpWeek, xpWeekLine } from '../../core/xp-week';
 
@@ -72,7 +72,7 @@ export class Overview {
   private readonly app = inject(ApplicationRef);
   private readonly reg = viewChild.required(GamesRegister);
   /** Today's stored games for the sheet; null when the day could not be read. */
-  protected readonly day = signal<Day['games'] | null>(null);
+  protected readonly day = signal<Record<string, { score?: string | null; avg?: string | null }> | null>(null);
   /** What the last save from here did, said once in a status region. */
   protected readonly note = signal('');
 
@@ -83,12 +83,12 @@ export class Overview {
 
   /** Reads today's record, then opens the sheet over it. A failed read opens the sheet empty and says so; nothing stored is touched. */
   protected openRegister(): void {
-    this.api.get<{ day?: Day }>('/api/me/linkedin-games', { date: localToday() }).subscribe({
+    this.api.get<{ day?: { games?: Record<string, { score?: string | null; avg?: string | null }> } }>('/api/me/linkedin-games', { date: localToday() }).subscribe({
       next: (r) => this.show(r.day?.games ?? {}),
       error: () => this.show(null),
     });
   }
-  private show(day: Day['games'] | null): void {
+  private show(day: Record<string, { score?: string | null; avg?: string | null }> | null): void {
     this.day.set(day);
     this.app.tick(); // the sheet reads its input when it opens
     this.reg().open();

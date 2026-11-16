@@ -2,7 +2,8 @@ import { Component, computed, DestroyRef, ElementRef, inject, output, signal, vi
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { catchError, debounceTime, map, of, switchMap } from 'rxjs';
 import { ApiClient } from '../../core/api-client';
-import { gameName, localToday } from './games.model';
+import { gameName } from '../../core/words';
+import { localToday } from '../../core/format';
 
 const URL = '/api/me/linkedin-games/import';
 interface Line { line: number; text: string; reason: string }

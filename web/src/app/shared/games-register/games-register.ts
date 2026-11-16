@@ -3,7 +3,8 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ApiClient } from '../../core/api-client';
 import { GamesQuickEntry } from './games-quick-entry';
-import { Day, GAME_NAMES, gameName, localToday } from './games.model';
+import { GAME_NAMES, gameName } from '../../core/words';
+import { localToday } from '../../core/format';
 import { Cell, dirtyGames, errorText, FieldCode, maskTime, plan, RowError, Values } from './games-register.model';
 
 const URL = '/api/me/linkedin-games/day';
@@ -30,7 +31,7 @@ const dayLabel = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString
   selector: 'app-games-register',
   imports: [GamesQuickEntry],
   template: `
-    <dialog #dlg id="gamesRegister" class="lgreg" aria-labelledby="lgRegTitle" (cancel)="$event.preventDefault(); requestClose()" (click)="backdrop($event)">
+    <dialog #dlg id="gamesRegister" class="lgreg" aria-labelledby="lgRegTitle" (cancel)="$event.preventDefault(); requestClose()">
       <form (submit)="submit($event)">
         <div class="lgreg-head"><h2 id="lgRegTitle" class="u-m-0">Hoy, {{ label() }}</h2><button type="button" class="btn btn-g" (click)="requestClose()">Cerrar</button></div>
         <p id="lgRegHelp" class="muted u-fs-sm">Tu tiempo y la media de LinkedIn de cada juego, como m:ss (por ejemplo 1:06). Deja vacío el que no hayas jugado; vacía uno ya guardado para quitarlo.</p>
@@ -86,7 +87,7 @@ const dayLabel = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString
 })
 export class GamesRegister {
   /** Today's stored record (a failed request is null: the rows start empty and nothing stored is touched). */
-  readonly day = input<Day['games'] | null>(null);
+  readonly day = input<Record<string, { score?: string | null; avg?: string | null }> | null | undefined>(null);
   /** Results were stored: the page refreshes its summary and shows the note ("Guardado: Zip 0:48. Quitado: Queens."). */
   readonly saved = output<string>();
   /** The person asked to read the stored day again. */
@@ -113,6 +114,7 @@ export class GamesRegister {
   protected readonly discard = signal(false);
   protected readonly saving = signal(false);
   private readonly isOpen = signal(false);
+  private listening = false;
 
   constructor() {
     // The stored day arrived (or was read again) while the sheet is open: fill the rows still empty, never over what was typed.
@@ -146,6 +148,7 @@ export class GamesRegister {
     if (draft && draft.date === this.date()) { this.values.set({ ...this.values(), ...draft.values }); this.removed.set(new Set(draft.removed)); }
     const el = this.dlg().nativeElement;
     this.isOpen.set(true);
+    if (!this.listening) { this.listening = true; el.addEventListener('click', (e) => { if (e.target === el) this.requestClose(); }); } // a tap on the backdrop
     if (!el.open) { if (el.showModal) el.showModal(); else el.setAttribute('open', ''); }
   }
   /** True when a draft of today's sheet is waiting: the host reopens the sheet after a login redirect or a reload. */
@@ -156,7 +159,6 @@ export class GamesRegister {
     if (this.dirty().length) { this.discard.set(true); setTimeout(() => this.dlg().nativeElement.querySelector<HTMLElement>('#lgRegKeep')?.focus()); return; }
     this.finish();
   }
-  protected backdrop(e: MouseEvent): void { if (e.target === this.dlg().nativeElement) this.requestClose(); }
   protected drop(): void { this.finish(); }
   private finish(): void {
     clearDraft();
@@ -187,7 +189,8 @@ export class GamesRegister {
     this.errors.update(({ [k]: _, ...rest }) => rest);
     if (!this.message().endsWith('se mantiene')) this.message.set('');
     this.restored.set(false);
-    this.dirty().length ? writeDraft({ date: this.date(), values: this.values(), removed: [...this.removed()] }) : clearDraft();
+    if (this.dirty().length) writeDraft({ date: this.date(), values: this.values(), removed: [...this.removed()] });
+    else clearDraft();
   }
 
   protected submit(e: Event): void {
