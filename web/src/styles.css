@@ -362,11 +362,11 @@ app-tab-bar{display:none}
 @media(min-width:761px){.gcs{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
 /* Games overview: how many games improve, one segment per game */
-.go{display:grid;gap:8px;margin-top:14px}.go-n{display:flex;align-items:baseline;gap:8px}.go-n .gc-big{font-size:var(--fs-display)}
+.go{display:grid;gap:8px;margin:0 0 16px}.go-n{display:flex;align-items:baseline;gap:8px}.go-n .gc-big{font-size:var(--fs-display)}
 .go-bar{display:flex;gap:4px}.go-bar span{flex:1;height:10px;border-radius:var(--r-pill)}.go-down{background:var(--err)}.go-flat,.go-few{background:var(--neutral)}.go-few{opacity:.5}.go-up{background:var(--ok)}
 
 /* Games header: today's log first, the streak as a small line, the long-run facts as a footer */
-.gh-top{display:flex;justify-content:space-between;align-items:baseline;gap:4px 12px;flex-wrap:wrap}.gh-top b{font-size:var(--fs-xl)}
+.gh>b{font-size:var(--fs-xl)}
 .gh-foot{display:flex;flex-wrap:wrap;gap:4px 16px;margin-top:12px;font-size:var(--fs-sm)}.gh-foot a{margin-left:auto;display:inline-flex;align-items:center;min-height:44px}
 #gamesToday .pill{text-transform:none;letter-spacing:0;font-weight:600}
 
@@ -461,3 +461,10 @@ app-chess{--muted:var(--muted-bright)}
 }
 /* the viewer's engine errors are rows with a 44 px target, not inline text */
 #gErrors .linkbtn,#gMissed .linkbtn{display:block;width:100%;min-height:44px;padding:10px 0;margin:0;border-top:1px solid var(--line)}
+
+/* Games, today first: one row per game, the whole row opens the sheet on that game */
+.gt{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:6px}
+.gt-row{display:flex;justify-content:space-between;align-items:center;gap:12px;width:100%;min-height:48px;text-align:left}
+.gt-name{font-weight:600}.gt-state{font-variant-numeric:tabular-nums;color:var(--text)}.gt-todo{color:var(--muted);font-weight:400}
+@media(min-width:761px){.gt{grid-template-columns:repeat(2,minmax(0,1fr))}}
+#gamesTab>.gh-foot{padding:0 12px;margin:16px 0}

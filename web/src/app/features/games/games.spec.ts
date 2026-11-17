@@ -191,6 +191,34 @@ describe('Games', () => {
       expect(text('gamesHeroToday')).toBe('Hoy · faltan 4');
     });
 
+    it('shouldListTheSixGamesWithTodaysTimeOrSinRegistrar', async () => {
+      await open({ zip: game() }, { ok: true, day: { games: { zip: { score: '0:08' }, tango: { avg: '0:20' } } } });
+      const rows = [...el.querySelectorAll('#gamesToday button')].map((b) => [b.querySelector('.gt-name')!.textContent, b.querySelector('.gt-state')!.textContent]);
+      expect(rows).toEqual([['Zip', '0:08'], ['Tango', 'Solo media'], ['Queens', 'Sin registrar'], ['Mini Sudoku', 'Sin registrar'], ['Patches', 'Sin registrar'], ['Wend', 'Sin registrar']]);
+      expect(el.querySelector('#gamesToday-queens')!.getAttribute('aria-label')).toBe('Queens, sin registrar. Registrar');
+      expect(el.querySelector('#gamesToday-zip')!.getAttribute('aria-label')).toBe('Zip, registrado 0:08. Editar');
+    });
+
+    it('shouldNotSaySinRegistrarWhenTodayCouldNotBeRead', async () => {
+      await open({ zip: game() }, FAIL);
+      expect(el.querySelector('#gamesToday-zip .gt-state')!.textContent).toBe('No se pudo leer');
+      expect(el.querySelector('#gamesToday')!.textContent).not.toContain('Sin registrar');
+    });
+
+    it('shouldOpenTheSheetOnTheGameOfTheRowTapped', async () => {
+      await open({ zip: game() });
+      await click('#gamesToday-queens');
+      expect(el.querySelector('dialog')!.hasAttribute('open')).toBe(true);
+      expect(document.activeElement!.id).toBe('lgReg-queens-score');
+    });
+
+    it('shouldPutTodayBeforeTheTrendOfTheGames', async () => {
+      await open({ zip: game() });
+      const before = (a: string, b: string) => el.querySelector(a)!.compareDocumentPosition(el.querySelector(b)!) & Node.DOCUMENT_POSITION_FOLLOWING;
+      expect(before('#gamesToday', '#gamesOverview')).toBeTruthy();
+      expect(before('#gamesOverview', '#gamesNow')).toBeTruthy();
+    });
+
     it('shouldNotCountWhenTodayCouldNotBeReadSoItNeverClaimsZero', async () => {
       await open({ zip: game() }, FAIL);
       expect(text('gamesHeroToday')).toBe('Hoy');
@@ -225,9 +253,9 @@ describe('Games', () => {
       expect(text('gamesHeroToday')).toBe('Hoy · todo registrado');
     });
 
-    it('shouldOfferTheWholeHistoryAsCsvFromTheHero', async () => {
+    it('shouldOfferTheWholeHistoryAsCsvFromTheFooter', async () => {
       await open({ zip: game() });
-      const a = el.querySelector<HTMLAnchorElement>('#gamesHero #gamesExport')!;
+      const a = el.querySelector<HTMLAnchorElement>('.gh-foot #gamesExport')!;
       expect(a.getAttribute('href')).toBe('/api/me/linkedin-games/export.csv');
       expect(a.hasAttribute('download')).toBe(true);
     });

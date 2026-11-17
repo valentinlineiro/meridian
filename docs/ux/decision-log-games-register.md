@@ -313,3 +313,9 @@ Why: a reload on a game report with an interrupted sheet showed a blank page (NG
 Rejected: keeping "N de 6" with a different label (the same glyphs still read as one number); dropping the streak (kept, small, in the footer).
 Open: "Registrar hoy" on Hoy sits about 8 px above the bottom nav on first paint at 390×844 (below the fold, reachable by scrolling); desktop touch targets (sidebar, range buttons) and the 1.5:1 ghost-button border are untouched.
 Rests on: games.ts (viewChild, draft effect, todayTitle), games.html, games-register.ts (open focus), styles.css (.gc). Checked on the local worker at 390×844 with demo data; tests: draft + report route, focus, title wording.
+
+## Games hub: today first
+Decided: the owner ("Hoy primero"). The first block of /games is "Hoy · faltan N" with six rows, one per game, each a button showing today's time, "Solo media" or "Sin registrar" ("No se pudo leer" when the day could not be read, never "Sin registrar"). A row opens the sheet with focus on that game's time; "Registrar hoy" still opens it on the first empty one. The trend moved below as "Cómo vas" (the "N de 6 juegos mejoran" headline, bar and sentence), then the period chooser and "Tus juegos", whose cards still link to each report. Record, dates, streak and CSV are the page footer. The streak stays small in the footer (owner decision: no streak pressure).
+Why: the owner opens Games mostly to log; the old first screen was a trend summary and "Registrar hoy" sat below it.
+Rejected: a second tap target per row for "Ver informe" (the report stays on its card); the streak beside the title.
+Rests on: games.html, games.ts (today), games-register.ts (open(game)), styles.css (.gt, .gt-row, .go). Checked on the local worker at 390×844 with demo data: button bottom at y=492, rows 48 px, foot inside the gutters.
