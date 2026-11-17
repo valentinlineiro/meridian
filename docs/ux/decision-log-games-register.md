@@ -242,3 +242,10 @@ Decided by: Claude, default; the owner has not answered.
 Why: the full list with no filter set and no games says "Sin partidas todavía" (there is nothing to clear), and only a set filter says "Sin partidas con esos filtros." with its "Limpiar filtros"; the field border change is one global rule, so it also changes the fields in Games, Idiomas and Configuración; the page error block stays on screen while its retry runs, so "Sigue sin cargar. Inténtalo en un minuto." can appear.
 Rejected: a chess-only border (the Games register audit asked for the same rule); showing the filter message with no filter set.
 Rests on: web/src/app/features/chess/components/matches-table.ts, web/src/styles.css, web/src/app/shared/error-block.ts.
+
+## 2026-11-17 The row status line and the viewer's missing-moves message stay as a safety net
+
+Decided by: the owner, who granted a production read; Claude ran it.
+Why: all 1,727 games in production have stored moves, so "Esta partida no tiene jugadas guardadas." will almost never show. It costs one line and covers a game synced without moves.
+Rejected: removing the status line and the permanent viewer error; a later sync can still arrive without moves.
+Rests on: a read-only count over matches joined to match_details (no rows read beyond the count). Not checked: whether every stored list is a legal game.

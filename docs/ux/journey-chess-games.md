@@ -71,4 +71,3 @@ The step counts are estimated. The page records no use of the table, so completi
 - Should the counts on the Resultados card ("12 por tiempo") open the list already filtered?
 - Should the viewer step to the previous and next game of the filtered list?
 - Should the filters live in the URL, so Back and a shared link keep them?
-- What share of games has stored moves? It decides how often the status line appears, and needs a production read.
