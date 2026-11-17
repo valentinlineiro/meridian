@@ -113,6 +113,13 @@ describe('MatchesTable', () => {
     expect(params(await answer())).toEqual({ limit: '10', offset: '0', color: 'black' });
   });
 
+  it('shouldOfferTheCsvExportOnlyWithTheFullFilterRow', async () => {
+    await answer({ rows: [row()], total: 120 });
+    expect(el.querySelector('a[href="/api/export/matches.csv"]')).toBeNull();
+    await click('#btnAllMatches');
+    expect(el.querySelector('#matchFilters a[href="/api/export/matches.csv"]')!.textContent).toBe('Exportar CSV');
+  });
+
   it('shouldPageBy50WhenNotCompact', async () => {
     await answer({ rows: [row()], total: 120 });
     await click('#btnAllMatches');
