@@ -95,6 +95,15 @@ describe('Games', () => {
       expect(el.querySelector('a.gr-back')).not.toBeNull(); // the class that gives it a 44px touch target on phones
     });
 
+    it('shouldRenderTheReportWhenADraftOfTodaysSheetIsWaiting', async () => {
+      const d = new Date(), pad = (n: number) => String(n).padStart(2, '0');
+      sessionStorage.setItem('meridian.gamesRegisterDraft', JSON.stringify({ date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`, values: { zip: { score: '0:48', avg: '' } }, removed: [] }));
+      try {
+        await openReport({ queens: game(), zip: game() });
+        expect(el.querySelector('app-game-report')).not.toBeNull(); // the sheet lives in the list: the report must not try to open it
+      } finally { sessionStorage.clear(); }
+    });
+
     it('shouldSayThereAreNoGamesYetWhenTheKeyIsValidButTheSummaryHasNoSuchGame', async () => {
       await openReport({ zip: game() }, 'queens');
       expect(el.querySelector('h1')!.textContent).toBe('Queens');
@@ -179,7 +188,7 @@ describe('Games', () => {
 
     it('shouldCountTodaysRecordedGamesInTheHeroTitle', async () => {
       await open({ zip: game() }, { ok: true, day: { games: { zip: { score: '0:08' }, tango: { score: '0:20' } } } });
-      expect(text('gamesHeroToday')).toBe('Hoy · 2 de 6 registrados');
+      expect(text('gamesHeroToday')).toBe('Hoy · faltan 4');
     });
 
     it('shouldNotCountWhenTodayCouldNotBeReadSoItNeverClaimsZero', async () => {
@@ -213,7 +222,7 @@ describe('Games', () => {
       const six = Object.fromEntries(['zip', 'tango', 'queens', 'mini_sudoku', 'patches', 'wend'].map((k) => [k, { score: '0:30' }]));
       await open({ zip: game() }, { ok: true, day: { games: six } });
       expect(text('gamesRegisterOpen')).toBe('Editar lo de hoy');
-      expect(text('gamesHeroToday')).toBe('Hoy · 6 de 6 registrados');
+      expect(text('gamesHeroToday')).toBe('Hoy · todo registrado');
     });
 
     it('shouldOfferTheWholeHistoryAsCsvFromTheHero', async () => {

@@ -55,6 +55,11 @@ describe('GamesRegister', () => {
     expect(input('tango', 'score').value).toBe('');
   });
 
+  it('shouldFocusTheFirstEmptyTimeWhenOpening', async () => {
+    await open({ zip: { score: '0:48', avg: null } });
+    expect(document.activeElement).toBe(input('tango', 'score'));
+  });
+
   it('shouldShowWhatWillBeStoredWhileTyping', async () => {
     await open();
     await fill('zip', 'score', '106');

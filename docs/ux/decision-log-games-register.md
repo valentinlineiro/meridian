@@ -306,3 +306,10 @@ Why: stacking each label over its chips (#217) fixed the header but made the fil
 Rejected: one horizontal chip row (hides options off-screen); dropping the chips on phones (the filters stay one tap away).
 Rests on: web/src/app/features/chess/components/matches-table.ts (btnFilters, showElo, chipSummary), chess.ts (hero sub), styles.css (.filters-toggle, #gErrors .linkbtn). Checked in a browser on the local worker at 390×844 with mocked games; not yet with the real list.
 
+
+## Games critique (27/40): draft crash, hero count, sheet focus, card overlap
+Decided: the owner ("P1 + P2 + P3"). A sheet draft no longer breaks `/games/<juego>`: the draft reopens only on the hub, the one page that renders the sheet. The hero says "Hoy · sin registrar", "Hoy · faltan 4" or "Hoy · todo registrado", never "N de 6", which the trend headline ("0 de 6 juegos mejoran") already uses. The streak moved from beside the title to the hero footer. The sheet opens with focus on the first empty time, so the keypad is one tap away. In the game rows the name column sizes to its chip and the number column takes the rest, so "Pocos datos" no longer overlaps the caption.
+Why: a reload on a game report with an interrupted sheet showed a blank page (NG0951), a silent failure; two "0 de 6" in one card read as "nothing logged" and "nothing improves" at a glance.
+Rejected: keeping "N de 6" with a different label (the same glyphs still read as one number); dropping the streak (kept, small, in the footer).
+Open: "Registrar hoy" on Hoy sits about 8 px above the bottom nav on first paint at 390×844 (below the fold, reachable by scrolling); desktop touch targets (sidebar, range buttons) and the 1.5:1 ghost-button border are untouched.
+Rests on: games.ts (viewChild, draft effect, todayTitle), games.html, games-register.ts (open focus), styles.css (.gc). Checked on the local worker at 390×844 with demo data; tests: draft + report route, focus, title wording.

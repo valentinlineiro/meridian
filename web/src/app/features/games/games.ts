@@ -62,7 +62,7 @@ export class Games {
     const s = r.s?.summary;
     return s && typeof s.games === 'object' && s.games !== null ? s : null;
   });
-  private readonly reg = viewChild.required(GamesRegister);
+  private readonly reg = viewChild(GamesRegister); // only the hub renders the sheet
   /** What the last save did ("Guardado: Zip 0:48."), until the next one. */
   protected readonly saveNote = signal('');
   protected saved(note: string): void { this.saveNote.set(note); this.data.reload(); }
@@ -70,9 +70,9 @@ export class Games {
   constructor() {
     // A sheet interrupted by a login redirect or a reload comes back by itself, once today's record has been read.
     effect(() => {
-      if (!this.loaded() || this.draftChecked) return;
+      if (!this.loaded() || this.draftChecked || this.game()) return; // a game's report has no sheet: wait for the hub
       this.draftChecked = true;
-      if (GamesRegister.hasDraft()) untracked(() => this.reg().open());
+      if (GamesRegister.hasDraft()) untracked(() => this.reg()?.open());
     });
   }
   protected readonly note = computed(() => {
@@ -97,11 +97,13 @@ export class Games {
     return Object.keys(GAME_NAMES).map((k) => ({ k, done: done.has(k) }));
   });
   protected readonly allDone = computed(() => this.todayGames().length > 0 && this.todayGames().every((g) => g.done));
-  /** "Hoy · 2 de 6 registrados"; just "Hoy" while the day could not be read: unknown is never said as zero. */
+  /** "Hoy · faltan 4" (never "N de 6", which the trend headline already uses); just "Hoy" while the day could not be read: unknown is never said as zero. */
   protected readonly todayTitle = computed(() => {
     const games = this.todayGames(), done = this.recorded();
     if (!games.length) return '';
-    return done ? `Hoy · ${games.filter((g) => g.done).length} de ${games.length} registrados` : 'Hoy';
+    if (!done) return 'Hoy';
+    const left = games.filter((g) => !g.done).length;
+    return left === games.length ? 'Hoy · sin registrar' : left ? `Hoy · faltan ${left}` : 'Hoy · todo registrado';
   });
   protected readonly loss = computed(() => { const s = this.summary(); return s ? safe(() => lossRows(s) ?? null, null) : undefined; });
   protected readonly diff = computed(() => { const s = this.summary(); return s ? safe(() => difficultyGrid(s) ?? null, null) : undefined; });
