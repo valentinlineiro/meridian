@@ -164,24 +164,30 @@ describe('Chess', () => {
       await t.open(chessApi({ '/api/stats/summary': { games: 1683, wins: 1046, losses: 505, draws: 132, winRate: 0.6216, scoreRate: 0.6, currentElo: 908, firstElo: 992 },
         '/api/stats/opponents': { macro: [{ key: 'bot', games: 1650 }, { key: 'pvp', games: 33 }] } }));
       expect(t.text('chessHeroWrLabel')).toBe('50,0 % de victorias en las últimas 50 partidas');
-      expect(t.text('chessHeroDistMeta')).toBe('25 victorias · 20 derrotas · 5 tablas · historial 62,2 %');
+      expect(t.text('chessHeroDistMeta')).toBe('25 victorias · 20 derrotas · 5 tablas');
+      expect(t.text('chessHeroHist')).toBe('Historial: 62,2 % de victorias'); // the whole-history rate sits in «Estadísticas»
       expect(t.text('chessHeroGames')).toBe('1650 de 1683 partidas contra bots');
       expect(t.text('chessHeroEloSub')).toBe('ELO · −84 vs primera lectura');
       expect(t.el().querySelector<HTMLElement>('#chessHeroDist .bar-win')!.style.width).toBe('50%');
     });
 
+    it('shouldKeepOnlyTheEloTheStreakAndTheRecentResultsInTheHero', async () => {
+      await t.open();
+      const hero = t.text('chessHero');
+      for (const gone of ['partidas disputadas', 'contra bots', 'Historial']) expect(hero, gone).not.toContain(gone);
+      expect(t.el().querySelector('#cg-stats #chessHeroMeta')).not.toBeNull(); // the scope of the data moved into «Estadísticas»
+    });
+
     it('shouldColourTheStreakPillByItsKind', async () => {
       await t.open();
       expect(t.el().querySelector('#chessHeroStreak')!.className.replace(/ ?u-\S+/g, '').trim()).toBe('pill pill-loss');
-      expect(t.text('chessHeroStreak')).toBe('3 derrotas consecutivas'); // a losing run carries no flame
-      expect(t.el().querySelector('#chessHeroStreak [aria-hidden]')!.textContent).toBe('');
+      expect(t.text('chessHeroStreak')).toBe('3 derrotas consecutivas');
     });
 
     it('shouldUseSingularAndTheWinColourForAStreakOfOneWin', async () => {
       await t.open(chessApi({ '/api/stats/summary': { ...summary, currentStreak: 1, currentStreakKind: 'win' } }));
       expect(t.el().querySelector('#chessHeroStreak')!.className.replace(/ ?u-\S+/g, '').trim()).toBe('pill pill-win');
-      expect(t.text('chessHeroStreak')).toBe('🔥 1 victoria consecutiva');
-      expect(t.el().querySelector('#chessHeroStreak [aria-hidden="true"]')!.textContent).toBe('🔥 '); // the flame is decoration, not read out
+      expect(t.text('chessHeroStreak')).toBe('1 victoria consecutiva'); // no flame: a streak is read, not cheered
       expect(t.text('streak')).toContain('Resultados seguidos: 1 victoria');
     });
 
@@ -193,7 +199,7 @@ describe('Chess', () => {
 
     it('shouldShowTheWindowCountsNotZerosInTheChessHeroWhenTheSummaryCarriesNoCounts', async () => {
       await t.open(chessApi({ '/api/stats/summary': { games: 3, winRate: 0.5 } }));
-      expect(t.text('chessHeroDistMeta')).toBe('25 victorias · 20 derrotas · 5 tablas · historial 50,0 %'); // the last-50 counts, never invented zeros
+      expect(t.text('chessHeroDistMeta')).toBe('25 victorias · 20 derrotas · 5 tablas'); // the last-50 counts, never invented zeros
       expect(t.text('res')).toBe('—');
     });
 
@@ -385,7 +391,7 @@ describe('Chess', () => {
       await t.open(chessApi({ '/api/stats/bundle': FAIL, '/api/stats/summary': FAIL }));
       expect(t.text('chessError')).toContain('No pudimos cargar tus estadísticas de ajedrez.');
       expect(t.el().querySelector('#chessError [role=alert] button')!.textContent).toBe('Reintentar');
-      expect(t.text('chessHeroMeta')).toBe(''); // the hero says nothing instead of dashes that read as values
+      expect(t.text('chessHeroElo')).toBe(''); // the hero says nothing instead of dashes that read as values
     });
 
     it('shouldSaySinConexionWhenTheBrowserIsOfflineAndTheLoadFailed', async () => {

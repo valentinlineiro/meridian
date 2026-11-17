@@ -18,9 +18,10 @@
 | Retry running | Button "Cargando…", disabled | |
 | Retry failed again | "Sigue sin cargar. Inténtalo en un minuto." | |
 | Device offline | "Sin conexión. Pulsa Reintentar cuando vuelva la red." | Shown when the browser reports offline; same button |
-| Streak, winning run | "🔥 3 victorias consecutivas" · singular "🔥 1 victoria consecutiva" | The flame stays for wins only |
+| Streak, winning run | "3 victorias consecutivas" · singular "1 victoria consecutiva" | No flame (removed 2026-11-17): a streak is read, not cheered |
 | Streak, losing run | "3 derrotas consecutivas" | No icon; the pill keeps the loss colour |
 | Streak, none | "Sin racha activa" | No icon |
+| Scope of the data, in «Estadísticas» | "60 partidas disputadas · ELO observado en sincronizaciones" · "51 de 60 partidas contra bots" · "Historial: 62,4 % de victorias" | Moved out of the hero; the hero keeps ELO, its change, the streak and the last results |
 
 ### Forma actual
 
