@@ -112,7 +112,7 @@ describe('TabBar', () => {
     await press(el);
     const btn = el.querySelector<HTMLButtonElement>('#tabSyncBtn')!;
     expect(btn.getAttribute('aria-describedby')).toBe('tabSyncHint');
-    expect(el.querySelector('#tabSyncHint')!.textContent).toMatch(/Duolingo[\s\S]*manual/);
+    expect(el.querySelector('#tabSyncHint')!.textContent).toMatch(/Ajedrez[\s\S]*manual/);
     expect(btn.disabled).toBe(false);
     btn.click();
     TestBed.tick();

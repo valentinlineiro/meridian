@@ -378,7 +378,7 @@ describe('Languages', () => {
 
     it('shouldShowTheEmptyStateWhenThereIsNoLanguageDataAtAll', async () => {
       await open('/languages', { '/api/languages': NOT_FOUND, '/api/stats/lang': NOT_FOUND });
-      expect(text('langEmpty')).toBe('Sin datos de Languages — sincroniza con la extensión.');
+      expect(text('langEmpty')).toBe('Aún no hay datos de Idiomas. Pulsa Sincronizar para traerlos.');
       expect(q('#langContent')).toBeNull();
       http.verify();
     });

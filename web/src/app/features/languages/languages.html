@@ -3,7 +3,7 @@
 <section id="langTab">
   <h1 class="sr-only">Idiomas</h1>
   @if (s?.kind === 'empty') {
-    <div id="langEmpty" class="empty">Sin datos de Languages — sincroniza con la extensión.</div>
+    <div id="langEmpty" class="empty">Aún no hay datos de Idiomas. Pulsa Sincronizar para traerlos.</div>
   } @else if (s?.kind === 'failed') {
     <div id="langEmpty" class="err-box" role="alert"><span>No se pudieron cargar los datos de Idiomas.</span>&ngsp;<button class="btn btn-p" type="button" (click)="data.reload()">Reintentar</button></div>
   } @else if (showDetail()) {
