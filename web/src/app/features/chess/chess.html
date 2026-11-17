@@ -3,6 +3,11 @@
 @let x = v();
 <section id="chessTab">
   <h1 class="sr-only">Ajedrez</h1>
+  @if (loadingFirst()) {
+    <span class="sr-only" role="status">Cargando tu ajedrez</span>
+    <div class="hero-card" aria-hidden="true"><i class="sk sk-t"></i><i class="sk sk-n"></i><i class="sk"></i></div>
+    @if (slow()) { <p class="muted u-mt-12" aria-hidden="true">Cargando tu ajedrez…</p> }
+  } @else {
   <div class="hero-card" id="chessHero">
     <div class="u-d-flex u-jc-space-between u-ai-flex-start u-wrap-wrap u-gap-12">
       <div>
@@ -14,7 +19,7 @@
         <div id="chessHeroMeta" class="muted u-fs-sm u-mt-4">{{ h.meta }}</div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
-        <span class="u-fs-sm u-fwt-600" id="chessHeroStreak" [class]="h.pill">{{ h.streak }}</span>
+        <span class="u-fs-sm u-fwt-600" id="chessHeroStreak" [class]="h.pill"><span aria-hidden="true">{{ h.flame }}</span>{{ h.streak }}</span>
         <span id="chessHeroGames" class="muted u-fs-sm">{{ h.games }}</span>
       </div>
     </div>
@@ -23,7 +28,7 @@
         <span class="u-fwt-600" id="chessHeroWrLabel">{{ h.wr }}</span>
         <span id="chessHeroDistMeta" class="muted u-fs-xs">{{ h.distMeta }}</span>
       </div>
-      <div class="distribution-bar" id="chessHeroDist">
+      <div class="distribution-bar" id="chessHeroDist" aria-hidden="true">
         @if (h.dist; as b) {
           <i class="bar-win" [style.width.%]="b.wP" [title]="'Victorias: ' + b.w"></i>
           <i class="bar-loss" [style.width.%]="b.lP" [title]="'Derrotas: ' + b.l"></i>
@@ -32,6 +37,7 @@
       </div>
     </div>
   </div>
+  }
   <div class="card u-mt-12" id="chessPatternsCard"><app-review-suggestion [profile]="profile()" [loading]="profileLoading()" (retry)="retryProfile()" /></div>
   @if (!failed()) {
   <nav class="cindex" aria-label="Secciones de ajedrez">
@@ -43,6 +49,8 @@
       <app-error-block [message]="failMessage()" [loading]="data.isLoading()" [again]="retried()" (retry)="retryPage()" />
     } @else if (x) {
       @for (k of x.kpis; track k.label) { <m-kpi [label]="k.label" [value]="k.value" [sub]="k.sub" /> }
+    } @else if (loadingFirst()) {
+      @for (n of [1, 2]; track n) { <div class="kpi" aria-hidden="true"><i class="sk sk-t"></i><i class="sk sk-n"></i></div> }
     }
   </section>
   <div class="card u-mt-12" id="evoCard"><h2>Evolución · ELO</h2><div class="muted u-fs-xs">ELO observado en sincronizaciones</div>

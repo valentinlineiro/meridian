@@ -54,7 +54,7 @@ describe('MatchDetailModal', () => {
     const r = await open('a b/c');
     expect(r.request.url).toBe('/api/me/matches/a%20b%2Fc/game');
     expect(text('gTitle')).toBe('vs Bot · blancas');
-    expect(text('gPos')).toBe('0 / 7');
+    expect(text('gPos')).toBe('Posición inicial');
     expect(el.querySelector('#gPgn')!.getAttribute('href')).toBe('/api/me/matches/a%20b%2Fc/game.pgn');
     const squares = [...el.querySelectorAll('#gBoard .sq')];
     expect(squares).toHaveLength(64);
@@ -75,18 +75,18 @@ describe('MatchDetailModal', () => {
     const prev = el.querySelector<HTMLButtonElement>('#gPrev')!, next = el.querySelector<HTMLButtonElement>('#gNext')!;
     expect(prev.disabled).toBe(true);
     await key('ArrowLeft');
-    expect(text('gPos')).toBe('0 / 7');
+    expect(text('gPos')).toBe('Posición inicial');
     next.click(); await tick();
-    expect(text('gPos')).toBe('1 / 7');
+    expect(text('gPos')).toBe('Jugada 1 de 7: e4');
     expect(el.querySelector('#gBoard .sq:nth-child(37)')!.textContent).toBe('♙'); // e4 after the first move
     expect(el.querySelector('#gMoves .gm.on')!.textContent).toBe('e4');
     for (let i = 0; i < 9; i++) await key('ArrowRight');
-    expect(text('gPos')).toBe('7 / 7');
+    expect(text('gPos')).toBe('Jugada 7 de 7: Qxf7#');
     expect(next.disabled).toBe(true);
     await key('ArrowLeft');
-    expect(text('gPos')).toBe('6 / 7');
+    expect(text('gPos')).toBe('Jugada 6 de 7: Nf6');
     el.querySelectorAll<HTMLElement>('#gMoves .gm')[2].click(); await tick();
-    expect(text('gPos')).toBe('3 / 7');
+    expect(text('gPos')).toBe('Jugada 3 de 7: Bc4');
   });
 
   it('shouldTrapFocusAndRestoreItInGameModal', async () => {
@@ -106,21 +106,21 @@ describe('MatchDetailModal', () => {
     expect(document.activeElement).toBe(opener);
   });
 
-  it('shouldFocusMoveLinksDuringTabNavigationAndAllowSpaceActivation', async () => {
+  it('shouldFocusMoveButtonsDuringTabNavigationAndStepWhenOneIsActivated', async () => {
     await open();
     const close = el.querySelector<HTMLButtonElement>('#gClose')!;
     expect(document.activeElement).toBe(close);
     await key('Tab');
-    const firstMove = el.querySelector<HTMLAnchorElement>('#gMoves .gm')!;
+    const firstMove = el.querySelector<HTMLButtonElement>('#gMoves .gm')!;
     expect(document.activeElement).toBe(firstMove);
     expect(firstMove.textContent?.trim()).toBe('e4');
 
-    firstMove.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true }));
+    firstMove.click(); // Enter and Space click a native button
     await tick();
-    expect(text('gPos')).toBe('1 / 7');
+    expect(text('gPos')).toBe('Jugada 1 de 7: e4');
 
     await key('Tab');
-    const secondMove = el.querySelectorAll<HTMLAnchorElement>('#gMoves .gm')[1];
+    const secondMove = el.querySelectorAll<HTMLButtonElement>('#gMoves .gm')[1];
     expect(document.activeElement).toBe(secondMove);
     expect(secondMove.textContent?.trim()).toBe('e5');
   });
@@ -140,15 +140,15 @@ describe('MatchDetailModal', () => {
   it('shouldListWorstMovesWithLossAndTheEnginesPreferredMove', async () => {
     await open();
     const t = text('gErrors');
-    expect(t).toContain('Según el motor: 2 errores graves en 4 jugadas tuyas · pérdida media 163 cp');
-    expect(t).toContain('Jugada 5 (Qh5): pierdes 640 cp; el motor prefería Nf3');
-    expect(t).toContain('Jugada 3 (Bc4): pierdes 310 cp; el motor prefería d2d4'); // no SAN available: the UCI move
+    expect(t).toContain('Según el motor: 2 errores graves en 4 jugadas tuyas · pérdida media 1,6 peones por jugada');
+    expect(t).toContain('Jugada 5 (Qh5): pierdes 6,4 peones; el motor prefería Nf3');
+    expect(t).toContain('Jugada 3 (Bc4): pierdes 3,1 peones; el motor prefería d2d4'); // no SAN available: the UCI move
   });
 
   it('shouldJumpToThePositionBeforeTheErrorWhenClickingAWorstMove', async () => {
     await open();
-    el.querySelector<HTMLElement>('#gErrors a')!.click(); await tick();
-    expect(text('gPos')).toBe('4 / 7');
+    el.querySelector<HTMLElement>('#gErrors button.linkbtn')!.click(); await tick();
+    expect(text('gPos')).toBe('Jugada 4 de 7: Nc6');
   });
 
   it('shouldHideTheErrorListWhenThereIsNoAnalysis', async () => {
@@ -159,8 +159,8 @@ describe('MatchDetailModal', () => {
   it('shouldListEachMissedPlyAndJumpToThePositionBeforeIt', async () => {
     await open();
     expect(text('gMissed')).toBe('Jugada 6 (Nf6): el rival tenía mate en 1 y lo jugó');
-    el.querySelector<HTMLElement>('#gMissed a')!.click(); await tick();
-    expect(text('gPos')).toBe('5 / 7');
+    el.querySelector<HTMLElement>('#gMissed button.linkbtn')!.click(); await tick();
+    expect(text('gPos')).toBe('Jugada 5 de 7: Qh5');
   });
 
   it('shouldShowNoMissedListWhenTheGameHasNone', async () => {
@@ -186,6 +186,26 @@ describe('MatchDetailModal', () => {
     expect(text('gTitle')).toBe('Partida');
     expect(text('gErr')).toBe('Esta partida no tiene jugadas guardadas.');
     expect(el.querySelector('#gBody')).toBeNull();
+  });
+
+  it('shouldNameEachMoveAsAButtonAndMarkTheCurrentOneForAssistiveTechnology', async () => {
+    await open();
+    const moves = [...el.querySelectorAll<HTMLButtonElement>('#gMoves button.gm')];
+    expect(moves[0].getAttribute('aria-label')).toBe('Jugada 1, e4');
+    expect(moves.every((b) => b.getAttribute('aria-current') === null)).toBe(true); // at the start none is current
+    moves[2].click(); await tick();
+    expect(el.querySelector('#gMoves [aria-current="step"]')!.getAttribute('aria-label')).toBe('Jugada 3, Bc4');
+    expect(el.querySelector('#gPos')!.getAttribute('aria-live')).toBe('polite');
+  });
+
+  it('shouldDescribeThePositionInWordsAndHideTheSquares', async () => {
+    await open();
+    const board = el.querySelector('#gBoard')!;
+    expect(board.getAttribute('role')).toBe('img');
+    expect(board.getAttribute('aria-label')).toBe('Posición inicial. Blancas: rey e1, dama d1, torres a1 y h1, alfiles c1 y f1, caballos b1 y g1, peones a2, b2, c2, d2, e2, f2, g2 y h2. Negras: rey e8, dama d8, torres a8 y h8, alfiles c8 y f8, caballos b8 y g8, peones a7, b7, c7, d7, e7, f7, g7 y h7.');
+    expect(board.querySelectorAll('.sq:not([aria-hidden="true"])')).toHaveLength(0);
+    el.querySelectorAll<HTMLElement>('#gMoves .gm')[0].click(); await tick();
+    expect(board.getAttribute('aria-label')).toContain('Posición tras la jugada 1, e4.');
   });
 
   it('shouldSayWhyTheGameCannotBeShown', async () => {

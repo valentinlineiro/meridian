@@ -6,7 +6,7 @@ import { pc1 } from '../core/format';
   selector: 'm-donut',
   template: `
     <div class="u-d-flex u-gap-20 u-ai-center u-wrap-wrap">
-      <svg width="96" height="96" viewBox="0 0 72 72">
+      <svg width="96" height="96" viewBox="0 0 72 72" aria-hidden="true">
         <circle r="16" cx="36" cy="36" fill="transparent" stroke="var(--line)" stroke-width="8" />
         @for (s of segs(); track s.k) {
           <circle r="16" cx="36" cy="36" fill="transparent" [attr.stroke]="s.c" stroke-width="8"

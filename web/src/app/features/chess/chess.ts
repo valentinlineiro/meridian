@@ -3,6 +3,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { catchError, finalize, forkJoin, map, Observable, of } from 'rxjs';
 import { ApiClient } from '../../core/api-client';
+import { scrollBehavior } from '../../core/motion';
 import { fmtDelta, pc1, pctCi } from '../../core/format';
 import { StatsService } from '../../core/stats.service';
 import { ErrorBlock } from '../../shared/error-block';
@@ -32,8 +33,8 @@ const saveCut = (v: string) => { try { if (v) localStorage.setItem(PROFILE_CUT_K
 const counts = (s: Summary) => s.wins != null && s.losses != null && s.draws != null ? { w: s.wins, l: s.losses, d: s.draws } : null;
 
 function hero(d: ChessData | null, failed: boolean) {
-  if (!d) return failed ? { elo: '', sub: '', meta: '', pill: 'pill', streak: '', games: '', wr: '', distMeta: '', dist: null }
-    : { elo: '—', sub: 'ELO', meta: '—', pill: 'pill', streak: '—', games: '—', wr: WR_LABEL, distMeta: '—', dist: null };
+  if (!d) return failed ? { elo: '', sub: '', meta: '', pill: 'pill', flame: '', streak: '', games: '', wr: '', distMeta: '', dist: null }
+    : { elo: '—', sub: 'ELO', meta: '—', pill: 'pill', flame: '', streak: '—', games: '—', wr: WR_LABEL, distMeta: '—', dist: null };
   const s = d.s;
   const elo = s.currentElo ?? s.latestElo ?? null;
   const delta = elo != null && s.firstElo != null ? elo - s.firstElo : null;
@@ -51,10 +52,11 @@ function hero(d: ChessData | null, failed: boolean) {
     sub: elo != null ? 'ELO' + (single ? ' · sin histórico comparable' : delta != null ? ` · ${signedInt(delta)} vs primera lectura` : '') : 'ELO',
     meta: s.games ? es(s.games) + ' partidas disputadas · ELO observado en sincronizaciones' : 'Sin partidas registradas',
     pill: 'pill' + (n ? (s.currentStreakKind === 'loss' ? ' pill-loss' : ' pill-win') : ''),
-    streak: n ? `🔥 ${n} ${streakWord(n, s.currentStreakKind)}${n === 1 ? ' consecutiva' : ' consecutivas'}` : '🔥 Sin racha activa',
+    flame: n && s.currentStreakKind === 'win' ? '🔥 ' : '', // a winning run only: a losing run is read, not cheered
+    streak: n ? `${n} ${streakWord(n, s.currentStreakKind)}${n === 1 ? ' consecutiva' : ' consecutivas'}` : 'Sin racha activa',
     games: !s.games || !d.o ? '—' : bots && bots.games >= 0 ? `${es(bots.games)} de ${es(s.games)} partidas contra bots` : '',
     wr: rc ? `${pc1(rc.winRate! * 100)} de victorias en las últimas ${rc.games} partidas` : s.winRate != null ? `${pc1(s.winRate * 100)} de victorias en todo el historial` : WR_LABEL,
-    distMeta: c ? `${c.w}W · ${c.l}L · ${c.d}D` + (rc && s.winRate != null ? ` · historial ${pc1(s.winRate * 100)}` : '') : '—',
+    distMeta: c ? `${c.w} victorias · ${c.l} derrotas · ${c.d} tablas` + (rc && s.winRate != null ? ` · historial ${pc1(s.winRate * 100)}` : '') : '—',
     // the historical rate is the one reference here; the 20/50/100 windows live in "Forma actual"
     dist: c && sum > 0 ? { ...c, wP, lP, dP: Number(Math.max(0, 100 - wP - lP).toFixed(1)) } : null,
   };
@@ -66,7 +68,7 @@ function form(r: Recent | null | undefined) {
   if (!r.before) return undefined; // legacy renderForm draws nothing without the games before the window
   const side = (x: Recent | Partial<Recent>, head: string) => ({
     head, wr: pctCi(x.winRate, x.winRateCi) + ' de victorias',
-    detail: `${x.scoreRate != null ? pc1(x.scoreRate * 100) : '—'} de puntuación · ${x.wins}W ${x.losses}L ${x.draws}D`,
+    detail: `${x.scoreRate != null ? pc1(x.scoreRate * 100) : '—'} de puntuación · ${x.wins} victorias · ${x.losses} derrotas · ${x.draws} tablas`,
   });
   return {
     now: side(r, 'Últimas ' + r.games), before: side(r.before, 'Anteriores · ' + r.before.games),
@@ -152,7 +154,7 @@ function view(d: ChessData) {
       { label: 'Puntuación', value: s.scoreRate != null ? pc1(s.scoreRate * 100) : '—', sub: 'victoria 1 · tablas 0,5' },
     ],
     streakNow: s.currentStreak ? `Resultados seguidos: ${s.currentStreak} ${streakWord(s.currentStreak, s.currentStreakKind)}` : '',
-    streakBest: 'Mejor serie: ' + (s.longestWin != null ? s.longestWin + 'W' : '—') + (s.longestLoss ? ` · Peor: ${s.longestLoss}L` : ''),
+    streakBest: 'Mejor serie: ' + (s.longestWin != null ? s.longestWin + ' victorias' : '—') + (s.longestLoss ? ` · Peor: ${s.longestLoss} derrotas` : ''),
     total: s.games || 1,
     col: d.c ? list<Group>(d.c.groups ?? []) : null,
     colDiff: colDiff(d.c),
@@ -190,6 +192,9 @@ export class Chess {
   protected readonly v = computed(() => { const x = this.viewed(); return x === 'unreadable' ? null : x; });
   protected readonly failed = computed(() => this.data.status() === 'error' || this.viewed() === 'unreadable');
   protected readonly hero = computed(() => this.v()?.hero ?? hero(null, this.failed()));
+  /** First load: blocks in the shape of the page instead of dashes that read as values; after 3 s a line says it is still going. */
+  protected readonly loadingFirst = computed(() => this.data.isLoading() && !this.data.hasValue());
+  protected readonly slow = signal(false);
   protected readonly retried = signal(false);
   protected retryPage(): void { this.retried.set(true); this.data.reload(); }
   protected readonly failMessage = computed(() => this.failed() && typeof navigator !== 'undefined' && navigator.onLine === false
@@ -237,6 +242,11 @@ export class Chess {
 
   constructor() {
     effect(() => this.stats.chessUpdated.set(this.v()?.syncMeta ?? ''));
+    effect((onCleanup) => {
+      if (!this.loadingFirst()) return;
+      const t = setTimeout(() => this.slow.set(true), 3000);
+      onCleanup(() => { clearTimeout(t); this.slow.set(false); });
+    });
     inject(DestroyRef).onDestroy(() => this.stats.chessUpdated.set(''));
     // A block named in the URL (link, Back) opens once the cards above it hold their data, as /profile does below.
     const injector = inject(Injector);
@@ -284,7 +294,12 @@ export class Chess {
     if (k === 'comparativa') this.cgComp().reveal();
     else if (k === 'aperturas') this.cgOpen().reveal();
     else if (k === 'evolucion') this.cgEvo().reveal();
-    else if (k === 'partidas') this.allMatches().nativeElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    else if (k === 'partidas') {
+      const card = this.allMatches().nativeElement;
+      card.scrollIntoView({ behavior: scrollBehavior(), block: 'start' });
+      const h = card.querySelector<HTMLElement>('h2');
+      if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }); }
+    }
   }
 
   private load(): Observable<ChessData> {

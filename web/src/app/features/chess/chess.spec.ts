@@ -164,7 +164,7 @@ describe('Chess', () => {
       await t.open(chessApi({ '/api/stats/summary': { games: 1683, wins: 1046, losses: 505, draws: 132, winRate: 0.6216, scoreRate: 0.6, currentElo: 908, firstElo: 992 },
         '/api/stats/opponents': { macro: [{ key: 'bot', games: 1650 }, { key: 'pvp', games: 33 }] } }));
       expect(t.text('chessHeroWrLabel')).toBe('50,0 % de victorias en las últimas 50 partidas');
-      expect(t.text('chessHeroDistMeta')).toBe('25W · 20L · 5D · historial 62,2 %');
+      expect(t.text('chessHeroDistMeta')).toBe('25 victorias · 20 derrotas · 5 tablas · historial 62,2 %');
       expect(t.text('chessHeroGames')).toBe('1650 de 1683 partidas contra bots');
       expect(t.text('chessHeroEloSub')).toBe('ELO · −84 vs primera lectura');
       expect(t.el().querySelector<HTMLElement>('#chessHeroDist .bar-win')!.style.width).toBe('50%');
@@ -173,25 +173,27 @@ describe('Chess', () => {
     it('shouldColourTheStreakPillByItsKind', async () => {
       await t.open();
       expect(t.el().querySelector('#chessHeroStreak')!.className.replace(/ ?u-\S+/g, '').trim()).toBe('pill pill-loss');
-      expect(t.text('chessHeroStreak')).toBe('🔥 3 derrotas consecutivas');
+      expect(t.text('chessHeroStreak')).toBe('3 derrotas consecutivas'); // a losing run carries no flame
+      expect(t.el().querySelector('#chessHeroStreak [aria-hidden]')!.textContent).toBe('');
     });
 
     it('shouldUseSingularAndTheWinColourForAStreakOfOneWin', async () => {
       await t.open(chessApi({ '/api/stats/summary': { ...summary, currentStreak: 1, currentStreakKind: 'win' } }));
       expect(t.el().querySelector('#chessHeroStreak')!.className.replace(/ ?u-\S+/g, '').trim()).toBe('pill pill-win');
       expect(t.text('chessHeroStreak')).toBe('🔥 1 victoria consecutiva');
+      expect(t.el().querySelector('#chessHeroStreak [aria-hidden="true"]')!.textContent).toBe('🔥 '); // the flame is decoration, not read out
       expect(t.text('streak')).toContain('Resultados seguidos: 1 victoria');
     });
 
     it('shouldSaySinRachaActivaWhenThereIsNoStreak', async () => {
       await t.open(chessApi({ '/api/stats/summary': { ...summary, currentStreak: 0, currentStreakKind: null } }));
       expect(t.el().querySelector('#chessHeroStreak')!.className.replace(/ ?u-\S+/g, '').trim()).toBe('pill');
-      expect(t.text('chessHeroStreak')).toBe('🔥 Sin racha activa');
+      expect(t.text('chessHeroStreak')).toBe('Sin racha activa');
     });
 
     it('shouldShowTheWindowCountsNotZerosInTheChessHeroWhenTheSummaryCarriesNoCounts', async () => {
       await t.open(chessApi({ '/api/stats/summary': { games: 3, winRate: 0.5 } }));
-      expect(t.text('chessHeroDistMeta')).toBe('25W · 20L · 5D · historial 50,0 %'); // the last-50 counts, never invented zeros
+      expect(t.text('chessHeroDistMeta')).toBe('25 victorias · 20 derrotas · 5 tablas · historial 50,0 %'); // the last-50 counts, never invented zeros
       expect(t.text('res')).toBe('—');
     });
 
@@ -200,13 +202,23 @@ describe('Chess', () => {
       expect(t.text('chessHeroEloSub')).toBe('ELO · sin histórico comparable');
     });
 
-    it('shouldShowPlaceholdersNotZerosWhenNothingHasAnsweredYet', async () => {
+    it('shouldShowBlocksAndNoValuesWhenNothingHasAnsweredYet', async () => {
       await t.harness.navigateByUrl('/chess');
-      expect(t.text('chessHeroElo')).toBe('—');
-      expect(t.text('chessHeroMeta')).toBe('—');
-      expect(t.text('chessHeroDistMeta')).toBe('—');
-      expect(t.text('chessHeroWrLabel')).toBe('% de victorias en las últimas 50 partidas');
+      expect(t.el().querySelector('#chessHeroElo')).toBeNull(); // no dashes that read as values
+      expect(t.el().querySelector('#chessTab .sk')).not.toBeNull();
+      expect(t.el().querySelector('#chessTab [role=status].sr-only')!.textContent).toBe('Cargando tu ajedrez');
       expect(t.text('kpis')).toBe('');
+      expect(t.el().querySelector('#chessTab > p.muted')).toBeNull(); // the long-wait line comes after 3 s
+    });
+
+    it('shouldSayItIsStillLoadingAfterThreeSeconds', async () => {
+      vi.useFakeTimers();
+      try {
+        await t.harness.navigateByUrl('/chess');
+        vi.advanceTimersByTime(3100);
+        TestBed.tick();
+        expect(t.el().querySelector('#chessTab > p.muted')!.textContent).toBe('Cargando tu ajedrez…');
+      } finally { vi.useRealTimers(); }
     });
   });
 
@@ -226,7 +238,7 @@ describe('Chess', () => {
 
     it('shouldShowTheCurrentBestAndWorstStreak', async () => {
       await t.open();
-      expect(t.text('streak')).toBe('Resultados seguidos: 3 derrotas · Mejor serie: 5W · Peor: 2L');
+      expect(t.text('streak')).toBe('Resultados seguidos: 3 derrotas · Mejor serie: 5 victorias · Peor: 2 derrotas');
     });
 
     it('shouldNotShowZeroForAStreakTheSourceDidNotReport', async () => {
@@ -239,7 +251,7 @@ describe('Chess', () => {
       const form = t.text('form');
       expect(form).toContain('Últimas 50');
       expect(form).toContain('50,0 % [36–64] de victorias');
-      expect(form).toContain('55,0 % de puntuación · 25W 20L 5D');
+      expect(form).toContain('55,0 % de puntuación · 25 victorias · 20 derrotas · 5 tablas');
       expect(form).toContain('+2,5 puntos de % (entre −23,0 y +25,4) · sin evidencia suficiente vs anteriores');
       expect(form).toContain('Anteriores · 50');
       expect(form).not.toMatch(/score vs anteriores|vs\s+hist/); // the delta is against the earlier games, and only for the win rate
@@ -363,6 +375,14 @@ describe('Chess', () => {
       expect(t.el().querySelector('#kpis [role=alert] button')!.textContent).toBe('Reintentar');
       expect(t.text('chessHeroMeta')).toBe(''); // the hero says nothing instead of dashes that read as values
       expect(t.el().querySelector('nav[aria-label="Secciones de ajedrez"]')).toBeNull();
+    });
+
+    it('shouldSaySinConexionWhenTheBrowserIsOfflineAndTheLoadFailed', async () => {
+      const online = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+      try {
+        await t.open(chessApi({ '/api/stats/bundle': FAIL, '/api/stats/summary': FAIL }));
+        expect(t.text('kpis')).toContain('Sin conexión. Pulsa Reintentar cuando vuelva la red.');
+      } finally { online.mockRestore(); }
     });
 
     it('shouldDisableTheRetryAndAskForAMinuteWhileTheRetryRunsAndFailsAgain', async () => {
@@ -724,6 +744,16 @@ describe('Chess', () => {
       for (const b of buttons) b.click();
       expect(scrolled).toEqual(['cg-comp', 'cg-open', 'cg-evo', 'allMatchesCard']);
       expect(evo.open).toBe(true);
+    });
+
+    it('shouldMoveFocusToWhatTheIndexButtonOpened', async () => {
+      await t.open();
+      Element.prototype.scrollIntoView = function () {};
+      const buttons = [...t.el().querySelectorAll<HTMLButtonElement>('nav.cindex button')];
+      buttons[1].click(); // Aperturas
+      expect(document.activeElement).toBe(t.el().querySelector('#cg-open summary'));
+      buttons[3].click(); // Partidas
+      expect(document.activeElement).toBe(t.el().querySelector('#allMatchesCard h2'));
     });
 
     it('shouldPutTheSectionInTheUrlWhenItsIndexButtonIsPressedAndOpenItFromTheUrl', async () => {
