@@ -118,7 +118,7 @@ test.describe('Frontend E2E Integration Suite', () => {
     await expect(page.locator('a.side-item.active')).toHaveText('LinkedIn Games');
   });
 
-  test('shouldSupportKeyboardActivationOnMatchRowsAndNavigateMoveLinks', async ({ page }) => {
+  test('shouldSupportKeyboardActivationOnMatchRowsAndNavigateMoveButtons', async ({ page }) => {
     // Intercept matches and game API to provide a deterministic game with plies
     await page.route('**/api/matches*', async (route) => {
       await route.fulfill({
@@ -192,7 +192,7 @@ test.describe('Frontend E2E Integration Suite', () => {
 
     // Space key activates move link
     await page.keyboard.press('Space');
-    await expect(modal.locator('#gPos')).toHaveText('1 / 2');
+    await expect(modal.locator('#gPos')).toHaveText('Jugada 1 de 2: e4');
 
     // Tab moves to next move link
     await page.keyboard.press('Tab');

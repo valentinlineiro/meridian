@@ -164,7 +164,7 @@ describe('Chess', () => {
       await t.open(chessApi({ '/api/stats/summary': { games: 1683, wins: 1046, losses: 505, draws: 132, winRate: 0.6216, scoreRate: 0.6, currentElo: 908, firstElo: 992 },
         '/api/stats/opponents': { macro: [{ key: 'bot', games: 1650 }, { key: 'pvp', games: 33 }] } }));
       expect(t.text('chessHeroWrLabel')).toBe('50,0 % de victorias en las últimas 50 partidas');
-      expect(t.text('chessHeroDistMeta')).toBe('25W · 20L · 5D · historial 62,2 %');
+      expect(t.text('chessHeroDistMeta')).toBe('25 victorias · 20 derrotas · 5 tablas · historial 62,2 %');
       expect(t.text('chessHeroGames')).toBe('1650 de 1683 partidas contra bots');
       expect(t.text('chessHeroEloSub')).toBe('ELO · −84 vs primera lectura');
       expect(t.el().querySelector<HTMLElement>('#chessHeroDist .bar-win')!.style.width).toBe('50%');
@@ -173,25 +173,27 @@ describe('Chess', () => {
     it('shouldColourTheStreakPillByItsKind', async () => {
       await t.open();
       expect(t.el().querySelector('#chessHeroStreak')!.className.replace(/ ?u-\S+/g, '').trim()).toBe('pill pill-loss');
-      expect(t.text('chessHeroStreak')).toBe('🔥 3 derrotas consecutivas');
+      expect(t.text('chessHeroStreak')).toBe('3 derrotas consecutivas'); // a losing run carries no flame
+      expect(t.el().querySelector('#chessHeroStreak [aria-hidden]')!.textContent).toBe('');
     });
 
     it('shouldUseSingularAndTheWinColourForAStreakOfOneWin', async () => {
       await t.open(chessApi({ '/api/stats/summary': { ...summary, currentStreak: 1, currentStreakKind: 'win' } }));
       expect(t.el().querySelector('#chessHeroStreak')!.className.replace(/ ?u-\S+/g, '').trim()).toBe('pill pill-win');
       expect(t.text('chessHeroStreak')).toBe('🔥 1 victoria consecutiva');
+      expect(t.el().querySelector('#chessHeroStreak [aria-hidden="true"]')!.textContent).toBe('🔥 '); // the flame is decoration, not read out
       expect(t.text('streak')).toContain('Resultados seguidos: 1 victoria');
     });
 
     it('shouldSaySinRachaActivaWhenThereIsNoStreak', async () => {
       await t.open(chessApi({ '/api/stats/summary': { ...summary, currentStreak: 0, currentStreakKind: null } }));
       expect(t.el().querySelector('#chessHeroStreak')!.className.replace(/ ?u-\S+/g, '').trim()).toBe('pill');
-      expect(t.text('chessHeroStreak')).toBe('🔥 Sin racha activa');
+      expect(t.text('chessHeroStreak')).toBe('Sin racha activa');
     });
 
     it('shouldShowTheWindowCountsNotZerosInTheChessHeroWhenTheSummaryCarriesNoCounts', async () => {
       await t.open(chessApi({ '/api/stats/summary': { games: 3, winRate: 0.5 } }));
-      expect(t.text('chessHeroDistMeta')).toBe('25W · 20L · 5D · historial 50,0 %'); // the last-50 counts, never invented zeros
+      expect(t.text('chessHeroDistMeta')).toBe('25 victorias · 20 derrotas · 5 tablas · historial 50,0 %'); // the last-50 counts, never invented zeros
       expect(t.text('res')).toBe('—');
     });
 
@@ -200,13 +202,23 @@ describe('Chess', () => {
       expect(t.text('chessHeroEloSub')).toBe('ELO · sin histórico comparable');
     });
 
-    it('shouldShowPlaceholdersNotZerosWhenNothingHasAnsweredYet', async () => {
+    it('shouldShowBlocksAndNoValuesWhenNothingHasAnsweredYet', async () => {
       await t.harness.navigateByUrl('/chess');
-      expect(t.text('chessHeroElo')).toBe('—');
-      expect(t.text('chessHeroMeta')).toBe('—');
-      expect(t.text('chessHeroDistMeta')).toBe('—');
-      expect(t.text('chessHeroWrLabel')).toBe('% de victorias en las últimas 50 partidas');
+      expect(t.el().querySelector('#chessHeroElo')).toBeNull(); // no dashes that read as values
+      expect(t.el().querySelector('#chessTab .sk')).not.toBeNull();
+      expect(t.el().querySelector('#chessTab [role=status].sr-only')!.textContent).toBe('Cargando tu ajedrez');
       expect(t.text('kpis')).toBe('');
+      expect(t.el().querySelector('#chessTab > p.muted')).toBeNull(); // the long-wait line comes after 3 s
+    });
+
+    it('shouldSayItIsStillLoadingAfterThreeSeconds', async () => {
+      vi.useFakeTimers();
+      try {
+        await t.harness.navigateByUrl('/chess');
+        vi.advanceTimersByTime(3100);
+        TestBed.tick();
+        expect(t.el().querySelector('#chessTab > p.muted')!.textContent).toBe('Cargando tu ajedrez…');
+      } finally { vi.useRealTimers(); }
     });
   });
 
@@ -226,7 +238,7 @@ describe('Chess', () => {
 
     it('shouldShowTheCurrentBestAndWorstStreak', async () => {
       await t.open();
-      expect(t.text('streak')).toBe('Resultados seguidos: 3 derrotas · Mejor serie: 5W · Peor: 2L');
+      expect(t.text('streak')).toBe('Resultados seguidos: 3 derrotas · Mejor serie: 5 victorias · Peor: 2 derrotas');
     });
 
     it('shouldNotShowZeroForAStreakTheSourceDidNotReport', async () => {
@@ -239,7 +251,7 @@ describe('Chess', () => {
       const form = t.text('form');
       expect(form).toContain('Últimas 50');
       expect(form).toContain('50,0 % [36–64] de victorias');
-      expect(form).toContain('55,0 % de puntuación · 25W 20L 5D');
+      expect(form).toContain('55,0 % de puntuación · 25 victorias · 20 derrotas · 5 tablas');
       expect(form).toContain('+2,5 puntos de % (entre −23,0 y +25,4) · sin evidencia suficiente vs anteriores');
       expect(form).toContain('Anteriores · 50');
       expect(form).not.toMatch(/score vs anteriores|vs\s+hist/); // the delta is against the earlier games, and only for the win rate
@@ -266,13 +278,36 @@ describe('Chess', () => {
       expect(t.text('chessHeroWrLabel')).toContain('50,0 %'); // the hero keeps its own last-50 window and does not follow the selector
     });
 
-    it('shouldShowUnavailableWhenARecentWindowFailsAfterOneSucceeded', async () => {
+    it('shouldSayTheWindowFailedAndKeepTheLastOneWhenARecentWindowFailsAfterOneSucceeded', async () => {
       await t.open();
       t.el().querySelector<HTMLButtonElement>('#b20')!.click();
       await t.tick();
       t.flush(t.pending().find((r) => r.request.url === '/api/stats/recent')!, FAIL);
       await t.tick();
-      expect(t.text('form')).toBe('No disponible');
+      expect(t.text('form')).toContain('No pudimos cargar las últimas 20 partidas.');
+      expect(t.text('form')).toContain('Últimas 50'); // the window that loaded stays under the message
+    });
+
+    it('shouldAskForTheSameWindowAgainWhenReintentarIsPressedAfterItFailed', async () => {
+      await t.open();
+      t.el().querySelector<HTMLButtonElement>('#b20')!.click();
+      await t.tick();
+      t.flush(t.pending().find((r) => r.request.url === '/api/stats/recent')!, FAIL);
+      await t.tick();
+      t.el().querySelector<HTMLButtonElement>('#form [role=status] button')!.click();
+      await t.tick();
+      const again = t.pending().find((r) => r.request.url === '/api/stats/recent')!;
+      expect(again.request.params.get('limit')).toBe('20');
+      t.flush(again, { ...(chessApi()['/api/stats/recent'] as object), limit: 20, games: 20 });
+      await t.tick();
+      expect(t.text('form')).not.toContain('No pudimos');
+      expect(t.text('form')).toContain('Últimas 20');
+    });
+
+    it('shouldSayThereAreNoEarlierGamesWhenTheWindowLeavesNothingToCompare', async () => {
+      const rec = { ...(chessApi()['/api/stats/recent'] as object), before: null };
+      await t.open(chessApi({ '/api/stats/recent': rec }));
+      expect(t.text('form')).toContain('Aún no hay partidas anteriores a las últimas 50 con las que comparar. Elige una ventana menor.');
     });
 
     it('shouldShowNoDeltaWhenThereIsNone', async () => {
@@ -336,10 +371,30 @@ describe('Chess', () => {
   describe('failures', () => {
     it('shouldShowRetryAndNotClaimNoGamesWhenSummaryFails', async () => {
       await t.open(chessApi({ '/api/stats/bundle': FAIL, '/api/stats/summary': FAIL }));
-      expect(t.text('kpis')).toContain('No se pudieron cargar las estadísticas de ajedrez.');
+      expect(t.text('kpis')).toContain('No pudimos cargar tus estadísticas de ajedrez.');
       expect(t.el().querySelector('#kpis [role=alert] button')!.textContent).toBe('Reintentar');
-      expect(t.text('chessHeroMeta')).toBe('No se pudieron cargar las estadísticas');
-      expect(t.text('chessHeroMeta')).not.toMatch(/Sin partidas registradas/);
+      expect(t.text('chessHeroMeta')).toBe(''); // the hero says nothing instead of dashes that read as values
+      expect(t.el().querySelector('nav[aria-label="Secciones de ajedrez"]')).toBeNull();
+    });
+
+    it('shouldSaySinConexionWhenTheBrowserIsOfflineAndTheLoadFailed', async () => {
+      const online = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+      try {
+        await t.open(chessApi({ '/api/stats/bundle': FAIL, '/api/stats/summary': FAIL }));
+        expect(t.text('kpis')).toContain('Sin conexión. Pulsa Reintentar cuando vuelva la red.');
+      } finally { online.mockRestore(); }
+    });
+
+    it('shouldDisableTheRetryAndAskForAMinuteWhileTheRetryRunsAndFailsAgain', async () => {
+      await t.open(chessApi({ '/api/stats/bundle': FAIL, '/api/stats/summary': FAIL }));
+      const btn = () => t.el().querySelector<HTMLButtonElement>('#kpis [role=alert] button')!;
+      btn().click();
+      await t.tick();
+      expect(btn().disabled).toBe(true);
+      expect(btn().textContent).toBe('Cargando…');
+      await t.answer(chessApi({ '/api/stats/bundle': FAIL, '/api/stats/summary': FAIL }));
+      expect(btn().disabled).toBe(false);
+      expect(t.text('kpis')).toContain('Sigue sin cargar. Inténtalo en un minuto.');
     });
 
     it('shouldRefetchAndRecoverWhenRetryingAfterAFailedLoad', async () => {
@@ -359,7 +414,8 @@ describe('Chess', () => {
       const failing = Object.fromEntries(['results', 'color', 'opponents', 'opponent-elo', 'timeline', 'recent', 'openings', 'phases'].map((r) => ['/api/stats/' + r, FAIL]));
       await t.open(chessApi({ ...failing, '/api/stats/bundle': MISSING }));
       expect(t.text('kpis')).toContain('Partidas');
-      for (const id of ['col', 'opp', 'evo', 'elo', 'form', 'lossContext']) expect(t.text(id)).toBe('No disponible');
+      for (const id of ['col', 'opp', 'evo', 'elo', 'lossContext']) expect(t.text(id)).toBe('No disponible');
+      expect(t.text('form')).toContain('No pudimos cargar las últimas 50 partidas.');
       expect(t.text('chessHeroEloSub')).toBe('ELO · +100 vs primera lectura'); // the summary still knows the first ELO
     });
 
@@ -417,8 +473,20 @@ describe('Chess', () => {
     it('shouldKeepTheKpisAndSayNoDisponibleWhenOpeningsOrPhasesCannotBeRead', async () => {
       await t.open(chessApi({ '/api/stats/openings': FAIL, '/api/stats/phases': FAIL }));
       expect(t.text('kpis')).toContain('Partidas');
-      expect(t.text('openingsWhite')).toBe('No disponible');
-      expect(t.text('phasesBody')).toBe('No disponible');
+      expect(t.text('openingsWhite')).toContain('No pudimos cargar tus aperturas.');
+      expect(t.text('phasesBody')).toContain('No pudimos cargar las fases.');
+    });
+
+    it('shouldAskForOnlyTheOpeningsAgainWhenTheirReintentarIsPressed', async () => {
+      await t.open(chessApi({ '/api/stats/openings': FAIL }));
+      t.el().querySelector<HTMLButtonElement>('#openingsWhite button')!.click();
+      await t.tick();
+      const asked = t.pending();
+      expect(asked.map((r) => r.request.url)).toEqual(['/api/stats/openings']); // one request, not the page
+      t.flush(asked[0], chessApi()['/api/stats/openings']);
+      await t.tick();
+      expect(t.text('openingsWhite')).toContain('Española');
+      expect(t.text('openingsWhite')).not.toContain('No pudimos');
     });
 
     it('shouldListTheMatesGivenAndReceivedByTypeAndCountTheUntyped', async () => {
@@ -463,9 +531,9 @@ describe('Chess', () => {
       expect(t.text('threatsMain')).toBe('Sin amenazas de mate en 1 en las partidas analizadas');
     });
 
-    it('shouldHideTheThreatsCardWhenTheEndpointFails', async () => {
+    it('shouldSayTheThreatsCouldNotBeLoadedWhenTheEndpointFails', async () => {
       await t.open(chessApi({ '/api/stats/threats': { error: 'boom' } }));
-      expect(t.el().querySelector('#threatsCard')).toBeNull();
+      expect(t.text('threatsCard')).toContain('No pudimos cargar las amenazas de mate.');
     });
 
     it('shouldFilterTheMatchesTableToMissedThreatsWhenTheButtonIsPressed', async () => {
@@ -502,8 +570,8 @@ describe('Chess', () => {
 
     it('shouldSayNoDisponibleWhenTheOpeningsAreNotLists', async () => {
       await t.open(chessApi({ '/api/stats/openings': { white: 'x', black: { a: 1 }, unclassified: 0, population: { hydrated: 5, totalMatches: 100 } } }));
-      expect(t.text('openingsWhite')).toBe('No disponible');
-      expect(t.text('openingsBlack')).toBe('No disponible');
+      expect(t.text('openingsWhite')).toContain('No pudimos cargar tus aperturas.');
+      expect(t.text('openingsBlack')).toContain('No pudimos cargar tus aperturas.');
       siblingsRender();
     });
 
@@ -531,8 +599,8 @@ describe('Chess', () => {
   describe('review suggestion', () => {
     it('shouldSayTheCoverageIsUnavailableNotZeroWhenTheProfileFails', async () => {
       await t.open(chessApi({ '/api/stats/profile': FAIL }));
-      expect(t.text('chessPatternSuggested')).toBe('Partida sugerida para revisión: No disponible');
-      expect(t.text('profileKpis')).toBe('No se pudo cargar el perfil');
+      expect(t.text('chessPatternSuggested')).toContain('No pudimos cargar la partida sugerida.');
+      expect(t.text('profileKpis')).toContain('No pudimos cargar el análisis del motor.');
     });
 
     it('shouldOfferTheSuggestedGameAndOpenItSafely', async () => {
@@ -676,6 +744,16 @@ describe('Chess', () => {
       for (const b of buttons) b.click();
       expect(scrolled).toEqual(['cg-comp', 'cg-open', 'cg-evo', 'allMatchesCard']);
       expect(evo.open).toBe(true);
+    });
+
+    it('shouldMoveFocusToWhatTheIndexButtonOpened', async () => {
+      await t.open();
+      Element.prototype.scrollIntoView = function () {};
+      const buttons = [...t.el().querySelectorAll<HTMLButtonElement>('nav.cindex button')];
+      buttons[1].click(); // Aperturas
+      expect(document.activeElement).toBe(t.el().querySelector('#cg-open summary'));
+      buttons[3].click(); // Partidas
+      expect(document.activeElement).toBe(t.el().querySelector('#allMatchesCard h2'));
     });
 
     it('shouldPutTheSectionInTheUrlWhenItsIndexButtonIsPressedAndOpenItFromTheUrl', async () => {
@@ -944,10 +1022,10 @@ describe('EngineProfile', () => {
 
   it('shouldShowAnErrorLineWhenTheProfileCannotBeLoadedOrRead', async () => {
     await render(null);
-    expect(text('profileKpis')).toBe('No se pudo cargar el perfil');
+    expect(text('profileKpis')).toContain('No pudimos cargar el análisis del motor.');
     expect(text('profileNote')).toBe('');
     await render({ analysed: 5 }); // a body this panel cannot read is not a profile
-    expect(text('profileKpis')).toBe('No se pudo cargar el perfil');
+    expect(text('profileKpis')).toContain('No pudimos cargar el análisis del motor.');
   });
 
   // A wrong-typed field degrades its own section to "No disponible" (a KPI to "—"); the siblings render, nothing reads NaN.

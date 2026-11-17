@@ -1,10 +1,12 @@
 import { afterNextRender, Component, computed, DestroyRef, effect, ElementRef, inject, input, Injector, linkedSignal, signal, viewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { rxResource } from '@angular/core/rxjs-interop';
-import { catchError, forkJoin, map, Observable, of } from 'rxjs';
+import { catchError, finalize, forkJoin, map, Observable, of } from 'rxjs';
 import { ApiClient } from '../../core/api-client';
+import { scrollBehavior } from '../../core/motion';
 import { fmtDelta, pc1, pctCi } from '../../core/format';
 import { StatsService } from '../../core/stats.service';
+import { ErrorBlock } from '../../shared/error-block';
 import { Kpi } from '../../shared/kpi';
 import { Section } from '../../shared/section';
 import { Segmented } from '../../shared/segmented';
@@ -31,7 +33,8 @@ const saveCut = (v: string) => { try { if (v) localStorage.setItem(PROFILE_CUT_K
 const counts = (s: Summary) => s.wins != null && s.losses != null && s.draws != null ? { w: s.wins, l: s.losses, d: s.draws } : null;
 
 function hero(d: ChessData | null, failed: boolean) {
-  if (!d) return { elo: '—', sub: 'ELO', meta: failed ? 'No se pudieron cargar las estadísticas' : '—', pill: 'pill', streak: '—', games: '—', wr: WR_LABEL, distMeta: '—', dist: null };
+  if (!d) return failed ? { elo: '', sub: '', meta: '', pill: 'pill', flame: '', streak: '', games: '', wr: '', distMeta: '', dist: null }
+    : { elo: '—', sub: 'ELO', meta: '—', pill: 'pill', flame: '', streak: '—', games: '—', wr: WR_LABEL, distMeta: '—', dist: null };
   const s = d.s;
   const elo = s.currentElo ?? s.latestElo ?? null;
   const delta = elo != null && s.firstElo != null ? elo - s.firstElo : null;
@@ -49,10 +52,11 @@ function hero(d: ChessData | null, failed: boolean) {
     sub: elo != null ? 'ELO' + (single ? ' · sin histórico comparable' : delta != null ? ` · ${signedInt(delta)} vs primera lectura` : '') : 'ELO',
     meta: s.games ? es(s.games) + ' partidas disputadas · ELO observado en sincronizaciones' : 'Sin partidas registradas',
     pill: 'pill' + (n ? (s.currentStreakKind === 'loss' ? ' pill-loss' : ' pill-win') : ''),
-    streak: n ? `🔥 ${n} ${streakWord(n, s.currentStreakKind)}${n === 1 ? ' consecutiva' : ' consecutivas'}` : '🔥 Sin racha activa',
+    flame: n && s.currentStreakKind === 'win' ? '🔥 ' : '', // a winning run only: a losing run is read, not cheered
+    streak: n ? `${n} ${streakWord(n, s.currentStreakKind)}${n === 1 ? ' consecutiva' : ' consecutivas'}` : 'Sin racha activa',
     games: !s.games || !d.o ? '—' : bots && bots.games >= 0 ? `${es(bots.games)} de ${es(s.games)} partidas contra bots` : '',
     wr: rc ? `${pc1(rc.winRate! * 100)} de victorias en las últimas ${rc.games} partidas` : s.winRate != null ? `${pc1(s.winRate * 100)} de victorias en todo el historial` : WR_LABEL,
-    distMeta: c ? `${c.w}W · ${c.l}L · ${c.d}D` + (rc && s.winRate != null ? ` · historial ${pc1(s.winRate * 100)}` : '') : '—',
+    distMeta: c ? `${c.w} victorias · ${c.l} derrotas · ${c.d} tablas` + (rc && s.winRate != null ? ` · historial ${pc1(s.winRate * 100)}` : '') : '—',
     // the historical rate is the one reference here; the 20/50/100 windows live in "Forma actual"
     dist: c && sum > 0 ? { ...c, wP, lP, dP: Number(Math.max(0, 100 - wP - lP).toFixed(1)) } : null,
   };
@@ -64,7 +68,7 @@ function form(r: Recent | null | undefined) {
   if (!r.before) return undefined; // legacy renderForm draws nothing without the games before the window
   const side = (x: Recent | Partial<Recent>, head: string) => ({
     head, wr: pctCi(x.winRate, x.winRateCi) + ' de victorias',
-    detail: `${x.scoreRate != null ? pc1(x.scoreRate * 100) : '—'} de puntuación · ${x.wins}W ${x.losses}L ${x.draws}D`,
+    detail: `${x.scoreRate != null ? pc1(x.scoreRate * 100) : '—'} de puntuación · ${x.wins} victorias · ${x.losses} derrotas · ${x.draws} tablas`,
   });
   return {
     now: side(r, 'Últimas ' + r.games), before: side(r.before, 'Anteriores · ' + r.before.games),
@@ -150,7 +154,7 @@ function view(d: ChessData) {
       { label: 'Puntuación', value: s.scoreRate != null ? pc1(s.scoreRate * 100) : '—', sub: 'victoria 1 · tablas 0,5' },
     ],
     streakNow: s.currentStreak ? `Resultados seguidos: ${s.currentStreak} ${streakWord(s.currentStreak, s.currentStreakKind)}` : '',
-    streakBest: 'Mejor serie: ' + (s.longestWin != null ? s.longestWin + 'W' : '—') + (s.longestLoss ? ` · Peor: ${s.longestLoss}L` : ''),
+    streakBest: 'Mejor serie: ' + (s.longestWin != null ? s.longestWin + ' victorias' : '—') + (s.longestLoss ? ` · Peor: ${s.longestLoss} derrotas` : ''),
     total: s.games || 1,
     col: d.c ? list<Group>(d.c.groups ?? []) : null,
     colDiff: colDiff(d.c),
@@ -165,7 +169,7 @@ function view(d: ChessData) {
 
 @Component({
   selector: 'app-chess',
-  imports: [Kpi, Section, Segmented, Donut, Sparkline, Compare, MatchesTable, MatchDetailModal, OpeningsBlock, ReviewSuggestion, EngineProfile],
+  imports: [ErrorBlock, Kpi, Section, Segmented, Donut, Sparkline, Compare, MatchesTable, MatchDetailModal, OpeningsBlock, ReviewSuggestion, EngineProfile],
   providers: [MatchesService],
   templateUrl: './chess.html',
 })
@@ -175,7 +179,10 @@ export class Chess {
 
   // summary is essential (an error with a retry); every other card degrades on its own to "No disponible".
   protected readonly data = rxResource<ChessData, unknown>({ stream: () => this.load() });
-  protected readonly d = computed(() => this.data.hasValue() ? this.data.value() : null);
+  /** A block retried on its own (openings, phases, mates, threats) lands here; a new page load clears it. */
+  private readonly patch = linkedSignal<ChessData | undefined, Partial<ChessData>>({ source: () => this.data.hasValue() ? this.data.value() : undefined, computation: () => ({}) });
+  protected readonly retrying = signal<ReadonlySet<string>>(new Set());
+  protected readonly d = computed(() => { const b = this.data.hasValue() ? this.data.value() : null; return b ? { ...b, ...this.patch() } : null; });
   // A body the view cannot read fails the load like a failed summary (legacy: the same catch), never a blank page.
   private readonly viewed = computed(() => {
     const d = this.d();
@@ -185,6 +192,13 @@ export class Chess {
   protected readonly v = computed(() => { const x = this.viewed(); return x === 'unreadable' ? null : x; });
   protected readonly failed = computed(() => this.data.status() === 'error' || this.viewed() === 'unreadable');
   protected readonly hero = computed(() => this.v()?.hero ?? hero(null, this.failed()));
+  /** First load: blocks in the shape of the page instead of dashes that read as values; after 3 s a line says it is still going. */
+  protected readonly loadingFirst = computed(() => this.data.isLoading() && !this.data.hasValue());
+  protected readonly slow = signal(false);
+  protected readonly retried = signal(false);
+  protected retryPage(): void { this.retried.set(true); this.data.reload(); }
+  protected readonly failMessage = computed(() => this.failed() && typeof navigator !== 'undefined' && navigator.onLine === false
+    ? 'Sin conexión. Pulsa Reintentar cuando vuelva la red.' : 'No pudimos cargar tus estadísticas de ajedrez.');
 
   // "Forma actual": the window chosen later owns the card; the resource cancels the earlier request.
   protected readonly recentN = signal<number | null>(null);
@@ -197,7 +211,14 @@ export class Chess {
     source: () => this.recentN() == null ? this.d()?.rec : this.recentRes.isLoading() || !this.recentRes.hasValue() ? undefined : this.recentRes.value(),
     computation: (src, prev) => src === undefined ? prev?.value : src,
   });
-  protected readonly form = computed(() => form(this.recent()));
+  /** The window that last loaded stays on screen under the failure of the next one. */
+  private readonly recentShown = linkedSignal<Recent | null | undefined, Recent | null | undefined>({ source: () => this.recent(), computation: (src, prev) => src ?? prev?.value });
+  protected readonly recentLoading = computed(() => this.recentRes.isLoading());
+  protected readonly formFailed = computed(() => this.recent() === null);
+  protected readonly form = computed(() => form(this.recentShown()));
+  protected readonly formMessage = computed(() => `No pudimos cargar las últimas ${this.recentN() ?? 50} partidas.`);
+  protected retryForm(): void { if (this.recentN() == null) this.recentN.set(50); else this.recentRes.reload(); }
+  protected readonly formShort = computed(() => this.recent() && !this.recent()!.before ? `Aún no hay partidas anteriores a las últimas ${this.recentN() ?? 50} con las que comparar. Elige una ventana menor.` : '');
 
   // Engine profile: asked with the saved cut; a new cut cancels the request for the previous one.
   protected readonly cut = signal(readCut());
@@ -209,10 +230,23 @@ export class Chess {
   protected readonly profile = computed(() => this.profileRes.isLoading() || !this.profileRes.hasValue() ? undefined : this.profileRes.value());
 
   private readonly matches = inject(MatchesService);
+  protected retryProfile(): void { this.profileRes.reload(); }
+  protected readonly profileLoading = computed(() => this.profileRes.isLoading());
+  protected retryBlock(k: 'op' | 'ph' | 'mt' | 'th'): void {
+    const route = { op: 'openings', ph: 'phases', mt: 'mates', th: 'threats' }[k];
+    this.retrying.update((s) => new Set(s).add(k));
+    this.api.get<unknown>('/api/stats/' + route).pipe(orNull, finalize(() => this.retrying.update((s) => { const n = new Set(s); n.delete(k); return n; })))
+      .subscribe((v) => this.patch.update((p) => ({ ...p, [k]: v })));
+  }
 
 
   constructor() {
     effect(() => this.stats.chessUpdated.set(this.v()?.syncMeta ?? ''));
+    effect((onCleanup) => {
+      if (!this.loadingFirst()) return;
+      const t = setTimeout(() => this.slow.set(true), 3000);
+      onCleanup(() => { clearTimeout(t); this.slow.set(false); });
+    });
     inject(DestroyRef).onDestroy(() => this.stats.chessUpdated.set(''));
     // A block named in the URL (link, Back) opens once the cards above it hold their data, as /profile does below.
     const injector = inject(Injector);
@@ -260,7 +294,12 @@ export class Chess {
     if (k === 'comparativa') this.cgComp().reveal();
     else if (k === 'aperturas') this.cgOpen().reveal();
     else if (k === 'evolucion') this.cgEvo().reveal();
-    else if (k === 'partidas') this.allMatches().nativeElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    else if (k === 'partidas') {
+      const card = this.allMatches().nativeElement;
+      card.scrollIntoView({ behavior: scrollBehavior(), block: 'start' });
+      const h = card.querySelector<HTMLElement>('h2');
+      if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }); }
+    }
   }
 
   private load(): Observable<ChessData> {

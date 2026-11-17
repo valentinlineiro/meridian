@@ -1,5 +1,6 @@
 import { Component, computed, inject, input, output } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
+import { ErrorBlock } from '../../../shared/error-block';
 import { Kpi } from '../../../shared/kpi';
 import { dec1, pc0 } from '../chess.model';
 import { MatchesService } from '../services/matches.service';
@@ -167,7 +168,7 @@ function view(b: Profile, cut: string) {
  */
 @Component({
   selector: 'app-engine-profile',
-  imports: [Kpi, NgTemplateOutlet],
+  imports: [ErrorBlock, Kpi, NgTemplateOutlet],
   templateUrl: './engine-profile.html',
 })
 export class EngineProfile {
@@ -176,6 +177,8 @@ export class EngineProfile {
   readonly profile = input<Profile | null | undefined>(undefined);
   readonly cut = input('');
   readonly cutChange = output<string>();
+  readonly loading = input(false);
+  readonly retry = output<void>();
 
   // A body the panel cannot read is reported like a failed request, never half-painted.
   private readonly viewed = computed(() => {

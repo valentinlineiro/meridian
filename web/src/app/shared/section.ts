@@ -1,4 +1,5 @@
 import { Component, ElementRef, input, viewChild } from '@angular/core';
+import { scrollBehavior } from '../core/motion';
 
 /** A collapsible block of a page: a title (and an optional note next to it) and its content. Open by default. */
 @Component({
@@ -17,6 +18,7 @@ export class Section {
   reveal(): void {
     const el = this.details().nativeElement;
     el.open = true;
-    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    el.scrollIntoView({ behavior: scrollBehavior(), block: 'start' });
+    el.querySelector('summary')?.focus({ preventScroll: true }); // what opened is where a keyboard or screen reader user lands
   }
 }

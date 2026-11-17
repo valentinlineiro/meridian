@@ -50,10 +50,10 @@ describe('MatchesTable', () => {
   it('shouldShowTheBotSegmentInsteadOfADashWhenTheOpponentHasNoName', async () => {
     await answer({ rows: [row({ opponent_name: null, opponent_segment: 'noisy_neural' }), row({ opponent_name: null, opponent_segment: 'unknown' }), row({ opponent_name: 'Bot 8', opponent_segment: 'neural' })], total: 3 });
     const cell = (i: number) => el.querySelectorAll('#mb tr')[i]!.querySelector('td[data-l="Rival"]')!;
-    expect(cell(0).textContent!.trim()).toBe('Noisy Neural'); // once: no second pill with the same text
+    expect(cell(0).textContent!.trim()).toBe('Noisy Neural›'); // once: no second pill with the same text
     expect(cell(0).querySelector('.pill')).toBeNull();
-    expect(cell(1).textContent!.trim()).toBe('—');
-    expect(cell(2).textContent!.replace(/\s+/g, ' ').trim()).toBe('Bot 8 Neural');
+    expect(cell(1).textContent!.trim()).toBe('—›');
+    expect(cell(2).textContent!.replace(/\s+/g, ' ').trim()).toBe('Bot 8 ›Neural');
   });
 
   it('shouldNotAnnounceAnUnknownOpponentAsVsDash', async () => {
@@ -70,9 +70,9 @@ describe('MatchesTable', () => {
     const [a, b] = [...el.querySelectorAll('#mb tr')];
     expect(el.querySelector('#mb img')).toBeNull();
     expect([...a.querySelectorAll('td')].map((td) => td.textContent!.trim())).toEqual([
-      new Date('2026-10-05T00:00:00Z').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }), hostile + ' Neural', 'BotEspañolaFinal', '—', 'Blancas', 'Victoria', 'Mate · pasillo', '✓']);
+      new Date('2026-10-05T00:00:00Z').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }), hostile + ' ›Neural', 'BotEspañolaFinal', '—', 'Blancas', 'Victoria', 'Mate · pasillo', '✓']);
     expect(a.className).toBe('gamerow');
-    expect(a.getAttribute('role')).toBeNull();
+    expect(a.getAttribute('role')).toBe('row'); // kept for assistive technology when the phone layout restyles the table
     expect(a.querySelector('button.rowbtn')!.getAttribute('aria-label')).toContain('Ver partida vs ' + hostile);
     expect([...b.querySelectorAll('td')].map((td) => td.textContent!.trim())).toEqual([
       new Date('2026-10-05T00:00:00Z').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }), 'Bot 8', 'PvP', '1210', 'Negras', 'Derrota', 'Desconexión', '']);
@@ -162,12 +162,19 @@ describe('MatchesTable', () => {
 
   it('shouldSayTheMatchesCouldNotBeLoadedInsteadOfSinPartidasWhenTheRequestFails', async () => {
     await answer(500);
-    expect(text('empty')).toBe('No se pudieron cargar las partidas.');
+    expect(text('empty')).toContain('No pudimos cargar las partidas.');
     await click('#btnAllMatches');
     await answer(500);
     expect(text('mc')).toBe('—');
     expect(el.querySelector<HTMLButtonElement>('#prev')!.disabled).toBe(true);
     expect(el.querySelector<HTMLButtonElement>('#next')!.disabled).toBe(true);
+  });
+
+  it('shouldAskForTheSamePageAgainWhenReintentarIsPressed', async () => {
+    await answer(500);
+    await click('#empty button');
+    await answer({ rows: [], total: 0 });
+    expect(text('empty')).toBe('Sin partidas todavía');
   });
 
   it('shouldSayThereAreNoGamesYetOrNoneWithThoseFilters', async () => {
@@ -176,8 +183,14 @@ describe('MatchesTable', () => {
     expect(text('chessMatchesSubtitle')).toBe('Partidas recientes');
     await click('#btnAllMatches');
     await answer({ rows: [], total: 0 });
-    expect(text('empty')).toBe('Sin partidas con esos filtros');
+    expect(text('empty')).toBe('Sin partidas todavía'); // no filter is set: nothing to clear
     expect(text('mc')).toBe('0 partidas');
+    await click('[data-chip="color:white"]');
+    await answer({ rows: [], total: 0 });
+    expect(text('empty')).toContain('Sin partidas con esos filtros.');
+    await click('#empty button'); // "Limpiar filtros" sits in the empty line
+    expect(params(await answer())).toEqual({ limit: '50', offset: '0' });
+    expect(document.activeElement).toBe(el.querySelector('[data-chip="type:"]'));
   });
 
   it('shouldSendEverySelectAndTheTypedEloWithTheNextLoad', async () => {
@@ -185,10 +198,12 @@ describe('MatchesTable', () => {
     await click('#btnAllMatches');
     await answer();
     const set = (id: string, v: string, ev: string) => { const x = el.querySelector<HTMLInputElement | HTMLSelectElement>('#' + id)!; x.value = v; x.dispatchEvent(new Event(ev)); };
-    set('fMin', '800', 'input');
-    set('fMax', '1200', 'input');
-    await tick();
-    expect(pending()).toHaveLength(0); // typing a bound does not load
+    set('fMin', '800', 'blur'); await tick();
+    expect(params(await answer())).toEqual({ limit: '50', offset: '0', minOpponentElo: '800' }); // a bound loads once its field is left
+    set('fMax', '1200', 'blur'); await tick();
+    expect(params(await answer())).toEqual({ limit: '50', offset: '0', minOpponentElo: '800', maxOpponentElo: '1200' });
+    set('fMax', '1200', 'blur'); await tick();
+    expect(pending()).toHaveLength(0); // the same value asks for nothing
     set('fOpp', 'seg:stockfish', 'change');
     await tick();
     expect(params(await answer())).toEqual({ limit: '50', offset: '0', opponentSegment: 'stockfish', minOpponentElo: '800', maxOpponentElo: '1200' });
@@ -199,9 +214,59 @@ describe('MatchesTable', () => {
     await click('[data-chip="type:bot"]'); // the type chip replaces the rival select
     expect(params(await answer())).toMatchObject({ opponentType: 'bot' });
     expect(el.querySelector<HTMLSelectElement>('#fOpp')!.value).toBe('');
-    await click('#matchFilters .btn-g'); // Limpiar
+    await click('#matchFilters .btn-g'); // Limpiar filtros
     expect(params(await answer())).toEqual({ limit: '50', offset: '0' });
     expect(el.querySelector<HTMLInputElement>('#fMin')!.value).toBe('');
+  });
+
+  it('shouldApplyABoundOnEnterAndNotSendTheBoundsWhileMinIsAboveMax', async () => {
+    await answer();
+    await click('#btnAllMatches');
+    await answer();
+    const set = (id: string, v: string, ev: Event) => { const x = el.querySelector<HTMLInputElement>('#' + id)!; x.value = v; x.dispatchEvent(ev); };
+    set('fMin', '1400', new KeyboardEvent('keydown', { key: 'Enter' })); await tick();
+    expect(params(await answer())).toMatchObject({ minOpponentElo: '1400' });
+    set('fMax', '1200', new Event('blur')); await tick();
+    expect(pending()).toHaveLength(0); // inverted: nothing is sent
+    expect(text('eloErr')).toBe('ELO mín no puede ser mayor que ELO máx.');
+    expect(el.querySelector('#fMin')!.getAttribute('aria-invalid')).toBe('true');
+    expect(el.querySelector('#fMax')!.getAttribute('aria-describedby')).toBe('eloErr');
+    set('fMax', '1500', new Event('blur')); await tick();
+    expect(params(await answer())).toMatchObject({ minOpponentElo: '1400', maxOpponentElo: '1500' });
+    expect(text('eloErr')).toBe('');
+    expect([...el.querySelectorAll('#matchFilters button')].map((b) => b.textContent!.trim())).toEqual(['Limpiar filtros']); // no "Filtrar"
+  });
+
+  it('shouldListEveryEndingTheTableShowsAndFilterByTheOneThatWasNotThereBefore', async () => {
+    await answer();
+    await click('#btnAllMatches');
+    await answer();
+    const opts = [...el.querySelectorAll<HTMLOptionElement>('#fEnd option')].map((o) => o.textContent!.trim());
+    expect(opts).toEqual(['Fin: Todos', 'Mate', 'Desconexión', 'Ahogado', 'Repetición', 'Rendición', 'Material insuficiente', 'Tiempo', '50 jugadas']);
+    const sel = el.querySelector<HTMLSelectElement>('#fEnd')!; sel.value = 'timeout'; sel.dispatchEvent(new Event('change')); await tick();
+    expect(params(await answer())).toMatchObject({ endCondition: 'timeout' });
+  });
+
+  it('shouldMoveFocusToTheSearchFieldWhenTheFullListOpens', async () => {
+    await answer();
+    await click('#btnAllMatches');
+    await answer();
+    await tick();
+    expect(document.activeElement).toBe(el.querySelector('#q'));
+    expect(el.querySelector('#mc')!.getAttribute('role')).toBe('status');
+  });
+
+  it('shouldMarkRowsThatOpenAndSayWhyOneDoesNotWhenItIsTapped', async () => {
+    await answer({ rows: [row(), row({ match_id: null, ply_count: null, opponent_name: 'Bot 8' })], total: 2 });
+    const [a, b] = [...el.querySelectorAll('#mb tr')];
+    expect(a.querySelector('.chev')).not.toBeNull();
+    expect(a.querySelector('.chev')!.getAttribute('aria-hidden')).toBe('true');
+    expect(b.querySelector('.chev')).toBeNull();
+    (b as HTMLElement).click(); await tick();
+    expect(text('matchNotice')).toBe('Esta partida no tiene jugadas guardadas.');
+    expect(svc.openId()).toBeNull();
+    await click('[data-chip="color:white"]');
+    expect(text('matchNotice')).toBe(''); // the next filter change clears it
   });
 
   it('shouldOfferTheOpeningsGroupedByColour', async () => {

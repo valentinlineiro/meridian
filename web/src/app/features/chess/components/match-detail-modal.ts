@@ -1,7 +1,11 @@
 import { afterRenderEffect, Component, computed, ElementRef, inject, linkedSignal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
-import { catchError, map, of } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
+import { catchError, map, of, TimeoutError } from 'rxjs';
 import { ApiClient } from '../../../core/api-client';
+import { ErrorBlock } from '../../../shared/error-block';
+import { scrollBehavior } from '../../../core/motion';
+import { dec1 } from '../chess.model';
 import { ChessBoard } from './chess-board';
 import { Modal } from '../../../shared/modal';
 import { MatchesService } from '../services/matches.service';
@@ -12,7 +16,7 @@ interface Game {
   engineWorst?: { ply: number; loss: number; best: string; bestSan?: string | null }[]; engineSummary?: { moves: number; serious: number; acpl?: number | null } | null;
 }
 const ILLEGAL = 'Las jugadas guardadas no son una partida válida.';
-const MISSING = 'No hay partida completa guardada para esta partida.';
+const MISSING = 'Esta partida no tiene jugadas guardadas.';
 
 /**
  * Port of the game viewer (src/dashboard.client.js:1396–1446, #gameModal): the server validates the moves and returns
@@ -20,24 +24,24 @@ const MISSING = 'No hay partida completa guardada para esta partida.';
  */
 @Component({
   selector: 'app-match-detail-modal',
-  imports: [ChessBoard, Modal],
+  imports: [ChessBoard, ErrorBlock, Modal],
   host: { '(document:keydown)': 'onKey($event)' },
   template: `
     @if (m.openId(); as id) {
       <app-modal modalId="gameModal" labelledby="gTitle" initialFocus="#gClose" (dismissed)="close()">
           <div class="gamehead"><b id="gTitle">{{ title() }}</b><button class="btn btn-g" id="gClose" type="button" (click)="close()" aria-label="Cerrar">✕</button></div>
-          <div id="gErr" class="muted">{{ error() }}</div>
+          <div id="gErr" class="muted" role="status">{{ error() }}@if (showRetry()) {<app-error-block message="No pudimos cargar la partida." [loading]="loading()" [again]="retried()" (retry)="retry()" />}</div>
           @if (game(); as g) {
             @let n = ply();
             <div class="u-d-block" id="gBody">
-              <div class="gamegrid"><m-chess-board id="gBoard" [fen]="n ? g.plies[n - 1].fen : g.startFen" [flip]="g.userColor === 'black'" />
-                <div id="gMoves" class="moves">@for (p of g.plies; track $index; let i = $index) {@if (i % 2 === 0) {<span class="muted">{{ i / 2 + 1 }}.</span>{{ ' ' }}}<a href="#" class="gm" [class.on]="i + 1 === n" (click)="go($event, i + 1)" (keydown.space)="go($event, i + 1)">{{ p.san }}</a>{{ ' ' }}}</div></div>
-              <div id="gMissed" class="muted u-mt-8">@for (k of g.missedPlies ?? []; track k) {<div><a href="#" (click)="go($event, k - 1)" (keydown.space)="go($event, k - 1)">Jugada {{ k }} ({{ g.plies[k - 1]?.san ?? '' }}): el rival tenía mate en 1 y lo jugó</a></div>}</div>
+              <div class="gamegrid"><m-chess-board id="gBoard" [fen]="n ? g.plies[n - 1].fen : g.startFen" [flip]="g.userColor === 'black'" [caption]="n ? 'tras la jugada ' + n + ', ' + g.plies[n - 1].san : 'inicial'" />
+                <div id="gMoves" class="moves">@for (p of g.plies; track $index; let i = $index) {@if (i % 2 === 0) {<span class="muted">{{ i / 2 + 1 }}.</span>{{ ' ' }}}<button type="button" class="gm" [class.on]="i + 1 === n" [attr.aria-current]="i + 1 === n ? 'step' : null" [attr.aria-label]="'Jugada ' + (i + 1) + ', ' + p.san" (click)="go($event, i + 1)">{{ p.san }}</button>{{ ' ' }}}</div></div>
+              <div id="gMissed" class="muted u-mt-8">@for (k of g.missedPlies ?? []; track k) {<div><button type="button" class="linkbtn" (click)="go($event, k - 1)">Jugada {{ k }} ({{ g.plies[k - 1]?.san ?? '' }}): el rival tenía mate en 1 y lo jugó</button></div>}</div>
               <div id="gErrors" class="muted u-mt-8">
-                @if (g.engineSummary; as sm) {<div>Según el motor: {{ sm.serious }} errores graves en {{ sm.moves }} jugadas tuyas{{ sm.acpl === null || sm.acpl === undefined ? '' : ' · pérdida media ' + round(sm.acpl) + ' cp' }}</div>}
-                @for (x of g.engineWorst ?? []; track x.ply) {<div><a href="#" (click)="go($event, x.ply - 1)" (keydown.space)="go($event, x.ply - 1)">Jugada {{ x.ply }} ({{ g.plies[x.ply - 1]?.san ?? '' }}): pierdes {{ x.loss }} cp; el motor prefería {{ x.bestSan || x.best }}</a></div>}
+                @if (g.engineSummary; as sm) {<div>Según el motor: {{ sm.serious }} errores graves en {{ sm.moves }} jugadas tuyas{{ sm.acpl === null || sm.acpl === undefined ? '' : ' · pérdida media ' + pawns(sm.acpl) + ' peones por jugada' }}</div>}
+                @for (x of g.engineWorst ?? []; track x.ply) {<div><button type="button" class="linkbtn" (click)="go($event, x.ply - 1)">Jugada {{ x.ply }} ({{ g.plies[x.ply - 1]?.san ?? '' }}): pierdes {{ pawns(x.loss) }} peones; el motor prefería {{ x.bestSan || x.best }}</button></div>}
               </div>
-              <div class="gamectl"><button class="btn btn-g" id="gPrev" type="button" [disabled]="n === 0" (click)="step(-1)" aria-label="Jugada anterior">‹</button><span class="muted" id="gPos">{{ n }} / {{ g.plies.length }}</span><button class="btn btn-g" id="gNext" type="button" [disabled]="n === g.plies.length" (click)="step(1)" aria-label="Jugada siguiente">›</button><a class="btn btn-g" id="gPgn" download style="text-decoration:none;margin-left:auto" [href]="'/api/me/matches/' + enc(id) + '/game.pgn'">Descargar PGN</a></div>
+              <div class="gamectl"><button class="btn btn-g" id="gPrev" type="button" [disabled]="n === 0" (click)="step(-1)" aria-label="Jugada anterior">‹</button><span class="muted" id="gPos" role="status" aria-live="polite">{{ n ? 'Jugada ' + n + ' de ' + g.plies.length + ': ' + g.plies[n - 1].san : 'Posición inicial' }}</span><button class="btn btn-g" id="gNext" type="button" [disabled]="n === g.plies.length" (click)="step(1)" aria-label="Jugada siguiente">›</button><a class="btn btn-g" id="gPgn" download style="text-decoration:none;margin-left:auto" [href]="'/api/me/matches/' + enc(id) + '/game.pgn'">Descargar PGN</a></div>
             </div>
           }
       </app-modal>
@@ -50,25 +54,32 @@ export class MatchDetailModal {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
 
   // A new id cancels the request for the one before: a late game never lands under another title.
-  private readonly res = rxResource<Game | { error: string }, string | undefined>({
+  private readonly res = rxResource<Game | { error: string; temporary?: boolean }, string | undefined>({
     params: () => this.m.openId() ?? undefined,
     stream: ({ params: id }) => this.api.get<Game>(`/api/me/matches/${encodeURIComponent(id)}/game`).pipe(
-      map((b): Game | { error: string } => { if (!b?.ok) throw { error: b }; // every ply must carry its position: a game the viewer cannot paint is reported, not half-drawn
+      map((b): Game | { error: string; temporary?: boolean } => { if (!b?.ok) throw { error: b }; // every ply must carry its position: a game the viewer cannot paint is reported, not half-drawn
         return Array.isArray(b.plies) && typeof b.startFen === 'string' && b.plies.every((p) => typeof p?.fen === 'string' && typeof p.san === 'string') ? b : { error: MISSING }; }),
-      catchError((e) => of({ error: e?.error?.code === 'ILLEGAL_GAME' ? ILLEGAL : MISSING })),
+      // a timeout or a server error is not a missing game: it says so and offers one retry
+      catchError((e) => of(e instanceof TimeoutError || (e instanceof HttpErrorResponse && (e.status === 0 || e.status >= 500))
+        ? { error: '', temporary: true } : { error: e?.error?.code === 'ILLEGAL_GAME' ? ILLEGAL : MISSING })),
     ),
   });
   private readonly body = computed(() => this.res.hasValue() && !this.res.isLoading() ? this.res.value() : null);
   protected readonly game = computed(() => { const b = this.body(); return b && 'plies' in b ? b : null; });
   protected readonly error = computed(() => { const b = this.body(); return b && 'error' in b ? b.error : ''; });
+  private readonly temporary = computed(() => { const b = this.body(); return !!(b && 'temporary' in b && b.temporary); });
+  protected readonly loading = computed(() => this.res.isLoading());
+  protected readonly retried = linkedSignal<string | undefined, boolean>({ source: () => this.m.openId() ?? undefined, computation: () => false });
+  protected readonly showRetry = computed(() => this.temporary() || (this.retried() && this.loading()));
+  protected retry(): void { this.retried.set(true); this.res.reload(); }
   protected readonly title = computed(() => {
     const g = this.game();
-    return g ? `vs ${g.opponent || 'bot'} · ${g.userColor === 'black' ? 'negras' : 'blancas'}` : this.error() ? 'Partida' : 'Cargando partida…';
+    return g ? `vs ${g.opponent || 'bot'} · ${g.userColor === 'black' ? 'negras' : 'blancas'}` : this.error() || this.temporary() ? 'Partida' : 'Cargando partida…';
   });
   protected readonly ply = linkedSignal(() => { this.game(); return 0; });
 
   constructor() {
-    afterRenderEffect(() => { this.ply(); this.host.querySelector<HTMLElement>('#gMoves .on')?.scrollIntoView?.({ block: 'nearest' }); });
+    afterRenderEffect(() => { this.ply(); this.host.querySelector<HTMLElement>('#gMoves .on')?.scrollIntoView?.({ block: 'nearest', behavior: scrollBehavior() }); });
   }
 
   close(): void {
@@ -93,6 +104,7 @@ export class MatchDetailModal {
     else if (e.key === 'ArrowRight') { e.preventDefault(); this.step(1); }
   }
 
-  protected round(n: number): number { return Math.round(n); }
+  /** Engine losses are said in pawns, as the profile says them (the API sends centipawns). */
+  protected pawns(cp: number): string { return dec1(cp / 100); }
   protected enc(id: string): string { return encodeURIComponent(id); }
 }

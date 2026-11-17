@@ -33,4 +33,21 @@ describe('ErrorBlock', () => {
     expect(text(f)).toContain('Sigue sin cargar. Inténtalo en un minuto.');
     expect(button(f).disabled).toBe(false);
   });
+
+  it('shouldGiveFocusBackToTheButtonWhenTheRetryFailedAndToTheCardHeadingWhenItWorked', async () => {
+    @Component({ imports: [ErrorBlock], template: `<section class="card"><h2>Forma actual</h2>@if (show()) {<app-error-block message="x" [loading]="loading()" (retry)="go()" />}</section>` })
+    class Card { show = signal(true); loading = signal(false); go() { this.loading.set(true); } }
+    const f = TestBed.createComponent(Card);
+    document.body.appendChild(f.nativeElement);
+    f.detectChanges();
+    const btn = () => f.nativeElement.querySelector('button') as HTMLButtonElement;
+    btn().click(); f.detectChanges();
+    f.componentInstance.loading.set(false); f.detectChanges();
+    await Promise.resolve();
+    expect(document.activeElement).toBe(btn()); // the retry failed: the button is back in reach
+    btn().click(); f.detectChanges();
+    f.componentInstance.show.set(false); f.componentInstance.loading.set(false); f.detectChanges();
+    expect(document.activeElement).toBe(f.nativeElement.querySelector('h2')); // the retry worked: the card's heading, not the top of the page
+    f.nativeElement.remove();
+  });
 });
