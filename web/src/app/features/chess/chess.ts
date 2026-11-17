@@ -33,8 +33,8 @@ const saveCut = (v: string) => { try { if (v) localStorage.setItem(PROFILE_CUT_K
 const counts = (s: Summary) => s.wins != null && s.losses != null && s.draws != null ? { w: s.wins, l: s.losses, d: s.draws } : null;
 
 function hero(d: ChessData | null, failed: boolean) {
-  if (!d) return failed ? { elo: '', sub: '', meta: '', pill: 'pill', flame: '', streak: '', games: '', wr: '', distMeta: '', dist: null }
-    : { elo: '—', sub: 'ELO', meta: '—', pill: 'pill', flame: '', streak: '—', games: '—', wr: WR_LABEL, distMeta: '—', dist: null };
+  if (!d) return failed ? { elo: '', sub: '', meta: '', pill: 'pill', streak: '', games: '', hist: '', wr: '', distMeta: '', dist: null }
+    : { elo: '—', sub: 'ELO', meta: '—', pill: 'pill', streak: '—', games: '—', hist: '', wr: WR_LABEL, distMeta: '—', dist: null };
   const s = d.s;
   const elo = s.currentElo ?? s.latestElo ?? null;
   const delta = elo != null && s.firstElo != null ? elo - s.firstElo : null;
@@ -52,11 +52,12 @@ function hero(d: ChessData | null, failed: boolean) {
     sub: elo != null ? 'ELO' + (single ? ' · sin histórico comparable' : delta != null ? ` · ${signedInt(delta)} vs primera lectura` : '') : 'ELO',
     meta: s.games ? es(s.games) + ' partidas disputadas · ELO observado en sincronizaciones' : 'Sin partidas registradas',
     pill: 'pill' + (n ? (s.currentStreakKind === 'loss' ? ' pill-loss' : ' pill-win') : ''),
-    flame: n && s.currentStreakKind === 'win' ? '🔥 ' : '', // a winning run only: a losing run is read, not cheered
     streak: n ? `${n} ${streakWord(n, s.currentStreakKind)}${n === 1 ? ' consecutiva' : ' consecutivas'}` : 'Sin racha activa',
     games: !s.games || !d.o ? '—' : bots && bots.games >= 0 ? `${es(bots.games)} de ${es(s.games)} partidas contra bots` : '',
     wr: rc ? `${pc1(rc.winRate! * 100)} de victorias en las últimas ${rc.games} partidas` : s.winRate != null ? `${pc1(s.winRate * 100)} de victorias en todo el historial` : WR_LABEL,
-    distMeta: c ? `${c.w} victorias · ${c.l} derrotas · ${c.d} tablas` + (rc && s.winRate != null ? ` · historial ${pc1(s.winRate * 100)}` : '') : '—',
+    distMeta: c ? `${c.w} victorias · ${c.l} derrotas · ${c.d} tablas` : '—',
+    // the whole-history rate is the one reference for the recent window; it lives in «Estadísticas», next to the scope of the data
+    hist: rc && s.winRate != null ? `Historial: ${pc1(s.winRate * 100)} de victorias` : '',
     // the historical rate is the one reference here; the 20/50/100 windows live in "Forma actual"
     dist: c && sum > 0 ? { ...c, wP, lP, dP: Number(Math.max(0, 100 - wP - lP).toFixed(1)) } : null,
   };

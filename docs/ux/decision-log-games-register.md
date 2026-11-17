@@ -278,3 +278,10 @@ Why: the header crowded title, subtitle and button in one row at 390 px, and the
 Rejected: keeping the button in the header on a second line (it still competed with the list); hiding the export on phones.
 Rests on: web/src/app/features/chess/components/matches-table.ts, styles.css (.matches-head, #matchChips). Checked in a browser on the local worker at 390×844 and 1280×800.
 
+## 2026-11-17 The chess hero keeps ELO, its change, the streak and the recent results; the scope of the data moves into Estadísticas; the flame goes
+
+Decided: the owner (second chess critique: scope P1 and P2, and "Quitar" the flame). The hero shows ELO with its change against the first reading, the streak pill (left-aligned, no flame), the win rate of the last 50 with its victories, defeats and draws, and the bar. "N partidas disputadas · ELO observado en sincronizaciones", "N de M partidas contra bots" and "Historial: X % de victorias" are now the first lines of «Estadísticas».
+Why: the hero carried eight facts and an orphaned pill; the flame was the one streak cue left, against "no streak pressure".
+Rejected: keeping "contra bots" in the hero (context for a reader, not for the glance); dropping the history rate (it is the reference for the recent window, so it stays one open away).
+Rests on: web/src/app/features/chess/chess.ts (hero()), chess.html, chess.spec.ts, copy-chess.md. Checked in a browser on the local worker at 390×844 and 1280×800 (hero 139 px tall at 390 px).
+

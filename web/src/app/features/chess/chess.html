@@ -16,12 +16,8 @@
           <span id="chessHeroElo" class="hc-big">{{ h.elo }}</span>
           <span id="chessHeroEloSub" class="muted u-fs-sm">{{ h.sub }}</span>
         </div>
-        <div id="chessHeroMeta" class="muted u-fs-sm u-mt-4">{{ h.meta }}</div>
       </div>
-      <div class="hero-side">
-        <span class="u-fs-sm u-fwt-600" id="chessHeroStreak" [class]="h.pill"><span aria-hidden="true">{{ h.flame }}</span>{{ h.streak }}</span>
-        <span id="chessHeroGames" class="muted u-fs-sm">{{ h.games }}</span>
-      </div>
+      <span class="u-fs-sm u-fwt-600" id="chessHeroStreak" [class]="h.pill">{{ h.streak }}</span>
     </div>
     <div class="u-mt-14">
       <div class="u-d-flex u-jc-space-between u-ai-baseline u-wrap-wrap u-gap-12 u-mb-6">
@@ -49,6 +45,9 @@
   </div>
   @if (!failed()) {
   <app-section sectionId="cg-stats" title="Estadísticas" [open]="false" #cgStats>
+  <div class="muted u-mb-8" id="chessScope">
+    <div id="chessHeroMeta">{{ h.meta }}</div><div id="chessHeroGames">{{ h.games }}</div><div id="chessHeroHist">{{ h.hist }}</div>
+  </div>
   <section class="kpis" id="kpis">
     @if (x) { @for (k of x.kpis; track k.label) { <m-kpi [label]="k.label" [value]="k.value" [sub]="k.sub" /> } }
   </section>
