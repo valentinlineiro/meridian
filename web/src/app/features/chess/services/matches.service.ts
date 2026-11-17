@@ -53,7 +53,7 @@ export class MatchesService {
     this.load(0);
   }
 
-  /** A typed value that waits for the next load (the ELO bounds). */
+  /** A typed value that waits for the next load (the search text, which loads after a pause). */
   setDraft(group: FilterGroup, value: string): void {
     this.filters.update((f) => ({ ...f, [group]: value }));
   }
@@ -64,7 +64,16 @@ export class MatchesService {
     this.searchTimer = setTimeout(() => this.load(0), 300);
   }
 
-  apply(): void { this.load(0); }
+  /** True while ELO mín is above ELO máx: the bounds cannot match anything, so they are not sent. */
+  readonly eloInvalid = computed(() => { const { min, max } = this.filters(); return min !== '' && max !== '' && +min > +max; });
+
+  /** An ELO bound the person has finished typing (focus left the field, or Enter): it loads once, and only if the value changed. */
+  setBound(group: 'min' | 'max', raw: string): void {
+    const value = raw.replace(/\D/g, '');
+    const applied = String(this.request()[group === 'min' ? 'minOpponentElo' : 'maxOpponentElo'] ?? '');
+    this.filters.update((f) => ({ ...f, [group]: value }));
+    if (!this.eloInvalid() && value !== applied) this.load(0);
+  }
 
   /** The page that failed, again. */
   retry(): void { this.load(this.offset()); }
@@ -100,8 +109,10 @@ export class MatchesService {
     else if (f.type) p['opponentType'] = f.type;
     if (f.result) p['result'] = f.result;
     if (f.color) p['color'] = f.color;
-    if (f.min) p['minOpponentElo'] = f.min;
-    if (f.max) p['maxOpponentElo'] = f.max;
+    if (!this.eloInvalid()) {
+      if (f.min) p['minOpponentElo'] = f.min;
+      if (f.max) p['maxOpponentElo'] = f.max;
+    }
     if (f.end) p['endCondition'] = f.end;
     if (f.phase) p['phase'] = f.phase;
     if (f.opening) p['opening'] = f.opening;

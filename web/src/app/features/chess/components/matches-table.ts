@@ -1,4 +1,4 @@
-import { Component, computed, inject, input } from '@angular/core';
+import { afterNextRender, Component, computed, effect, ElementRef, inject, Injector, input, signal } from '@angular/core';
 import { ErrorBlock } from '../../../shared/error-block';
 import { Segmented } from '../../../shared/segmented';
 import { formatMatchDate } from '../../../core/format';
@@ -64,43 +64,44 @@ const CHIPS: { group: FilterGroup; label: string; options: { k: string; l: strin
     </div>
     @if (!m.compact()) {
       <div class="filters u-d-flex" id="matchFilters">
-        <input id="q" placeholder="Buscar rival" [value]="f.q" (input)="m.onSearch(val($event))">
-        <select id="fOpp" (change)="m.setFilter('opp', val($event))"><option value="" [selected]="f.opp === ''">Rival: Todos</option><option value="bot" [selected]="f.opp === 'bot'">Bots: Todos</option>
+        <input id="q" aria-label="Buscar rival" placeholder="Buscar rival" [value]="f.q" (input)="m.onSearch(val($event))">
+        <select id="fOpp" aria-label="Rival" (change)="m.setFilter('opp', val($event))"><option value="" [selected]="f.opp === ''">Rival: Todos</option><option value="bot" [selected]="f.opp === 'bot'">Bots: Todos</option>
           @for (s of segments; track s[0]) { <option [value]="'seg:' + s[0]" [selected]="f.opp === 'seg:' + s[0]">{{ s[1] }}</option> }</select>
-        <input id="fMin" placeholder="ELO mín" inputmode="numeric" size="6" [value]="f.min" (input)="m.setDraft('min', val($event))"><input id="fMax" placeholder="ELO máx" inputmode="numeric" size="6" [value]="f.max" (input)="m.setDraft('max', val($event))">
-        <select id="fEnd" (change)="m.setFilter('end', val($event))"><option value="" [selected]="f.end === ''">Fin: Todos</option>
+        <input id="fMin" aria-label="ELO mínimo del rival" placeholder="ELO mín" inputmode="numeric" size="6" [value]="f.min" [attr.aria-invalid]="m.eloInvalid() || null" [attr.aria-describedby]="m.eloInvalid() ? 'eloErr' : null" (blur)="m.setBound('min', val($event))" (keydown.enter)="m.setBound('min', val($event))"><input id="fMax" aria-label="ELO máximo del rival" placeholder="ELO máx" inputmode="numeric" size="6" [value]="f.max" [attr.aria-invalid]="m.eloInvalid() || null" [attr.aria-describedby]="m.eloInvalid() ? 'eloErr' : null" (blur)="m.setBound('max', val($event))" (keydown.enter)="m.setBound('max', val($event))">
+        <select id="fEnd" aria-label="Fin de la partida" (change)="m.setFilter('end', val($event))"><option value="" [selected]="f.end === ''">Fin: Todos</option>
           @for (e of ends; track e[0]) { <option [value]="e[0]" [selected]="f.end === e[0]">{{ e[1] }}</option> }</select>
-        <select id="fPhase" (change)="m.setFilter('phase', val($event))"><option value="" [selected]="f.phase === ''">Fase: Todas</option>
+        <select id="fPhase" aria-label="Fase" (change)="m.setFilter('phase', val($event))"><option value="" [selected]="f.phase === ''">Fase: Todas</option>
           @for (p of phases; track p[0]) { <option [value]="p[0]" [selected]="f.phase === p[0]">{{ p[1] }}</option> }</select>
-        <select id="fOpening" (change)="m.setFilter('opening', val($event))"><option value="" [selected]="f.opening === ''">Apertura: Todas</option>
+        <select id="fOpening" aria-label="Apertura" (change)="m.setFilter('opening', val($event))"><option value="" [selected]="f.opening === ''">Apertura: Todas</option>
           @for (g of openingGroups(); track g.label) {
             <optgroup [label]="g.label">@for (o of g.items; track o.key) { <option [value]="o.key" [selected]="f.opening === o.key">{{ o.label }}</option> }</optgroup>
           }</select>
-        <button class="btn btn-p" type="button" (click)="m.apply()">Filtrar</button>
-        <button class="btn btn-g" type="button" (click)="m.clear()">Limpiar</button>
+        <button class="btn btn-g" type="button" (click)="clear()">Limpiar filtros</button>
       </div>
+      <div id="eloErr" class="field-error" role="status">{{ m.eloInvalid() ? 'ELO mín no puede ser mayor que ELO máx.' : '' }}</div>
     }
-    <table class="tbl"><thead><tr><th>Fecha</th><th>Rival</th><th>Tipo</th><th>ELO</th><th>Color</th><th>Resultado</th><th>Fin</th><th>Rev.</th></tr></thead>
+    <div id="matchNotice" class="muted" role="status">{{ notice() }}</div>
+    <table class="tbl" role="table"><thead><tr role="row"><th role="columnheader">Fecha</th><th role="columnheader">Rival</th><th role="columnheader">Tipo</th><th role="columnheader">ELO</th><th role="columnheader">Color</th><th role="columnheader">Resultado</th><th role="columnheader">Fin</th><th role="columnheader">Rev.</th></tr></thead>
       <tbody id="mb">
         @for (r of rows(); track (r.id ?? r.date + r.opp)) {
-          <tr [class.gamerow]="!!r.id" [attr.title]="r.id ? 'Ver partida' : null" (click)="r.id && m.open(r.id)">
-            <td data-l="Fecha" [attr.title]="r.fullDate">{{ r.date }}</td>
-            <td data-l="Rival">@if (r.id) {<button type="button" class="rowbtn" [attr.aria-label]="(r.named ? 'Ver partida vs ' + r.opp : 'Ver partida') + ', ' + r.date" (click)="$event.stopPropagation(); m.open(r.id)">{{ r.opp }}</button>} @else {{{ r.opp }}}@if (r.seg) {<span class="pill" style="font-size:var(--fs-xs);margin-left:4px;opacity:.85">{{ r.seg }}</span>}</td>
-            <td data-l="Tipo"><span class="pill" [style.border-color]="r.pvp ? 'var(--info)' : null" [style.color]="r.pvp ? 'var(--link)' : null">{{ r.type }}</span>@if (r.opening) {<span class="pill" style="font-size:var(--fs-xs);margin-left:4px;opacity:.75">{{ r.opening }}</span>}@if (r.phase) {<span class="pill" style="font-size:var(--fs-xs);margin-left:4px;opacity:.8">{{ r.phase }}</span>}</td>
-            <td data-l="ELO">{{ r.elo }}</td>
-            <td data-l="Color">{{ r.color }}</td>
-            <td data-l="Resultado"><span [class]="r.res.cls">{{ r.res.label }}</span></td>
-            <td data-l="Fin"><span class="pill" [style.opacity]="r.end.dim ? .4 : null">{{ r.end.label }}</span></td>
-            <td data-l="Rev.">{{ r.reviewed }}</td>
+          <tr role="row" [class.gamerow]="!!r.id" [attr.title]="r.id ? 'Ver partida' : null" (click)="r.id ? m.open(r.id) : tellNoMoves()">
+            <td role="cell" data-l="Fecha" [attr.title]="r.fullDate">{{ r.date }}</td>
+            <td role="cell" data-l="Rival">@if (r.id) {<button type="button" class="rowbtn" [attr.aria-label]="(r.named ? 'Ver partida vs ' + r.opp : 'Ver partida') + ', ' + r.date" (click)="$event.stopPropagation(); m.open(r.id)">{{ r.opp }}</button><span class="chev" aria-hidden="true">›</span>} @else {{{ r.opp }}}@if (r.seg) {<span class="pill" style="font-size:var(--fs-xs);margin-left:4px;opacity:.85">{{ r.seg }}</span>}</td>
+            <td role="cell" data-l="Tipo"><span class="pill" [style.border-color]="r.pvp ? 'var(--info)' : null" [style.color]="r.pvp ? 'var(--link)' : null">{{ r.type }}</span>@if (r.opening) {<span class="pill" style="font-size:var(--fs-xs);margin-left:4px;opacity:.75">{{ r.opening }}</span>}@if (r.phase) {<span class="pill" style="font-size:var(--fs-xs);margin-left:4px;opacity:.8">{{ r.phase }}</span>}</td>
+            <td role="cell" data-l="ELO">{{ r.elo }}</td>
+            <td role="cell" data-l="Color">{{ r.color }}</td>
+            <td role="cell" data-l="Resultado"><span [class]="r.res.cls">{{ r.res.label }}</span></td>
+            <td role="cell" data-l="Fin"><span class="pill" [style.opacity]="r.end.dim ? .4 : null">{{ r.end.label }}</span></td>
+            <td role="cell" data-l="Rev.">{{ r.reviewed }}</td>
           </tr>
         }
       </tbody></table>
     @if (m.failed()) { <app-error-block id="empty" role="status" message="No pudimos cargar las partidas." [loading]="m.loading()" (retry)="m.retry()" /> }
-    @else if (empty(); as e) { <div id="empty" class="empty u-d-block">{{ e }}</div> }
+    @else if (empty(); as e) { <div id="empty" class="empty u-d-block">{{ e }}@if (hasFilters()) { <button class="btn btn-g" type="button" (click)="clear()">Limpiar filtros</button> }</div> }
     @if (!m.compact()) {
-      <div class="pager u-d-flex" id="matchPager"><button class="btn btn-g" type="button" id="prev" [disabled]="m.failed() || m.offset() === 0" (click)="m.page(-1)">‹ Anterior</button><span class="muted" id="mc">{{ counter() }}</span><button class="btn btn-g" type="button" id="next" [disabled]="m.failed() || m.offset() + m.pageSize() >= m.total()" (click)="m.page(1)">Siguiente ›</button></div>
+      <div class="pager u-d-flex" id="matchPager"><button class="btn btn-g" type="button" id="prev" [disabled]="m.failed() || m.offset() === 0" (click)="m.page(-1)">‹ Anterior</button><span class="muted" id="mc" role="status" aria-live="polite">{{ counter() }}</span><button class="btn btn-g" type="button" id="next" [disabled]="m.failed() || m.offset() + m.pageSize() >= m.total()" (click)="m.page(1)">Siguiente ›</button></div>
     } @else {
-      <button class="btn btn-g u-mt-10" type="button" id="btnAllMatches" (click)="m.showAll()">Ver todas las partidas</button>
+      <button class="btn btn-g u-mt-10" type="button" id="btnAllMatches" (click)="expand()">Ver todas y filtrar</button>
     }
   `,
 })
@@ -110,7 +111,8 @@ export class MatchesTable {
 
   protected readonly chips = CHIPS;
   protected readonly segments = Object.entries(SEGMENTS);
-  protected readonly ends = ['checkmate', 'disconnection', 'stalemate', 'repetition', 'resignation'].map((k) => [k, ENDS[k]]);
+  // every ending the table shows can be listed; the filter has room for the whole word, the pill does not
+  protected readonly ends = Object.keys(ENDS).map((k) => [k, k === 'insufficient_material' ? 'Material insuficiente' : ENDS[k]]);
   protected readonly phases = [['opening', 'Apertura'], ['middlegame', 'Medio juego'], ['endgame', 'Final']];
 
   protected readonly rows = computed(() => this.m.rows().map(rowView));
@@ -123,13 +125,41 @@ export class MatchesTable {
   protected readonly subtitle = computed(() => !this.m.compact() ? 'Todas las partidas (50 por página)'
     : this.m.rows().length ? `Partidas recientes (${Math.min(10, this.m.rows().length)} mostradas)` : 'Partidas recientes');
   // A failed request is said as such, never as an empty list.
-  protected readonly empty = computed(() => this.m.loaded() && !this.m.rows().length ? (this.m.compact() ? 'Sin partidas todavía' : 'Sin partidas con esos filtros') : '');
+  protected readonly hasFilters = computed(() => Object.values(this.m.filters()).some((v) => v !== '') || this.m.missedOnly());
+  protected readonly empty = computed(() => this.m.loaded() && !this.m.rows().length ? (this.hasFilters() ? 'Sin partidas con esos filtros.' : 'Sin partidas todavía') : '');
   protected readonly counter = computed(() => {
     if (this.m.failed()) return '—';
     if (!this.m.loaded()) return '';
     const off = this.m.offset();
     return this.m.total() ? `${off + 1}–${off + this.m.rows().length} de ${es(this.m.total())}` : '0 partidas';
   });
+
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
+  private readonly injector = inject(Injector);
+  /** Said when a row without stored moves is tapped: 4 s, or until the next filter change. */
+  protected readonly notice = signal('');
+  private noticeTimer: ReturnType<typeof setTimeout> | undefined;
+
+  constructor() {
+    effect((onCleanup) => { this.m.filters(); this.m.offset(); this.notice.set(''); onCleanup(() => clearTimeout(this.noticeTimer)); });
+  }
+
+  protected tellNoMoves(): void {
+    this.notice.set('Esta partida no tiene jugadas guardadas.');
+    clearTimeout(this.noticeTimer);
+    this.noticeTimer = setTimeout(() => this.notice.set(''), 4000);
+  }
+
+  /** The button leaves the page when the full list opens, so focus goes to the first filter. */
+  protected expand(): void {
+    this.m.showAll();
+    afterNextRender(() => this.host.querySelector<HTMLElement>('#q')?.focus(), { injector: this.injector });
+  }
+
+  protected clear(): void {
+    this.m.clear();
+    afterNextRender(() => this.host.querySelector<HTMLElement>('[data-chip^="type:"]')?.focus(), { injector: this.injector });
+  }
 
   protected val(e: Event): string { return (e.target as HTMLInputElement | HTMLSelectElement).value; }
 }
