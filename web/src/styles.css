@@ -452,3 +452,12 @@ app-tab-bar{display:none}
 
 /* Chess is read on a phone outdoors: its secondary text is one step brighter (7.7:1 on the card, was 6.2:1); other pages keep --muted */
 app-chess{--muted:var(--muted-bright)}
+
+/* Partidas on a phone: the three chip groups sit behind one «Filtros» button (the games come first); the full list shows them */
+.filters-toggle{display:none}
+@media(max-width:760px){
+ .filters-toggle{display:flex;align-items:center;gap:6px;width:100%;justify-content:flex-start;margin-bottom:10px}
+ #matchChips:not(.chips-open){display:none}
+}
+/* the viewer's engine errors are rows with a 44 px target, not inline text */
+#gErrors .linkbtn,#gMissed .linkbtn{display:block;width:100%;min-height:44px;padding:10px 0;margin:0;border-top:1px solid var(--line)}

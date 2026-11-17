@@ -40,6 +40,9 @@
 | Viewer, serious errors above the listed rows | "… · se muestran las 5 peores" | Appended to "Según el motor: N errores graves …" only when N is larger than the list (the engine keeps the five worst) |
 | Forma actual, verdict | "Vas mejor que antes: 20,0 puntos de % más de victorias que en las 50 partidas anteriores." · "Vas peor que antes: … menos de victorias …" · "Sin diferencia clara con las 50 partidas anteriores." | A direction only when the 95 % interval excludes 0; otherwise the neutral line |
 | Forma actual, interval disclosure | "Detalle del intervalo" → "+2,5 puntos de % (entre −23,0 y +25,4) · sin evidencia suficiente vs anteriores" | The interval text kept, one open away |
+| Filters on a phone | "Filtros · sin filtros" · "Filtros · Derrotas · Blancas" | One button over the three chip groups; the summary names the active ones. With the full list open the chips show and the button goes |
+| ELO change in the hero | "ELO · −54 vs primera lectura (20 oct)" | The date of the first reading; without the timeline the date is left out |
+| Engine errors in the viewer | One row per error, 44 px tall, divided by a line | Wording unchanged |
 | Engine profile failed | "No pudimos cargar el análisis del motor." + "Reintentar" | One retry serves this and the line above |
 
 ### Blocks of the openings section

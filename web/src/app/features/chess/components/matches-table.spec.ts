@@ -113,6 +113,37 @@ describe('MatchesTable', () => {
     expect(params(await answer())).toEqual({ limit: '10', offset: '0', color: 'black' });
   });
 
+  it('shouldSummariseTheActiveChipFiltersOnTheFiltrosButton', async () => {
+    await answer();
+    expect(text('btnFilters')).toBe('Filtros · sin filtros');
+    svc.setFilter('result', 'loss'); svc.setFilter('color', 'white');
+    await tick();
+    expect(text('btnFilters')).toBe('Filtros · Derrotas · Blancas');
+    expect(el.querySelector('#matchChips')!.classList.contains('chips-open')).toBe(false);
+    await click('#btnFilters');
+    expect(el.querySelector('#matchChips')!.classList.contains('chips-open')).toBe(true);
+    expect(el.querySelector('#btnFilters')!.getAttribute('aria-expanded')).toBe('true');
+  });
+
+  it('shouldKeepTheChipsOpenAndDropTheButtonOnceTheFullListIsOpen', async () => {
+    await answer({ rows: [row()], total: 120 });
+    await click('#btnAllMatches');
+    expect(el.querySelector('#btnFilters')).toBeNull();
+    expect(el.querySelector('#matchChips')!.classList.contains('chips-open')).toBe(true);
+  });
+
+  it('shouldHideTheEloColumnWhenNoRowHasAnOpponentElo', async () => {
+    await answer({ rows: [row({ opponent_elo: null })], total: 1 });
+    expect([...el.querySelectorAll('th')].map((h) => h.textContent)).not.toContain('ELO');
+    expect(el.querySelector('td[data-l="ELO"]')).toBeNull();
+  });
+
+  it('shouldShowTheEloColumnWhenAnyRowHasAnOpponentElo', async () => {
+    await answer({ rows: [row({ opponent_elo: 1500 }), row({ match_id: 'b', opponent_elo: null })], total: 2 });
+    expect([...el.querySelectorAll('th')].map((h) => h.textContent)).toContain('ELO');
+    expect([...el.querySelectorAll('td[data-l="ELO"]')].map((c) => c.textContent)).toEqual(['1500', '—']);
+  });
+
   it('shouldOfferTheCsvExportOnlyWithTheFullFilterRow', async () => {
     await answer({ rows: [row()], total: 120 });
     expect(el.querySelector('a[href="/api/export/matches.csv"]')).toBeNull();

@@ -57,7 +57,10 @@ const CHIPS: { group: FilterGroup; label: string; options: { k: string; l: strin
   template: `
     @let f = m.filters();
     <div class="matches-head"><h2>Partidas</h2><span class="muted" id="chessMatchesSubtitle">{{ subtitle() }}</span></div>
-    <div class="filters" id="matchChips">
+    @if (m.compact()) {
+      <button type="button" class="btn btn-g filters-toggle" id="btnFilters" aria-controls="matchChips" [attr.aria-expanded]="chipsOpen()" (click)="chipsOpen.set(!chipsOpen())">Filtros<span class="muted"> · {{ chipSummary() }}</span></button>
+    }
+    <div class="filters" id="matchChips" [class.chips-open]="chipsOpen() || !m.compact()">
       @for (c of chips; track c.group) {
         <app-segmented [label]="c.label" [caption]="c.label" [chipGroup]="c.group" [options]="c.options" [value]="f[c.group]" (picked)="m.setFilter(c.group, $event)" />
       }
@@ -82,14 +85,14 @@ const CHIPS: { group: FilterGroup; label: string; options: { k: string; l: strin
       <div id="eloErr" class="field-error" role="status">{{ m.eloInvalid() ? 'ELO mín no puede ser mayor que ELO máx.' : '' }}</div>
     }
     <div id="matchNotice" class="muted" role="status">{{ notice() }}</div>
-    <table class="tbl" role="table"><thead><tr role="row"><th role="columnheader">Fecha</th><th role="columnheader">Rival</th><th role="columnheader">Tipo</th><th role="columnheader">ELO</th><th role="columnheader">Color</th><th role="columnheader">Resultado</th><th role="columnheader">Fin</th><th role="columnheader">Rev.</th></tr></thead>
+    <table class="tbl" role="table"><thead><tr role="row"><th role="columnheader">Fecha</th><th role="columnheader">Rival</th><th role="columnheader">Tipo</th>@if (showElo()) {<th role="columnheader">ELO</th>}<th role="columnheader">Color</th><th role="columnheader">Resultado</th><th role="columnheader">Fin</th><th role="columnheader">Rev.</th></tr></thead>
       <tbody id="mb">
         @for (r of rows(); track (r.id ?? r.date + r.opp)) {
           <tr role="row" [class.gamerow]="!!r.id" [attr.title]="r.id ? 'Ver partida' : null" (click)="r.id ? m.open(r.id) : tellNoMoves()">
             <td role="cell" data-l="Fecha" [attr.title]="r.fullDate">{{ r.date }}</td>
             <td role="cell" data-l="Rival">@if (r.id) {<button type="button" class="rowbtn" [attr.aria-label]="(r.named ? 'Ver partida vs ' + r.opp : 'Ver partida') + ', ' + r.date" (click)="$event.stopPropagation(); m.open(r.id)">{{ r.opp }}</button><span class="chev" aria-hidden="true">›</span>} @else {{{ r.opp }}}@if (r.seg) {<span class="pill pill-sub">{{ r.seg }}</span>}</td>
             <td role="cell" data-l="Tipo"><span class="pill" [style.border-color]="r.pvp ? 'var(--info)' : null" [style.color]="r.pvp ? 'var(--link)' : null">{{ r.type }}</span>@if (r.opening) {<span class="pill pill-sub">{{ r.opening }}</span>}@if (r.phase) {<span class="pill pill-sub">{{ r.phase }}</span>}</td>
-            <td role="cell" data-l="ELO">{{ r.elo }}</td>
+            @if (showElo()) {<td role="cell" data-l="ELO">{{ r.elo }}</td>}
             <td role="cell" data-l="Color">{{ r.color }}</td>
             <td role="cell" data-l="Resultado"><span [class]="r.res.cls">{{ r.res.label }}</span></td>
             <td role="cell" data-l="Fin"><span class="pill" [style.opacity]="r.end.dim ? .4 : null">{{ r.end.label }}</span></td>
@@ -117,6 +120,15 @@ export class MatchesTable {
   protected readonly phases = [['opening', 'Apertura'], ['middlegame', 'Medio juego'], ['endgame', 'Final']];
 
   protected readonly rows = computed(() => this.m.rows().map(rowView));
+  /** Most games are against bots, which carry no ELO: a column of dashes says nothing, so it shows only when a row has a value. */
+  protected readonly showElo = computed(() => this.rows().some((r) => r.elo !== '—'));
+  /** On a phone the three chip groups sit behind one «Filtros» button; this says which are active. */
+  protected readonly chipsOpen = signal(false);
+  protected readonly chipSummary = computed(() => {
+    const f = this.m.filters();
+    const on = CHIPS.map((c) => c.options.find((o) => o.k !== '' && o.k === f[c.group])?.l).filter(Boolean);
+    return on.length ? on.join(' · ') : 'sin filtros';
+  });
   protected readonly openingGroups = computed(() => {
     const op = this.openings();
     return ([['Blancas', op?.white], ['Negras', op?.black]] as const)

@@ -299,3 +299,10 @@ Why: "−20,0 puntos de % (entre −39,9 y +13,4) · sin evidencia suficiente vs
 Rejected: a small interval graphic (more to build and to describe for a screen reader than the sentence needs); naming a direction from the point estimate alone (a verdict stronger than the evidence).
 Rests on: web/src/app/features/chess/chess.ts (formVerdict), chess.html, chess.spec.ts. Checked in a browser on the local worker at 390×844: the demo's −20,0 with an interval from −39,9 to +13,4 reads "Sin diferencia clara".
 
+## 2026-11-17 On a phone the games come before the filter chips; empty ELO is not shown; the ELO change says since when
+
+Decided: the owner (third chess critique: P1 "filtros antes que la primera partida", plus the cheap P2s). Up to 760 px wide the Rival / Resultado / Color chips sit behind one "Filtros · <active>" button (closed by default) so the first game appears right under the header; with the full list open ("Ver todas y filtrar") the chips show and the button goes. The ELO column shows only when some row has an opponent ELO (most games are against bots). The hero's change reads "−54 vs primera lectura (20 oct)". The engine's errors in the viewer are rows of at least 44 px.
+Why: stacking each label over its chips (#217) fixed the header but made the filter block about 340 px tall on a phone, and the owner mostly scans results, not slices them.
+Rejected: one horizontal chip row (hides options off-screen); dropping the chips on phones (the filters stay one tap away).
+Rests on: web/src/app/features/chess/components/matches-table.ts (btnFilters, showElo, chipSummary), chess.ts (hero sub), styles.css (.filters-toggle, #gErrors .linkbtn). Checked in a browser on the local worker at 390×844 with mocked games; not yet with the real list.
+
