@@ -25,7 +25,7 @@ const MISSING = 'Esta partida no tiene jugadas guardadas.';
 @Component({
   selector: 'app-match-detail-modal',
   imports: [ChessBoard, ErrorBlock, Modal],
-  host: { '(document:keydown)': 'onKey($event)' },
+  host: { '(document:keydown)': 'onKey($event)', '(window:popstate)': 'm.popped()' },
   template: `
     @if (m.openId(); as id) {
       <app-modal modalId="gameModal" labelledby="gTitle" initialFocus="#gClose" (dismissed)="close()">
@@ -83,7 +83,7 @@ export class MatchDetailModal {
   }
 
   close(): void {
-    this.m.openId.set(null);
+    this.m.close();
   }
 
   protected step(d: number): void {

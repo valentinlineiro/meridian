@@ -46,6 +46,27 @@ describe('MatchDetailModal', () => {
   });
   afterEach(() => opener.remove());
 
+  it('shouldCloseTheViewerOnBackAndNotLeaveTheScreen', async () => {
+    await open();
+    expect(history.state?.chessViewer).toBe(true);
+    const popped = new Promise((r) => addEventListener('popstate', r, { once: true }));
+    history.back();
+    await popped;
+    await tick();
+    expect(svc.openId()).toBeNull();
+    expect(history.state?.chessViewer).toBeFalsy();
+  });
+
+  it('shouldDropItsHistoryEntryWhenClosedByHand', async () => {
+    await open();
+    const popped = new Promise((r) => addEventListener('popstate', r, { once: true }));
+    svc.close();
+    await popped;
+    await tick();
+    expect(svc.openId()).toBeNull();
+    expect(history.state?.chessViewer).toBeFalsy();
+  });
+
   it('shouldStayClosedUntilAGameIsOpened', () => {
     expect(el.querySelector('#gameModal')).toBeNull();
   });

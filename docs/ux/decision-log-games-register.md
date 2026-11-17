@@ -249,3 +249,10 @@ Decided by: the owner, who granted a production read; Claude ran it.
 Why: all 1,727 games in production have stored moves, so "Esta partida no tiene jugadas guardadas." will almost never show. It costs one line and covers a game synced without moves.
 Rejected: removing the status line and the permanent viewer error; a later sync can still arrive without moves.
 Rests on: a read-only count over matches joined to match_details (no rows read beyond the count). Not checked: whether every stored list is a legal game.
+
+## 2026-11-17 Back closes the viewer, and the ending pill reads "Material insuficiente"
+
+Decided by: the owner.
+Why: the viewer is a layer over Ajedrez, so the phone's Back gesture takes it away and leaves the screen as it was; one name for the ending in the pill and the select keeps one action to one name.
+Rejected: Back leaving Ajedrez with the viewer open (loses the filters and the place in the list); "Material" in the pill and the long form only in the select.
+Rests on: web/src/app/features/chess/services/matches.service.ts (the viewer adds one history entry, like the "Más" sheet in tab-bar.ts), matches-table.ts.
