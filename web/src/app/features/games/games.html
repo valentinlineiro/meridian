@@ -19,7 +19,6 @@
   <div class="hero-card gh" id="gamesHero">
     <div class="gh-top">
       <b id="gamesHeroToday">{{ todayTitle() }}</b>
-      <span class="muted"><span id="gamesHeroStreakLabel" class="sr-only">{{ h.label }}</span><span id="gamesHeroStreak">{{ h.streak }}</span></span>
     </div>
     @if (overview(); as o) {
       <div id="gamesOverview" class="go">
@@ -30,7 +29,7 @@
     }
     <div class="u-mt-14"><button id="gamesRegisterOpen" type="button" [class]="'btn ' + (allDone() ? 'btn-g' : 'btn-p')" (click)="reg.open()">{{ allDone() ? 'Editar lo de hoy' : 'Registrar hoy' }}</button></div>
     <app-games-register #reg [day]="dayGames()" (saved)="saved($event)" (reread)="data.reload()" />
-    <div class="gh-foot muted"><span id="gamesHeroMeta">{{ h.meta }}</span><span id="gamesHeroDays">{{ h.days }}</span><a id="gamesExport" href="/api/me/linkedin-games/export.csv" download>Descargar resultados (CSV)</a></div>
+    <div class="gh-foot muted"><span id="gamesHeroMeta">{{ h.meta }}</span><span id="gamesHeroDays">{{ h.days }}</span><span><span id="gamesHeroStreakLabel" class="sr-only">{{ h.label }}</span><span id="gamesHeroStreak">{{ h.streak }}</span></span><a id="gamesExport" href="/api/me/linkedin-games/export.csv" download>Descargar resultados (CSV)</a></div>
   </div>
   <div id="gamesNote" class="muted" role="status">{{ saveNote() || note() }}</div>
   <app-segmented groupId="gamesRange" label="Periodo de análisis" caption="Periodo" idPrefix="gr-" [options]="ranges" [value]="range()" (picked)="pickRange($event)" />

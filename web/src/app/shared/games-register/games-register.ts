@@ -150,6 +150,8 @@ export class GamesRegister {
     this.isOpen.set(true);
     if (!this.listening) { this.listening = true; el.addEventListener('click', (e) => { if (e.target === el) this.requestClose(); }); } // a tap on the backdrop
     if (!el.open) { if (el.showModal) el.showModal(); else el.setAttribute('open', ''); }
+    const first = this.keys.find((k) => !this.values()[k]?.score); // typing starts at once: the keypad opens on the first empty time
+    if (first) el.querySelector<HTMLElement>(`#lgReg-${first}-score`)?.focus();
   }
   /** True when a draft of today's sheet is waiting: the host reopens the sheet after a login redirect or a reload. */
   static hasDraft(): boolean { return readDraft()?.date === localToday(); }
