@@ -316,10 +316,29 @@ describe('Chess', () => {
       expect(t.text('form')).toContain('Aún no hay partidas anteriores a las últimas 50 con las que comparar. Elige una ventana menor.');
     });
 
+    it('shouldSaySinDiferenciaClaraWhenTheIntervalIncludesZero', async () => {
+      await t.open(); // delta +2,5 with an interval from −23,0 to +25,4
+      expect(t.text('formVerdict')).toBe('Sin diferencia clara con las 50 partidas anteriores.');
+      expect(t.text('formDelta')).toBe('+2,5 puntos de % (entre −23,0 y +25,4) · sin evidencia suficiente vs anteriores'); // the interval stays one open away
+    });
+
+    it('shouldNameADirectionOnlyWhenTheIntervalExcludesZero', async () => {
+      const rec = (delta: object) => ({ ...(chessApi()['/api/stats/recent'] as object), delta });
+      await t.open(chessApi({ '/api/stats/recent': rec({ diff: 0.2, lower: 0.05, upper: 0.35 }) }));
+      expect(t.text('formVerdict')).toBe('Vas mejor que antes: 20,0 puntos de % más de victorias que en las 50 partidas anteriores.');
+    });
+
+    it('shouldSayVasPeorWhenTheWholeIntervalIsBelowZero', async () => {
+      const rec = { ...(chessApi()['/api/stats/recent'] as object), delta: { diff: -0.18, lower: -0.3, upper: -0.04 } };
+      await t.open(chessApi({ '/api/stats/recent': rec }));
+      expect(t.text('formVerdict')).toBe('Vas peor que antes: 18,0 puntos de % menos de victorias que en las 50 partidas anteriores.');
+    });
+
     it('shouldShowNoDeltaWhenThereIsNone', async () => {
       const rec = { ...(chessApi()['/api/stats/recent'] as object), delta: null };
       await t.open(chessApi({ '/api/stats/recent': rec }));
       expect(t.text('form')).not.toContain('vs anteriores');
+      expect(t.el().querySelector('#formVerdict')).toBeNull();
       expect(t.text('form')).not.toContain('Blancas'); // the colour split lives in Comparativa
     });
   });

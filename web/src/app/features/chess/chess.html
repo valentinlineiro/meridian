@@ -72,7 +72,6 @@
             <div class="muted u-fs-xs u-ls-p04em u-tt-uppercase">{{ f.now.head }}</div>
             <div class="u-fwt-700">{{ f.now.wr }}</div>
             <div class="muted">{{ f.now.detail }}</div>
-            @if (f.delta) { <div class="muted u-mt-4 u-fs-xs">{{ f.delta }}</div> }
           </div>
           <div>
             <div class="muted u-fs-xs u-ls-p04em u-tt-uppercase">{{ f.before.head }}</div>
@@ -80,6 +79,10 @@
             <div class="muted">{{ f.before.detail }}</div>
           </div>
         </div>
+        @if (f.verdict) {
+          <p class="form-verdict" id="formVerdict">{{ f.verdict }}</p>
+          <details class="u-mt-4"><summary class="dsum">Detalle del intervalo</summary><div class="muted u-mt-6" id="formDelta">{{ f.delta }}</div></details>
+        }
       }
     </div>
     <div class="muted u-mt-10" id="streak">@if (x) {@if (x.streakNow) {<b>{{ x.streakNow }}</b> · }{{ x.streakBest }}}</div>

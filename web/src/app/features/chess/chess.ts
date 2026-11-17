@@ -63,6 +63,16 @@ function hero(d: ChessData | null, failed: boolean) {
   };
 }
 
+/** One sentence for the win-rate change against the earlier games: it names a direction only when the 95 % interval excludes 0. */
+function formVerdict(d: Recent['delta'] | undefined, earlier: number | undefined): string {
+  if (!d) return '';
+  const n = earlier ? `las ${earlier} partidas anteriores` : 'las partidas anteriores';
+  const pts = (Math.abs(d.diff) * 100).toFixed(1).replace('.', ',');
+  if (d.lower > 0) return `Vas mejor que antes: ${pts} puntos de % más de victorias que en ${n}.`;
+  if (d.upper < 0) return `Vas peor que antes: ${pts} puntos de % menos de victorias que en ${n}.`;
+  return `Sin diferencia clara con ${n}.`;
+}
+
 function form(r: Recent | null | undefined) {
   if (r === undefined) return undefined;
   if (r === null) return null;
@@ -74,6 +84,7 @@ function form(r: Recent | null | undefined) {
   return {
     now: side(r, 'Últimas ' + r.games), before: side(r.before, 'Anteriores · ' + r.before.games),
     delta: r.delta ? fmtDelta(scaleDelta(r.delta, 100)) + ' vs anteriores' : '',
+    verdict: formVerdict(r.delta, r.before.games),
   };
 }
 

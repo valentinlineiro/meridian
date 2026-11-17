@@ -292,3 +292,10 @@ Why: the owner reads Chess on a phone outdoors and most secondary data (dates, E
 Rejected: changing the global token (it moves every page and the verdict vocabulary around it); sentence-case headings only on Chess (a design-system decision, not a Chess one).
 Rests on: web/src/styles.css (`--muted-bright` in :root, `app-chess{--muted:var(--muted-bright)}`); tests/webDesignTokens.test.ts forbids raw hex outside :root. Checked in a browser on the local worker: Chess reads rgb(163, 179, 200), Idiomas stays rgb(142, 160, 184).
 
+## 2026-11-17 Forma actual says one sentence about the change, and keeps the interval one open away
+
+Decided: the owner (second chess critique, P2 "Forma actual con una masa de texto"). Under the two halves (Últimas N / Anteriores M) the card now says "Vas mejor que antes…", "Vas peor que antes…" or "Sin diferencia clara con las M partidas anteriores." A direction is named only when the 95 % interval of the win-rate change excludes 0; otherwise the neutral line. The interval and its "sin evidencia suficiente" stay verbatim inside "Detalle del intervalo".
+Why: "−20,0 puntos de % (entre −39,9 y +13,4) · sin evidencia suficiente vs anteriores" was an 11-line blob that asked the reader to do the inference themselves.
+Rejected: a small interval graphic (more to build and to describe for a screen reader than the sentence needs); naming a direction from the point estimate alone (a verdict stronger than the evidence).
+Rests on: web/src/app/features/chess/chess.ts (formVerdict), chess.html, chess.spec.ts. Checked in a browser on the local worker at 390×844: the demo's −20,0 with an interval from −39,9 to +13,4 reads "Sin diferencia clara".
+

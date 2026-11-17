@@ -431,6 +431,7 @@ app-tab-bar{display:none}
 
 /* Chess polish: former inline styles */
 .form-split{display:grid;grid-template-columns:1fr 1fr;gap:8px;text-align:center}.form-split>div+div{border-left:1px solid var(--line);padding-left:8px}
+.form-verdict{margin:14px 0 0;font-size:var(--fs-lg);font-weight:600;text-wrap:pretty}
 .hist-fill{background:var(--info)}.hist-row .hist-n{width:36px;text-align:right}
 .pill-sub{font-size:var(--fs-xs);margin-left:4px;opacity:.8}
 #chessTab #kpis{grid-template-columns:1fr} /* a single KPI (Puntuación) takes the row */
