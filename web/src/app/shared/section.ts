@@ -14,10 +14,13 @@ export class Section {
   readonly open = input(true);
   private readonly details = viewChild.required<ElementRef<HTMLDetailsElement>>('d');
 
+  /** Open the block without moving the page (a block inside it is about to be revealed). */
+  expand(): void { this.details().nativeElement.open = true; }
+
   /** Page index: open the block if it is collapsed and bring it into view. */
   reveal(): void {
+    this.expand();
     const el = this.details().nativeElement;
-    el.open = true;
     el.scrollIntoView({ behavior: scrollBehavior(), block: 'start' });
     el.querySelector('summary')?.focus({ preventScroll: true }); // what opened is where a keyboard or screen reader user lands
   }

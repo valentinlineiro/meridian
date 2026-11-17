@@ -256,3 +256,10 @@ Decided by: the owner.
 Why: the viewer is a layer over Ajedrez, so the phone's Back gesture takes it away and leaves the screen as it was; one name for the ending in the pill and the select keeps one action to one name.
 Rejected: Back leaving Ajedrez with the viewer open (loses the filters and the place in the list); "Material" in the pill and the long form only in the select.
 Rests on: web/src/app/features/chess/services/matches.service.ts (the viewer adds one history entry, like the "Más" sheet in tab-bar.ts), matches-table.ts.
+
+## 2026-11-17 Chess opens on status, the game to review and the list; the statistics sit behind one section
+
+Decided: the owner (shape and the three open decisions, 2026-11-17). Order on the page: hero, "Revisar vs X" as the one filled button with "Última partida" beside it, Partidas, then a single closed "Estadísticas" (Puntuación, Evolución, Forma actual, Comparativa, Aperturas, Resultados, ELO del rival, engine profile, "¿Cómo sabemos esto?"). Closed at every width. The Resultados counts open the full list filtered to those games. The four-button section index is gone; `?s=` links still open Estadísticas and the block.
+Why: the owner opens Chess on a phone for "how am I doing" and a game to review; the same ELO, win rate and game count appeared three times and the viewer's entry sat last.
+Rejected: "Actualizado" in the hero (the shell header already shows "Ajedrez · actualizado <fecha>" on every width); folding the Forma window selector into the hero (the hero keeps its own last-50 window, pinned by tests); a separate statistics route.
+Rests on: web/src/app/features/chess/chess.html, chess.ts, components/review-suggestion.ts, services/matches.service.ts (showEnding, latestId). Not checked in a browser: no dev server was available; the screenshots in docs/ux/screenshots predate this order.

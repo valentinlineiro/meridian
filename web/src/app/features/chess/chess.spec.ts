@@ -2,7 +2,7 @@ import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting, TestRequest } from '@angular/common/http/testing';
-import { provideRouter, Router, withComponentInputBinding } from '@angular/router';
+import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { StatsService } from '../../core/stats.service';
 import { Chess } from './chess';
@@ -134,7 +134,7 @@ describe('Chess', () => {
   describe('layout (tests/ux-viewport.test.ts)', () => {
     it('shouldOrderSectionsLogicallyAndKeepTheOpponentEloCollapsed', async () => {
       await t.open();
-      const ids = ['kpis', 'evoCard', 'formCard', 'cg-comp', 'colCard', 'oppCard', 'cg-evo', 'resCard', 'eloDetails', 'mb'];
+      const ids = ['chessHero', 'chessPatternsCard', 'allMatchesCard', 'cg-stats', 'kpis', 'evoCard', 'formCard', 'cg-comp', 'colCard', 'oppCard', 'cg-evo', 'resCard', 'eloDetails'];
       const els = ids.map((id) => t.el().querySelector('#' + id)!);
       expect(els.every(Boolean)).toBe(true);
       for (let i = 1; i < els.length; i++) expect(els[i - 1].compareDocumentPosition(els[i]) & Node.DOCUMENT_POSITION_FOLLOWING, ids[i]).toBeTruthy();
@@ -147,7 +147,7 @@ describe('Chess', () => {
     it('shouldStartWithEveryDetailBlockClosedOnAnyScreen', async () => {
       await t.open();
       const isOpen = (id: string) => (t.el().querySelector('#' + id) as HTMLDetailsElement).open;
-      expect(['cg-comp', 'cg-open', 'cg-evo', 'chessEngineProfileDetails'].map(isOpen)).toEqual([false, false, false, false]);
+      expect(['cg-stats', 'cg-comp', 'cg-open', 'cg-evo', 'chessEngineProfileDetails'].map(isOpen)).toEqual([false, false, false, false, false]);
     });
   });
 
@@ -233,7 +233,7 @@ describe('Chess', () => {
     it('shouldNotRepeatEloAndWinRateInTheKpis', async () => {
       await t.open();
       const kpis = [...t.el().querySelectorAll('#kpis m-kpi')].map((k) => k.textContent);
-      expect(kpis).toEqual(['Partidas100', 'Puntuación65,0 %victoria 1 · tablas 0,5']);
+      expect(kpis).toEqual(['Puntuación65,0 %victoria 1 · tablas 0,5']);
     });
 
     it('shouldShowTheCurrentBestAndWorstStreak', async () => {
@@ -347,6 +347,18 @@ describe('Chess', () => {
       expect(t.text('res')).toMatch(/65,0 % score/);
     });
 
+    it('shouldOpenTheFullListFilteredToTheGamesOfACountPressed', async () => {
+      await t.open();
+      Element.prototype.scrollIntoView = function () {};
+      const pressed = [...t.el().querySelectorAll<HTMLButtonElement>('#lossContext button')].find((b) => b.textContent === '3 rendiciones')!;
+      pressed.click();
+      await t.tick();
+      await t.tick();
+      const req = t.pending().filter((r) => r.request.url === '/api/matches').at(-1)!.request.params;
+      expect([req.get('result'), req.get('endCondition'), req.get('limit')]).toEqual(['loss', 'resignation', '50']);
+      expect(document.activeElement).toBe(t.el().querySelector('#allMatchesCard h2'));
+    });
+
     it('shouldNotAddALossRateNoteWhenNoLossWasADisconnection', async () => {
       await t.open(chessApi({ '/api/stats/results': { endConditions: { checkmate: { loss: 20, draw: 0 } } } }));
       expect(t.text('lossRateNote')).toBe('');
@@ -371,49 +383,48 @@ describe('Chess', () => {
   describe('failures', () => {
     it('shouldShowRetryAndNotClaimNoGamesWhenSummaryFails', async () => {
       await t.open(chessApi({ '/api/stats/bundle': FAIL, '/api/stats/summary': FAIL }));
-      expect(t.text('kpis')).toContain('No pudimos cargar tus estadísticas de ajedrez.');
-      expect(t.el().querySelector('#kpis [role=alert] button')!.textContent).toBe('Reintentar');
+      expect(t.text('chessError')).toContain('No pudimos cargar tus estadísticas de ajedrez.');
+      expect(t.el().querySelector('#chessError [role=alert] button')!.textContent).toBe('Reintentar');
       expect(t.text('chessHeroMeta')).toBe(''); // the hero says nothing instead of dashes that read as values
-      expect(t.el().querySelector('nav[aria-label="Secciones de ajedrez"]')).toBeNull();
     });
 
     it('shouldSaySinConexionWhenTheBrowserIsOfflineAndTheLoadFailed', async () => {
       const online = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
       try {
         await t.open(chessApi({ '/api/stats/bundle': FAIL, '/api/stats/summary': FAIL }));
-        expect(t.text('kpis')).toContain('Sin conexión. Pulsa Reintentar cuando vuelva la red.');
+        expect(t.text('chessError')).toContain('Sin conexión. Pulsa Reintentar cuando vuelva la red.');
       } finally { online.mockRestore(); }
     });
 
     it('shouldDisableTheRetryAndAskForAMinuteWhileTheRetryRunsAndFailsAgain', async () => {
       await t.open(chessApi({ '/api/stats/bundle': FAIL, '/api/stats/summary': FAIL }));
-      const btn = () => t.el().querySelector<HTMLButtonElement>('#kpis [role=alert] button')!;
+      const btn = () => t.el().querySelector<HTMLButtonElement>('#chessError [role=alert] button')!;
       btn().click();
       await t.tick();
       expect(btn().disabled).toBe(true);
       expect(btn().textContent).toBe('Cargando…');
       await t.answer(chessApi({ '/api/stats/bundle': FAIL, '/api/stats/summary': FAIL }));
       expect(btn().disabled).toBe(false);
-      expect(t.text('kpis')).toContain('Sigue sin cargar. Inténtalo en un minuto.');
+      expect(t.text('chessError')).toContain('Sigue sin cargar. Inténtalo en un minuto.');
     });
 
     it('shouldRefetchAndRecoverWhenRetryingAfterAFailedLoad', async () => {
       await t.open(chessApi({ '/api/stats/bundle': FAIL, '/api/stats/summary': FAIL }));
-      t.el().querySelector<HTMLButtonElement>('#kpis [role=alert] button')!.click();
+      t.el().querySelector<HTMLButtonElement>('#chessError [role=alert] button')!.click();
       await t.tick();
       const api = chessApi({ '/api/stats/summary': { ...summary, games: 7 } });
       const again = t.pending(); // match() takes them off the controller: answer them here
       expect(again.map((r) => r.request.url)).toContain('/api/stats/bundle'); // a retry asks the bundle again
       for (const r of again) t.flush(r, api[r.request.url]);
       await t.answer(api);
-      expect(t.el().querySelector('#kpis [role=alert]')).toBeNull();
+      expect(t.el().querySelector('#chessError [role=alert]')).toBeNull();
       expect(t.text('chessHeroMeta')).toMatch(/7 partidas disputadas/);
     });
 
     it('shouldKeepTheKpisAndSayNoDisponiblePerCardWhenTheBundleAndEveryOtherStatsRouteFail', async () => {
       const failing = Object.fromEntries(['results', 'color', 'opponents', 'opponent-elo', 'timeline', 'recent', 'openings', 'phases'].map((r) => ['/api/stats/' + r, FAIL]));
       await t.open(chessApi({ ...failing, '/api/stats/bundle': MISSING }));
-      expect(t.text('kpis')).toContain('Partidas');
+      expect(t.text('kpis')).toContain('Puntuación');
       for (const id of ['col', 'opp', 'evo', 'elo', 'lossContext']) expect(t.text(id)).toBe('No disponible');
       expect(t.text('form')).toContain('No pudimos cargar las últimas 50 partidas.');
       expect(t.text('chessHeroEloSub')).toBe('ELO · +100 vs primera lectura'); // the summary still knows the first ELO
@@ -472,7 +483,7 @@ describe('Chess', () => {
 
     it('shouldKeepTheKpisAndSayNoDisponibleWhenOpeningsOrPhasesCannotBeRead', async () => {
       await t.open(chessApi({ '/api/stats/openings': FAIL, '/api/stats/phases': FAIL }));
-      expect(t.text('kpis')).toContain('Partidas');
+      expect(t.text('kpis')).toContain('Puntuación');
       expect(t.text('openingsWhite')).toContain('No pudimos cargar tus aperturas.');
       expect(t.text('phasesBody')).toContain('No pudimos cargar las fases.');
     });
@@ -550,7 +561,7 @@ describe('Chess', () => {
 
   describe('a malformed section degrades alone', () => {
     const siblingsRender = () => {
-      expect(t.text('kpis')).toContain('Partidas');
+      expect(t.text('kpis')).toContain('Puntuación');
       expect(t.text('colDiff')).toContain('Blancas 70,0 %');
       expect(t.text('phasesMeta')).toBe('Las partidas suelen durar 21 jugadas · con detalle: 10 partidas');
     };
@@ -586,7 +597,7 @@ describe('Chess', () => {
     it('shouldSayNoDisponibleWhenTheColourGroupsAreNotAList', async () => {
       await t.open(chessApi({ '/api/stats/color': { groups: 'x', difference: null } }));
       expect(t.text('col')).toBe('No disponible');
-      expect(t.text('kpis')).toContain('Partidas');
+      expect(t.text('kpis')).toContain('Puntuación');
     });
 
     it('shouldSkipMatchRowsThatAreNotObjects', async () => {
@@ -606,12 +617,29 @@ describe('Chess', () => {
     it('shouldOfferTheSuggestedGameAndOpenItSafely', async () => {
       const worst = [{ matchId: 'game_malicious"onclick=alert(1)', opponent: 'Stockfish 8', serious: 4, acpl: 250 }];
       await t.open(chessApi({ '/api/stats/profile': { ...PROFILE, review: { worst, best: [] } } }));
-      expect(t.text('chessPatternSuggested')).toContain('Partida sugerida para revisión (mayor pérdida media por jugada):');
+      expect(t.text('chessPatternSuggested')).toContain('Partida sugerida para revisión (mayor pérdida media por jugada)');
       const btn = t.el().querySelector<HTMLButtonElement>('#chessPatternSuggested button')!;
       expect(btn.textContent).toBe('Revisar vs Stockfish 8 (4 errores graves)');
       btn.click();
       await t.tick();
       expect(t.pending().some((r) => r.request.url === '/api/me/matches/' + encodeURIComponent(worst[0].matchId) + '/game')).toBe(true);
+    });
+  });
+
+  describe('review actions', () => {
+    const rows = { rows: [{ match_id: 'new1', ply_count: 40, opponent_name: 'Bot 8', result: 'win' }, { match_id: 'old', ply_count: 30, result: 'loss' }], total: 2 };
+
+    it('shouldOfferTheNewestGameWithMovesNextToTheSuggestedOne', async () => {
+      await t.open(chessApi({ '/api/matches': rows }));
+      const btn = [...t.el().querySelectorAll<HTMLButtonElement>('#chessPatternSuggested button')].find((b) => b.textContent === 'Última partida')!;
+      btn.click();
+      await t.tick();
+      expect(t.pending().some((r) => r.request.url === '/api/me/matches/new1/game')).toBe(true);
+    });
+
+    it('shouldNotOfferTheNewestGameWhenItHasNoStoredMoves', async () => {
+      await t.open(chessApi({ '/api/matches': { rows: [{ match_id: 'm1', opponent_name: 'Bot 8' }], total: 1 } }));
+      expect(t.text('chessPatternSuggested')).not.toContain('Última partida');
     });
   });
 
@@ -733,35 +761,36 @@ describe('Chess', () => {
   });
 
   describe('page index', () => {
-    it('shouldOpenAndScrollToEachBlockWhenItsIndexButtonIsPressed', async () => {
+    it('shouldOpenStatisticsAndScrollToTheBlockNamedInTheUrl', async () => {
       await t.open();
       const scrolled: string[] = [];
       Element.prototype.scrollIntoView = function (this: Element) { scrolled.push(this.id); };
-      const evo = t.el().querySelector<HTMLDetailsElement>('#cg-evo')!;
-      evo.open = false;
-      const buttons = [...t.el().querySelectorAll<HTMLButtonElement>('nav.cindex button')];
-      expect(buttons.map((b) => b.textContent)).toEqual(['Comparativa', 'Aperturas', 'Evolución', 'Partidas']);
-      for (const b of buttons) b.click();
-      expect(scrolled).toEqual(['cg-comp', 'cg-open', 'cg-evo', 'allMatchesCard']);
-      expect(evo.open).toBe(true);
+      for (const [k, id] of [['comparativa', 'cg-comp'], ['aperturas', 'cg-open'], ['evolucion', 'cg-evo'], ['partidas', 'allMatchesCard']]) {
+        await t.harness.navigateByUrl('/chess?s=' + k);
+        await t.tick();
+        await t.tick();
+        expect(scrolled.at(-1), k).toBe(id);
+      }
+      expect(t.el().querySelector<HTMLDetailsElement>('#cg-stats')!.open).toBe(true);
+      expect(t.el().querySelector('nav[aria-label="Secciones de ajedrez"]')).toBeNull();
     });
 
-    it('shouldMoveFocusToWhatTheIndexButtonOpened', async () => {
+    it('shouldMoveFocusToWhatTheUrlOpened', async () => {
       await t.open();
       Element.prototype.scrollIntoView = function () {};
-      const buttons = [...t.el().querySelectorAll<HTMLButtonElement>('nav.cindex button')];
-      buttons[1].click(); // Aperturas
+      await t.harness.navigateByUrl('/chess?s=aperturas');
+      await t.tick();
+      await t.tick();
       expect(document.activeElement).toBe(t.el().querySelector('#cg-open summary'));
-      buttons[3].click(); // Partidas
+      await t.harness.navigateByUrl('/chess?s=partidas');
+      await t.tick();
+      await t.tick();
       expect(document.activeElement).toBe(t.el().querySelector('#allMatchesCard h2'));
     });
 
-    it('shouldPutTheSectionInTheUrlWhenItsIndexButtonIsPressedAndOpenItFromTheUrl', async () => {
+    it('shouldOpenTheBlockNamedInTheUrl', async () => {
       await t.open();
       Element.prototype.scrollIntoView = function () {};
-      t.el().querySelectorAll<HTMLButtonElement>('nav.cindex button')[1].click();
-      await t.tick();
-      expect(t.harness.fixture.debugElement.injector.get(Router).url).toBe('/chess?s=aperturas');
       const evo = t.el().querySelector<HTMLDetailsElement>('#cg-evo')!;
       evo.open = false;
       await t.harness.navigateByUrl('/chess?s=evolucion');

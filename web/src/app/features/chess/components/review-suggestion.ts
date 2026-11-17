@@ -14,7 +14,13 @@ import { MatchesService } from '../services/matches.service';
     @if (profile() === null) {
       <app-error-block id="chessPatternSuggested" role="status" message="No pudimos cargar la partida sugerida." [loading]="loading()" (retry)="retry.emit()" />
     } @else {
-    <div id="chessPatternSuggested" class="u-fs-sm">{{ suggested().text }}@if (suggested().game; as w) {<button type="button" class="btn btn-g btn-sm" (click)="matches.open(w.matchId)">Revisar vs {{ w.opponent || 'Rival' }} ({{ w.serious || 0 }} errores graves)</button>}</div>
+    <div id="chessPatternSuggested">
+      <p class="review-lead">{{ suggested().text }}</p>
+      <div class="review-actions">
+        @if (suggested().game; as w) {<button type="button" class="btn btn-p" (click)="matches.open(w.matchId)">Revisar vs {{ w.opponent || 'Rival' }} ({{ w.serious || 0 }} errores graves)</button>}
+        @if (matches.latestId(); as id) {<button type="button" class="btn btn-g" (click)="matches.open(id)">Última partida</button>}
+      </div>
+    </div>
     }
   `,
 })
@@ -30,7 +36,7 @@ export class ReviewSuggestion {
     if (b === undefined) return { text: '', game: null };
     if (b === null) return { text: '', game: null };
     const w = b.review?.worst?.[0];
-    return w ? { text: 'Partida sugerida para revisión (mayor pérdida media por jugada): ', game: w }
+    return w ? { text: 'Partida sugerida para revisión (mayor pérdida media por jugada)', game: w }
       : { text: 'Partidas sugeridas para revisión: el motor las analiza solo tras cada sincronización y aparecerán aquí.', game: null };
   });
 }

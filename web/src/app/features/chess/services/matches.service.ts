@@ -1,4 +1,4 @@
-import { computed, DestroyRef, inject, Injectable, signal } from '@angular/core';
+import { computed, DestroyRef, inject, Injectable, linkedSignal, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { ApiClient } from '../../../core/api-client';
 
@@ -41,6 +41,16 @@ export class MatchesService {
   readonly failed = computed(() => this.page_.status() === 'error');
   readonly loading = computed(() => this.page_.isLoading());
 
+  /** The newest game with stored moves, read from the unfiltered first page and kept while the list is filtered or paged. */
+  readonly latestId = linkedSignal<{ id: string | null; fresh: boolean }, string | null>({
+    source: () => {
+      const f = this.filters(), first = this.rows()[0];
+      const unfiltered = this.offset() === 0 && !this.missedOnly() && Object.values(f).every((v) => v === '');
+      return { id: first?.match_id && first.ply_count != null ? first.match_id : null, fresh: unfiltered && this.loaded() };
+    },
+    computation: (src, prev) => src.fresh ? src.id : prev?.value ?? null,
+  });
+
   private searchTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor() {
@@ -81,6 +91,14 @@ export class MatchesService {
   page(delta: number): void { this.load(this.offset() + delta * this.pageSize()); }
 
   showAll(): void {
+    this.compact.set(false);
+    this.load(0);
+  }
+
+  /** The games that ended one way (a count in «Resultados»): the full list, filtered to exactly those. */
+  showEnding(result: string, end: string): void {
+    this.missedOnly.set(false);
+    this.filters.set({ ...NONE, result, end });
     this.compact.set(false);
     this.load(0);
   }
