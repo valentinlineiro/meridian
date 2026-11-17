@@ -162,6 +162,16 @@ describe('MatchDetailModal', () => {
     expect(t).toContain('Jugada 3 (Bc4): pierdes 3,1 peones; el motor prefería d2d4'); // no SAN available: the UCI move
   });
 
+  it('shouldSayOnlyTheWorstAreListedWhenThereAreMoreSeriousErrorsThanRows', async () => {
+    await open('m1', { ...GAME, engineSummary: { moves: 4, serious: 6, acpl: 162.5 } });
+    expect(text('gErrors')).toContain('6 errores graves en 4 jugadas tuyas · pérdida media 1,6 peones por jugada · se muestran las 2 peores');
+  });
+
+  it('shouldNotSayOnlyTheWorstAreListedWhenEveryErrorHasARow', async () => {
+    await open();
+    expect(text('gErrors')).not.toContain('se muestran');
+  });
+
   it('shouldJumpToThePositionBeforeTheErrorWhenClickingAWorstMove', async () => {
     await open();
     el.querySelector<HTMLElement>('#gErrors button.linkbtn')!.click(); await tick();

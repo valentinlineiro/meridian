@@ -36,6 +36,7 @@
 | Suggested-game line failed | "No pudimos cargar la partida sugerida." + "Reintentar" | Replaces "Partida sugerida para revisión: No disponible" |
 | Suggested game, the lead line | "Partida sugerida para revisión (mayor pérdida media por jugada)" | The colon is gone; the action below it is the button "Revisar vs X (N errores graves)" |
 | Newest game shortcut | "Última partida" | Opens the newest game with stored moves; hidden when it has none |
+| Viewer, serious errors above the listed rows | "… · se muestran las 5 peores" | Appended to "Según el motor: N errores graves …" only when N is larger than the list (the engine keeps the five worst) |
 | Engine profile failed | "No pudimos cargar el análisis del motor." + "Reintentar" | One retry serves this and the line above |
 
 ### Blocks of the openings section
