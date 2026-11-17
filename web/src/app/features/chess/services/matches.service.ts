@@ -96,7 +96,20 @@ export class MatchesService {
     this.load(0);
   }
 
-  open(id: string): void { this.openId.set(id); }
+  open(id: string): void {
+    this.openId.set(id);
+    history.pushState({ chessViewer: true }, ''); // the system "back" closes the viewer instead of leaving Ajedrez
+  }
+
+  close(): void {
+    this.openId.set(null);
+    if (history.state?.chessViewer) history.back(); // drop the entry the viewer added
+  }
+
+  /** Back already popped our entry: only the viewer needs to go. */
+  popped(): void {
+    if (this.openId() && !history.state?.chessViewer) this.openId.set(null);
+  }
 
   private load(offset: number): void {
     clearTimeout(this.searchTimer);

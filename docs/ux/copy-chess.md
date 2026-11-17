@@ -51,7 +51,7 @@
 |---|---|---|
 | Button that opens the full list | "Ver todas y filtrar" | Replaces "Ver todas las partidas" |
 | Ending filter, first option | "Fin: Todos" | |
-| Ending filter, options | Mate · Desconexión · Ahogado · Repetición · Rendición · Material insuficiente · Tiempo · 50 jugadas | The table pills say "Material" for width; the select has room |
+| Ending filter, options | Mate · Desconexión · Ahogado · Repetición · Rendición · Material insuficiente · Tiempo · 50 jugadas | The table pills and the select both say "Material insuficiente" |
 | ELO fields, visible placeholder | "ELO mín" · "ELO máx" | Unchanged |
 | ELO fields, accessible name | "ELO mínimo del rival" · "ELO máximo del rival" | The placeholder disappears when typing |
 | ELO bounds inverted | "ELO mín no puede ser mayor que ELO máx." | Under the pair, linked to both fields |
@@ -83,7 +83,3 @@
 | Position announcement | "Jugada 12 de 40: Cxd4" | Polite |
 | Ending line on the phone card | The ending pill, and "Revisada" when set | Third line of the card |
 | Results line | "12 victorias · 8 derrotas · 5 tablas" | Replaces "12W · 8L · 5D" in the hero and in Forma actual |
-
-## Open Questions
-
-- Should the "Material" pill read "Material insuficiente" too, where the table has the width?

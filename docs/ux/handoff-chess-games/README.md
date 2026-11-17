@@ -46,5 +46,3 @@ Blocks with states and copy but no frame of their own (engine profile, mates, th
 
 ## Open questions
 
-- Does the phone's Back gesture close the viewer or leave Ajedrez? (accessibility-chess.md, journey-chess-games.md)
-- Should the "Material" pill read "Material insuficiente" where the table has the width? (copy-chess.md)

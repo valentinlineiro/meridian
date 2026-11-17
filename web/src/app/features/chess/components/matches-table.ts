@@ -6,7 +6,7 @@ import { es, fmt, Openings } from '../chess.model';
 import { FilterGroup, MatchesService, MatchRow } from '../services/matches.service';
 
 const SEGMENTS: Record<string, string> = { noisy_neural: 'Noisy Neural', neural: 'Neural', blended: 'Blended', stockfish: 'Stockfish', pvp: 'PvP' };
-const ENDS: Record<string, string> = { checkmate: 'Mate', disconnection: 'Desconexión', stalemate: 'Ahogado', repetition: 'Repetición', resignation: 'Rendición', insufficient_material: 'Material', timeout: 'Tiempo', fifty_moves: '50 jugadas' };
+const ENDS: Record<string, string> = { checkmate: 'Mate', disconnection: 'Desconexión', stalemate: 'Ahogado', repetition: 'Repetición', resignation: 'Rendición', insufficient_material: 'Material insuficiente', timeout: 'Tiempo', fifty_moves: '50 jugadas' };
 const PHASES: Record<string, string> = { opening: 'Aper.', middlegame: 'Medio', endgame: 'Final' };
 const COLORS: Record<string, string> = { white: 'Blancas', black: 'Negras' };
 
@@ -112,7 +112,7 @@ export class MatchesTable {
   protected readonly chips = CHIPS;
   protected readonly segments = Object.entries(SEGMENTS);
   // every ending the table shows can be listed; the filter has room for the whole word, the pill does not
-  protected readonly ends = Object.keys(ENDS).map((k) => [k, k === 'insufficient_material' ? 'Material insuficiente' : ENDS[k]]);
+  protected readonly ends = Object.entries(ENDS);
   protected readonly phases = [['opening', 'Apertura'], ['middlegame', 'Medio juego'], ['endgame', 'Final']];
 
   protected readonly rows = computed(() => this.m.rows().map(rowView));

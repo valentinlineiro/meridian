@@ -54,7 +54,6 @@ Open questions:
 - Should the Resultados counts ("12 por tiempo") open the list already filtered?
 - Should the viewer step to the previous and next game of the filtered list?
 - Should the filters live in the URL, so Back and a shared link keep them?
-- Does the phone's Back gesture close the viewer or leave Ajedrez?
 
 ## Proposed Scope (Phase 1)
 

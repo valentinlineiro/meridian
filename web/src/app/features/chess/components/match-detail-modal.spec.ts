@@ -46,6 +46,24 @@ describe('MatchDetailModal', () => {
   });
   afterEach(() => opener.remove());
 
+  it('shouldCloseTheViewerOnBackAndNotLeaveTheScreen', async () => {
+    await open();
+    expect(history.state?.chessViewer).toBe(true);
+    history.back();
+    await new Promise((r) => setTimeout(r, 50));
+    await tick();
+    expect(svc.openId()).toBeNull();
+    expect(history.state?.chessViewer).toBeFalsy();
+  });
+
+  it('shouldDropItsHistoryEntryWhenClosedByHand', async () => {
+    await open();
+    svc.close();
+    await new Promise((r) => setTimeout(r, 50));
+    expect(svc.openId()).toBeNull();
+    expect(history.state?.chessViewer).toBeFalsy();
+  });
+
   it('shouldStayClosedUntilAGameIsOpened', () => {
     expect(el.querySelector('#gameModal')).toBeNull();
   });
