@@ -263,3 +263,11 @@ Decided: the owner (shape and the three open decisions, 2026-11-17). Order on th
 Why: the owner opens Chess on a phone for "how am I doing" and a game to review; the same ELO, win rate and game count appeared three times and the viewer's entry sat last.
 Rejected: "Actualizado" in the hero (the shell header already shows "Ajedrez · actualizado <fecha>" on every width); folding the Forma window selector into the hero (the hero keeps its own last-50 window, pinned by tests); a separate statistics route.
 Rests on: web/src/app/features/chess/chess.html, chess.ts, components/review-suggestion.ts, services/matches.service.ts (showEnding, latestId). Not checked in a browser: no dev server was available; the screenshots in docs/ux/screenshots predate this order.
+
+## 2026-11-17 The viewer keeps the position and its controls in view; the errors come before the moves
+
+Decided: the owner (second chess critique, 2026-11-17: priority "Visor", scope P1 and P2). Order in the viewer: board, then ‹ position ›, then the engine's errors, then the move list, then "Descargar PGN". On a phone (up to 700 px wide, at least 640 px tall) the board and its controls stay fixed at the top while the errors and moves scroll under them, in one scroll and without the nested move scroller. Beside it on a wide screen: board left, errors and moves right. The plies the engine lists as worst are underlined in the move list and read as "error grave" to a screen reader.
+Why: the errors the owner opens a game for sat below 40+ small move buttons, and the controls were off-screen after the list.
+Rejected: marking plies with "?" or "??" (a verdict stronger than "loses at least 3 pawns"); colour alone for the marker; fixing the header with the ✕ (Back, Escape and the backdrop already close the viewer, and a taller fixed area breaks reflow at high zoom, so the fixed board only applies when the screen is tall enough).
+Rests on: web/src/app/features/chess/components/match-detail-modal.ts, styles.css (.gamegrid, .gamestage, .gm.err). Checked in a browser on the local worker with a made-up 60-ply game at 390×844 and 1280×800; not yet with real production games or on a touch device.
+
