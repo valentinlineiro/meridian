@@ -285,3 +285,10 @@ Why: the hero carried eight facts and an orphaned pill; the flame was the one st
 Rejected: keeping "contra bots" in the hero (context for a reader, not for the glance); dropping the history rate (it is the reference for the recent window, so it stays one open away).
 Rests on: web/src/app/features/chess/chess.ts (hero()), chess.html, chess.spec.ts, copy-chess.md. Checked in a browser on the local worker at 390×844 and 1280×800 (hero 139 px tall at 390 px).
 
+## 2026-11-17 Chess reads one step brighter: --muted is #a3b3c8 inside app-chess
+
+Decided: the owner (second chess critique, P2 "tono apagado en exteriores"; "limitarlo a Chess" accepted). Measured first: the global --muted (#8ea0b8) already gave 6.19:1 on the card and 5.15:1 on a hovered row, so this is legibility in glare, not a WCAG failure. Inside `app-chess` the token is `--muted-bright` (#a3b3c8, declared in :root like every colour) (7.74:1 on the card, 6.43:1 on a hovered row). Every other page keeps #8ea0b8; the uppercase section headings are unchanged.
+Why: the owner reads Chess on a phone outdoors and most secondary data (dates, ELO, window counts, scope lines) is --muted at 12-13 px.
+Rejected: changing the global token (it moves every page and the verdict vocabulary around it); sentence-case headings only on Chess (a design-system decision, not a Chess one).
+Rests on: web/src/styles.css (`--muted-bright` in :root, `app-chess{--muted:var(--muted-bright)}`); tests/webDesignTokens.test.ts forbids raw hex outside :root. Checked in a browser on the local worker: Chess reads rgb(163, 179, 200), Idiomas stays rgb(142, 160, 184).
+
