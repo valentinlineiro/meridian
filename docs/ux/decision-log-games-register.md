@@ -88,3 +88,150 @@ Decided by: the owner.
 Why: removal and clearing an average contradict L8 (each capture is the day's cumulative) and L10 (no way to delete a field); without them a mistaken result or a stale average stays in every reading.
 Rejected: leaving L8 and L10 as written and correcting by overwriting only.
 Rests on: the ingestion contract L8, L10; blueprint-games-register.html.
+
+## 2026-11-17 Project ethical stance is maximum user protection
+
+Decided by: Claude, default; the owner has not answered.
+Why: a single-owner personal tool has no engagement or revenue goal that would justify less.
+Rejected: leaving the stance unwritten.
+Rests on: context-meridian.md, README design principles.
+
+## 2026-11-17 Artifacts for this project: the Games register package, then a chess evaluation
+
+Decided by: Claude, default; the owner has not answered.
+Why: the Games register package exists and the build is next; chess is the main use [mobile UX plan 2026-11-03] and has no evaluation of its own.
+Rejected: new artifacts for languages or Qué cambió, which the 2026-11-16 evaluation already covered.
+Rests on: context-meridian.md.
+
+## 2026-11-17 The chess evaluation reads the code and not the running app
+
+Decided by: Claude, default; the owner has not answered.
+Why: no prod read or device session was granted; the code shows every state the screen can reach.
+Rejected: a Playwright pass on a phone viewport; it would add rendering findings but needs the app served with data.
+Rests on: web/src/app/features/chess, docs/audits/evaluation-chess-2026-11-17.md. Not covered: visual rendering, the Openings block (`openings.ts`), the engine-profile layout below the KPIs, and any behaviour on real data.
+
+## 2026-11-17 Chess failed cards retry one request each, by hand, with the shared error block
+
+Decided by: Claude, default; the owner has not answered.
+Why: the block already disables the button while loading and asks for a minute after a second failure, which keeps a retry from repeating the D1 overload.
+Rejected: automatic retry with backoff (the 2026-11-11 overload came from retries); one page-level retry for every card (it repeats the 7 requests that worked).
+Rests on: web/src/app/shared/error-block.ts, d1-overload-500s-2026-11-11.
+
+## 2026-11-17 The chess evaluation's major finding is narrowed to the independent requests
+
+Decided by: Claude.
+Why: the bundle route returns all seven stats or fails whole (`handleStatsBundle`), so the ELO, colour, opponents and results cards cannot fail alone.
+Rejected: keeping the first wording, which named those cards.
+Rests on: src/api/stats.ts, web/src/app/core/stats.service.ts.
+
+## 2026-11-17 ELO bounds apply on blur or Enter and "Filtrar" is removed
+
+Decided by: Claude, default; the owner has not answered.
+Why: one rule for every control (it changes the list when the person is done with it); a number typed key by key would otherwise send a request for "1", "12", "120".
+Rejected: a 300 ms pause as search has (partial numbers reach D1); keeping "Filtrar" for the bounds only (a button that matters for two fields of eight).
+Rests on: web/src/app/features/chess/components/matches-table.ts, services/matches.service.ts, evaluation-chess-2026-11-17.md.
+
+## 2026-11-17 A row without moves says so when tapped and is not marked
+
+Decided by: Claude, default; the owner has not answered.
+Why: the share of games without stored moves is unknown, so marking the exception could mark most rows; the "›" marks the rows that open.
+Rejected: dimming or labelling every row without moves.
+Rests on: matches-table.ts (`id` is set only for a game with ply_count).
+
+## 2026-11-17 The full-list button is renamed "Ver todas y filtrar"
+
+Decided by: Claude, default; the owner has not answered.
+Why: the filters for ending, phase, opening and ELO appear only after it, and "Ver todas las partidas" names browsing.
+Rejected: showing the filters in the 10-game view (it repeats the filter bar above ten rows).
+Rests on: matches-table.ts (`compact()`).
+
+## 2026-11-17 Chess failures are worded "No pudimos cargar …", and the offline state waits for a tap
+
+Decided by: Claude, default; the owner has not answered.
+Why: the shared error block and Games already say "No pudimos cargar tus juegos."; the chess strings said "No se pudo…" in four forms. An automatic load on reconnect would be the one retry that nobody asked for, against the manual-only rule.
+Rejected: keeping the chess wording; loading once when the browser reports online (the first states draft).
+Rests on: web/src/app/shared/error-block.ts, games.html, states-chess-2026-11-17.md.
+
+## 2026-11-17 The clear button is "Limpiar filtros" in the bar and in the empty line
+
+Decided by: Claude, default; the owner has not answered.
+Why: one action, one name; "Limpiar" alone does not say what is cleared.
+Rejected: "Quitar filtros" in the empty line (the journey's first wording).
+Rests on: matches-table.ts, journey-chess-games.md.
+
+## 2026-11-17 The viewer's missing-moves message reuses the table's status line
+
+Decided by: Claude, default; the owner has not answered.
+Why: the same fact in two places reads as one fact; "No hay partida completa guardada para esta partida" repeats "partida" three times.
+Rejected: keeping both wordings.
+Rests on: match-detail-modal.ts (`MISSING`), copy-chess.md.
+
+## 2026-11-17 The chess board gets a text description; no keyboard grid
+
+Decided by: Claude, default; the owner has not answered.
+Why: the move list is already the navigable form of a game, so the board only has to say where the pieces are; stepping announces the move, not the 32 pieces.
+Rejected: an 8×8 grid with roving tabindex and arrow keys (a second way to move through a game, built for a pointer-free board nobody asked for); announcing the full position on every step (tedious when stepping through 40 moves).
+Rests on: chess-board.ts, match-detail-modal.ts, accessibility-chess.md.
+
+## 2026-11-17 Card-level error blocks are polite; the page-level block stays assertive
+
+Decided by: Claude, default; the owner has not answered.
+Why: when independent requests fail together, six assertive messages cut each other off.
+Rejected: one `role="alert"` for all blocks; a single combined summary block (it hides which cards failed).
+Rests on: web/src/app/shared/error-block.ts, states-chess-2026-11-17.md.
+
+## 2026-11-17 The phone cards show the ending
+
+Decided by: Claude, default; the owner has not answered.
+Why: with the ending filter complete, a filtered phone list that does not show the ending cannot confirm the filter.
+Rejected: showing Tipo and Rev. as well (the rival line already says Bot or PvP).
+Rests on: styles.css (phone `.tbl` rules), journey-chess-games.md.
+
+## 2026-11-17 The chess accessibility audit reads code and styles and runs nothing
+
+Decided by: Claude, default; the owner has not answered.
+Why: no browser or screen-reader session was part of the request; contrast ratios are computed from the tokens in styles.css.
+Rejected: a Playwright and axe pass (it would add programmatic findings but needs the app served with data).
+Rests on: accessibility-chess.md. Not covered: the Openings block markup, zoom at 400 %, and any assistive-technology behaviour; the findings on table semantics and live regions are to be confirmed with VoiceOver or NVDA.
+
+## 2026-11-17 The chess change is briefed as finding and reading a game, with the failure states in Phase 1
+
+Decided by: Claude, default; the owner has not answered.
+Why: the filter, row, phone-card and viewer problems share one journey, and the failure states sit on the same screen on the device the owner uses most; splitting them would ship a filter that works next to a retry that does not.
+Rejected: a brief limited to the three major findings; a brief for the whole Ajedrez page.
+Rests on: evaluation-chess-2026-11-17.md, states-chess-2026-11-17.md, journey-chess-games.md.
+
+## 2026-11-17 The four open flow questions stay out of Phase 1
+
+Decided by: Claude, default; the owner has not answered.
+Why: each adds a surface (links from a card, a viewer control, URL state) to a change that needs no new endpoint or route, and none has usage data behind it.
+Rejected: building the Resultados links in Phase 1 because they are small.
+Rests on: journey-chess-games.md, brief-chess-games.md.
+
+## 2026-11-17 The chess wireframes are full-page, with a click-through prototype of the Partidas flow
+
+Decided by: Claude, default; the owner has not answered.
+Why: the brief fixes the mechanisms, so the open question is completeness and sequence; the prototype wires the recent list, the filters, the filtered list, the empty line and the viewer.
+Rejected: an idea board (no mechanism is in doubt); wiring the failure frames into the prototype (they are reached by a failed request, which a click-through cannot simulate except from the page error block).
+Rests on: brief-chess-games.md, journey-chess-games.md, wireframes-chess-games.html.
+
+## 2026-11-17 The wireframes were checked for structure, not rendered
+
+Decided by: Claude, default; the owner has not answered.
+Why: starting a local server for a browser check was denied; the file was checked for balanced tags, 14 frames, and every prototype target resolving to a frame.
+Rejected: opening the file by file:// (the browser tool blocks it).
+Rests on: wireframes-chess-games.html. Not covered: how the kit and viewer render the frames, marker positions, the fold height on each screen.
+
+## 2026-11-17 The chess wireframes were rendered and walked in a browser
+
+Decided by: the owner, who asked for the local server; Claude ran the check.
+Why: the structural check could not show the fold, the markers or the viewer.
+Rejected: leaving the earlier entry ("checked for structure, not rendered") standing; it no longer holds.
+Rests on: wireframes-chess-games.html. Found and fixed: the first frame cut off "Ver todas y filtrar" at the fold, and one marker sat on a badge. Walked in the prototype view: recent list, full list, filtered list, viewer. Not walked: the empty, ELO-error and failure frames; the desktop frame is drawn at 1440 px and reads only in slides.
+
+## 2026-11-17 The chess design is checked against manipulative patterns before packaging
+
+Decided by: Claude, default; the owner has not answered.
+Why: the screen reports on the owner's own games, so patterns that act on attention, on loss or on consent are where it could go wrong.
+Rejected: none; no pattern is accepted in the design.
+Rests on: wireframes-chess-games.html, copy-chess.md, states-chess-2026-11-17.md. Streaks: the run pill describes the last results and carries no reminder, reward or threat, and a losing run has no flame. Loss framing: results are stated as counts and rates with their interval; no copy tells the owner what they are losing. Attention: the screen sends no notification, has no unread badge and no autoplay; the viewer steps only when the owner does. Opaque ranking: the suggested game is ranked by the engine's average loss per move and says so in its line. Completeness bars and nagging: none; the empty and short-history states point at an action and add no prompt. Consent and data: the change collects nothing and reads only what the screen already reads. Missing feedback, dead ends and broken error recovery: each failure says what did not load and offers one manual retry, and a tap that cannot open a game says why.
