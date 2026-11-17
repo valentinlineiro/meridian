@@ -32,8 +32,19 @@ const fin = (v: unknown): v is number => typeof v === 'number' && Number.isFinit
 /** A count as legacy concatenated it; anything that is not a number is unavailable, never "NaN"/"null". */
 const n = (v: unknown) => fin(v) ? String(v) : '—';
 const signed = (v: unknown) => fin(v) ? (v > 0 ? '+' + v : String(v)) : '—';
-export const fmtWhen = (iso: unknown) => { const t = new Date(iso as string); return isNaN(t.getTime()) ? String(iso) : t.toISOString().slice(0, 10) + ' ' + t.toISOString().slice(11, 16) + ' UTC'; };
-const utc = (t: unknown) => String(t).slice(0, 16).replace('T', ' ') + ' UTC';
+const MES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+/** An instant in the owner's own time: "hoy 15:05", "ayer 22:10", "3 oct 09:30" (with the year when it is not this one). */
+export const fmtWhen = (iso: unknown) => {
+  const t = new Date(iso as string);
+  if (isNaN(t.getTime())) return String(iso);
+  const now = new Date();
+  const day = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const ago = Math.round((day(now) - day(t)) / DAY);
+  const hm = String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0');
+  if (ago === 0) return 'hoy ' + hm;
+  if (ago === 1) return 'ayer ' + hm;
+  return t.getDate() + ' ' + MES[t.getMonth()] + (t.getFullYear() === now.getFullYear() ? '' : ' ' + t.getFullYear()) + ' ' + hm;
+};
 
 interface Anchor { anchor: string | null; readable: boolean }
 type Put = { ok: true; seenThrough: string | null } | { ok: false; status: number };
@@ -129,7 +140,7 @@ function bodyView(b: Body, w: Win) {
     const iv: Rec = isObj(d['interval']) ? d['interval'] : {};
     // the evaluations are the answer to "could this window be judged?": a quiet window keeps them (INSUFICIENTE, SIN INDICIO)
     // said inside the folded Actividad block, about chess and languages only: Games answers for itself (a page-level "no activity" ignored it)
-    return { empty: '', quiet: 'Sin actividad registrada de ajedrez ni idiomas entre ' + utc(iv['since'] ?? w.since) + ' y ' + utc(iv['until'] ?? w.until) + '.', findings, activity: null };
+    return { empty: '', quiet: 'Sin actividad registrada de ajedrez ni idiomas entre ' + fmtWhen(iv['since'] ?? w.since) + ' y ' + fmtWhen(iv['until'] ?? w.until) + '.', findings, activity: null };
   }
   return { empty: '', quiet: '', findings, activity: safe(() => activityView(d, b.catalog), 'na' as const) };
 }

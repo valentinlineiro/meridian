@@ -112,7 +112,11 @@ describe('Changes', () => {
   const click = async (label: string) => { button(label).click(); await settle(); };
   const row = (label: string) => [...el.querySelectorAll('#changesActivity .row')].find((r) => r.querySelector('span')?.textContent === label)?.querySelector('b, .pill')?.textContent ?? null;
 
+  const env = (globalThis as unknown as { process: { env: Record<string, string | undefined> } }).process.env; // the web tsconfig has no Node typings
+  const tz = env['TZ'];
+
   beforeEach(() => {
+    env['TZ'] = 'Europe/Madrid'; // UTC+2 in October: the times below are the owner's, not UTC
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(NOW);
     localStorage.clear();
@@ -120,7 +124,7 @@ describe('Changes', () => {
     TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
     http = TestBed.inject(HttpTestingController);
   });
-  afterEach(() => { vi.useRealTimers(); http.match((r) => r.url === '/api/me/linkedin-games/changes'); /* the Games section asks on its own: tests about the evaluations need not answer it */ http.verify(); }); // real timers first: a failed verify must not leave fake ones to the next file
+  afterEach(() => { if (tz === undefined) delete env['TZ']; else env['TZ'] = tz; vi.useRealTimers(); http.match((r) => r.url === '/api/me/linkedin-games/changes'); /* the Games section asks on its own: tests about the evaluations need not answer it */ http.verify(); }); // real timers first: a failed verify must not leave fake ones to the next file
 
   describe('Frontend What Changed Navigation & Visual Engine', () => {
     it('shouldParseChangesHashRouteWhenHashIsChanges', () => {
@@ -163,7 +167,7 @@ describe('Changes', () => {
         languages: { xpGained: 0, sessionsCount: 0, totalSessionMinutes: 0, baselineCourseId: 'DUOLINGO_EN_ES', currentCourseId: 'DUOLINGO_EN_ES', courseChanged: false },
         streak: { baselineStreak: 50, currentStreak: 50, streakDelta: 0, status: 'active' } }) });
       expect(empty()).toBeNull();
-      expect(activity()).toContain('Sin actividad registrada de ajedrez ni idiomas entre 2026-09-24 00:00 UTC y 2026-10-01 00:00 UTC.');
+      expect(activity()).toContain('Sin actividad registrada de ajedrez ni idiomas entre 24 sep 02:00 y 1 oct 02:00.');
       expect(el.querySelector('#changesFindings')!.children.length).toBe(0);
       expect(el.querySelectorAll('#changesActivity .row')).toHaveLength(0); // the block only says it was quiet
     });
@@ -251,7 +255,7 @@ describe('Changes', () => {
   describe('visit anchor in What Changed (P1 #8)', () => {
     it('shouldShowSevenDaysAndSaySoWhenThereIsNoAnchor', async () => {
       await open();
-      expect(header()).toContain('Sin visita registrada: mostrando los últimos 7 días (2026-10-01 12:00 UTC y 2026-10-08 12:00 UTC)');
+      expect(header()).toContain('Sin visita registrada: mostrando los últimos 7 días (1 oct 14:00 y hoy 14:00)');
       expect(server.whatChanged[0]!.since).toBe(iso(7 * DAY));
       expect(header()).toContain('Marcar como visto');
     });
@@ -260,7 +264,7 @@ describe('Changes', () => {
       const anchor = iso(3 * DAY);
       await open({ anchor });
       expect(server.whatChanged).toEqual([{ since: anchor, until: iso(0) }]);
-      expect(header()).toContain('Desde tu última visita (2026-10-05 12:00 UTC) hasta 2026-10-08 12:00 UTC');
+      expect(header()).toContain('Desde tu última visita (5 oct 14:00) hasta hoy 14:00');
       expect(header()).not.toContain('Sin visita registrada');
     });
 
@@ -288,7 +292,7 @@ describe('Changes', () => {
       markBtn()!.click();
       await settle();
       expect(server.whatChanged.at(-1)!.since).toBe(shown);
-      expect(header()).toContain('Desde tu última visita (2026-10-08 11:59 UTC)');
+      expect(header()).toContain('Desde tu última visita (hoy 13:59)');
       expect(server.anchorReads).toBe(1); // the PUT answered the new anchor: no second read
     });
 
@@ -322,7 +326,7 @@ describe('Changes', () => {
 
     it('shouldSayItWhenTheAnchorCannotBeRead', async () => {
       await open({ getStatus: 404 });
-      expect(header()).toContain('No se pudo leer tu última visita: mostrando los últimos 7 días (2026-10-01 12:00 UTC y 2026-10-08 12:00 UTC)');
+      expect(header()).toContain('No se pudo leer tu última visita: mostrando los últimos 7 días (1 oct 14:00 y hoy 14:00)');
       expect(server.whatChanged[0]!.since).toBe(iso(7 * DAY));
     });
 
@@ -350,7 +354,7 @@ describe('Changes', () => {
       expect(server.anchor).toBe(anchor);
       expect(markBtn()!.textContent!.trim()).toBe('No se pudo guardar; reintenta');
       expect(server.whatChanged).toHaveLength(1); // nothing reloads: the window shown stays
-      expect(header()).toContain('Desde tu última visita (2026-10-05 12:00 UTC)');
+      expect(header()).toContain('Desde tu última visita (5 oct 14:00)');
     });
 
     it('shouldNotSubmitTwiceWhileTheSaveIsInFlight', async () => {
@@ -457,7 +461,7 @@ describe('Changes', () => {
       harness.detectChanges();
       el = harness.routeNativeElement as HTMLElement;
       expect(TestBed.inject(Router).url).toBe('/changes');
-      expect(header()).toContain('2026-10-08'); // the window the client asked for: until = now
+      expect(header()).toContain('hoy 14:00'); // the window the client asked for: until = now
     });
   });
 
@@ -471,7 +475,7 @@ describe('Changes', () => {
       expect(server.whatChanged.map((w) => w.since)).toEqual([iso(7 * DAY), iso(7 * DAY), iso(30 * DAY), iso(30 * DAY)]);
       expect(button('Últimos 30 días').getAttribute('aria-pressed')).toBe('true');
       expect(button('Desde última visita').getAttribute('aria-pressed')).toBe('false');
-      expect(header()).toContain('Mostrando cambios entre 2026-09-08 12:00 UTC y 2026-10-08 12:00 UTC');
+      expect(header()).toContain('Mostrando cambios entre 8 sep 14:00 y hoy 14:00');
     });
 
     it('shouldCancelTheRequestWhenTheViewIsLeftBeforeItAnswers', async () => {
@@ -600,7 +604,7 @@ describe('Changes', () => {
       late.flush(withXp(77));
       await tick();
       expect(row('XP ganado')).toBe('+77');
-      expect(header()).toContain('Mostrando cambios entre 2026-10-01 12:00 UTC');
+      expect(header()).toContain('Mostrando cambios entre 1 oct 14:00');
     });
 
     it('shouldNotWipeTheLaterWindowWhenTheEarlierRequestFailsLate', async () => {
@@ -681,7 +685,7 @@ describe('Changes', () => {
       vi.setSystemTime(Date.parse('2026-10-01T10:37:59.169Z') + 7 * DAY); // the 7-day window starts at 10:37:59.169
       await open({ wc: () => ({}) });
       await click('Últimos 7 días');
-      expect(header()).toContain('2026-10-01 10:37 UTC');
+      expect(header()).toContain('1 oct 12:37');
       expect(header()).not.toContain('10:37:59.169Z');
     });
 
@@ -773,7 +777,7 @@ describe('Changes', () => {
 
     it('shouldUseTheRequestedWindowInTheEmptyCopyWhenTheIntervalIsMissing', async () => {
       await open({ wc: () => ({ ...quietPayload([]), interval: undefined }) });
-      expect(activity()).toContain('Sin actividad registrada de ajedrez ni idiomas entre 2026-10-01 12:00 UTC y 2026-10-08 12:00 UTC.');
+      expect(activity()).toContain('Sin actividad registrada de ajedrez ni idiomas entre 1 oct 14:00 y hoy 14:00.');
     });
   });
 
@@ -781,6 +785,16 @@ describe('Changes', () => {
     it('shouldPrintTheRawValueWhenTheAnchorIsNotAnInstant', async () => {
       await open({ anchor: 'not-a-date' });
       expect(header()).toContain('Desde tu última visita (not-a-date)');
+    });
+
+    it('shouldSayYesterdayAndTheYearInTheOwnersTime', async () => {
+      await open({ anchor: '2026-10-07T20:10:00.000Z' }); // 22:10 in Madrid, the day before NOW
+      expect(header()).toContain('Desde tu última visita (ayer 22:10)');
+    });
+
+    it('shouldAddTheYearWhenTheInstantIsFromAnotherYear', async () => {
+      await open({ anchor: '2025-06-03T10:00:00.000Z' });
+      expect(header()).toContain('Desde tu última visita (3 jun 2025 12:00)');
     });
   });
 });
