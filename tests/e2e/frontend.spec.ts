@@ -187,6 +187,8 @@ test.describe('Frontend E2E Integration Suite', () => {
     const firstMove = modal.locator('#gMoves .gm').first();
     await expect(firstMove).toBeVisible();
     await page.keyboard.press('Tab');
+    await expect(modal.locator('#gNext')).toBeFocused(); // the controls come right after the board; ‹ is disabled at the start
+    await page.keyboard.press('Tab');
     await expect(firstMove).toBeFocused();
     await expect(firstMove).toHaveText('e4');
 
