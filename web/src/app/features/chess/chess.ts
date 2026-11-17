@@ -40,6 +40,9 @@ function hero(d: ChessData | null, failed: boolean) {
   const delta = elo != null && s.firstElo != null ? elo - s.firstElo : null;
   // An unknown timeline (failed request) is not "a single observation": the summary still knows the first ELO.
   const single = d.t ? (d.t.snapshots?.length ?? 0) <= 1 : false;
+  // the change is against the first reading: say when it was
+  const first = d.t?.snapshots?.[0]?.createdAt;
+  const since = first ? ` (${new Date(first).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })})` : '';
   const n = s.currentStreak;
   const bots = list<{ key: string; games: number }>(d.o?.macro)?.find((m) => m.key === 'bot');
   // The headline is the recent window (what is happening now); the whole history stays one line away in distMeta.
@@ -49,7 +52,7 @@ function hero(d: ChessData | null, failed: boolean) {
   const wP = sum ? Number((c!.w / sum * 100).toFixed(1)) : 0, lP = sum ? Number((c!.l / sum * 100).toFixed(1)) : 0;
   return {
     elo: elo != null ? String(elo) : '—',
-    sub: elo != null ? 'ELO' + (single ? ' · sin histórico comparable' : delta != null ? ` · ${signedInt(delta)} vs primera lectura` : '') : 'ELO',
+    sub: elo != null ? 'ELO' + (single ? ' · sin histórico comparable' : delta != null ? ` · ${signedInt(delta)} vs primera lectura${since}` : '') : 'ELO',
     meta: s.games ? es(s.games) + ' partidas disputadas · ELO observado en sincronizaciones' : 'Sin partidas registradas',
     pill: 'pill' + (n ? (s.currentStreakKind === 'loss' ? ' pill-loss' : ' pill-win') : ''),
     streak: n ? `${n} ${streakWord(n, s.currentStreakKind)}${n === 1 ? ' consecutiva' : ' consecutivas'}` : 'Sin racha activa',
