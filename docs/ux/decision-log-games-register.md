@@ -235,3 +235,10 @@ Decided by: Claude, default; the owner has not answered.
 Why: the screen reports on the owner's own games, so patterns that act on attention, on loss or on consent are where it could go wrong.
 Rejected: none; no pattern is accepted in the design.
 Rests on: wireframes-chess-games.html, copy-chess.md, states-chess-2026-11-17.md. Streaks: the run pill describes the last results and carries no reminder, reward or threat, and a losing run has no flame. Loss framing: results are stated as counts and rates with their interval; no copy tells the owner what they are losing. Attention: the screen sends no notification, has no unread badge and no autoplay; the viewer steps only when the owner does. Opaque ranking: the suggested game is ranked by the engine's average loss per move and says so in its line. Completeness bars and nagging: none; the empty and short-history states point at an action and add no prompt. Consent and data: the change collects nothing and reads only what the screen already reads. Missing feedback, dead ends and broken error recovery: each failure says what did not load and offers one manual retry, and a tap that cannot open a game says why.
+
+## 2026-11-17 The chess build keeps three things the design left open
+
+Decided by: Claude, default; the owner has not answered.
+Why: the full list with no filter set and no games says "Sin partidas todavía" (there is nothing to clear), and only a set filter says "Sin partidas con esos filtros." with its "Limpiar filtros"; the field border change is one global rule, so it also changes the fields in Games, Idiomas and Configuración; the page error block stays on screen while its retry runs, so "Sigue sin cargar. Inténtalo en un minuto." can appear.
+Rejected: a chess-only border (the Games register audit asked for the same rule); showing the filter message with no filter set.
+Rests on: web/src/app/features/chess/components/matches-table.ts, web/src/styles.css, web/src/app/shared/error-block.ts.
