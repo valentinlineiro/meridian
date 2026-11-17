@@ -128,7 +128,9 @@ describe('MatchDetailModal', () => {
     const close = el.querySelector<HTMLButtonElement>('#gClose')!;
     expect(document.activeElement).toBe(close);
     await key('Tab');
+    expect(document.activeElement).toBe(el.querySelector('#gNext')); // the controls come right after the board, before the lists
     const firstMove = el.querySelector<HTMLButtonElement>('#gMoves .gm')!;
+    for (let i = 0; i < 12 && document.activeElement !== firstMove; i++) await key('Tab');
     expect(document.activeElement).toBe(firstMove);
     expect(firstMove.textContent?.trim()).toBe('e4');
 
@@ -221,8 +223,20 @@ describe('MatchDetailModal', () => {
     expect(moves[0].getAttribute('aria-label')).toBe('Jugada 1, e4');
     expect(moves.every((b) => b.getAttribute('aria-current') === null)).toBe(true); // at the start none is current
     moves[2].click(); await tick();
-    expect(el.querySelector('#gMoves [aria-current="step"]')!.getAttribute('aria-label')).toBe('Jugada 3, Bc4');
+    expect(el.querySelector('#gMoves [aria-current="step"]')!.getAttribute('aria-label')).toBe('Jugada 3, Bc4, error grave');
     expect(el.querySelector('#gPos')!.getAttribute('aria-live')).toBe('polite');
+  });
+
+  it('shouldMarkTheListedWorstPliesInTheMoveListWithAnUnderlineNotOnlyAColour', async () => {
+    await open();
+    const marked = [...el.querySelectorAll<HTMLButtonElement>('#gMoves .gm.err')].map((b) => b.getAttribute('aria-label'));
+    expect(marked).toEqual(['Jugada 3, Bc4, error grave', 'Jugada 5, Qh5, error grave']);
+  });
+
+  it('shouldKeepThePositionAndItsControlsBeforeTheErrorsAndTheMoves', async () => {
+    await open();
+    const order = ['#gBoard', '#gPrev', '#gNext', '#gErrors', '#gMoves', '#gPgn'].map((s) => el.querySelector(s)!);
+    for (let i = 1; i < order.length; i++) expect(order[i - 1].compareDocumentPosition(order[i]) & Node.DOCUMENT_POSITION_FOLLOWING, String(i)).toBeTruthy();
   });
 
   it('shouldDescribeThePositionInWordsAndHideTheSquares', async () => {

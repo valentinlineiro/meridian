@@ -34,14 +34,20 @@ const MISSING = 'Esta partida no tiene jugadas guardadas.';
           @if (game(); as g) {
             @let n = ply();
             <div class="u-d-block" id="gBody">
-              <div class="gamegrid"><m-chess-board id="gBoard" [fen]="n ? g.plies[n - 1].fen : g.startFen" [flip]="g.userColor === 'black'" [caption]="n ? 'tras la jugada ' + n + ', ' + g.plies[n - 1].san : 'inicial'" />
-                <div id="gMoves" class="moves">@for (p of g.plies; track $index; let i = $index) {@if (i % 2 === 0) {<span class="muted">{{ i / 2 + 1 }}.</span>{{ ' ' }}}<button type="button" class="gm" [class.on]="i + 1 === n" [attr.aria-current]="i + 1 === n ? 'step' : null" [attr.aria-label]="'Jugada ' + (i + 1) + ', ' + p.san" (click)="go($event, i + 1)">{{ p.san }}</button>{{ ' ' }}}</div></div>
-              <div id="gMissed" class="muted u-mt-8">@for (k of g.missedPlies ?? []; track k) {<div><button type="button" class="linkbtn" (click)="go($event, k - 1)">Jugada {{ k }} ({{ g.plies[k - 1]?.san ?? '' }}): el rival tenía mate en 1 y lo jugó</button></div>}</div>
-              <div id="gErrors" class="muted u-mt-8">
+              <div class="gamegrid">
+                <div class="gamestage"><m-chess-board id="gBoard" [fen]="n ? g.plies[n - 1].fen : g.startFen" [flip]="g.userColor === 'black'" [caption]="n ? 'tras la jugada ' + n + ', ' + g.plies[n - 1].san : 'inicial'" />
+                  <div class="gamectl"><button class="btn btn-g" id="gPrev" type="button" [disabled]="n === 0" (click)="step(-1)" aria-label="Jugada anterior">‹</button><span class="muted" id="gPos" role="status" aria-live="polite">{{ n ? 'Jugada ' + n + ' de ' + g.plies.length + ': ' + g.plies[n - 1].san : 'Posición inicial' }}</span><button class="btn btn-g" id="gNext" type="button" [disabled]="n === g.plies.length" (click)="step(1)" aria-label="Jugada siguiente">›</button></div>
+                </div>
+                <div class="gameside">
+                  <div id="gMissed" class="muted u-mt-8">@for (k of g.missedPlies ?? []; track k) {<div><button type="button" class="linkbtn" (click)="go($event, k - 1)">Jugada {{ k }} ({{ g.plies[k - 1]?.san ?? '' }}): el rival tenía mate en 1 y lo jugó</button></div>}</div>
+                  <div id="gErrors" class="muted u-mt-8">
                 @if (g.engineSummary; as sm) {<div>Según el motor: {{ sm.serious }} errores graves en {{ sm.moves }} jugadas tuyas{{ sm.acpl === null || sm.acpl === undefined ? '' : ' · pérdida media ' + pawns(sm.acpl) + ' peones por jugada' }}{{ g.engineWorst?.length && sm.serious > g.engineWorst!.length ? ' · se muestran las ' + g.engineWorst!.length + ' peores' : '' }}</div>}
                 @for (x of g.engineWorst ?? []; track x.ply) {<div><button type="button" class="linkbtn" (click)="go($event, x.ply - 1)">Jugada {{ x.ply }} ({{ g.plies[x.ply - 1]?.san ?? '' }}): pierdes {{ pawns(x.loss) }} peones; el motor prefería {{ x.bestSan || x.best }}</button></div>}
               </div>
-              <div class="gamectl"><button class="btn btn-g" id="gPrev" type="button" [disabled]="n === 0" (click)="step(-1)" aria-label="Jugada anterior">‹</button><span class="muted" id="gPos" role="status" aria-live="polite">{{ n ? 'Jugada ' + n + ' de ' + g.plies.length + ': ' + g.plies[n - 1].san : 'Posición inicial' }}</span><button class="btn btn-g" id="gNext" type="button" [disabled]="n === g.plies.length" (click)="step(1)" aria-label="Jugada siguiente">›</button><a class="btn btn-g" id="gPgn" download style="text-decoration:none;margin-left:auto" [href]="'/api/me/matches/' + enc(id) + '/game.pgn'">Descargar PGN</a></div>
+                  <div id="gMoves" class="moves">@for (p of g.plies; track $index; let i = $index) {@if (i % 2 === 0) {<span class="muted">{{ i / 2 + 1 }}.</span>{{ ' ' }}}<button type="button" class="gm" [class.on]="i + 1 === n" [class.err]="worst(g).has(i + 1)" [attr.aria-current]="i + 1 === n ? 'step' : null" [attr.aria-label]="'Jugada ' + (i + 1) + ', ' + p.san + (worst(g).has(i + 1) ? ', error grave' : '')" (click)="go($event, i + 1)">{{ p.san }}</button>{{ ' ' }}}</div>
+                  <div class="u-mt-8"><a class="btn btn-g" id="gPgn" download [href]="'/api/me/matches/' + enc(id) + '/game.pgn'">Descargar PGN</a></div>
+                </div>
+              </div>
             </div>
           }
       </app-modal>
@@ -50,6 +56,8 @@ const MISSING = 'Esta partida no tiene jugadas guardadas.';
 })
 export class MatchDetailModal {
   protected readonly m = inject(MatchesService);
+  /** Plies the engine lists as the worst errors: marked in the move list with an underline, not only a colour. */
+  protected worst(g: Game): ReadonlySet<number> { return new Set((g.engineWorst ?? []).map((x) => x.ply)); }
   private readonly api = inject(ApiClient);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
 

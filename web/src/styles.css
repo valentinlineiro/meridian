@@ -109,14 +109,15 @@ svg text{font-family:system-ui,sans-serif}
 .modal{position:fixed;inset:0;background:rgba(5,10,18,.75);align-items:center;justify-content:center;z-index:50;padding:12px}
 .gamecard{width:min(760px,100%);max-height:92vh;overflow:auto}
 .gamehead{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-.gamegrid{display:flex;gap:14px;flex-wrap:wrap}
+.gamegrid{display:grid;grid-template-columns:minmax(0,400px) minmax(0,1fr);gap:14px;align-items:start}.gamestage{display:grid;gap:10px}.gameside{min-width:0}
 .board{display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(8,1fr);width:min(400px,100%);aspect-ratio:1;border:1px solid var(--line-strong)}
 .sq{min-height:0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-style:normal;font-size:clamp(20px,6vw,36px);line-height:1;color:var(--sq-ink)}
 .sq.lt{background:var(--text-2)}.sq.dk{background:var(--sq-dark)}
-.moves{flex:1;min-width:160px;max-height:400px;overflow:auto;line-height:1.9;font-size:var(--fs-md)}
+.moves{max-height:400px;overflow:auto;line-height:1.9;font-size:var(--fs-md);margin-top:8px}
 .gm{background:none;border:0;font:inherit;cursor:pointer;color:var(--text-2);text-decoration:none;padding:1px 4px;border-radius:var(--r-sm)}.linkbtn{background:none;border:0;padding:0;font:inherit;color:var(--link);text-align:left;cursor:pointer}.linkbtn:hover{text-decoration:underline}.gm.on{background:var(--line-strong);color:var(--on-accent);font-weight:700}
 .gm:focus-visible{outline:2px solid var(--link);outline-offset:1px}
-.gamectl{display:flex;align-items:center;gap:10px;margin-top:12px}
+.gm.err{text-decoration:underline;text-decoration-color:var(--err);text-decoration-thickness:2px;text-underline-offset:3px}
+.gamectl{display:flex;align-items:center;gap:10px}.gamectl #gPos{flex:1;text-align:center}
 
 .prof>*{margin-top:12px}.prof>h2,.prof>p.muted:first-of-type{margin-top:0}
 .prof .kpis{margin:12px 0 0}.prof-verdict{font-size:var(--fs-lg);margin:12px 0 0;color:var(--text)}
@@ -434,3 +435,13 @@ app-tab-bar{display:none}
 .hist-fill{background:var(--info)}.hist-row .hist-n{width:36px;text-align:right}
 .pill-sub{font-size:var(--fs-xs);margin-left:4px;opacity:.8}
 #chessTab #kpis{grid-template-columns:1fr} /* a single KPI (Puntuación) takes the row */
+
+/* viewer on a phone: the position and its controls stay put while the errors and the moves scroll beneath; one scroll, no nested scroller */
+@media(max-width:700px){
+ .gamegrid{grid-template-columns:minmax(0,1fr)}
+ .moves{max-height:none;overflow:visible}
+}
+@media(max-width:700px) and (min-height:640px){
+ .gamestage{position:sticky;top:0;z-index:1;background:var(--surface);padding:4px 0 8px;box-shadow:0 8px 8px -8px rgba(0,0,0,.6)}
+ .gamestage .board{width:min(100%,40vh);justify-self:center}
+}
