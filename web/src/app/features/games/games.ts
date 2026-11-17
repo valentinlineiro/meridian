@@ -96,6 +96,17 @@ export class Games {
     const done = this.recorded() ?? new Set<string>();
     return Object.keys(GAME_NAMES).map((k) => ({ k, done: done.has(k) }));
   });
+  /** One row per game: today's time, "Sin registrar", or "No se pudo leer" when the day could not be read (unknown is never said as unrecorded). */
+  protected readonly today = computed(() => {
+    if (!this.summary()) return [];
+    const day = this.dayGames() as Record<string, { score?: string | null }> | null;
+    return Object.keys(GAME_NAMES).map((k) => {
+      const name = gameName(k), rec = day?.[k];
+      const state = !day ? 'unknown' : rec ? 'done' : 'todo';
+      const text = state === 'unknown' ? 'No se pudo leer' : rec ? rec.score || 'Solo media' : 'Sin registrar';
+      return { k, name, state, text, aria: state === 'done' ? `${name}, registrado ${text}. Editar` : state === 'todo' ? `${name}, sin registrar. Registrar` : `${name}, no se pudo leer hoy. Abrir` };
+    });
+  });
   protected readonly allDone = computed(() => this.todayGames().length > 0 && this.todayGames().every((g) => g.done));
   /** "Hoy · faltan 4" (never "N de 6", which the trend headline already uses); just "Hoy" while the day could not be read: unknown is never said as zero. */
   protected readonly todayTitle = computed(() => {

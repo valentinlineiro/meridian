@@ -133,7 +133,7 @@ export class GamesRegister {
   protected readonly dirtyNames = computed(() => list(this.dirty().map(gameName)));
 
   /** Opens with what is stored for today, or with the draft kept from a closed or interrupted sheet. */
-  open(): void {
+  open(game?: string): void {
     const d = this.day() ?? {};
     this.date.set(localToday());
     this.now.set(localToday());
@@ -150,7 +150,7 @@ export class GamesRegister {
     this.isOpen.set(true);
     if (!this.listening) { this.listening = true; el.addEventListener('click', (e) => { if (e.target === el) this.requestClose(); }); } // a tap on the backdrop
     if (!el.open) { if (el.showModal) el.showModal(); else el.setAttribute('open', ''); }
-    const first = this.keys.find((k) => !this.values()[k]?.score); // typing starts at once: the keypad opens on the first empty time
+    const first = game && this.keys.includes(game) ? game : this.keys.find((k) => !this.values()[k]?.score); // typing starts at once: the keypad opens on the asked game, else on the first empty time
     if (first) el.querySelector<HTMLElement>(`#lgReg-${first}-score`)?.focus();
   }
   /** True when a draft of today's sheet is waiting: the host reopens the sheet after a login redirect or a reload. */
