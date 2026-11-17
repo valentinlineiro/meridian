@@ -1,7 +1,7 @@
 :root{
   --bg:#0e141c;--surface:#131f33;--sunken:#0d1b2a;--hover:#16263c;--selected:#1c2d42;--selected-line:#38577a;
   --line:#1e2e44;--line-strong:#2a3d56;
-  --text:#e6edf3;--text-2:#c8d7ea;--muted:#8ea0b8;--on-accent:#fff;
+  --text:#e6edf3;--text-2:#c8d7ea;--muted:#8ea0b8;--muted-bright:#a3b3c8;--on-accent:#fff;
   --accent:#1f6feb;--accent-hover:#2a7bff;--accent-bg:#12294d;--link:#7aa7e6;--info:#58a6ff;
   --ok:#2ea043;--ok-soft:#8fd19e;--err:#d15a5a;--warn:#e3b341;--orange:#d98a4a;--neutral:#6e7a8e;
   --win-bg:#12291e;--win-line:#1f6b3a;--win-fg:#7ee2a0;
@@ -450,4 +450,4 @@ app-tab-bar{display:none}
 @media(max-width:760px){#matchChips .cindex>.muted{flex:0 0 100%}#matchChips .cindex{margin-top:6px}}
 
 /* Chess is read on a phone outdoors: its secondary text is one step brighter (7.7:1 on the card, was 6.2:1); other pages keep --muted */
-app-chess{--muted:#a3b3c8}
+app-chess{--muted:var(--muted-bright)}
