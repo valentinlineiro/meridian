@@ -266,13 +266,36 @@ describe('Chess', () => {
       expect(t.text('chessHeroWrLabel')).toContain('50,0 %'); // the hero keeps its own last-50 window and does not follow the selector
     });
 
-    it('shouldShowUnavailableWhenARecentWindowFailsAfterOneSucceeded', async () => {
+    it('shouldSayTheWindowFailedAndKeepTheLastOneWhenARecentWindowFailsAfterOneSucceeded', async () => {
       await t.open();
       t.el().querySelector<HTMLButtonElement>('#b20')!.click();
       await t.tick();
       t.flush(t.pending().find((r) => r.request.url === '/api/stats/recent')!, FAIL);
       await t.tick();
-      expect(t.text('form')).toBe('No disponible');
+      expect(t.text('form')).toContain('No pudimos cargar las últimas 20 partidas.');
+      expect(t.text('form')).toContain('Últimas 50'); // the window that loaded stays under the message
+    });
+
+    it('shouldAskForTheSameWindowAgainWhenReintentarIsPressedAfterItFailed', async () => {
+      await t.open();
+      t.el().querySelector<HTMLButtonElement>('#b20')!.click();
+      await t.tick();
+      t.flush(t.pending().find((r) => r.request.url === '/api/stats/recent')!, FAIL);
+      await t.tick();
+      t.el().querySelector<HTMLButtonElement>('#form [role=status] button')!.click();
+      await t.tick();
+      const again = t.pending().find((r) => r.request.url === '/api/stats/recent')!;
+      expect(again.request.params.get('limit')).toBe('20');
+      t.flush(again, { ...(chessApi()['/api/stats/recent'] as object), limit: 20, games: 20 });
+      await t.tick();
+      expect(t.text('form')).not.toContain('No pudimos');
+      expect(t.text('form')).toContain('Últimas 20');
+    });
+
+    it('shouldSayThereAreNoEarlierGamesWhenTheWindowLeavesNothingToCompare', async () => {
+      const rec = { ...(chessApi()['/api/stats/recent'] as object), before: null };
+      await t.open(chessApi({ '/api/stats/recent': rec }));
+      expect(t.text('form')).toContain('Aún no hay partidas anteriores a las últimas 50 con las que comparar. Elige una ventana menor.');
     });
 
     it('shouldShowNoDeltaWhenThereIsNone', async () => {
@@ -336,10 +359,22 @@ describe('Chess', () => {
   describe('failures', () => {
     it('shouldShowRetryAndNotClaimNoGamesWhenSummaryFails', async () => {
       await t.open(chessApi({ '/api/stats/bundle': FAIL, '/api/stats/summary': FAIL }));
-      expect(t.text('kpis')).toContain('No se pudieron cargar las estadísticas de ajedrez.');
+      expect(t.text('kpis')).toContain('No pudimos cargar tus estadísticas de ajedrez.');
       expect(t.el().querySelector('#kpis [role=alert] button')!.textContent).toBe('Reintentar');
-      expect(t.text('chessHeroMeta')).toBe('No se pudieron cargar las estadísticas');
-      expect(t.text('chessHeroMeta')).not.toMatch(/Sin partidas registradas/);
+      expect(t.text('chessHeroMeta')).toBe(''); // the hero says nothing instead of dashes that read as values
+      expect(t.el().querySelector('nav[aria-label="Secciones de ajedrez"]')).toBeNull();
+    });
+
+    it('shouldDisableTheRetryAndAskForAMinuteWhileTheRetryRunsAndFailsAgain', async () => {
+      await t.open(chessApi({ '/api/stats/bundle': FAIL, '/api/stats/summary': FAIL }));
+      const btn = () => t.el().querySelector<HTMLButtonElement>('#kpis [role=alert] button')!;
+      btn().click();
+      await t.tick();
+      expect(btn().disabled).toBe(true);
+      expect(btn().textContent).toBe('Cargando…');
+      await t.answer(chessApi({ '/api/stats/bundle': FAIL, '/api/stats/summary': FAIL }));
+      expect(btn().disabled).toBe(false);
+      expect(t.text('kpis')).toContain('Sigue sin cargar. Inténtalo en un minuto.');
     });
 
     it('shouldRefetchAndRecoverWhenRetryingAfterAFailedLoad', async () => {
@@ -359,7 +394,8 @@ describe('Chess', () => {
       const failing = Object.fromEntries(['results', 'color', 'opponents', 'opponent-elo', 'timeline', 'recent', 'openings', 'phases'].map((r) => ['/api/stats/' + r, FAIL]));
       await t.open(chessApi({ ...failing, '/api/stats/bundle': MISSING }));
       expect(t.text('kpis')).toContain('Partidas');
-      for (const id of ['col', 'opp', 'evo', 'elo', 'form', 'lossContext']) expect(t.text(id)).toBe('No disponible');
+      for (const id of ['col', 'opp', 'evo', 'elo', 'lossContext']) expect(t.text(id)).toBe('No disponible');
+      expect(t.text('form')).toContain('No pudimos cargar las últimas 50 partidas.');
       expect(t.text('chessHeroEloSub')).toBe('ELO · +100 vs primera lectura'); // the summary still knows the first ELO
     });
 
@@ -417,8 +453,20 @@ describe('Chess', () => {
     it('shouldKeepTheKpisAndSayNoDisponibleWhenOpeningsOrPhasesCannotBeRead', async () => {
       await t.open(chessApi({ '/api/stats/openings': FAIL, '/api/stats/phases': FAIL }));
       expect(t.text('kpis')).toContain('Partidas');
-      expect(t.text('openingsWhite')).toBe('No disponible');
-      expect(t.text('phasesBody')).toBe('No disponible');
+      expect(t.text('openingsWhite')).toContain('No pudimos cargar tus aperturas.');
+      expect(t.text('phasesBody')).toContain('No pudimos cargar las fases.');
+    });
+
+    it('shouldAskForOnlyTheOpeningsAgainWhenTheirReintentarIsPressed', async () => {
+      await t.open(chessApi({ '/api/stats/openings': FAIL }));
+      t.el().querySelector<HTMLButtonElement>('#openingsWhite button')!.click();
+      await t.tick();
+      const asked = t.pending();
+      expect(asked.map((r) => r.request.url)).toEqual(['/api/stats/openings']); // one request, not the page
+      t.flush(asked[0], chessApi()['/api/stats/openings']);
+      await t.tick();
+      expect(t.text('openingsWhite')).toContain('Española');
+      expect(t.text('openingsWhite')).not.toContain('No pudimos');
     });
 
     it('shouldListTheMatesGivenAndReceivedByTypeAndCountTheUntyped', async () => {
@@ -463,9 +511,9 @@ describe('Chess', () => {
       expect(t.text('threatsMain')).toBe('Sin amenazas de mate en 1 en las partidas analizadas');
     });
 
-    it('shouldHideTheThreatsCardWhenTheEndpointFails', async () => {
+    it('shouldSayTheThreatsCouldNotBeLoadedWhenTheEndpointFails', async () => {
       await t.open(chessApi({ '/api/stats/threats': { error: 'boom' } }));
-      expect(t.el().querySelector('#threatsCard')).toBeNull();
+      expect(t.text('threatsCard')).toContain('No pudimos cargar las amenazas de mate.');
     });
 
     it('shouldFilterTheMatchesTableToMissedThreatsWhenTheButtonIsPressed', async () => {
@@ -502,8 +550,8 @@ describe('Chess', () => {
 
     it('shouldSayNoDisponibleWhenTheOpeningsAreNotLists', async () => {
       await t.open(chessApi({ '/api/stats/openings': { white: 'x', black: { a: 1 }, unclassified: 0, population: { hydrated: 5, totalMatches: 100 } } }));
-      expect(t.text('openingsWhite')).toBe('No disponible');
-      expect(t.text('openingsBlack')).toBe('No disponible');
+      expect(t.text('openingsWhite')).toContain('No pudimos cargar tus aperturas.');
+      expect(t.text('openingsBlack')).toContain('No pudimos cargar tus aperturas.');
       siblingsRender();
     });
 
@@ -531,8 +579,8 @@ describe('Chess', () => {
   describe('review suggestion', () => {
     it('shouldSayTheCoverageIsUnavailableNotZeroWhenTheProfileFails', async () => {
       await t.open(chessApi({ '/api/stats/profile': FAIL }));
-      expect(t.text('chessPatternSuggested')).toBe('Partida sugerida para revisión: No disponible');
-      expect(t.text('profileKpis')).toBe('No se pudo cargar el perfil');
+      expect(t.text('chessPatternSuggested')).toContain('No pudimos cargar la partida sugerida.');
+      expect(t.text('profileKpis')).toContain('No pudimos cargar el análisis del motor.');
     });
 
     it('shouldOfferTheSuggestedGameAndOpenItSafely', async () => {
@@ -944,10 +992,10 @@ describe('EngineProfile', () => {
 
   it('shouldShowAnErrorLineWhenTheProfileCannotBeLoadedOrRead', async () => {
     await render(null);
-    expect(text('profileKpis')).toBe('No se pudo cargar el perfil');
+    expect(text('profileKpis')).toContain('No pudimos cargar el análisis del motor.');
     expect(text('profileNote')).toBe('');
     await render({ analysed: 5 }); // a body this panel cannot read is not a profile
-    expect(text('profileKpis')).toBe('No se pudo cargar el perfil');
+    expect(text('profileKpis')).toContain('No pudimos cargar el análisis del motor.');
   });
 
   // A wrong-typed field degrades its own section to "No disponible" (a KPI to "—"); the siblings render, nothing reads NaN.

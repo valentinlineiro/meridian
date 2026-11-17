@@ -162,12 +162,19 @@ describe('MatchesTable', () => {
 
   it('shouldSayTheMatchesCouldNotBeLoadedInsteadOfSinPartidasWhenTheRequestFails', async () => {
     await answer(500);
-    expect(text('empty')).toBe('No se pudieron cargar las partidas.');
+    expect(text('empty')).toContain('No pudimos cargar las partidas.');
     await click('#btnAllMatches');
     await answer(500);
     expect(text('mc')).toBe('—');
     expect(el.querySelector<HTMLButtonElement>('#prev')!.disabled).toBe(true);
     expect(el.querySelector<HTMLButtonElement>('#next')!.disabled).toBe(true);
+  });
+
+  it('shouldAskForTheSamePageAgainWhenReintentarIsPressed', async () => {
+    await answer(500);
+    await click('#empty button');
+    await answer({ rows: [], total: 0 });
+    expect(text('empty')).toBe('Sin partidas todavía');
   });
 
   it('shouldSayThereAreNoGamesYetOrNoneWithThoseFilters', async () => {

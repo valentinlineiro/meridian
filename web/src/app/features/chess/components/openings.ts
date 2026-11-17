@@ -1,4 +1,5 @@
-import { Component, computed, inject, input, signal } from '@angular/core';
+import { Component, computed, inject, input, output, signal } from '@angular/core';
+import { ErrorBlock } from '../../../shared/error-block';
 import { Compare } from './compare';
 import { Segmented } from '../../../shared/segmented';
 import { Group, list, Mates, Openings as OpeningStats, pc0, Phases, safe, Tally, Threats } from '../chess.model';
@@ -29,15 +30,19 @@ function threats(th: Threats | null | undefined) {
 /** The «Repertorio de aperturas & fases» block (src/frontend.ts:181–186; src/dashboard.client.js:1532–1585). */
 @Component({
   selector: 'app-openings',
-  imports: [Compare, Segmented],
+  imports: [Compare, ErrorBlock, Segmented],
   template: `
-    @if (mates(); as m) {
+    @if (matesFailed()) {
+      <div class="card u-d-block" id="matesCard"><h2>Cómo terminan tus mates</h2><app-error-block role="status" message="No pudimos cargar tus mates." [loading]="retrying().has('mt')" (retry)="retry.emit('mt')" /></div>
+    } @else if (mates(); as m) {
       <div class="card u-d-block" id="matesCard"><h2>Cómo terminan tus mates</h2>
         <div class="grid2"><div><div class="muted">Dados</div><div id="matesGiven">@for (x of m.given; track $index) {<div class="row"><b>{{ x.label }}</b><span class="muted">{{ x.games }}</span></div>} @empty {<div class="muted">Ninguno</div>}</div></div>
           <div><div class="muted">Recibidos</div><div id="matesReceived">@for (x of m.received; track $index) {<div class="row"><b>{{ x.label }}</b><span class="muted">{{ x.games }}</span></div>} @empty {<div class="muted">Ninguno</div>}</div></div></div>
         <div class="muted u-mt-8" id="matesNote">{{ m.note }}</div></div>
     }
-    @if (threats(); as t) {
+    @if (threatsFailed()) {
+      <div class="card u-d-block" id="threatsCard"><h2>Amenazas de mate</h2><app-error-block role="status" message="No pudimos cargar las amenazas de mate." [loading]="retrying().has('th')" (retry)="retry.emit('th')" /></div>
+    } @else if (threats(); as t) {
       <div class="card u-d-block" id="threatsCard"><h2>Amenazas de mate</h2><div id="threatsMain">{{ t.main }}</div><div class="muted u-mt-8" id="threatsPhases">{{ t.phases }}</div><div class="muted u-mt-4" id="threatsTrend">{{ t.trend }}</div><div class="muted u-mt-8" id="threatsNote">{{ t.note }}</div>
         @if (t.missed > 0) {<button class="btn btn-g u-mt-8 u-d-inline-block" id="threatsMissedBtn" type="button" (click)="matches.toggleMissed()">{{ matches.missedOnly() ? 'Quitar el filtro de mates no vistos' : 'Ver partidas donde no viste el mate (' + t.missed + ')' }}</button>}
       </div>
@@ -46,12 +51,12 @@ function threats(th: Threats | null | undefined) {
       <div class="card" id="openingsCard"><h2>Repertorio de aperturas</h2>
         <app-segmented groupId="openingsTabs" label="Color" idPrefix="tabBtn-" [options]="colors" [value]="tab()" (picked)="tab.set($event === 'black' ? 'black' : 'white')" />
         @let op = openingsView();
-        <div id="openingsWhite" [hidden]="tab() !== 'white'">@if (op) {<m-compare [groups]="op.white" [total]="total()" [cap]="shown" noun="aperturas" />} @else if (op === null) {<div class="muted">No disponible</div>}</div>
-        <div id="openingsBlack" [hidden]="tab() !== 'black'">@if (op) {<m-compare [groups]="op.black" [total]="total()" [cap]="shown" noun="aperturas" />} @else if (op === null) {<div class="muted">No disponible</div>}</div>
+        <div id="openingsWhite" [hidden]="tab() !== 'white'">@if (op) {<m-compare [groups]="op.white" [total]="total()" [cap]="shown" noun="aperturas" />} @else if (op === null) {<app-error-block role="status" message="No pudimos cargar tus aperturas." [loading]="retrying().has('op')" (retry)="retry.emit('op')" />}</div>
+        <div id="openingsBlack" [hidden]="tab() !== 'black'">@if (op) {<m-compare [groups]="op.black" [total]="total()" [cap]="shown" noun="aperturas" />} @else if (op === null) {<app-error-block role="status" message="No pudimos cargar tus aperturas." [loading]="retrying().has('op')" (retry)="retry.emit('op')" />}</div>
         <div class="muted u-mt-8" id="openingsPop">{{ op?.pop }}</div></div>
       <div class="card" id="phasesCard"><h2>Fases de partida</h2><div class="muted u-mb-8">La fase es aquella en la que terminó la partida, no cómo juegas esa fase. Una desconexión corta la partida donde estuviera: por eso se muestran aparte.</div>
         @let ph = phasesView();
-        <div id="phasesBody">@if (ph) {<m-compare [groups]="ph.groups" [total]="total()" />} @else if (ph === null) {<div class="muted">No disponible</div>}</div>
+        <div id="phasesBody">@if (ph) {<m-compare [groups]="ph.groups" [total]="total()" />} @else if (ph === null) {<app-error-block role="status" message="No pudimos cargar las fases." [loading]="retrying().has('ph')" (retry)="retry.emit('ph')" />}</div>
         <div class="muted u-mt-8" id="phasesMeta">{{ ph?.meta }}</div></div>
     </div>
   `,
@@ -64,6 +69,8 @@ export class Openings {
   readonly matesStats = input<Mates | null | undefined>(undefined);
   readonly threatStats = input<Threats | null | undefined>(undefined);
   readonly total = input(1);
+  readonly retrying = input<ReadonlySet<string>>(new Set());
+  readonly retry = output<'op' | 'ph' | 'mt' | 'th'>();
 
   protected readonly shown = OPENINGS_SHOWN;
   protected readonly colors = [{ k: 'white', l: 'Blancas' }, { k: 'black', l: 'Negras' }];
@@ -94,6 +101,9 @@ export class Openings {
     if (!mt || mt.error || !given || !received || !(given.length || received.length || (mt.unclassified ?? 0) > 0)) return null;
     return { given, received, note: (mt.unclassified ?? 0) > 0 ? `${mt.unclassified} mates sin clasificar` : '' };
   });
+  /** A request that failed (null or an error body) is told apart from one that answered with nothing to show. */
+  protected readonly matesFailed = computed(() => { const m = this.matesStats(); return m === null || !!m?.error; });
+  protected readonly threatsFailed = computed(() => { const t = this.threatStats(); return t === null || !!t?.error; });
   // a threats body it cannot read hides the card, as an absent one does
   protected readonly threats = computed(() => safe(() => threats(this.threatStats()), null));
 }

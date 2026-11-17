@@ -1,4 +1,5 @@
 import { Component, computed, inject, input } from '@angular/core';
+import { ErrorBlock } from '../../../shared/error-block';
 import { Segmented } from '../../../shared/segmented';
 import { formatMatchDate } from '../../../core/format';
 import { es, fmt, Openings } from '../chess.model';
@@ -52,7 +53,7 @@ const CHIPS: { group: FilterGroup; label: string; options: { k: string; l: strin
 /** The "Partidas" card: chips, the expanded filters, the table and its pager. */
 @Component({
   selector: 'app-matches-table',
-  imports: [Segmented],
+  imports: [ErrorBlock, Segmented],
   template: `
     @let f = m.filters();
     <div class="u-d-flex u-jc-space-between u-ai-baseline u-mb-8"><h2>Partidas</h2><span class="muted u-fs-sm" id="chessMatchesSubtitle">{{ subtitle() }}</span><a class="btn btn-g" style="font-size:var(--fs-xs);padding:3px 8px;margin-left:8px" href="/api/export/matches.csv" download>Exportar CSV</a></div>
@@ -94,7 +95,8 @@ const CHIPS: { group: FilterGroup; label: string; options: { k: string; l: strin
           </tr>
         }
       </tbody></table>
-    @if (empty(); as e) { <div id="empty" class="empty u-d-block">{{ e }}</div> }
+    @if (m.failed()) { <app-error-block id="empty" role="status" message="No pudimos cargar las partidas." [loading]="m.loading()" (retry)="m.retry()" /> }
+    @else if (empty(); as e) { <div id="empty" class="empty u-d-block">{{ e }}</div> }
     @if (!m.compact()) {
       <div class="pager u-d-flex" id="matchPager"><button class="btn btn-g" type="button" id="prev" [disabled]="m.failed() || m.offset() === 0" (click)="m.page(-1)">‹ Anterior</button><span class="muted" id="mc">{{ counter() }}</span><button class="btn btn-g" type="button" id="next" [disabled]="m.failed() || m.offset() + m.pageSize() >= m.total()" (click)="m.page(1)">Siguiente ›</button></div>
     } @else {
@@ -121,8 +123,7 @@ export class MatchesTable {
   protected readonly subtitle = computed(() => !this.m.compact() ? 'Todas las partidas (50 por página)'
     : this.m.rows().length ? `Partidas recientes (${Math.min(10, this.m.rows().length)} mostradas)` : 'Partidas recientes');
   // A failed request is said as such, never as an empty list.
-  protected readonly empty = computed(() => this.m.failed() ? 'No se pudieron cargar las partidas.'
-    : this.m.loaded() && !this.m.rows().length ? (this.m.compact() ? 'Sin partidas todavía' : 'Sin partidas con esos filtros') : '');
+  protected readonly empty = computed(() => this.m.loaded() && !this.m.rows().length ? (this.m.compact() ? 'Sin partidas todavía' : 'Sin partidas con esos filtros') : '');
   protected readonly counter = computed(() => {
     if (this.m.failed()) return '—';
     if (!this.m.loaded()) return '';

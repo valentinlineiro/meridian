@@ -32,13 +32,15 @@
       </div>
     </div>
   </div>
-  <div class="card u-mt-12" id="chessPatternsCard"><app-review-suggestion [profile]="profile()" /></div>
+  <div class="card u-mt-12" id="chessPatternsCard"><app-review-suggestion [profile]="profile()" [loading]="profileLoading()" (retry)="retryProfile()" /></div>
+  @if (!failed()) {
   <nav class="cindex" aria-label="Secciones de ajedrez">
     <button class="btn btn-g" type="button" (click)="go('comparativa')">Comparativa</button><button class="btn btn-g" type="button" (click)="go('aperturas')">Aperturas</button><button class="btn btn-g" type="button" (click)="go('evolucion')">Evolución</button><button class="btn btn-g" type="button" (click)="go('partidas')">Partidas</button>
   </nav>
+  }
   <section class="kpis" id="kpis">
-    @if (failed()) {
-      <div class="err-box" role="alert"><span>No se pudieron cargar las estadísticas de ajedrez.</span>&ngsp;<button class="btn btn-p" type="button" (click)="data.reload()">Reintentar</button></div>
+    @if (failed() || (retried() && data.isLoading())) {
+      <app-error-block [message]="failMessage()" [loading]="data.isLoading()" [again]="retried()" (retry)="retryPage()" />
     } @else if (x) {
       @for (k of x.kpis; track k.label) { <m-kpi [label]="k.label" [value]="k.value" [sub]="k.sub" /> }
     }
@@ -52,9 +54,13 @@
       <span class="muted u-ml-6" id="formMeta"></span></div>
     <div id="form">
       @let f = form();
-      @if (f === null) {
-        <div class="muted">No disponible</div>
-      } @else if (f) {
+      @if (formFailed()) {
+        <app-error-block role="status" [message]="formMessage()" [loading]="recentLoading()" (retry)="retryForm()" />
+      }
+      @if (formShort(); as short) {
+        <p>{{ short }}</p>
+      }
+      @if (f) {
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;text-align:center">
           <div>
             <div class="muted u-fs-xs u-ls-p04em u-tt-uppercase">{{ f.now.head }}</div>
@@ -83,7 +89,7 @@
   </app-section>
 
   <app-section sectionId="cg-open" title="Repertorio de aperturas y fases" [open]="false" #cgOpen>
-    <app-openings [openings]="x ? d()!.op : undefined" [phases]="x ? d()!.ph : undefined" [matesStats]="x ? d()!.mt : undefined" [threatStats]="x ? d()!.th : undefined" [total]="x?.total ?? 1" />
+    <app-openings [openings]="x ? d()!.op : undefined" [phases]="x ? d()!.ph : undefined" [matesStats]="x ? d()!.mt : undefined" [threatStats]="x ? d()!.th : undefined" [total]="x?.total ?? 1" [retrying]="retrying()" (retry)="retryBlock($event)" />
   </app-section>
 
   <app-section sectionId="cg-evo" title="Evolución y detalle" [open]="false" #cgEvo>
@@ -105,7 +111,7 @@
   </app-section>
 
   <app-section sectionId="chessEngineProfileDetails" title="Perfil de juego y análisis de motor (Stockfish)" [open]="false" #engineDetails>
-    <div id="chessEngineProfileContent"><app-engine-profile [profile]="profile()" [cut]="cut()" (cutChange)="setCut($event)" /></div>
+    <div id="chessEngineProfileContent"><app-engine-profile [profile]="profile()" [cut]="cut()" [loading]="profileLoading()" (cutChange)="setCut($event)" (retry)="retryProfile()" /></div>
   </app-section>
 
   <div class="card u-mt-14" id="allMatchesCard" #allMatches>

@@ -1,7 +1,9 @@
 import { afterRenderEffect, Component, computed, ElementRef, inject, linkedSignal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
-import { catchError, map, of } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
+import { catchError, map, of, TimeoutError } from 'rxjs';
 import { ApiClient } from '../../../core/api-client';
+import { ErrorBlock } from '../../../shared/error-block';
 import { ChessBoard } from './chess-board';
 import { Modal } from '../../../shared/modal';
 import { MatchesService } from '../services/matches.service';
@@ -12,7 +14,7 @@ interface Game {
   engineWorst?: { ply: number; loss: number; best: string; bestSan?: string | null }[]; engineSummary?: { moves: number; serious: number; acpl?: number | null } | null;
 }
 const ILLEGAL = 'Las jugadas guardadas no son una partida válida.';
-const MISSING = 'No hay partida completa guardada para esta partida.';
+const MISSING = 'Esta partida no tiene jugadas guardadas.';
 
 /**
  * Port of the game viewer (src/dashboard.client.js:1396–1446, #gameModal): the server validates the moves and returns
@@ -20,13 +22,13 @@ const MISSING = 'No hay partida completa guardada para esta partida.';
  */
 @Component({
   selector: 'app-match-detail-modal',
-  imports: [ChessBoard, Modal],
+  imports: [ChessBoard, ErrorBlock, Modal],
   host: { '(document:keydown)': 'onKey($event)' },
   template: `
     @if (m.openId(); as id) {
       <app-modal modalId="gameModal" labelledby="gTitle" initialFocus="#gClose" (dismissed)="close()">
           <div class="gamehead"><b id="gTitle">{{ title() }}</b><button class="btn btn-g" id="gClose" type="button" (click)="close()" aria-label="Cerrar">✕</button></div>
-          <div id="gErr" class="muted">{{ error() }}</div>
+          <div id="gErr" class="muted" role="status">{{ error() }}@if (showRetry()) {<app-error-block message="No pudimos cargar la partida." [loading]="loading()" [again]="retried()" (retry)="retry()" />}</div>
           @if (game(); as g) {
             @let n = ply();
             <div class="u-d-block" id="gBody">
@@ -50,20 +52,27 @@ export class MatchDetailModal {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
 
   // A new id cancels the request for the one before: a late game never lands under another title.
-  private readonly res = rxResource<Game | { error: string }, string | undefined>({
+  private readonly res = rxResource<Game | { error: string; temporary?: boolean }, string | undefined>({
     params: () => this.m.openId() ?? undefined,
     stream: ({ params: id }) => this.api.get<Game>(`/api/me/matches/${encodeURIComponent(id)}/game`).pipe(
-      map((b): Game | { error: string } => { if (!b?.ok) throw { error: b }; // every ply must carry its position: a game the viewer cannot paint is reported, not half-drawn
+      map((b): Game | { error: string; temporary?: boolean } => { if (!b?.ok) throw { error: b }; // every ply must carry its position: a game the viewer cannot paint is reported, not half-drawn
         return Array.isArray(b.plies) && typeof b.startFen === 'string' && b.plies.every((p) => typeof p?.fen === 'string' && typeof p.san === 'string') ? b : { error: MISSING }; }),
-      catchError((e) => of({ error: e?.error?.code === 'ILLEGAL_GAME' ? ILLEGAL : MISSING })),
+      // a timeout or a server error is not a missing game: it says so and offers one retry
+      catchError((e) => of(e instanceof TimeoutError || (e instanceof HttpErrorResponse && (e.status === 0 || e.status >= 500))
+        ? { error: '', temporary: true } : { error: e?.error?.code === 'ILLEGAL_GAME' ? ILLEGAL : MISSING })),
     ),
   });
   private readonly body = computed(() => this.res.hasValue() && !this.res.isLoading() ? this.res.value() : null);
   protected readonly game = computed(() => { const b = this.body(); return b && 'plies' in b ? b : null; });
   protected readonly error = computed(() => { const b = this.body(); return b && 'error' in b ? b.error : ''; });
+  private readonly temporary = computed(() => { const b = this.body(); return !!(b && 'temporary' in b && b.temporary); });
+  protected readonly loading = computed(() => this.res.isLoading());
+  protected readonly retried = linkedSignal<string | undefined, boolean>({ source: () => this.m.openId() ?? undefined, computation: () => false });
+  protected readonly showRetry = computed(() => this.temporary() || (this.retried() && this.loading()));
+  protected retry(): void { this.retried.set(true); this.res.reload(); }
   protected readonly title = computed(() => {
     const g = this.game();
-    return g ? `vs ${g.opponent || 'bot'} · ${g.userColor === 'black' ? 'negras' : 'blancas'}` : this.error() ? 'Partida' : 'Cargando partida…';
+    return g ? `vs ${g.opponent || 'bot'} · ${g.userColor === 'black' ? 'negras' : 'blancas'}` : this.error() || this.temporary() ? 'Partida' : 'Cargando partida…';
   });
   protected readonly ply = linkedSignal(() => { this.game(); return 0; });
 

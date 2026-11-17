@@ -39,6 +39,7 @@ export class MatchesService {
   readonly total = computed(() => this.body()?.total || 0);
   readonly loaded = computed(() => this.page_.status() === 'resolved');
   readonly failed = computed(() => this.page_.status() === 'error');
+  readonly loading = computed(() => this.page_.isLoading());
 
   private searchTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -64,6 +65,9 @@ export class MatchesService {
   }
 
   apply(): void { this.load(0); }
+
+  /** The page that failed, again. */
+  retry(): void { this.load(this.offset()); }
 
   page(delta: number): void { this.load(this.offset() + delta * this.pageSize()); }
 

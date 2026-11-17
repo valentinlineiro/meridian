@@ -184,19 +184,40 @@ describe('MatchDetailModal', () => {
   it('shouldSayTheGameCannotBeShownWhenAPlyHasNoFen', async () => {
     await open('m1', { ...GAME, plies: [{ san: 'e4' }, ...GAME.plies.slice(1)] });
     expect(text('gTitle')).toBe('Partida');
-    expect(text('gErr')).toBe('No hay partida completa guardada para esta partida.');
+    expect(text('gErr')).toBe('Esta partida no tiene jugadas guardadas.');
     expect(el.querySelector('#gBody')).toBeNull();
   });
 
   it('shouldSayWhyTheGameCannotBeShown', async () => {
     await open('m1', 404);
     expect(text('gTitle')).toBe('Partida');
-    expect(text('gErr')).toBe('No hay partida completa guardada para esta partida.');
+    expect(text('gErr')).toBe('Esta partida no tiene jugadas guardadas.');
     expect(el.querySelector('#gBody')).toBeNull();
     await open('m2', 422);
     expect(text('gErr')).toBe('Las jugadas guardadas no son una partida válida.');
     await open('m3', { ok: false, code: 'ILLEGAL_GAME' });
     expect(text('gErr')).toBe('Las jugadas guardadas no son una partida válida.');
+  });
+
+  it('shouldSayTheGameCouldNotBeLoadedAndNotThatItDoesNotExistWhenTheServerFails', async () => {
+    await open('m1', 503);
+    expect(text('gTitle')).toBe('Partida');
+    expect(text('gErr')).toContain('No pudimos cargar la partida.');
+    expect(text('gErr')).not.toContain('no tiene jugadas guardadas');
+    expect(el.querySelector('#gErr')!.getAttribute('role')).toBe('status');
+  });
+
+  it('shouldAskForTheSameGameAgainWhenReintentarIsPressedAndShowItWhenItLoads', async () => {
+    await open('m1', 503);
+    el.querySelector<HTMLButtonElement>('#gErr button')!.click();
+    await tick();
+    const again = gameReq()!;
+    expect(again.request.url).toContain('/api/me/matches/m1/game');
+    expect(el.querySelector<HTMLButtonElement>('#gErr button')!.disabled).toBe(true); // one request at a time
+    again.flush(GAME);
+    await tick();
+    expect(el.querySelector('#gBody')).not.toBeNull();
+    expect(el.querySelector('#gErr button')).toBeNull();
   });
 });
 

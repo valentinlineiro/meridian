@@ -8,7 +8,7 @@
 <p class="muted u-m-0-0-8-0" id="profileContext">{{ x?.context ?? 'Calculado con Stockfish sobre tus partidas guardadas.' }}</p>
 <div class="kpis" id="profileKpis">
   @if (failed()) {
-    <div class="empty" style="grid-column:1/-1">No se pudo cargar el perfil</div>
+    <app-error-block style="grid-column:1/-1" role="status" message="No pudimos cargar el análisis del motor." [loading]="loading()" (retry)="retry.emit()" />
   } @else if (x && !a) {
     <div class="empty" style="grid-column:1/-1">Todavía no hay partidas analizadas; el motor las analiza solo tras cada sincronización y el perfil aparecerá aquí</div>
   } @else if (a) {
