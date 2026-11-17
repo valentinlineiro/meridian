@@ -445,3 +445,7 @@ app-tab-bar{display:none}
  .gamestage{position:sticky;top:0;z-index:1;background:var(--surface);padding:4px 0 8px;box-shadow:0 8px 8px -8px rgba(0,0,0,.6)}
  .gamestage .board{width:min(100%,40vh);justify-self:center}
 }
+
+/* Partidas: title and subtitle wrap instead of colliding; on a phone each filter group reads label above chips */
+.matches-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 12px;margin-bottom:10px}.matches-head h2{margin:0}
+@media(max-width:760px){#matchChips .cindex>.muted{flex:0 0 100%}#matchChips .cindex{margin-top:6px}}

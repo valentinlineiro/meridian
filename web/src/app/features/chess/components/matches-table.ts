@@ -56,7 +56,7 @@ const CHIPS: { group: FilterGroup; label: string; options: { k: string; l: strin
   imports: [ErrorBlock, Segmented],
   template: `
     @let f = m.filters();
-    <div class="u-d-flex u-jc-space-between u-ai-baseline u-mb-8"><h2>Partidas</h2><span class="muted u-fs-sm" id="chessMatchesSubtitle">{{ subtitle() }}</span><a class="btn btn-g btn-sm u-ml-8" href="/api/export/matches.csv" download>Exportar CSV</a></div>
+    <div class="matches-head"><h2>Partidas</h2><span class="muted" id="chessMatchesSubtitle">{{ subtitle() }}</span></div>
     <div class="filters" id="matchChips">
       @for (c of chips; track c.group) {
         <app-segmented [label]="c.label" [caption]="c.label" [chipGroup]="c.group" [options]="c.options" [value]="f[c.group]" (picked)="m.setFilter(c.group, $event)" />
@@ -77,6 +77,7 @@ const CHIPS: { group: FilterGroup; label: string; options: { k: string; l: strin
             <optgroup [label]="g.label">@for (o of g.items; track o.key) { <option [value]="o.key" [selected]="f.opening === o.key">{{ o.label }}</option> }</optgroup>
           }</select>
         <button class="btn btn-g" type="button" (click)="clear()">Limpiar filtros</button>
+        <a class="btn btn-g" href="/api/export/matches.csv" download>Exportar CSV</a>
       </div>
       <div id="eloErr" class="field-error" role="status">{{ m.eloInvalid() ? 'ELO mín no puede ser mayor que ELO máx.' : '' }}</div>
     }

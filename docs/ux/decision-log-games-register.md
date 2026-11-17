@@ -271,3 +271,10 @@ Why: the errors the owner opens a game for sat below 40+ small move buttons, and
 Rejected: marking plies with "?" or "??" (a verdict stronger than "loses at least 3 pawns"); colour alone for the marker; fixing the header with the ✕ (Back, Escape and the backdrop already close the viewer, and a taller fixed area breaks reflow at high zoom, so the fixed board only applies when the screen is tall enough).
 Rests on: web/src/app/features/chess/components/match-detail-modal.ts, styles.css (.gamegrid, .gamestage, .gm.err). Checked in a browser on the local worker with a made-up 60-ply game at 390×844 and 1280×800; not yet with real production games or on a touch device.
 
+## 2026-11-17 Partidas: the title wraps clear of its subtitle, filter groups read label over chips on a phone, "Exportar CSV" moves into the filter row
+
+Decided: the owner (second chess critique, scope P1 and P2). The title and "Partidas recientes (N mostradas)" wrap instead of colliding; on a phone each filter group (Rival, Resultado, Color) puts its label above its chips. "Exportar CSV" no longer sits in the card header: it is the last control of the full filter row, so it shows after "Ver todas y filtrar".
+Why: the header crowded title, subtitle and button in one row at 390 px, and the export is rare next to the list.
+Rejected: keeping the button in the header on a second line (it still competed with the list); hiding the export on phones.
+Rests on: web/src/app/features/chess/components/matches-table.ts, styles.css (.matches-head, #matchChips). Checked in a browser on the local worker at 390×844 and 1280×800.
+
