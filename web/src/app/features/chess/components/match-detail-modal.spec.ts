@@ -49,8 +49,9 @@ describe('MatchDetailModal', () => {
   it('shouldCloseTheViewerOnBackAndNotLeaveTheScreen', async () => {
     await open();
     expect(history.state?.chessViewer).toBe(true);
+    const popped = new Promise((r) => addEventListener('popstate', r, { once: true }));
     history.back();
-    await new Promise((r) => setTimeout(r, 50));
+    await popped;
     await tick();
     expect(svc.openId()).toBeNull();
     expect(history.state?.chessViewer).toBeFalsy();
@@ -58,8 +59,10 @@ describe('MatchDetailModal', () => {
 
   it('shouldDropItsHistoryEntryWhenClosedByHand', async () => {
     await open();
+    const popped = new Promise((r) => addEventListener('popstate', r, { once: true }));
     svc.close();
-    await new Promise((r) => setTimeout(r, 50));
+    await popped;
+    await tick();
     expect(svc.openId()).toBeNull();
     expect(history.state?.chessViewer).toBeFalsy();
   });
