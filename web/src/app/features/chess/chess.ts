@@ -1,5 +1,5 @@
 import { afterNextRender, Component, computed, DestroyRef, effect, ElementRef, inject, input, Injector, linkedSignal, signal, viewChild } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { catchError, finalize, forkJoin, map, Observable, of } from 'rxjs';
 import { ApiClient } from '../../core/api-client';
@@ -103,31 +103,33 @@ function evolution(t: Timeline | null) {
   return { points, note };
 }
 
+/** A count of games that ended one way; it opens the Partidas list filtered to exactly those games. */
+interface EndItem { t: string; result: 'loss' | 'draw'; end: string }
+
 function results(s: Summary, r: Results | null) {
-  if (!r) return { loss: NA, rate: '', draw: '' };
+  if (!r) return { na: NA, loss: [] as EndItem[], rate: '', draw: [] as EndItem[] };
   const ec = r.endConditions;
-  if (!ec) return { loss: '', rate: '', draw: '' };
+  if (!ec) return { na: '', loss: [] as EndItem[], rate: '', draw: [] as EndItem[] };
   const lossOf = (k: string) => ec[k]?.loss || 0, drawOf = (k: string) => ec[k]?.draw || 0;
   const discon = lossOf('disconnection'), mates = lossOf('checkmate'), losses = s.losses || 0;
-  const lp: string[] = [];
-  if (mates) lp.push(mates + ' mates');
-  if (discon) lp.push(`${discon} desconexiones (${losses ? (discon / losses * 100).toFixed(0) : 0} %)`);
+  const lp: EndItem[] = [];
+  if (mates) lp.push({ t: mates + ' mates', result: 'loss', end: 'checkmate' });
+  if (discon) lp.push({ t: `${discon} desconexiones (${losses ? (discon / losses * 100).toFixed(0) : 0} %)`, result: 'loss', end: 'disconnection' });
   for (const [k, v] of Object.entries(ec))
     if (k !== 'checkmate' && k !== 'disconnection' && k !== 'unknown' && v && (v.loss ?? 0) > 0)
-      lp.push(v.loss + ' ' + (k === 'resignation' ? 'rendiciones' : k === 'timeout' ? 'por tiempo' : k));
+      lp.push({ t: v.loss + ' ' + (k === 'resignation' ? 'rendiciones' : k === 'timeout' ? 'por tiempo' : k), result: 'loss', end: k });
   const decided = (s.wins || 0) + losses + (s.draws || 0), played = losses - discon;
-  const dp: string[] = [];
-  if (drawOf('stalemate')) dp.push(drawOf('stalemate') + ' ahogados');
-  if (drawOf('repetition')) dp.push(drawOf('repetition') + ' repetición');
-  const mat = drawOf('insufficient_material') + drawOf('material');
-  if (mat) dp.push(mat + ' material');
-  if (drawOf('fifty_moves')) dp.push(drawOf('fifty_moves') + ' 50 jugadas');
+  const dp: EndItem[] = [];
+  const draw = (n: number, label: string, end: string) => { if (n) dp.push({ t: n + ' ' + label, result: 'draw', end }); };
+  draw(drawOf('stalemate'), 'ahogados', 'stalemate');
+  draw(drawOf('repetition'), 'repetición', 'repetition');
+  draw(drawOf('insufficient_material') + drawOf('material'), 'material', 'insufficient_material');
+  draw(drawOf('fifty_moves'), '50 jugadas', 'fifty_moves');
   for (const [k, v] of Object.entries(ec))
-    if (!['stalemate', 'repetition', 'insufficient_material', 'material', 'fifty_moves', 'unknown'].includes(k) && v && (v.draw ?? 0) > 0) dp.push(v.draw + ' ' + k);
+    if (!['stalemate', 'repetition', 'insufficient_material', 'material', 'fifty_moves', 'unknown'].includes(k) && v && (v.draw ?? 0) > 0) draw(v.draw ?? 0, k, k);
   return {
-    loss: lp.length ? 'Derrotas: ' + lp.join(' · ') : '',
+    na: '', loss: lp, draw: dp,
     rate: discon && decided ? `Sin contar desconexiones: ${played} derrotas de ${decided} partidas (${(played / decided * 100).toFixed(0)} %)` : '',
-    draw: dp.length ? 'Tablas: ' + dp.join(' · ') : '',
   };
 }
 
@@ -150,7 +152,6 @@ function view(d: ChessData) {
   return {
     syncMeta: last?.createdAt ? 'Ajedrez · actualizado ' + last.createdAt.slice(0, 10) : '',
     kpis: [
-      { label: 'Partidas', value: s.games != null ? es(s.games) : '—', sub: '' },
       { label: 'Puntuación', value: s.scoreRate != null ? pc1(s.scoreRate * 100) : '—', sub: 'victoria 1 · tablas 0,5' },
     ],
     streakNow: s.currentStreak ? `Resultados seguidos: ${s.currentStreak} ${streakWord(s.currentStreak, s.currentStreakKind)}` : '',
@@ -230,6 +231,12 @@ export class Chess {
   protected readonly profile = computed(() => this.profileRes.isLoading() || !this.profileRes.hasValue() ? undefined : this.profileRes.value());
 
   private readonly matches = inject(MatchesService);
+  private readonly injector = inject(Injector);
+  /** A count in «Resultados»: open the full list already filtered to those games, and move there. */
+  protected showEnding(result: 'loss' | 'draw', end: string): void {
+    this.matches.showEnding(result, end);
+    afterNextRender(() => this.show('partidas'), { injector: this.injector });
+  }
   protected retryProfile(): void { this.profileRes.reload(); }
   protected readonly profileLoading = computed(() => this.profileRes.isLoading());
   protected retryBlock(k: 'op' | 'ph' | 'mt' | 'th'): void {
@@ -261,7 +268,7 @@ export class Chess {
       const once = effect(() => {
         if (this.data.isLoading() || this.profile() === undefined) return;
         once.destroy();
-        afterNextRender(() => this.engineDetails().reveal(), { injector });
+        afterNextRender(() => this.within(this.engineDetails()), { injector });
       });
     }
   }
@@ -276,24 +283,22 @@ export class Chess {
     this.cut.set(v);
   }
 
-  /** The `?s=` query param (bound by the router): the block the page index points at, so Back and shared links keep it. */
+  /** The `?s=` query param (bound by the router): the block a link or Back points at. */
   readonly s = input<string>();
-  private readonly router = inject(Router);
+  private readonly cgStats = viewChild.required<Section>('cgStats');
   private readonly cgComp = viewChild.required<Section>('cgComp');
   private readonly cgOpen = viewChild.required<Section>('cgOpen');
   private readonly cgEvo = viewChild.required<Section>('cgEvo');
   private readonly allMatches = viewChild.required<ElementRef<HTMLElement>>('allMatches');
 
-  /** Page index: open and scroll to a block, and put it in the URL (a new history entry). Buttons, not #anchors: the URL belongs to the router. */
-  protected go(k: string): void {
-    this.show(k);
-    void this.router.navigate([], { queryParams: { s: k }, queryParamsHandling: 'merge' });
-  }
+
+  /** Blocks live inside the collapsed «Estadísticas»: open it, then the block. */
+  private within(block: Section): void { this.cgStats().expand(); block.reveal(); }
 
   private show(k: string | undefined): void {
-    if (k === 'comparativa') this.cgComp().reveal();
-    else if (k === 'aperturas') this.cgOpen().reveal();
-    else if (k === 'evolucion') this.cgEvo().reveal();
+    if (k === 'comparativa') this.within(this.cgComp());
+    else if (k === 'aperturas') this.within(this.cgOpen());
+    else if (k === 'evolucion') this.within(this.cgEvo());
     else if (k === 'partidas') {
       const card = this.allMatches().nativeElement;
       card.scrollIntoView({ behavior: scrollBehavior(), block: 'start' });

@@ -13,19 +13,19 @@
       <div>
         <div class="muted u-fs-xs u-tt-uppercase u-ls-p05em">Ajedrez · Nivel actual</div>
         <div class="u-d-flex u-ai-baseline u-gap-8 u-mt-2">
-          <span id="chessHeroElo" style="font-size:var(--fs-display);font-weight:800;line-height:1">{{ h.elo }}</span>
+          <span id="chessHeroElo" class="hc-big">{{ h.elo }}</span>
           <span id="chessHeroEloSub" class="muted u-fs-sm">{{ h.sub }}</span>
         </div>
         <div id="chessHeroMeta" class="muted u-fs-sm u-mt-4">{{ h.meta }}</div>
       </div>
-      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+      <div class="hero-side">
         <span class="u-fs-sm u-fwt-600" id="chessHeroStreak" [class]="h.pill"><span aria-hidden="true">{{ h.flame }}</span>{{ h.streak }}</span>
         <span id="chessHeroGames" class="muted u-fs-sm">{{ h.games }}</span>
       </div>
     </div>
     <div class="u-mt-14">
-      <div class="u-d-flex u-jc-space-between u-ai-baseline u-fs-sm u-mb-6">
-        <span class="u-fwt-600" id="chessHeroWrLabel">{{ h.wr }}</span>
+      <div class="u-d-flex u-jc-space-between u-ai-baseline u-mb-6">
+        <span class="hero-wr" id="chessHeroWrLabel">{{ h.wr }}</span>
         <span id="chessHeroDistMeta" class="muted u-fs-xs">{{ h.distMeta }}</span>
       </div>
       <div class="distribution-bar" id="chessHeroDist" aria-hidden="true">
@@ -39,19 +39,18 @@
   </div>
   }
   <div class="card u-mt-12" id="chessPatternsCard"><app-review-suggestion [profile]="profile()" [loading]="profileLoading()" (retry)="retryProfile()" /></div>
-  @if (!failed()) {
-  <nav class="cindex" aria-label="Secciones de ajedrez">
-    <button class="btn btn-g" type="button" (click)="go('comparativa')">Comparativa</button><button class="btn btn-g" type="button" (click)="go('aperturas')">Aperturas</button><button class="btn btn-g" type="button" (click)="go('evolucion')">Evolución</button><button class="btn btn-g" type="button" (click)="go('partidas')">Partidas</button>
-  </nav>
-  }
-  <section class="kpis" id="kpis">
+  <div id="chessError">
     @if (failed() || (retried() && data.isLoading())) {
       <app-error-block [message]="failMessage()" [loading]="data.isLoading()" [again]="retried()" (retry)="retryPage()" />
-    } @else if (x) {
-      @for (k of x.kpis; track k.label) { <m-kpi [label]="k.label" [value]="k.value" [sub]="k.sub" /> }
-    } @else if (loadingFirst()) {
-      @for (n of [1, 2]; track n) { <div class="kpi" aria-hidden="true"><i class="sk sk-t"></i><i class="sk sk-n"></i></div> }
     }
+  </div>
+  <div class="card u-mt-14" id="allMatchesCard" #allMatches>
+    <app-matches-table [openings]="d()?.op ?? null" />
+  </div>
+  @if (!failed()) {
+  <app-section sectionId="cg-stats" title="Estadísticas" [open]="false" #cgStats>
+  <section class="kpis" id="kpis">
+    @if (x) { @for (k of x.kpis; track k.label) { <m-kpi [label]="k.label" [value]="k.value" [sub]="k.sub" /> } }
   </section>
   <div class="card u-mt-12" id="evoCard"><h2>Evolución · ELO</h2><div class="muted u-fs-xs">ELO observado en sincronizaciones</div>
     <div id="evo">@if (x) {@if (x.evo; as e) {<m-sparkline [points]="e.points" />} @else {<div class="muted">No disponible</div>}}</div>
@@ -69,14 +68,14 @@
         <p>{{ short }}</p>
       }
       @if (f) {
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;text-align:center">
+        <div class="form-split">
           <div>
             <div class="muted u-fs-xs u-ls-p04em u-tt-uppercase">{{ f.now.head }}</div>
             <div class="u-fwt-700">{{ f.now.wr }}</div>
             <div class="muted">{{ f.now.detail }}</div>
             @if (f.delta) { <div class="muted u-mt-4 u-fs-xs">{{ f.delta }}</div> }
           </div>
-          <div style="border-left:1px solid var(--line);padding-left:8px">
+          <div>
             <div class="muted u-fs-xs u-ls-p04em u-tt-uppercase">{{ f.before.head }}</div>
             <div class="u-fwt-700">{{ f.before.wr }}</div>
             <div class="muted">{{ f.before.detail }}</div>
@@ -101,17 +100,15 @@
   </app-section>
 
   <app-section sectionId="cg-evo" title="Evolución y detalle" [open]="false" #cgEvo>
-    <div class="grid2">
-      <div class="card" id="resCard"><h2>Resultados</h2>
+    <div class="card" id="resCard"><h2>Resultados</h2>
         <div id="res">@if (x) {@if (x.counts; as c) {<m-donut [wins]="c.w" [losses]="c.l" [draws]="c.d" />} @else {<div class="muted">—</div>}}</div>
-        <div class="muted u-mt-8" id="lossContext">{{ x?.res?.loss }}</div><div class="muted u-mt-4" id="lossRateNote">{{ x?.res?.rate }}</div><div class="muted u-mt-4" id="drawContext">{{ x?.res?.draw }}</div></div>
-    </div>
+        <div class="muted u-mt-8" id="lossContext">{{ x?.res?.na }}@if (x?.res?.loss?.length) {Derrotas: @for (i of x!.res.loss; track i.end; let last = $last) {<button type="button" class="linkbtn" (click)="showEnding(i.result, i.end)">{{ i.t }}</button>@if (!last) { · }}}</div><div class="muted u-mt-4" id="lossRateNote">{{ x?.res?.rate }}</div><div class="muted u-mt-4" id="drawContext">@if (x?.res?.draw?.length) {Tablas: @for (i of x!.res.draw; track i.end; let last = $last) {<button type="button" class="linkbtn" (click)="showEnding(i.result, i.end)">{{ i.t }}</button>@if (!last) { · }}}</div></div>
     <details id="eloDetails" class="card u-mt-12">
-      <summary style="cursor:pointer;font-weight:600;font-size:var(--fs-md);letter-spacing:.05em;text-transform:uppercase;color:var(--muted)">ELO del rival <span id="eloSummaryMeta" class="muted u-fwt-400 u-tt-none">{{ x?.elo?.meta }}</span></summary>
+      <summary class="dsum">ELO del rival <span id="eloSummaryMeta" class="muted u-fwt-400 u-tt-none">{{ x?.elo?.meta }}</span></summary>
       <div class="u-mt-12" id="eloCard">
         <div id="elo">@if (x) {@if (x.elo; as e) {
           <div class="u-d-flex u-gap-12 u-wrap-wrap u-ai-baseline"><span class="u-fs-h u-fwt-700">{{ e.known }} <span class="muted u-fs-md u-fwt-400">con ELO</span></span><span class="muted">{{ e.share }}</span></div>
-          <div class="hist">@for (b of e.hist; track b.k) {<div class="hist-row"><span>{{ b.k }}</span><div class="bar"><i [style.width]="b.w" style="background:var(--info)"></i></div><span style="width:36px;text-align:right">{{ b.v }}</span></div>}</div>
+          <div class="hist">@for (b of e.hist; track b.k) {<div class="hist-row"><span>{{ b.k }}</span><div class="bar"><i class="hist-fill" [style.width]="b.w"></i></div><span class="hist-n">{{ b.v }}</span></div>}</div>
         } @else {<div class="muted">No disponible</div>}}</div>
         <div class="muted u-mt-6" id="eloNote">{{ x?.elo?.note }}</div>
       </div>
@@ -121,18 +118,15 @@
   <app-section sectionId="chessEngineProfileDetails" title="Perfil de juego y análisis de motor (Stockfish)" [open]="false" #engineDetails>
     <div id="chessEngineProfileContent"><app-engine-profile [profile]="profile()" [cut]="cut()" [loading]="profileLoading()" (cutChange)="setCut($event)" (retry)="retryProfile()" /></div>
   </app-section>
-
-  <div class="card u-mt-14" id="allMatchesCard" #allMatches>
-    <app-matches-table [openings]="d()?.op ?? null" />
-  </div>
-
   <details class="methodology-disclosure u-mt-16 u-mb-16" id="chessMethodology">
-    <summary style="cursor:pointer;font-weight:600;font-size:var(--fs-md);color:var(--muted)">¿Cómo sabemos esto?</summary>
-    <div style="margin-top:10px;font-size:var(--fs-sm);line-height:1.5;color:var(--muted)">
+    <summary class="dsum">¿Cómo sabemos esto?</summary>
+    <div class="prose-sm">
       <p class="u-m-6-0"><b>Victoria, derrota o tablas:</b> cada partida se clasifica con el resultado que da Duolingo, y la causa del final (jaque mate, abandono, tiempo, ahogado, repetición, material insuficiente, regla de las 50 jugadas) es siempre una de esas.</p>
       <p class="u-m-6-0"><b>Bots y personas:</b> los rivales se separan por su identificador (bots como Neural o Stockfish, o jugadores reales). Cuando hay pocas partidas, como contra personas, se dice cuántas son para no sacar conclusiones con prisa.</p>
       <p class="u-m-6-0"><b>Tu ELO y las fechas:</b> el ELO es el que Duolingo mostraba cada vez que sincronizamos, no uno calculado aquí. Las fechas son las de la partida o, si falta, la de la primera vez que la vimos.</p>
     </div>
   </details>
+  </app-section>
+  }
 </section>
 <app-match-detail-modal />
