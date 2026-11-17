@@ -448,3 +448,6 @@ app-tab-bar{display:none}
 /* Partidas: title and subtitle wrap instead of colliding; on a phone each filter group reads label above chips */
 .matches-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 12px;margin-bottom:10px}.matches-head h2{margin:0}
 @media(max-width:760px){#matchChips .cindex>.muted{flex:0 0 100%}#matchChips .cindex{margin-top:6px}}
+
+/* Chess is read on a phone outdoors: its secondary text is one step brighter (7.7:1 on the card, was 6.2:1); other pages keep --muted */
+app-chess{--muted:#a3b3c8}
