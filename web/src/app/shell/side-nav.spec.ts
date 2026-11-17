@@ -41,8 +41,8 @@ describe('SideNav', () => {
   it('shouldClarifySyncScopeAccessiblyAndKeepTheExportOutOfTheMenu', async () => { // tests/uxPhase0.test.ts
     const el = await render('/overview');
     const btn = el.querySelector('button[aria-describedby="syncScopeHint"]')!;
-    expect(btn.getAttribute('title')).toMatch(/Duolingo[\s\S]*manual/);
-    expect(el.querySelector('#syncScopeHint')!.textContent).toMatch(/Duolingo[\s\S]*manual/);
+    expect(btn.getAttribute('title')).toMatch(/Ajedrez[\s\S]*manual/);
+    expect(el.querySelector('#syncScopeHint')!.textContent).toMatch(/Ajedrez[\s\S]*manual/);
     expect(el.querySelector('a[href="/api/export/matches.csv"]')).toBeNull();
   });
 

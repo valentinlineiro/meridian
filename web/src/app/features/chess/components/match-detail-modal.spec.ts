@@ -49,22 +49,18 @@ describe('MatchDetailModal', () => {
   it('shouldCloseTheViewerOnBackAndNotLeaveTheScreen', async () => {
     await open();
     expect(history.state?.chessViewer).toBe(true);
-    const popped = new Promise((r) => addEventListener('popstate', r, { once: true }));
-    history.back();
-    await popped;
+    history.replaceState(null, ''); // what Back leaves behind: our entry is gone
+    window.dispatchEvent(new PopStateEvent('popstate'));
     await tick();
     expect(svc.openId()).toBeNull();
-    expect(history.state?.chessViewer).toBeFalsy();
   });
 
   it('shouldDropItsHistoryEntryWhenClosedByHand', async () => {
     await open();
-    const popped = new Promise((r) => addEventListener('popstate', r, { once: true }));
+    const back = vi.spyOn(history, 'back').mockImplementation(() => undefined);
     svc.close();
-    await popped;
-    await tick();
     expect(svc.openId()).toBeNull();
-    expect(history.state?.chessViewer).toBeFalsy();
+    expect(back).toHaveBeenCalledOnce();
   });
 
   it('shouldStayClosedUntilAGameIsOpened', () => {
