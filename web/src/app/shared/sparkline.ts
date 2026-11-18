@@ -13,10 +13,10 @@ const W = 520, H = 90, PAD = 10;
     @if (!ps.length) {
       <div class="muted">Sin datos</div>
     } @else if (ps.length === 1) {
-      <div style="min-height:96px;display:flex;flex-direction:column;justify-content:center">
-        <div style="font-size:var(--fs-display);font-weight:800;line-height:1">{{ ps[0].elo }}</div>
+      <div class="sp-empty">
+        <div class="big-num big-num-tight">{{ ps[0].elo }}</div>
         <div class="muted u-mt-4">Primera lectura · {{ firstLabel() }}</div>
-        <div class="muted" style="margin-top:8px;font-style:italic">La evolución aparecerá con la próxima lectura de otro día.</div>
+        <div class="muted sp-note">La evolución aparecerá con la próxima lectura de otro día.</div>
       </div>
     } @else {
       @let c = chart()!;

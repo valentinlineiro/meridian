@@ -495,3 +495,10 @@ summary{cursor:pointer}
 .lg-method{margin-top:10px;font-size:var(--fs-sm);line-height:1.5;color:var(--muted)}
 .lg-detail-head{display:flex;justify-content:space-between;align-items:center} /* the inline version had an invalid "flex-wrap:gap:8px": rendered as no wrap, no gap */
 h2.lg-detail-title{margin:0;font-size:var(--fs-h);letter-spacing:0;text-transform:none;color:var(--text)}
+
+/* shared pieces: former inline styles */
+.big-num{font-size:var(--fs-display);font-weight:800}.big-num-tight{line-height:1}
+.sp-empty{min-height:96px;display:flex;flex-direction:column;justify-content:center}.sp-note{margin-top:8px;font-style:italic}
+.seg-cap{align-self:center}
+.cg-meta{font-size:var(--fs-sm);margin-left:8px;text-transform:none;letter-spacing:0;font-weight:400}
+#lgQuickText{width:100%}

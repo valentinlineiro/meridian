@@ -21,7 +21,7 @@ const BADGE = { new: 'nuevo', changed: 'cambia', same: 'igual' } as const;
   template: `
     <div id="lgQuick">
       <label class="muted u-d-block u-fs-xs u-tt-uppercase u-ls-p05em u-mb-6" for="lgQuickText">Registro rápido · juego, mis segundos, media</label>
-      <textarea #box id="lgQuickText" rows="2" style="width:100%" placeholder="Z, 6, 12" autocomplete="off" autocapitalize="characters" spellcheck="false"
+      <textarea #box id="lgQuickText" rows="2" placeholder="Z, 6, 12" autocomplete="off" autocapitalize="characters" spellcheck="false"
         [value]="text()" (input)="onInput($event)" (keydown)="onKey($event)"></textarea>
       <div id="lgQuickPreview" role="status" class="muted u-mt-6 u-fs-sm">
         @if (message(); as m) { {{ m }} }
