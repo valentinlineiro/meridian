@@ -23,11 +23,11 @@
       <div class="card hero-card u-mb-12" id="langCourseHero">
         <div id="langHeroCard">
           <div class="u-d-flex u-jc-space-between u-ai-center u-wrap-wrap u-gap-8">
-            <div style="min-width:0;max-width:100%">
+            <div class="lg-min0">
               <div class="muted u-fs-xs u-tt-uppercase u-ls-p05em">Curso seleccionado</div>
               <div class="u-d-flex u-ai-center u-gap-8 u-wrap-wrap">
                 <span class="u-fs-h" id="langCourseFlag">{{ h?.flag }}</span>
-                <select id="langCourseSelect" class="course-select" aria-label="Curso seleccionado" (change)="select($any($event.target).value)" style="flex:1 1 0;min-width:0;max-width:100%;text-overflow:ellipsis">
+                <select id="langCourseSelect" class="course-select" aria-label="Curso seleccionado" (change)="select($any($event.target).value)">
                   @for (op of h?.options ?? []; track op.id) { <option [value]="op.id" [selected]="op.id === selected()">{{ op.label }}</option> }
                 </select>
               </div>
@@ -90,13 +90,13 @@
             </div>
             <div class="muted u-fs-xs u-mt-2">Incluye actividad de todos los cursos y actividades registradas en la fuente.</div>
           </div>
-          <span id="langWeekSummary" class="muted" style="font-size:var(--fs-xs);white-space:nowrap">{{ w?.summary ?? '—' }}</span>
+          <span id="langWeekSummary" class="muted u-fs-xs lg-nowrap">{{ w?.summary ?? '—' }}</span>
         </div>
         <div class="activity-strip u-mt-10" id="langActivityStrip">
           @for (c of w?.cells ?? []; track c.date) {
-            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px" [title]="c.title">
+            <div class="lg-day" [title]="c.title">
               <span class="muted u-fs-xs">{{ c.letter }}</span>
-              <div style="width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center" [style.background]="c.color"></div>
+              <div class="lg-dot" [style.background]="c.color"></div>
               <span class="muted u-fs-xs">{{ c.label }}</span>
             </div>
           }
@@ -116,8 +116,8 @@
             @if (isNA(cl)) { <div class="muted">{{ cl }}</div> }
             @else if (cl) {
               @for (c of cl; track c.id) {
-                <details class="card" style="margin:0 0 8px 0;padding:12px;background:var(--sunken)" [open]="c.isSelected">
-                  <summary style="cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px" (click)="select(c.id)">
+                <details class="card lg-clcard" [open]="c.isSelected">
+                  <summary class="lg-clsum" (click)="select(c.id)">
                     <div class="u-d-flex u-ai-center u-gap-8">
                       <span class="u-fs-h">{{ c.flag }}</span>
                       <div><b>{{ c.title }}</b>@if (c.isSelected) {&ngsp;<span class="pill pill-selected u-fs-xs">Seleccionado</span>}<div class="muted u-fs-xs">{{ c.fromTo }}</div></div>
@@ -128,21 +128,21 @@
                       <span class="muted u-fs-sm">▾</span>
                     </div>
                   </summary>
-                  <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--line)">
+                  <div class="lg-clbody">
                     @if (c.sections.length) {
                       <div class="u-mt-8">
                         <div class="muted u-fs-xs u-tt-uppercase u-ls-p05em u-mb-6">Desglose de secciones</div>
                         @for (sec of c.sections; track sec.key) {
-                          <div class="row" style="padding:6px 0;border-bottom:1px solid var(--line)"><div class="u-flex-1">
+                          <div class="row row-sec"><div class="u-flex-1">
                             <div class="u-d-flex u-jc-space-between u-ai-baseline u-fs-sm"><b>{{ sec.title }}</b><span><b>{{ sec.units }}</b> ({{ sec.pctText }})</span></div>
-                            <div class="progress-bar" style="height:6px;margin-top:4px"><div [style.width.%]="sec.width" style="background:var(--ok)"></div></div>
+                            <div class="progress-bar pb-6 u-mt-4"><div [style.width.%]="sec.width"></div></div>
                           </div></div>
                         }
                       </div>
                     } @else if (c.prog) {
                       <div class="u-mt-6 u-fs-sm">
                         <div class="u-d-flex u-jc-space-between u-mb-4"><span class="muted">{{ c.prog.text }}</span><span>{{ c.prog.pctText }}</span></div>
-                        <div class="progress-bar" style="height:6px"><div [style.width]="c.prog.pct + '%'" style="background:var(--info)"></div></div>
+                        <div class="progress-bar pb-6"><div class="pf-info" [style.width]="c.prog.pct + '%'"></div></div>
                       </div>
                     }
                     <div class="u-mt-8 u-d-flex u-jc-flex-end">
@@ -188,10 +188,10 @@
           <div class="u-d-flex u-jc-space-between u-ai-center u-mb-8">
             <h2 class="u-m-0">Actividad de cuenta — últimos 90 días</h2>
           </div>
-          <div id="langXpTimeline" style="height:60px;display:flex;align-items:flex-end;gap:2px;padding:8px 0">
+          <div id="langXpTimeline" class="lg-tl">
             @if (isNA(tl)) { <div class="muted">{{ tl }}</div> }
             @else if (tl) {
-              @for (b of tl.bars; track $index) { <div [title]="b.title" style="flex:1;border-radius:var(--r-sm)" [style.height.px]="b.height" [style.background]="b.color"></div> }
+              @for (b of tl.bars; track $index) { <div [title]="b.title" class="lg-tlbar" [style.height.px]="b.height" [style.background]="b.color"></div> }
               @if (tl.empty) { <div class="muted">{{ tl.empty }}</div> }
             }
           </div>
@@ -206,9 +206,9 @@
               @let i = intensity();
               @if (isNA(i)) { <div class="muted">{{ i }}</div> }
               @else if (i) {
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;text-align:center;margin-bottom:12px">
+                <div class="form-split u-mb-12">
                   <div><div class="muted u-fs-xs u-ls-p04em u-tt-uppercase">XP / sesión</div><div class="u-fs-h u-fwt-700">{{ i.xp }}</div><div class="muted u-fs-xs">global · med: {{ i.xpMed }}</div></div>
-                  <div style="border-left:1px solid var(--line);padding-left:8px"><div class="muted u-fs-xs u-ls-p04em u-tt-uppercase">Tiempo / sesión</div><div class="u-fs-h u-fwt-700">{{ i.time }}</div><div class="muted u-fs-xs">global · med: {{ i.timeMed }}</div></div>
+                  <div><div class="muted u-fs-xs u-ls-p04em u-tt-uppercase">Tiempo / sesión</div><div class="u-fs-h u-fwt-700">{{ i.time }}</div><div class="muted u-fs-xs">global · med: {{ i.timeMed }}</div></div>
                 </div>
               }
             </div>
@@ -220,7 +220,7 @@
               @if (isNA(wd)) { <div class="muted">{{ wd }}</div> }
               @else if (wd) {
                 @for (r of wd.rows; track $index) {
-                  <div class="hist-row"><span>{{ r.day }}</span><div class="bar"><i [style.width.%]="r.width" style="background:var(--info)"></i></div><span style="min-width:120px;text-align:right" class="muted">{{ r.text }}</span></div>
+                  <div class="hist-row"><span>{{ r.day }}</span><div class="bar"><i class="hist-fill" [style.width.%]="r.width"></i></div><span class="muted lg-hist-r120">{{ r.text }}</span></div>
                 }
                 @if (wd.rows.length) { <div class="muted u-fs-xs u-mt-8">Medianas observadas por día de la semana en la ventana de {{ wd.calendarDays }} días.</div> }
                 @else { <div class="muted">Sin datos suficientes</div> }
@@ -238,7 +238,7 @@
             @else if (hc) {
               <div class="hist">
                 @for (c of hc.rows; track $index) {
-                  <div class="hist-row"><span style="width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ c.name }}</span><div class="bar"><i [style.width.%]="c.width" style="background:var(--ok)"></i></div><span style="min-width:70px;text-align:right">{{ c.share }}</span></div>
+                  <div class="hist-row"><span class="lg-hist-name">{{ c.name }}</span><div class="bar"><i class="bar-win" [style.width.%]="c.width"></i></div><span class="lg-hist-r70">{{ c.share }}</span></div>
                 }
               </div>
               <div class="muted u-fs-xs u-mt-8">{{ hc.footer }}</div>
@@ -255,14 +255,14 @@
             @else if (cmp === null) { <div class="muted">No se registran múltiples observaciones curriculares para comparar.</div> }
             @else if (cmp) {
               @for (r of cmp.rows; track $index) {
-                <div class="row" style="padding:8px 0"><div class="u-flex-1">
+                <div class="row row-p8"><div class="u-flex-1">
                   <div class="u-d-flex u-jc-space-between u-ai-center"><b>{{ r.key }}</b><span [class]="r.pill">{{ r.status }}</span></div>
                   <div class="u-fs-sm u-mt-4">{{ r.text }}</div>
                   <div class="muted u-fs-xs u-mt-2">{{ r.observed }}</div>
                 </div></div>
               }
               @for (c of cmp.waiting; track c.key) {
-                <div class="row" style="padding:8px 0"><div class="u-flex-1">
+                <div class="row row-p8"><div class="u-flex-1">
                   <div class="u-d-flex u-jc-space-between u-ai-center"><b>{{ c.name }}</b><span class="pill pill-draw">ESPERANDO 2ª OBSERVACIÓN</span></div>
                   <div class="muted u-fs-xs u-mt-2">Aún no hay una segunda captura del Path de este curso para poder comparar.</div>
                 </div></div>
@@ -273,19 +273,19 @@
         </div>
       </app-section>
 
-      <details class="card" id="langLimitsCard" style="margin:16px 0;background:var(--sunken);border:1px solid var(--selected)">
-        <summary style="cursor:pointer;display:flex;align-items:center;gap:6px">
+      <details class="card lg-limits" id="langLimitsCard">
+        <summary class="lg-limsum">
           <span class="u-c-warn u-fs-md" aria-hidden="true">⚠</span>
           <b class="u-fs-sm u-ls-p04em u-tt-uppercase u-c-text">Lo que estos datos no pueden decir</b>
         </summary>
-        <div class="muted" style="font-size:var(--fs-sm);line-height:1.5;margin-top:8px">
+        <div class="muted lg-limbody">
           No miden comprensión auditiva, expresión oral, lectura ni competencia comunicativa real. XP, racha y lecciones completadas son métricas de actividad y avance curricular en la plataforma, no representan dominio lingüístico ni una evaluación de competencia real.
         </div>
       </details>
       <!-- ¿Cómo sabemos esto? (MethodologyDisclosure) -->
       <details class="methodology-disclosure u-mt-16 u-mb-16" id="langMethodology">
-        <summary style="cursor:pointer;font-weight:600;font-size:var(--fs-md);color:var(--muted)">¿Cómo sabemos esto?</summary>
-        <div style="margin-top:10px;font-size:var(--fs-sm);line-height:1.5;color:var(--muted)">
+        <summary class="dsum">¿Cómo sabemos esto?</summary>
+        <div class="lg-method">
           <p class="u-m-6-0"><b>De dónde sale:</b> guardamos una foto de tu cuenta cada vez que se sincroniza (actividad y progreso por curso) y nunca se modifica.</p>
           <p class="u-m-6-0"><b>Cuándo se cuenta un avance:</b> solo si el curso tiene el mismo número de unidades en las dos fotos. Si Duolingo reorganiza o añade unidades, lo marcamos como «cambio en el curso» en lugar de inventar un progreso.</p>
           <p class="u-m-6-0"><b>XP por curso:</b> el XP es de toda la cuenta. No lo repartimos entre cursos, porque sería una estimación.</p>

@@ -473,3 +473,25 @@ app-chess{--muted:var(--muted-bright)}
 @media(min-width:761px){.gt{grid-template-columns:repeat(2,minmax(0,1fr))}}
 #gamesTab>.gh-foot{padding:0 12px;margin:16px 0}
 @media(max-width:480px){.seg{gap:4px}.seg .btn{padding-left:6px;padding-right:6px}} /* four options (Semana / 4 semanas / 3 meses / Todo) and a caption fit one row at 390px */
+
+/* Idiomas: former inline styles. Selectors match the specificity the inline style used to win against (.hist-row span:first-child, .progress-bar > div, .row:last-child). */
+summary{cursor:pointer}
+.lg-min0{min-width:0;max-width:100%}
+.course-select{flex:1 1 0;min-width:0;max-width:100%;text-overflow:ellipsis}
+.lg-nowrap{white-space:nowrap}
+.lg-day{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
+.lg-dot{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.lg-clcard{margin:0 0 8px 0;padding:12px;background:var(--sunken)}
+.lg-clsum{list-style:none;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+.lg-clbody{margin-top:10px;padding-top:8px;border-top:1px solid var(--line)}
+.row.row-sec{padding:6px 0;border-bottom:1px solid var(--line)}.row.row-sec-10{padding:10px 0;border-bottom:1px solid var(--line)}.row.row-p8{padding:8px 0}
+.progress-bar.pb-6{height:6px}.progress-bar>.pf-info{background:var(--info)}
+.lg-tl{height:60px;display:flex;align-items:flex-end;gap:2px;padding:8px 0}.lg-tlbar{flex:1;border-radius:var(--r-sm)}
+.hist-row span.lg-hist-name{width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lg-hist-r120{min-width:120px;text-align:right}.lg-hist-r70{min-width:70px;text-align:right}
+.lg-limits{margin:16px 0;background:var(--sunken);border:1px solid var(--selected)}
+.lg-limsum{display:flex;align-items:center;gap:6px}
+.lg-limbody{font-size:var(--fs-sm);line-height:1.5;margin-top:8px}
+.lg-method{margin-top:10px;font-size:var(--fs-sm);line-height:1.5;color:var(--muted)}
+.lg-detail-head{display:flex;justify-content:space-between;align-items:center} /* the inline version had an invalid "flex-wrap:gap:8px": rendered as no wrap, no gap */
+h2.lg-detail-title{margin:0;font-size:var(--fs-h);letter-spacing:0;text-transform:none;color:var(--text)}

@@ -34,9 +34,9 @@ function sectionRows(sections: Section[]) {
         <button type="button" class="btn btn-g" id="btnBackToLanguages" (click)="back.emit()">← Volver a todos los cursos</button>
       </div>
       <div class="card u-mb-12" id="langCourseDetailCard">
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:gap:8px">
+        <div class="lg-detail-head">
           <div>
-            <h2 id="langDetailTitle" style="margin:0;font-size:var(--fs-h);letter-spacing:0;text-transform:none;color:var(--text)">{{ head()?.title }}</h2>
+            <h2 id="langDetailTitle" class="lg-detail-title">{{ head()?.title }}</h2>
             <div class="muted u-fs-sm u-mt-2" id="langDetailSub">{{ head()?.sub }}</div>
           </div>
           <span id="langDetailXpPill" class="pill u-fs-lg u-fwt-700">{{ head()?.xp }}</span>
@@ -50,9 +50,9 @@ function sectionRows(sections: Section[]) {
           @if (typeof c === 'string') { <div class="muted">{{ c }}</div> }
           @else {
             @for (r of c; track r.key) {
-              <div class="row" style="padding:6px 0"><div class="u-flex-1">
+              <div class="row"><div class="u-flex-1">
                 <div class="u-d-flex u-jc-space-between u-ai-baseline"><b>{{ r.label }}</b><span><b>{{ r.units }}</b></span></div>
-                <div class="u-mt-4"><div class="bar" style="height:8px"><i [style.width.%]="r.width" style="background:var(--info)"></i></div></div>
+                <div class="u-mt-4"><div class="bar"><i class="hist-fill" [style.width.%]="r.width"></i></div></div>
               </div></div>
             } @empty { <div class="muted">Sin información de CEFR</div> }
           }
@@ -65,10 +65,10 @@ function sectionRows(sections: Section[]) {
           @if (typeof ss === 'string') { <div class="muted">{{ ss }}</div> }
           @else {
             @for (s of ss; track s.key) {
-              <div class="row" style="padding:10px 0;border-bottom:1px solid var(--line)"><div class="u-flex-1">
+              <div class="row row-sec-10"><div class="u-flex-1">
                 <div class="u-d-flex u-jc-space-between u-ai-baseline"><b>{{ s.title }}</b><span><b>{{ s.units }}</b></span></div>
-                <div class="u-mt-6"><div class="bar" style="height:8px"><i [style.width.%]="s.width" style="background:var(--ok)"></i></div></div>
-                <details class="u-mt-6"><summary class="muted" style="cursor:pointer;font-size:var(--fs-xs)">Detalle de sección</summary>
+                <div class="u-mt-6"><div class="bar"><i class="bar-win" [style.width.%]="s.width"></i></div></div>
+                <details class="u-mt-6"><summary class="muted u-fs-xs">Detalle de sección</summary>
                   <div class="muted u-fs-sm u-mt-4">{{ s.meta }}</div>
                 </details>
               </div></div>
