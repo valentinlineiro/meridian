@@ -159,7 +159,7 @@ summary{padding-block:5px} /* WCAG 2.5.8: at least 24px tall on desktop too */
 @media(max-width:760px){
  .btn,select,.filters input,summary{min-height:44px}.btn{min-width:44px}
  a[href="/settings"]{display:inline-block;padding:14px 8px}
- .pill,.kpi .kl,.kpi small,.flabel,[style*="font-size:var(--fs-xs)"]{font-size:var(--fs-sm)!important}
+ .pill,.kpi .kl,.kpi small,.flabel{font-size:var(--fs-sm)!important}
  .muted{font-size:var(--fs-md)!important}
  .fgroup{gap:4px}.fgroup .btn{padding:8px 8px}.flabel{min-width:0;width:60px}
  /* iOS Safari zooms the page when a field under 16px takes focus */
@@ -344,7 +344,7 @@ app-tab-bar{display:none}
 .u-tt-none{text-transform:none!important}
 .u-tt-uppercase{text-transform:uppercase!important}
 .u-wrap-wrap{flex-wrap:wrap!important}
-/* same phone bump as the [style*="font-size:var(--fs-xs)"] rule above, which no longer matches a class */
+/* phone bump for the .u-fs-xs utility: same step as .pill and .kpi small above */
 @media(max-width:760px){.u-fs-xs{font-size:var(--fs-sm)!important}}
 @media(max-width:760px){.muted.u-fs-xs,.muted.u-fs-sm{font-size:var(--fs-md)!important}} /* keeps the phone .muted rule winning over former inline font-sizes */
 @media(max-width:760px){.rowbtn{min-height:44px;min-width:44px}#goalInput{min-height:44px}a.btn{display:inline-flex;align-items:center;justify-content:center}} /* 44px touch targets on phones: row buttons, goal input, link-buttons */
@@ -502,3 +502,12 @@ h2.lg-detail-title{margin:0;font-size:var(--fs-h);letter-spacing:0;text-transfor
 .seg-cap{align-self:center}
 .cg-meta{font-size:var(--fs-sm);margin-left:8px;text-transform:none;letter-spacing:0;font-weight:400}
 #lgQuickText{width:100%}
+
+/* remaining former inline styles */
+.muted.side-note{font-size:var(--fs-xs);margin-top:2px;line-height:1.3}
+.more-rows>summary{color:var(--muted);font-size:var(--fs-md);padding:6px 0}
+.span-all{grid-column:1/-1}
+#profileSinceInput{width:100%;max-width:340px}
+.pill.pill-wrap{margin-top:10px;white-space:normal}
+.grid-auto-240{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+.ul-ind{padding-left:18px}

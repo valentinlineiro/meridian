@@ -195,7 +195,7 @@
       "Don't put a thick coloured left or right border on a card or note (.loss-note, .hl are legacy).",
       "Don't add streaks, loss framing, confetti or progress bars that exploit completion.",
       "Don't introduce a new status colour outside the Verdict triples.",
-      "Don't add new inline styles; extend a named class. The ~80 u-* utilities and the phone overrides keyed on [style*=...] or !important are legacy: do not extend them."
+      "Don't add inline style attributes (none remain; only dynamic [style.x] bindings); add or extend a named class. The u-* utilities are !important and legacy: use them sparingly."
     ]
   }
 }

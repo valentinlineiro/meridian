@@ -186,7 +186,7 @@ function bodyView(b: Body, w: Win) {
         <app-section title="Actividad en la ventana" [open]="false">
           @if (a === 'na') {<div class="muted u-fs-sm">No disponible</div>} @else {
             <div class="muted u-fs-sm u-mb-10">Datos que contextualizan las evaluaciones.</div>
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px">
+            <div class="grid-auto-240">
               @for (k of a; track k.title) {
                 <div><div class="muted u-fs-xs u-ls-p05em u-tt-uppercase u-mb-4">{{ k.title }}</div>
                   @for (r of k.rows; track r.label) {
