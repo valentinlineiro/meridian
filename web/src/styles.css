@@ -432,7 +432,7 @@ app-tab-bar{display:none}
 /* touch: small in-text buttons keep their look but get a larger hit area (WCAG 2.5.8 asks 24px, the phone rule 44px) */
 @media(pointer:coarse){
  .linkbtn{padding:10px 2px;margin:-10px -2px}
- .gm{min-width:36px;min-height:36px;padding:4px 6px;text-align:center}
+ .gm{min-width:44px;min-height:44px;padding:4px 6px;text-align:center}
  .moves{line-height:1.3}
 }
 
