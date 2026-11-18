@@ -18,7 +18,7 @@ import { Day, defaultTrajGame, GAME_NAMES, gameName, difficultyGrid, gamesHero, 
 // Port of the LinkedIn Games tab (src/frontend.ts:489–520, src/dashboard.client.js:1787–1971).
 const orNull = <T>(o: Observable<T>) => o.pipe(catchError(() => of(null)));
 const NA = 'No disponible';
-const HERO_IDLE = { since: '—', meta: '—', days: '—' };
+const HERO_IDLE = { since: '', meta: '—', days: '—' };
 
 @Component({
   selector: 'app-games',

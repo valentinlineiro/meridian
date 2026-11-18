@@ -26,7 +26,7 @@
 |---|---|---|
 | Size and caption | "−6 %" · "Zip · más rápido que la media" | `focusOf` in `overview.model.ts` |
 | Verdict line | "Zip: Mejorando · 1 sin cambios" | `gamesRow().line`: head game and verdict, then counts of the other games |
-| Last-record line | Nothing while the log is current (no streak, no record: a log is not a score, PRODUCT.md principle 2); when it has lapsed, "Sin registro desde 14 nov · registro manual" | `gamesRow().note` |
+| Last-record line | Nothing while the log is current (no streak, no record: a log is not a score, PRODUCT.md principle 2); when it has lapsed, "Último registro: 14 nov · registro manual" (the hub shows "Último registro: 14 nov" as a warning pill beside "Hoy · …") | `gamesRow().note` |
 | Tag | "registro manual" | header of the card |
 | Nothing logged ever | "Sin partidas registradas aún" | `gamesRow()` |
 
