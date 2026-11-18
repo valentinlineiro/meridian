@@ -60,7 +60,8 @@ const dayLabel = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString
             </div>
           }
         </div>
-        <div id="lgRegMsg" role="status" class="muted u-fs-sm u-mt-8">{{ message() }}</div>
+        <div class="lgreg-actions">
+        <div id="lgRegMsg" role="status" class="muted u-fs-sm">{{ message() }}</div>
         @if (midnight()) {
           <div id="lgRegMidnight" class="lgreg-note" role="group" aria-label="Cambio de día">
             <p class="u-m-0">Ya es {{ dayLabel(now()) }}.</p>
@@ -77,6 +78,7 @@ const dayLabel = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString
         }
         <button id="lgRegSave" class="btn btn-p lgreg-save" type="submit" [disabled]="!canSave()" aria-describedby="lgRegSaveHint">{{ saving() ? 'Guardando…' : 'Guardar' }}</button>
         <p id="lgRegSaveHint" class="muted u-fs-sm u-m-0">{{ canSave() || saving() ? '' : 'Escribe al menos un tiempo.' }}</p>
+        </div>
       </form>
       <details id="lgRegMore" class="u-mt-12">
         <summary class="muted">Pegar texto o varias fechas</summary>
