@@ -391,8 +391,11 @@ app-tab-bar{display:none}
 .lgreg-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .lgreg-row{display:grid;grid-template-columns:minmax(0,1fr) 92px 92px;gap:8px;align-items:center;min-height:52px}
 .lgreg-row input{min-height:44px;text-align:center;font-size:var(--fs-xl);font-weight:700}
-.lgreg-err{grid-column:1/-1;color:var(--loss-fg);font-size:var(--fs-sm)}
-.lgreg-save{width:100%;min-height:48px;margin-top:12px}
+.lgreg-err{grid-column:1/-1;color:var(--loss-fg);font-size:var(--fs-md)}
+.lgreg-save{width:100%;min-height:48px;margin-top:8px}
+/* the message, the notes and Guardar stay in view while the rows scroll (a dirty sheet's discard choice used to push Guardar off a phone screen) */
+.lgreg-actions{position:sticky;bottom:-16px;background:var(--surface);border-top:1px solid var(--line-strong);margin:12px -16px 0;padding:8px 16px 16px}
+.lgreg-actions .lgreg-note{margin:8px 0 0}.lgreg-note p{font-size:var(--fs-lg)}
 .lgreg-note{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0;padding:10px 12px;border:1px solid var(--line-strong);border-radius:var(--r-md);background:var(--sunken)}.lgreg-note p{flex:1 0 100%}
 .lgreg-gone{grid-column:2}
 .lgreg-row input[aria-invalid=true]{border-color:var(--loss-fg)}
