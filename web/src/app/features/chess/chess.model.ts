@@ -39,6 +39,8 @@ export interface ChessData {
 export const NA = 'No disponible';
 export { list, safe } from '../../core/guard';
 export const es = (n: number) => n.toLocaleString('es-ES');
+/** The noun that agrees with a count: noun(1, 'partida', 'partidas') is 'partida'. */
+export const noun = (n: number, one: string, many: string) => (n === 1 ? one : many);
 export const dec1 = (v: number) => v.toFixed(1).replace('.', ',');
 export const pc0 = (v: number) => Math.round(v) + ' %';
 export const fmt = (n: unknown) => n == null ? '—' : String(n);

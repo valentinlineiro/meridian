@@ -5,7 +5,7 @@ import { catchError, map, of, TimeoutError } from 'rxjs';
 import { ApiClient } from '../../../core/api-client';
 import { ErrorBlock } from '../../../shared/error-block';
 import { scrollBehavior } from '../../../core/motion';
-import { dec1 } from '../chess.model';
+import { dec1, noun } from '../chess.model';
 import { ChessBoard } from './chess-board';
 import { Modal } from '../../../shared/modal';
 import { MatchesService } from '../services/matches.service';
@@ -41,7 +41,7 @@ const MISSING = 'Esta partida no tiene jugadas guardadas.';
                 <div class="gameside">
                   <div id="gMissed" class="muted u-mt-8">@for (k of g.missedPlies ?? []; track k) {<div><button type="button" class="linkbtn" (click)="go($event, k - 1)">Jugada {{ k }} ({{ g.plies[k - 1]?.san ?? '' }}): el rival tenía mate en 1 y lo jugó</button></div>}</div>
                   <div id="gErrors" class="muted u-mt-8">
-                @if (g.engineSummary; as sm) {<div>Según el motor: {{ sm.serious }} errores graves en {{ sm.moves }} jugadas tuyas{{ sm.acpl === null || sm.acpl === undefined ? '' : ' · pérdida media ' + pawns(sm.acpl) + ' peones por jugada' }}{{ g.engineWorst?.length && sm.serious > g.engineWorst!.length ? ' · se muestran las ' + g.engineWorst!.length + ' peores' : '' }}</div>}
+                @if (g.engineSummary; as sm) {<div>Según el motor: {{ sm.serious }} {{ noun(sm.serious, 'error grave', 'errores graves') }} en {{ sm.moves }} {{ noun(sm.moves, 'jugada tuya', 'jugadas tuyas') }}{{ sm.acpl === null || sm.acpl === undefined ? '' : ' · pérdida media ' + pawns(sm.acpl) + ' peones por jugada' }}{{ g.engineWorst?.length && sm.serious > g.engineWorst!.length ? (g.engineWorst!.length === 1 ? ' · se muestra la peor' : ' · se muestran las ' + g.engineWorst!.length + ' peores') : '' }}</div>}
                 @for (x of g.engineWorst ?? []; track x.ply) {<div><button type="button" class="linkbtn" (click)="go($event, x.ply - 1)">Jugada {{ x.ply }} ({{ g.plies[x.ply - 1]?.san ?? '' }}): pierdes {{ pawns(x.loss) }} peones; el motor prefería {{ x.bestSan || x.best }}</button></div>}
               </div>
                   <div id="gMoves" class="moves">@for (p of g.plies; track $index; let i = $index) {@if (i % 2 === 0) {<span class="muted">{{ i / 2 + 1 }}.</span>{{ ' ' }}}<button type="button" class="gm" [class.on]="i + 1 === n" [class.err]="worst(g).has(i + 1)" [attr.aria-current]="i + 1 === n ? 'step' : null" [attr.aria-label]="'Jugada ' + (i + 1) + ', ' + p.san + (worst(g).has(i + 1) ? ', error grave' : '')" (click)="go($event, i + 1)">{{ p.san }}</button>{{ ' ' }}}</div>
@@ -114,5 +114,6 @@ export class MatchDetailModal {
 
   /** Engine losses are said in pawns, as the profile says them (the API sends centipawns). */
   protected pawns(cp: number): string { return dec1(cp / 100); }
+  protected readonly noun = noun;
   protected enc(id: string): string { return encodeURIComponent(id); }
 }

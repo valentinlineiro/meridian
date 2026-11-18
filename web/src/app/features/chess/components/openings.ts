@@ -2,7 +2,7 @@ import { Component, computed, inject, input, output, signal } from '@angular/cor
 import { ErrorBlock } from '../../../shared/error-block';
 import { Compare } from './compare';
 import { Segmented } from '../../../shared/segmented';
-import { Group, list, Mates, Openings as OpeningStats, pc0, Phases, safe, Tally, Threats } from '../chess.model';
+import { Group, list, Mates, noun, Openings as OpeningStats, pc0, Phases, safe, Tally, Threats } from '../chess.model';
 import { MatchesService } from '../services/matches.service';
 
 const OPENINGS_SHOWN = 8;
@@ -14,8 +14,8 @@ function threats(th: Threats | null | undefined) {
   if (!th || th.error || !th.totals) return null;
   const tt = th.totals, faced = tt.faced;
   const notes = ['Solo cuenta amenazas de mate en una jugada. Son cifras de tus partidas, sin margen de error: las posiciones de una misma partida no son independientes.'];
-  if (th.pending) notes.push(th.pending + ' partidas sin analizar');
-  if (th.invalid) notes.push(th.invalid + ' no se pudieron reproducir');
+  if (th.pending) notes.push(`${th.pending} ${noun(th.pending, 'partida', 'partidas')} sin analizar`);
+  if (th.invalid) notes.push(th.invalid === 1 ? '1 no se pudo reproducir' : th.invalid + ' no se pudieron reproducir');
   if (th.unknownVersion) notes.push(th.unknownVersion + ' con un formato que este panel no entiende');
   return {
     main: !th.analysed ? 'Todavía no hay partidas analizadas; el motor las analiza solo tras cada sincronización' : !faced ? 'Sin amenazas de mate en 1 en las partidas analizadas'

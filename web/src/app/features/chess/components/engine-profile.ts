@@ -2,7 +2,7 @@ import { Component, computed, inject, input, output } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { ErrorBlock } from '../../../shared/error-block';
 import { Kpi } from '../../../shared/kpi';
-import { dec1, pc0 } from '../chess.model';
+import { dec1, noun, pc0 } from '../chess.model';
 import { MatchesService } from '../services/matches.service';
 import { safe } from '../../../core/guard';
 
@@ -61,7 +61,7 @@ function gameRow(r: ReviewRow) {
     id: String(r.matchId), opp: r.opponent || 'Bot', cls: res[0], res: res[1],
     when: date + (r.color === 'white' ? ' · blancas' : r.color === 'black' ? ' · negras' : ''),
     what: (r.decisivePly ? `Se torció en tu jugada ${Math.ceil(num(r.decisivePly) / 2)}. ` : '') +
-      `${num(r.serious)} errores graves en ${num(r.moves)} jugadas · pérdida media de evaluación: ${pawns(r.acpl)} peones por jugada`,
+      `${num(r.serious)} ${noun(num(r.serious), 'error grave', 'errores graves')} en ${num(r.moves)} ${noun(num(r.moves), 'jugada', 'jugadas')} · pérdida media de evaluación: ${pawns(r.acpl)} peones por jugada`,
   };
 }
 /** Legacy `(b.review.worst||[])`: an absent list is empty, a list of another type is unreadable. */
@@ -84,7 +84,7 @@ function compare(b: Section, a: Section) {
       { label: 'Errores graves por 100 jugadas', x: fix(b.ratePer100, 1), y: fix(a.ratePer100, 1), d: diff(b.ratePer100, a.ratePer100, 1) },
       { label: 'Pérdida media por jugada (peones)', x: fix(cp(b), 2), y: fix(cp(a), 2), d: diff(cp(b), cp(a), 2) },
     ],
-    warn: a.games < PROFILE_MIN_AFTER ? `Solo ${a.games} partidas después del corte: aún son pocas para sacar conclusiones (conviene llegar a ${PROFILE_MIN_AFTER}).` : '',
+    warn: a.games < PROFILE_MIN_AFTER ? `Solo ${a.games} ${noun(a.games, 'partida', 'partidas')} después del corte: aún son pocas para sacar conclusiones (conviene llegar a ${PROFILE_MIN_AFTER}).` : '',
   };
 }
 
@@ -94,8 +94,8 @@ function view(b: Profile, cut: string) {
   // Not a profile at all (no body, or analysed games without their figures): the whole panel says it could not load.
   if (typeof b !== 'object' || (b.analysed && (typeof b.all !== 'object' || !b.all))) throw new TypeError('not a profile');
   const notes: string[] = [];
-  if (b.pending) notes.push(b.pending + ' partidas sin analizar');
-  if (b.invalid) notes.push(b.invalid + ' no se pudieron evaluar');
+  if (b.pending) notes.push(`${b.pending} ${noun(b.pending, 'partida', 'partidas')} sin analizar`);
+  if (b.invalid) notes.push(b.invalid === 1 ? '1 no se pudo evaluar' : b.invalid + ' no se pudieron evaluar');
   if (b.unknownVersion) notes.push(b.unknownVersion + ' con un formato que este panel no entiende');
   const common = {
     context: !b.analysed ? 'Calculado con Stockfish sobre tus partidas guardadas.' : safe(() =>
