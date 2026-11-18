@@ -4,7 +4,7 @@ import { scrollBehavior } from '../core/motion';
 /** A collapsible block of a page: a title (and an optional note next to it) and its content. Open by default. */
 @Component({
   selector: 'app-section',
-  template: `<details #d class="cgroup" [attr.id]="sectionId()" [open]="open()"><summary>{{ title() }}@if (meta() || metaId()) { <span [attr.id]="metaId()" class="muted cg-meta">{{ meta() }}</span> }</summary><ng-content /></details>`,
+  template: `<details #d class="cgroup" [attr.id]="sectionId()" [open]="open()"><summary><h2>{{ title() }}</h2>@if (meta() || metaId()) { <span [attr.id]="metaId()" class="muted cg-meta">{{ meta() }}</span> }</summary><ng-content /></details>`,
 })
 export class Section {
   readonly title = input.required<string>();

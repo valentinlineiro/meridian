@@ -288,12 +288,12 @@ describe('Languages', () => {
       await open('/languages', langApi({ '/api/languages/analytics': a, '/api/languages/xp': { summaries: [] } }));
       expect(text('langObservedSynthesis')).toBe('0 de 2 cursos comparables sin cambio estructural · 1 con observación insuficiente · 1 con cambio estructural');
       expect(text('langCurricularProgressDetail')).toBe('Sin observaciones curriculares con denominador idéntico (no se calcula avance)');
-      expect(text('langCourseStructureDetail')).toBe('1 curso(s) con CAMBIO ESTRUCTURAL en el árbol curricular (variación en total de unidades; progreso no comparable)');
+      expect(text('langCourseStructureDetail')).toBe('1 curso con cambio estructural en el árbol curricular (variación en total de unidades; progreso no comparable)');
       expect(text('langAccountActivityDetail')).toBe('Sin XP registrado hoy en la cuenta');
       const rows = [...el().querySelectorAll('#langComparabilityBody .row')].map((r) => r.textContent!.replace(/\s+/g, ' ').trim());
-      expect(rows[0]).toBe('Demo BetaCAMBIO ESTRUCTURALDuolingo ha cambiado el curso (10 → 15 unidades en total)Observado: 1 nov 2026 → 5 nov 2026');
-      // legacy parity: this card reads the status alone, so an unknown denominator still says COMPARABLE here
-      expect(rows[1]).toBe('Demo GammaCOMPARABLE+0 unidades completadasObservado: — → —');
+      expect(rows[0]).toBe('Demo BetaCambio estructuralDuolingo ha cambiado el curso (10 → 15 unidades en total)Observado: 1 nov 2026 → 5 nov 2026');
+      // legacy parity: this card reads the status alone, so an unknown denominator still says Comparable here
+      expect(rows[1]).toBe('Demo GammaComparable+0 unidades completadasObservado: — → —');
     });
 
     it('shouldRenderTheNinetyDaysAndTheAnalyticsCards', async () => {
@@ -308,8 +308,8 @@ describe('Languages', () => {
       expect(text('langConcentrationBody')).toBe('Demo Beta67,6 %Total vitalicio lingüístico: 139.000 XP en 1 cursos.');
       const comp = [...el().querySelectorAll('#langComparabilityBody .row')].map((r) => r.textContent!.replace(/\s+/g, ' ').trim());
       expect(comp).toEqual([
-        'Demo BetaCOMPARABLE+2 unidades completadasObservado: 1 nov 2026 → 5 nov 2026',
-        'Demo GammaESPERANDO OTRA LECTURAHay una sola lectura de este curso; con otra se podrá comparar.',
+        'Demo BetaComparable+2 unidades completadasObservado: 1 nov 2026 → 5 nov 2026',
+        'Demo GammaEsperando otra lecturaHay una sola lectura de este curso; con otra se podrá comparar.',
       ]);
     });
 
@@ -340,6 +340,17 @@ describe('Languages', () => {
       expect(text('langAccountDays')).toBe('—');
       expect(text('langAccountActivityDetail')).toBe('No disponible');
       expect(text('langAccountXp')).toBe('421.500 XP'); // the rest of the page stays
+    });
+
+    it('shouldOfferARetryWhenOnlyPartOfThePageFailsAndNotWhenItAllLoads', async () => {
+      await open('/languages', langApi({ '/api/languages/xp': FAIL }));
+      expect(text('langPartial')).toBe('Parte de los datos de Idiomas no se pudo cargar. Reintentar');
+      q('#langPartial button')!.click();
+      await tick();
+      await answer(langApi());
+      expect(q('#langPartial')).toBeNull();
+      expect(text('langXpTimeline')).not.toBe('No disponible');
+      http.verify();
     });
 
     it('shouldSaySinActividadOnlyWhenTheNinetyDaysAreReallyEmpty', async () => {
@@ -496,9 +507,9 @@ describe('Languages', () => {
       expect(text('langDetailTitle')).toBe('🌐 Demo Beta');
       expect(text('langDetailSub')).toBe('EN → XB · ID: XB_EN');
       expect(text('langDetailXpPill')).toBe('94.000 XP');
-      expect(text('langCefrBody')).toBe('Nivel A1 (1 sec)3 / 10 unidades');
+      expect(text('langCefrBody')).toBe('Nivel A1 (1 sección)3 / 10 unidades');
       expect(text('langSectionsList')).toContain('SECCIÓN 1: A1.23 / 10 unidades');
-      expect(text('langSectionsList')).toContain('Section ID: s1 · Tipo: learning · Última observación: 2026-11-05');
+      expect(text('langSectionsList')).toContain('ID de sección: s1 · Tipo: learning · Última observación: 2026-11-05');
       expect(router.url).toBe('/languages/XB_EN');
       expect(asked('/api/languages/courses/XB_EN')).toHaveLength(1); // the selected course's detail was read with the page, not again
 
@@ -537,7 +548,7 @@ describe('Languages', () => {
       await tick();
       expect(q('#langDetailView img')).toBeNull();
       expect(text('langCefrBody')).toContain(`Nivel ${HOSTILE}`);
-      expect(text('langSectionsList')).toContain(`Section ID: ${HOSTILE} · Tipo: ${HOSTILE}`);
+      expect(text('langSectionsList')).toContain(`ID de sección: ${HOSTILE} · Tipo: ${HOSTILE}`);
     });
   });
 

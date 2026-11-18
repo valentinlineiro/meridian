@@ -186,7 +186,7 @@ export function observed(d: LangData, a: Analytics) {
   const progressText = comp ? `+${comp.deltaCompletedUnits} unidades completadas en ${compCourse ? compCourse.title || compCourse.courseId : comp.courseId} (mismo árbol curricular: denominador idéntico)`
     : comparable > 0 ? 'Sin variación en unidades completadas en cursos comparables (mismo denominador)'
     : 'Sin observaciones curriculares con denominador idéntico (no se calcula avance)';
-  const structure = structural > 0 ? `${structural} curso(s) con CAMBIO ESTRUCTURAL en el árbol curricular (variación en total de unidades; progreso no comparable)`
+  const structure = structural > 0 ? `${structural} ${structural === 1 ? 'curso con cambio estructural' : 'cursos con cambio estructural'} en el árbol curricular (variación en total de unidades; progreso no comparable)`
     : comparable > 0 ? 'Árbol curricular estable sin cambios estructurales en los cursos observados'
     : insufficient > 0 ? 'Observación insuficiente para determinar estabilidad (esperando 2ª sincronización)'
     : 'No se detectaron reestructuraciones de árbol curricular en las sincronizaciones observadas.';
@@ -265,7 +265,7 @@ export function comparability(a: Analytics, courses: Course[]) {
         key: x.courseId,
         name: courses.find((c) => c.courseId === x.courseId)?.title || x.courseId,
         pill: comp ? 'pill pill-win' : struct ? 'pill pill-loss' : 'pill pill-draw',
-        status: comp ? 'COMPARABLE' : struct ? 'CAMBIO ESTRUCTURAL' : 'INSUFICIENTE',
+        status: comp ? 'Comparable' : struct ? 'Cambio estructural' : 'Insuficiente',
         text: comp ? `+${x.deltaCompletedUnits ?? 0} unidades completadas` : struct ? `Duolingo ha cambiado el curso (${x.previousTotalUnits} → ${x.latestTotalUnits} unidades en total)` : 'Solo hay una lectura de este curso',
         observed: `Observado: ${day(x.previousObservedAt)} → ${day(x.latestObservedAt)}`,
       };
