@@ -30,8 +30,6 @@
   @if (overview(); as o) {
     <div id="gamesOverview" class="go card">
       <h2>Cómo vas</h2>
-      <div class="go-n"><span class="gc-big" id="gamesOverviewBig">{{ o.big }}</span><span class="muted" id="gamesOverviewCap">{{ o.cap }}</span></div>
-      <div id="gamesOverviewBar" class="go-bar" role="img" [attr.aria-label]="o.aria">@for (k of o.segments; track $index) {<span [class]="'go-' + k"></span>}</div>
       <p class="u-m-0" id="gamesOverviewSentence">{{ o.sentence }}</p>
     </div>
   }
@@ -50,8 +48,8 @@
       <p>El número grande es lo más rápido o lento que vas frente a la media de LinkedIn, en el periodo elegido. Cada barra es una de tus últimas 14 partidas con media: hacia arriba, mejor que la media ese día; hacia abajo, peor; cuanto más alta, mayor la diferencia. La etiqueta (Mejorando, Estable, Bajando) se confirma cuando el cambio se repite dos semanas seguidas; hasta entonces la frase te dice que queda por confirmar. «Estable» significa que con los datos de este periodo no hay un cambio medible, no que sea imposible que lo haya. «Pocos datos»: faltan partidas para valorar. Debajo, «Más detalle» tiene las tablas y los gráficos.</p>
     </app-help>
   </app-section>
-  <div class="gh-foot muted"><span id="gamesHeroMeta">{{ h.meta }}</span><span id="gamesHeroDays">{{ h.days }}</span><span><span id="gamesHeroStreakLabel" class="sr-only">{{ h.label }}</span><span id="gamesHeroStreak">{{ h.streak }}</span></span><a id="gamesExport" href="/api/me/linkedin-games/export.csv" download>Descargar resultados (CSV)</a></div>
-  <app-section title="Dónde pierdes" sectionId="cg-games-loss" [open]="false">
+  <div class="gh-foot muted"><span id="gamesHeroDays">{{ h.days }}</span><span id="gamesHeroSince">{{ h.since }}</span><span id="gamesHeroMeta">{{ h.meta }}</span><a id="gamesExport" href="/api/me/linkedin-games/export.csv" download>Descargar resultados (CSV)</a></div>
+  <app-section title="Por día de la semana" sectionId="cg-games-loss" [open]="false">
     @if (loss(); as l) {
       <p class="loss-note" id="gamesLossNote">{{ l.sentence }}</p>
       <div class="tblwrap" tabindex="0" role="region" aria-label="Derrotas por juego y día de la semana (desplazable)"><table class="gtable gloss" id="gamesLoss"><caption class="sr-only">Porcentaje de partidas en las que no le ganas a la media, por juego y día de la semana. Un guion es que hay pocas partidas.</caption>

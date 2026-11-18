@@ -139,7 +139,7 @@ describe('Games', () => {
       expect(reqs.filter((r) => r.request.url === '/api/me/linkedin-games/summary')).toHaveLength(1);
       await answer(summaryOf({ zip: game() }), undefined, reqs);
       http.verify();
-      expect(text('gamesHeroStreak')).toBe('48 días seguidos');
+      expect(text('gamesHeroDays')).toContain('registrados');
     });
 
     it('shouldFetchSummaryAndTodayWhenTheGamesTabOpens', async () => {
@@ -172,8 +172,9 @@ describe('Games', () => {
     it('shouldRenderTheHero', async () => {
       await open({ zip: game({ beatAvgRate: 0.84 }), tango: game() });
       expect(el.querySelector('#gamesHeroDist')).toBeNull(); // no pooled "beats the average" across games
-      expect(text('gamesHeroStreak')).toBe('48 días seguidos');
-      expect(text('gamesHeroMeta')).toBe('Tu récord: 122 días');
+      expect(text('gamesHeroSince')).toBe('');
+      expect(text('gamesHeroMeta')).toBe('');
+      expect(el.textContent).not.toMatch(/seguidos|récord|racha/i); // a log is not a score
       expect(text('gamesHeroDays')).toBe('170 días registrados · 17 may 2026 → 3 nov 2026');
       expect(el.querySelector('#gamesTab')!.classList.contains('tab-panel')).toBe(false);
       expect(el.querySelector('#gamesTab')!.hasAttribute('hidden')).toBe(false);
@@ -181,9 +182,8 @@ describe('Games', () => {
 
     it('shouldSayLastRecordInTheHeroWhenThePlayStreakIsZero', async () => {
       await open({ zip: game() }, undefined, { playStreak: { current: 0, max: 122 } });
-      expect(text('gamesHeroStreakLabel')).toBe('LinkedIn Games · último registro');
-      expect(text('gamesHeroStreak')).toBe('Sin registro desde 3 nov 2026');
-      expect(text('gamesHeroMeta')).toBe('Tu récord: 122 días · registro manual');
+      expect(text('gamesHeroSince')).toBe('Sin registro desde 3 nov 2026');
+      expect(text('gamesHeroMeta')).toBe('registro manual');
     });
 
     it('shouldExposeTodayAndHowYouAreDoingAsHeadingsWhenTheHubLoads', async () => {
@@ -236,12 +236,6 @@ describe('Games', () => {
       expect(text('gamesHeroToday')).toBe('Hoy');
     });
 
-    it('shouldShowTheStreakAsSmallTextNotAsTheHeadline', async () => {
-      await open({ zip: game() });
-      expect((el.querySelector('#gamesHeroStreak') as HTMLElement).style.fontSize).toBe('');
-      expect(el.querySelector('#gamesHeroToday')!.compareDocumentPosition(el.querySelector('#gamesHeroStreak')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    });
-
     it('shouldOfferToRegisterTodayAndOpenTheDialogFilledWithTodaysRecord', async () => {
       await open({ zip: game() }, { ok: true, day: { games: { zip: { score: '0:08', avg: '0:09' } } } });
       expect(text('gamesRegisterOpen')).toBe('Registrar hoy');
@@ -270,13 +264,13 @@ describe('Games', () => {
       await open({ zip: game() }, FAIL);
       expect(text('gamesNote')).toBe('No se pudo cargar el día.');
       expect(el.querySelector('#gamesRegisterOpen')).not.toBeNull(); // still the way to log a result
-      expect(text('gamesHeroStreak')).toBe('48 días seguidos');
+      expect(text('gamesHeroDays')).toContain('registrados');
     });
 
     it('shouldSayThereIsNoDataYetWhenTheSummaryIsEmpty', async () => {
       await open({});
       expect(text('gamesHeroMeta')).toBe('Aún no hay datos.');
-      expect(text('gamesHeroStreak')).toBe('—');
+      expect(text('gamesHeroSince')).toBe('—');
       expect(el.querySelectorAll('#gamesRows tr, #gamesHead th, #gamesList > section')).toHaveLength(0);
     });
 
@@ -558,24 +552,13 @@ describe('Games', () => {
     const up = game({ interpretation: interp({ label: 'mejora_sostenida', candidate: 'mejora_sostenida', previousCandidate: 'mejora_sostenida' }) });
     const few = game({ interpretation: interp({ label: 'datos_insuficientes', reason: 'cobertura_insuficiente' }) });
 
-    it('shouldCountHowManyGamesImproveAndNameThemInOneSentence', async () => {
+    it('shouldNameEachGameByItsStateInOneSentenceWithoutACount', async () => {
       await open({ tango: down, queens: up, zip: game(), mini_sudoku: few });
-      expect(text('gamesOverviewBig')).toBe('1 de 4');
-      expect(text('gamesOverviewCap')).toBe('juego mejora');
       expect(text('gamesOverviewSentence')).toBe('Tango baja. Queens mejora. Zip, sin cambios. Mini Sudoku, pocos datos.');
-    });
-
-    it('shouldDrawOneSegmentPerGameAndSayTheCountsToAScreenReader', async () => {
-      await open({ tango: down, queens: up, zip: game(), mini_sudoku: few });
-      const bar = el.querySelector('#gamesOverviewBar')!;
-      expect(bar.querySelectorAll('span')).toHaveLength(4);
-      expect(bar.getAttribute('aria-label')).toBe('Estado de los 4 juegos: 1 bajando, 1 estable, 1 con pocos datos, 1 mejorando.');
     });
 
     it('shouldJoinSeveralNamesAndUseThePlural', async () => {
       await open({ queens: up, zip: up, tango: up });
-      expect(text('gamesOverviewBig')).toBe('3 de 3');
-      expect(text('gamesOverviewCap')).toBe('juegos mejoran');
       expect(text('gamesOverviewSentence')).toBe('Queens, Tango y Zip mejoran.');
     });
 

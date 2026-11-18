@@ -54,7 +54,7 @@ function view(d: OverviewData, now: number) {
       bars, aria: xb?.aria ?? '',
       freshChip: syncChip(xpSynced, now),
     },
-    games: { registered: !!d.games && d.games.to === localToday(), line: d.games ? g?.line ?? NA : NA, verdict: g?.verdict ?? null, streak: g?.streak ?? '', link: g?.link ?? '/games', focus: g?.focus ?? null },
+    games: { registered: !!d.games && d.games.to === localToday(), line: d.games ? g?.line ?? NA : NA, verdict: g?.verdict ?? null, note: g?.note ?? '', link: g?.link ?? '/games', focus: g?.focus ?? null },
   };
 }
 

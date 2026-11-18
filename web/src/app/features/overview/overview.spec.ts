@@ -94,7 +94,7 @@ describe('Overview', () => {
 
     expect(el.querySelector('#overviewGamesRow .pill')!.textContent).toBe('▼ Bajando');
     expect(text(el, 'overviewGamesLine')).toBe('Tango: Bajando · 1 sin cambios');
-    expect(text(el, 'overviewGamesStreak')).toBe('Racha: 12 días seguidos');
+    expect(text(el, 'overviewGamesNote')).toBe(''); // a log is not a score: no streak line while logging
   });
 
   it('shouldGiveTheSpeedAndTheLastResultsOfTheGameBehindTheVerdict', async () => {

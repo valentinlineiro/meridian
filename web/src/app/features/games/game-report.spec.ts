@@ -65,7 +65,6 @@ describe('GameReport', () => {
       expect(text('gameFigTime')).toBe('0:43');
       expect(text('gameFigBest')).toBe('0:19');
       expect(text('gameFigGames')).toBe('177');
-      expect(text('gameFigStreak')).toMatch(/^1 día/);
       expect(text('gameReportVerdictSentence')).toBe('No hay cambios en las últimas 4 semanas.');
       expect(el.querySelector('#gameReportFigures .gbars')).not.toBeNull();
     });
@@ -139,18 +138,12 @@ describe('GameReport', () => {
       expect(tips[4]).toContain('1 derrota, 9 victorias');
       expect(tips[5]).toContain('9 derrotas, 1 victoria');
     });
-    it('shouldNotPrintAZeroStreakWhenTheManualLogIsStale', async () => {
+    it('shouldShowNoStreakOnTheReportEvenWhenTheManualLogIsStale', async () => {
       const stale = { ...summary({ queens: queens({ beatStreak: { current: 0, max: 13 } }) }), playStreak: { current: 0, max: 13 }, to: '2026-11-03' } as unknown as Summary;
       await open(stale);
-      expect(text('gameReportStreak')).toContain('sin racha activa');
-      expect(text('gameReportStreak')).toContain('Sin registro desde 3 nov 2026');
-      expect(text('gameReportStreak')).toContain('máxima 13 días');
-      expect(text('gameReportStreak')).not.toMatch(/actual 0/);
-    });
-    it('shouldGiveTheStreaks', async () => {
-      await open(summary({ queens: queens() }));
-      expect(text('gameReportStreak')).toContain('actual 1 día');
-      expect(text('gameReportStreak')).toContain('máxima 13 días');
+      expect(el.querySelector('#gameFigStreak')).toBeNull();
+      expect(el.querySelector('#gameReportStreak')).toBeNull();
+      expect(el.textContent).not.toMatch(/seguidos|racha/i);
     });
   });
 
@@ -230,16 +223,10 @@ describe('GameReport', () => {
       expect(t).toContain('no calibrada');
     });
 
-    it('shouldShowTheDateOfTheLongestStreak', async () => {
-      await open(summary({ queens: queens({ beatStreak: { current: 1, max: 13, maxDate: '2026-10-31' } }) }));
-      expect(text('gameReportStreak')).toContain('máxima 13 días (hasta el 31 oct 2026)');
-    });
-
     it('shouldRenderNothingNewWhenTheSummaryPredatesThePhase', async () => {
       await open(summary({ queens: queens() }));
       expect(el.querySelector('#gameReportSeconds')).toBeNull();
       expect(el.querySelector('#gameReportExtras')).toBeNull();
-      expect(text('gameReportStreak')).not.toContain('hasta el');
     });
   });
   describe('fase 3: qué destaca', () => {
