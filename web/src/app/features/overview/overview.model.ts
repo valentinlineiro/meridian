@@ -1,6 +1,6 @@
 // What Hoy says, as pure functions of what the API answered. Nothing is computed that the contracts do not support: a window with no
 // baseline says so, data older than two days is said to be old (never read as zero), and no number is invented.
-import { Delta, fmtDate, fmtDelta, pc1, scaleDelta } from '../../core/format';
+import { Delta, fmtDelta, pc1, scaleDelta } from '../../core/format';
 import { calendarDaysAgo, DAY, isStale, shortDate, sign } from '../../core/xp-week';
 import { resultBars, ResultBarsData } from '../../shared/result-bars';
 import { attentionOrder, gameName, intervalVerdict, Verdict, verdictFor } from '../../core/words';
@@ -76,7 +76,7 @@ function focusOf(k: string, g: GameIn): GamesFocus | null {
   if (typeof m !== 'number' || !Number.isFinite(m)) return null;
   return { big: `${sign(Math.round((m - 1) * 100))} %`, cap: `${gameName(k)} · ${m > 1 ? 'más rápido' : m < 1 ? 'más lento' : 'igual'} que la media`, bars: resultBars(g.series ?? []) };
 }
-export function gamesRow(s: GamesSummaryIn): { verdict: Verdict | null; name: string | null; link: string; line: string; note: string; focus: GamesFocus | null } {
+export function gamesRow(s: GamesSummaryIn, now = Date.now()): { verdict: Verdict | null; name: string | null; link: string; line: string; note: string; focus: GamesFocus | null } {
   const keys = attentionOrder(s.games);
   if (!keys.length) return { verdict: null, name: null, link: '/games', line: 'Sin partidas registradas aún', note: '', focus: null };
   const vs = keys.map((k) => verdictFor(s.games[k]!.interpretation));
@@ -92,7 +92,7 @@ export function gamesRow(s: GamesSummaryIn): { verdict: Verdict | null; name: st
     link: head ? `/games/${keys[0]}` : '/games',
     focus: head ? focusOf(keys[0]!, s.games[keys[0]!]!) : null,
     line: [...(head ? [`${gameName(keys[0]!)}: ${vs[0]!.label}`] : []), ...counts].join(' · '),
-    note: cur > 0 ? '' : s.to ? `Sin registro desde ${fmtDate(s.to)} · registro manual` : '',
+    note: cur > 0 ? '' : s.to ? `Último registro: ${shortDate(s.to, now)} · registro manual` : '',
   };
 }
 

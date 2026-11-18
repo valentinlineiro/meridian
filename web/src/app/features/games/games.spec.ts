@@ -172,7 +172,7 @@ describe('Games', () => {
     it('shouldRenderTheHero', async () => {
       await open({ zip: game({ beatAvgRate: 0.84 }), tango: game() });
       expect(el.querySelector('#gamesHeroDist')).toBeNull(); // no pooled "beats the average" across games
-      expect(text('gamesHeroSince')).toBe('');
+      expect(el.querySelector('#gamesHeroSince')).toBeNull(); // no pill while the log is current
       expect(text('gamesHeroMeta')).toBe('');
       expect(el.textContent).not.toMatch(/seguidos|récord|racha/i); // a log is not a score
       expect(text('gamesHeroDays')).toBe('170 días registrados · 17 may 2026 → 3 nov 2026');
@@ -182,7 +182,9 @@ describe('Games', () => {
 
     it('shouldSayLastRecordInTheHeroWhenThePlayStreakIsZero', async () => {
       await open({ zip: game() }, undefined, { playStreak: { current: 0, max: 122 } });
-      expect(text('gamesHeroSince')).toBe('Sin registro desde 3 nov 2026');
+      expect(text('gamesHeroSince')).toMatch(/^Último registro: 3 nov( 2026)?$/);
+      expect(el.querySelector('#gamesHeroSince')!.classList.contains('pill-warn')).toBe(true);
+      expect(el.querySelector('#gamesHero .gh-head')!.contains(el.querySelector('#gamesHeroSince'))).toBe(true); // beside the title, not in the footer
       expect(text('gamesHeroMeta')).toBe('registro manual');
     });
 
@@ -270,7 +272,7 @@ describe('Games', () => {
     it('shouldSayThereIsNoDataYetWhenTheSummaryIsEmpty', async () => {
       await open({});
       expect(text('gamesHeroMeta')).toBe('Aún no hay datos.');
-      expect(text('gamesHeroSince')).toBe('—');
+      expect(el.querySelector('#gamesHeroSince')).toBeNull();
       expect(el.querySelectorAll('#gamesRows tr, #gamesHead th, #gamesList > section')).toHaveLength(0);
     });
 

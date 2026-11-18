@@ -129,7 +129,9 @@ describe('gamesRow: what needs a look first across the games', () => {
   it('shouldGiveNothingWhileLoggingAndTheLastRecordDateWhenTheLogHasLapsed', () => {
     expect(gamesRow(sum({ zip: g('estable') }))!.note).toBe('');
     expect(gamesRow(sum({ zip: g('estable') }, { playStreak: { current: 1, max: 9 } }))!.note).toBe('');
-    expect(gamesRow(sum({ zip: g('estable') }, { playStreak: { current: 0, max: 9 }, to: '2026-11-03' }))!.note).toBe('Sin registro desde 3 nov 2026 · registro manual');
+    const now = new Date(2026, 10, 10).getTime();
+    expect(gamesRow(sum({ zip: g('estable') }, { playStreak: { current: 0, max: 9 }, to: '2026-11-03' }), now)!.note).toBe('Último registro: 3 nov · registro manual');
+    expect(gamesRow(sum({ zip: g('estable') }, { playStreak: { current: 0, max: 9 }, to: '2025-12-30' }), now)!.note).toBe('Último registro: 30 dic 2025 · registro manual'); // the year shows when it is not this one
   });
   describe('focus: the number of the game behind the verdict', () => {
     const withData = (label: string, median: number | null) => ({ interpretation: { label, pending: null }, series: [{ date: '2026-11-01', eff: 1.3 }, { date: '2026-11-02', eff: 0.7 }], windows: { '28': { eff: { median } } } });

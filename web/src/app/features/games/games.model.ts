@@ -1,6 +1,7 @@
 // Port of the LinkedIn Games view builders (src/dashboard.client.js:1787–1943). Pure: the range is a parameter, not a global.
 // Nothing here is computed beyond formatting: labels, bands and arrows come from the server's contract.
 import { fmtDate, localToday } from '../../core/format';
+import { shortDate } from '../../core/xp-week';
 import { resultBars } from '../../shared/result-bars';
 import { attentionOrder, GAME_NAMES, gameName, gdays, PERIODS, PeriodKey, Verdict, verdictFor } from '../../core/words';
 
@@ -102,13 +103,13 @@ export function formLines(x: Game, range: Range): string[] {
 /** Cards in verdict order: what needs a look first. A game without a readable verdict goes last. */
 export const cardOrder = (s: Summary): string[] => attentionOrder(s.games);
 
-/** The hub footer: the span of the record and, when the manual log has lapsed, since when. No streak and no record: a log is not a score. */
-export function gamesHero(s: Summary) {
-  if (!Object.keys(s.games).length) return { since: '—', meta: 'Aún no hay datos.', days: '—' };
+/** The hub hero: the span of the record (footer) and, when the manual log has lapsed, a pill with the last record beside the title. No streak and no record: a log is not a score. */
+export function gamesHero(s: Summary, now = Date.now()) {
+  if (!Object.keys(s.games).length) return { since: '', meta: 'Aún no hay datos.', days: '—' };
   if (typeof s.days !== 'number') throw new TypeError('summary.days is not a number');
   const days = gdays(s.days) + ' registrados · ' + fmtDate(s.from) + ' → ' + fmtDate(s.to);
   if ((s.playStreak?.current ?? 0) > 0) return { since: '', meta: '', days };
-  return { since: s.to ? 'Sin registro desde ' + fmtDate(s.to) : '—', meta: 'registro manual', days };
+  return { since: s.to ? 'Último registro: ' + shortDate(s.to, now) : '', meta: 'registro manual', days };
 }
 
 /** The game charted by default: the one with the most observations (first on a tie). */

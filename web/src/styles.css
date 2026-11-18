@@ -370,7 +370,7 @@ app-tab-bar{display:none}
 .go{display:grid;gap:8px;margin:0 0 16px}
 
 /* Games header: today's log first, the streak as a small line, the long-run facts as a footer */
-.gh>h2,.go>h2{margin:0;font-size:var(--fs-xl);letter-spacing:0;text-transform:none;color:var(--text)}
+.gh>h2,.gh-head>h2,.go>h2{margin:0;font-size:var(--fs-xl);letter-spacing:0;text-transform:none;color:var(--text)}
 .gh-foot{display:flex;flex-wrap:wrap;gap:4px 16px;margin-top:12px;font-size:var(--fs-sm)}.gh-foot a{margin-left:auto;display:inline-flex;align-items:center;min-height:44px}
 #gamesToday .pill{text-transform:none;letter-spacing:0;font-weight:600}
 
@@ -521,3 +521,4 @@ h2.lg-detail-title{margin:0;font-size:var(--fs-h);letter-spacing:0;text-transfor
 /* links and summaries get the same 2px ring as buttons (the sidebar scrolls, so its ring sits inside) */
 a:focus-visible,summary:focus-visible{outline:2px solid var(--link);outline-offset:2px}
 .side-item:focus-visible{outline-offset:-2px}
+.gh-head{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
