@@ -246,6 +246,11 @@ describe('Overview', () => {
       expect(el.querySelector('#overviewGamesRow')!.contains(button(el))).toBe(false); // outside the link
     });
 
+    it('shouldPutTheRegisterButtonBeforeTheGamesRowSoItStaysAboveTheTabBarOnAPhone', async () => {
+      const el = await open(withTo('2026-01-01'));
+      expect(button(el).compareDocumentPosition(el.querySelector('#overviewGamesRow')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
     it('shouldOfferToEditWhenTodayHasAnEntry', async () => {
       const el = await open(withTo(new Date().toLocaleDateString('sv-SE')));
       expect(button(el).textContent!.trim()).toBe('Editar lo de hoy');
