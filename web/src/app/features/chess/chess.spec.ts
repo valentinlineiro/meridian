@@ -1062,7 +1062,7 @@ describe('EngineProfile', () => {
     await render(PROFILE);
     expect(text('profileContext')).toContain('98 % contra bots');
     const note = text('profileNote');
-    for (const s of ['3 partidas sin analizar', '1 no se pudieron evaluar', '2 con un formato que este panel no entiende', 'sin margen de error']) expect(note).toContain(s);
+    for (const s of ['3 partidas sin analizar', '1 no se pudo evaluar', '2 con un formato que este panel no entiende', 'sin margen de error']) expect(note).toContain(s);
   });
 
   it('shouldShowNothingMisleadingWhenNothingIsAnalysedYet', async () => {

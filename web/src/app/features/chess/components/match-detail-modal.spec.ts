@@ -169,6 +169,16 @@ describe('MatchDetailModal', () => {
     expect(text('gErrors')).toContain('6 errores graves en 4 jugadas tuyas · pérdida media 1,6 peones por jugada · se muestran las 2 peores');
   });
 
+  it('shouldSaySingularWhenThereIsOneSeriousErrorOrOneMove', async () => {
+    await open('m1', { ...GAME, engineWorst: [{ ply: 5, loss: 640, best: 'g1f3', bestSan: 'Nf3' }], engineSummary: { moves: 1, serious: 1, acpl: 162.5 } });
+    expect(text('gErrors')).toContain('Según el motor: 1 error grave en 1 jugada tuya');
+  });
+
+  it('shouldSayTheWorstSingularWhenOnlyOneRowIsShownOfSeveralErrors', async () => {
+    await open('m1', { ...GAME, engineWorst: [{ ply: 5, loss: 640, best: 'g1f3', bestSan: 'Nf3' }], engineSummary: { moves: 4, serious: 3, acpl: 162.5 } });
+    expect(text('gErrors')).toContain('3 errores graves en 4 jugadas tuyas · pérdida media 1,6 peones por jugada · se muestra la peor');
+  });
+
   it('shouldNotSayOnlyTheWorstAreListedWhenEveryErrorHasARow', async () => {
     await open();
     expect(text('gErrors')).not.toContain('se muestran');

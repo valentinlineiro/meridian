@@ -20,7 +20,7 @@ import { Openings as OpeningsBlock } from './components/openings';
 import { ReviewSuggestion } from './components/review-suggestion';
 import { EngineProfile, Profile, PROFILE_CUT_KEY } from './components/engine-profile';
 import {
-  ChessData, ColorStats, es, fmt, Group, list, Mates, NA, OpponentElo, Openings, Opponents, Phases, Recent, Results, scaleDelta, signedInt, streakWord,
+  ChessData, ColorStats, es, fmt, Group, list, Mates, NA, noun, OpponentElo, Openings, Opponents, Phases, Recent, Results, scaleDelta, signedInt, streakWord,
   Summary, Threats, Timeline,
 } from './chess.model';
 
@@ -144,7 +144,7 @@ function results(s: Summary, r: Results | null) {
     if (!['stalemate', 'repetition', 'insufficient_material', 'material', 'fifty_moves', 'unknown'].includes(k) && v && (v.draw ?? 0) > 0) draw(v.draw ?? 0, k, k);
   return {
     na: '', loss: lp, draw: dp,
-    rate: discon && decided ? `Sin contar desconexiones: ${played} derrotas de ${decided} partidas (${(played / decided * 100).toFixed(0)} %)` : '',
+    rate: discon && decided ? `Sin contar desconexiones: ${played} ${noun(played, 'derrota', 'derrotas')} de ${decided} ${noun(decided, 'partida', 'partidas')} (${(played / decided * 100).toFixed(0)} %)` : '',
   };
 }
 
