@@ -79,7 +79,6 @@ export function account(d: LangData) {
   const gap = known && l.totalXp != null ? Number(l.totalXp) - cs.reduce((a, c) => a + c.xp!, 0) : 0;
   return {
     xp: l.totalXp != null ? es(Number(l.totalXp)) + ' XP' : '—',
-    streak: l.streak != null ? `🔥 ${es(Number(l.streak))} días` : '—',
     courses: cs.length + ' cursos',
     // the account total can exceed the listed courses (XP kept outside this catalogue): say so instead of two silent figures
     gap: gap > 0 ? `El total de la cuenta supera en ${es(gap)} XP la suma de los ${cs.length} cursos del catálogo: esa parte no está asignada a ninguno de ellos.` : '',
@@ -87,10 +86,10 @@ export function account(d: LangData) {
 }
 
 const staleNote = (l: Langs) => {
-  const obs = [l.totalXpObservedAt, l.streakObservedAt].filter(Boolean).sort()[0];
-  if (!obs) return ' · XP y racha: sin observar';
+  const obs = l.totalXpObservedAt;
+  if (!obs) return ' · XP: sin observar';
   const day = (v: string) => String(v).slice(0, 10);
-  return l.updatedAt && day(obs) !== day(l.updatedAt) ? ' · XP y racha observados el ' + day(obs) : '';
+  return l.updatedAt && day(obs) !== day(l.updatedAt) ? ' · XP observado el ' + day(obs) : '';
 };
 
 /** Account card, the part read from the XP history (days with XP, sync line). */
@@ -115,7 +114,6 @@ export function legacyAccount(l: LegacyLang) {
   const lastIso = s.length ? new Date(s[s.length - 1].date * 1000).toISOString().slice(0, 10) : null;
   return {
     xp: l.totalXp != null ? es(l.totalXp) + ' XP' : '—',
-    streak: l.streak != null ? `🔥 ${l.streak} días` : '',
     days: activeDaysText(t.activeDays ?? 0, t.days ?? 0),
     daysSub: activeDaysSub(s.length ? s[0].date : null),
     sync: 'Sincronizado ' + relDate(l.createdAt || '') + ' · Actividad hasta ' + (lastIso ? fmtDate(lastIso) : '—') + (lastSync ? ' · Path ' + relDate(lastSync) : ''),
