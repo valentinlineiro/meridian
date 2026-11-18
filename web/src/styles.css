@@ -15,6 +15,7 @@
 
 *{box-sizing:border-box}body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;margin:0;background:var(--bg);color:var(--text);line-height:1.4}
 a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
+button{font-family:inherit} /* buttons otherwise render in the browser default (Arial), not the system stack */
 header{position:sticky;top:0;z-index:10;background:var(--surface);border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;padding:14px 20px;gap:16px;flex-wrap:wrap}
 .h-left .brand{margin:0;font-weight:700;font-size:var(--fs-h);letter-spacing:.02em;display:flex;gap:8px;align-items:center}
 .h-left small{color:var(--muted);font-size:var(--fs-sm);display:block;margin-top:2px}
@@ -471,4 +472,4 @@ app-chess{--muted:var(--muted-bright)}
 .gt-name{font-weight:600}.gt-state{font-variant-numeric:tabular-nums;color:var(--text)}.gt-todo{color:var(--muted);font-weight:400}
 @media(min-width:761px){.gt{grid-template-columns:repeat(2,minmax(0,1fr))}}
 #gamesTab>.gh-foot{padding:0 12px;margin:16px 0}
-@media(max-width:480px){.seg .btn{padding-left:9px;padding-right:9px}} /* four options (Semana / 4 semanas / 3 meses / Todo) and a caption fit one row at 390px */
+@media(max-width:480px){.seg{gap:4px}.seg .btn{padding-left:6px;padding-right:6px}} /* four options (Semana / 4 semanas / 3 meses / Todo) and a caption fit one row at 390px */
