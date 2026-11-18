@@ -17,36 +17,39 @@
     @let o = observed();
     @let tl = timeline();
     <div id="langContent">
+     @if (partial()) {
+      <div id="langPartial" class="err-box u-mb-12" role="alert"><span>Parte de los datos de Idiomas no se pudo cargar.</span>&ngsp;<button class="btn btn-p" type="button" (click)="data.reload()">Reintentar</button></div>
+     }
      <!-- Nivel 1: Vista Global -->
      <div id="langGlobalView">
       <div class="lg-top u-mb-12">
-      <div class="card hero-card u-mb-12" id="langCourseHero">
+      <div class="card hero-card lg-card" id="langCourseHero">
         <div id="langHeroCard">
-          <div class="u-d-flex u-jc-space-between u-ai-center u-wrap-wrap u-gap-8">
+          <div class="lg-split lg-center lg-gap lg-wrap">
             <div class="lg-min0">
-              <div class="muted u-fs-xs u-tt-uppercase u-ls-p05em">Curso seleccionado</div>
-              <div class="u-d-flex u-ai-center u-gap-8 u-wrap-wrap">
+              <div class="lg-label">Curso seleccionado</div>
+              <div class="lg-inline lg-wrap">
                 <span class="u-fs-h" id="langCourseFlag">{{ h?.flag }}</span>
                 <select id="langCourseSelect" class="course-select" aria-label="Curso seleccionado" (change)="select($any($event.target).value)">
                   @for (op of h?.options ?? []; track op.id) { <option [value]="op.id" [selected]="op.id === selected()">{{ op.label }}</option> }
                 </select>
               </div>
-              <div id="langActiveHeroMeta" class="muted u-fs-sm u-mt-2">{{ h?.meta ?? '—' }}</div>
+              <div id="langActiveHeroMeta" class="u-mt-2 muted">{{ h?.meta ?? '—' }}</div>
             </div>
           </div>
           @let v = lv();
           @if (v) {
-            <div class="lv-top u-mt-14"><span class="lv-big" id="langLevel">{{ v.level }}</span><span class="muted u-fs-sm">según el curso</span>@if (v.change) {<span class="lv-change" id="langLevelChange">{{ v.change }}</span>}</div>
+            <div class="lv-top u-mt-14"><span class="lv-big" id="langLevel">{{ v.level }}</span><span class="muted">según el curso</span>@if (v.change) {<span class="lv-change" id="langLevelChange">{{ v.change }}</span>}</div>
           }
           <div class="u-mt-14">
-            <div class="u-d-flex u-jc-space-between u-ai-baseline u-fs-sm u-mb-4">
+            <div class="u-fs-sm u-mb-4 lg-split">
               <span class="muted">Curso</span>
               <span class="u-fwt-600" id="langActiveProgress">{{ p?.text ?? '—' }}</span>
             </div>
             <div class="progress-bar lv-track"><div id="langActiveProgressBar" [style.width.%]="p?.width ?? 0"></div>@if (v) {@for (x of v.dividers; track $index) {<i class="lv-div" [style.left.%]="x"></i>}}</div>
             @if (v) {
               <div id="langLevels" class="lv-names">@for (l of v.levels; track l.name) {<span [attr.data-level]="l.name" [class.lv-cur]="l.current" [style.flex-grow]="l.units">{{ l.name }}</span>}</div>
-              <div class="u-d-flex u-jc-space-between u-ai-baseline u-fs-sm u-mt-12 u-mb-4"><span class="muted">Nivel {{ v.level }}</span><span class="u-fwt-600" id="langLevelText">{{ v.levelText }}</span></div>
+              <div class="u-fs-sm u-mt-12 u-mb-4 lg-split"><span class="muted">Nivel {{ v.level }}</span><span class="u-fwt-600" id="langLevelText">{{ v.levelText }}</span></div>
               <div class="progress-bar"><div id="langLevelBar" [style.width.%]="v.levelPct"></div></div>
               <p class="u-m-0 u-mt-8" id="langLevelSentence">{{ v.sentence }}</p>
             }
@@ -55,20 +58,20 @@
       </div>
 
       @if (activity(); as act) {
-        <div class="card u-mb-12" id="langActivity">
-          <div class="u-d-flex u-jc-space-between u-ai-baseline"><h2 class="u-m-0">Actividad</h2></div>
+        <div class="card lg-card" id="langActivity">
+          <div class="lg-split"><h2 class="u-m-0">Actividad</h2></div>
           <div class="hc-n u-mt-8"><span class="hc-big" id="langActivityBig">{{ act.big }}</span><span class="muted">XP en 7 días · de toda la cuenta</span>@if (act.delta) {<span class="hc-delta muted">{{ act.delta }}</span>}</div>
           @if (act.bars.length) {<div class="wk u-mt-8" role="img" [attr.aria-label]="act.aria">@for (b of act.bars; track $index) {<div><i [style.height.px]="b.h"></i><span>{{ b.letter }}</span></div>}</div>}
-          <p class="muted u-fs-sm u-m-0 u-mt-8" id="langActivityNote">{{ act.note }}</p>
+          <p class="u-m-0 u-mt-8 muted" id="langActivityNote">{{ act.note }}</p>
         </div>
       }
       </div>
 
       <app-section sectionId="langAccountDetails" title="Tu cuenta" [meta]="acc ? acc.xp + ' · ' + acc.days : ''" [open]="false">
-      <div class="card u-mb-12" id="langAccountCard">
-        <div class="u-d-flex u-jc-space-between u-ai-center u-wrap-wrap u-gap-8">
+      <div class="card lg-card" id="langAccountCard">
+        <div class="lg-split lg-center lg-gap lg-wrap">
           <div>
-            <div class="muted u-fs-xs u-tt-uppercase u-ls-p05em">Estado de la cuenta</div>
+            <div class="lg-label">Estado de la cuenta</div>
           </div>
         </div>
         <div class="kpis u-m-14-0-0">
@@ -76,34 +79,35 @@
           <div class="kpi"><span class="kl">Días con Actividad</span><b id="langAccountDays">{{ acc?.days ?? '—' }}</b>@if (acc?.daysSub) {<small id="langAccountDaysSub">{{ acc?.daysSub }}</small>}</div>
           <div class="kpi"><span class="kl">Catálogo</span><b id="langAccountCourses">{{ acc?.courses ?? '—' }}</b></div>
         </div>
-        <div class="muted u-fs-sm u-mt-10" id="langSyncMeta">{{ acc?.sync }}</div>
-        <div class="muted u-fs-xs u-mt-6" id="langXpGapNote">{{ acc?.gap }}</div>
+        <div class="u-mt-10 muted" id="langSyncMeta">{{ acc?.sync }}</div>
+        <div class="u-mt-6 lg-note" id="langXpGapNote">{{ acc?.gap }}</div>
       </div>
 
       <!-- Tira semanal (Estado 10s) -->
-      <div class="card u-mb-12" id="langWeekCard">
-        <div class="u-d-flex u-jc-space-between u-ai-flex-start u-gap-8">
+      <div class="card lg-card" id="langWeekCard">
+        <div class="lg-split lg-start lg-gap">
           <div>
-            <div class="u-d-flex u-ai-center u-gap-8">
+            <div class="lg-inline">
               <h2 class="u-m-0">Actividad de cuenta · últimos 7 días</h2>
             </div>
-            <div class="muted u-fs-xs u-mt-2">Incluye actividad de todos los cursos y actividades registradas en la fuente.</div>
+            <div class="u-mt-2 lg-note">Incluye actividad de todos los cursos y actividades registradas en la fuente.</div>
           </div>
-          <span id="langWeekSummary" class="muted u-fs-xs lg-nowrap">{{ w?.summary ?? '—' }}</span>
+          <span id="langWeekSummary" class="lg-nowrap lg-note">{{ w?.summary ?? '—' }}</span>
         </div>
         <div class="activity-strip u-mt-10" id="langActivityStrip">
           @for (c of w?.cells ?? []; track c.date) {
             <div class="lg-day" [title]="c.title">
-              <span class="muted u-fs-xs">{{ c.letter }}</span>
+              <span class="lg-note">{{ c.letter }}</span>
               <div class="lg-dot" [style.background]="c.color"></div>
-              <span class="muted u-fs-xs">{{ c.label }}</span>
+              <span class="lg-note">{{ c.label }}</span>
+              <span class="sr-only">{{ c.title }}</span>
             </div>
           }
         </div>
-        @if (pace(); as line) { <div id="langPaceLine" class="muted u-mt-10 u-fs-sm">{{ line }}</div> }
-        <div class="u-d-flex u-ai-center u-jc-space-between u-gap-8 u-wrap-wrap u-mt-10 u-fs-sm" id="langGoalRow">
+        @if (pace(); as line) { <div id="langPaceLine" class="u-mt-10 muted">{{ line }}</div> }
+        <div class="u-mt-10 u-fs-sm lg-split lg-center lg-gap lg-wrap" id="langGoalRow">
           <span id="langGoalToday" class="muted">{{ w?.goal }}</span>
-          <a routerLink="/settings">Configurar</a>
+          <a routerLink="/settings">Configurar objetivo</a>
         </div>
       </div>
       </app-section>
@@ -117,23 +121,23 @@
               @for (c of cl; track c.id) {
                 <details class="card lg-clcard" [open]="c.isSelected">
                   <summary class="lg-clsum">
-                    <div class="u-d-flex u-ai-center u-gap-8">
+                    <div class="lg-inline">
                       <span class="u-fs-h">{{ c.flag }}</span>
-                      <div><b>{{ c.title }}</b>@if (c.isSelected) {&ngsp;<span class="pill pill-selected u-fs-xs">Seleccionado</span>}<div class="muted u-fs-xs">{{ c.fromTo }}</div></div>
+                      <div><b>{{ c.title }}</b>@if (c.isSelected) {&ngsp;<span class="pill pill-selected u-fs-xs">Seleccionado</span>}<div class="lg-note">{{ c.fromTo }}</div></div>
                     </div>
-                    <div class="u-d-flex u-ai-center u-gap-8">
+                    <div class="lg-inline">
                       <span class="pill u-fwt-700">{{ c.xp }}</span>
                       @if (c.units) { <span class="pill" [style.border-color]="c.sections.length ? 'var(--ok)' : null" [style.color]="c.sections.length ? 'var(--ok-soft)' : null">{{ c.units }}</span> }
-                      <span class="muted u-fs-sm">▾</span>
+                      <span class="muted" aria-hidden="true">▾</span>
                     </div>
                   </summary>
                   <div class="lg-clbody">
                     @if (c.sections.length) {
                       <div class="u-mt-8">
-                        <div class="muted u-fs-xs u-tt-uppercase u-ls-p05em u-mb-6">Desglose de secciones</div>
+                        <div class="u-mb-6 lg-label">Desglose de secciones</div>
                         @for (sec of c.sections; track sec.key) {
-                          <div class="row row-sec"><div class="u-flex-1">
-                            <div class="u-d-flex u-jc-space-between u-ai-baseline u-fs-sm"><b>{{ sec.title }}</b><span><b>{{ sec.units }}</b> ({{ sec.pctText }})</span></div>
+                          <div class="row row-sec"><div class="lg-grow">
+                            <div class="u-fs-sm lg-split"><b>{{ sec.title }}</b><span><b>{{ sec.units }}</b> ({{ sec.pctText }})</span></div>
                             <div class="progress-bar pb-6 u-mt-4"><div [style.width.%]="sec.width"></div></div>
                           </div></div>
                         }
@@ -144,7 +148,7 @@
                         <div class="progress-bar pb-6"><div class="pf-info" [style.width]="c.prog.pct + '%'"></div></div>
                       </div>
                     }
-                    <div class="u-mt-8 u-d-flex u-jc-flex-end u-gap-8 u-wrap-wrap">
+                    <div class="u-mt-8 lg-actions">
                       @if (!c.isSelected) { <button type="button" class="btn btn-sm" (click)="select(c.id)">Elegir este curso</button> }
                       <button type="button" class="btn btn-g btn-sm" (click)="openDetail(c.id)">Ver detalle curricular completo</button>
                     </div>
@@ -160,23 +164,23 @@
       <app-section sectionId="langAnalyticsDetails" title="Análisis y métricas longitudinales" [open]="false">
         <!-- Cambios Observados (Longitudinal #16.9) -->
         <div class="card u-m-12-0" id="langObservedChangesCard">
-          <div class="u-d-flex u-jc-space-between u-ai-center u-mb-8">
+          <div class="u-mb-8 lg-split lg-center">
             <h2 class="u-m-0">Cambios observados</h2>
           </div>
           <div id="langObservedChangesBody">
             <div class="u-fwt-700 u-fs-lg u-c-text-2 u-mb-8" id="langObservedSynthesis">{{ o?.synthesis ?? '—' }}</div>
             <div class="u-d-grid u-gap-8 u-fs-sm" id="langObservedDimensions">
               <div id="langCurricularProgressBlock" class="observed-dim">
-                <div class="u-fwt-600 u-c-muted">1. Unidades completadas (el curso no ha cambiado de tamaño)</div>
+                <div class="lg-dim-title">Unidades completadas</div>
                 <div id="langCurricularProgressDetail" class="muted u-mt-2">{{ o?.progress ?? '—' }}</div>
               </div>
               <div id="langCourseStructureBlock" class="observed-dim">
-                <div class="u-fwt-600 u-c-muted">2. Estructura del curso</div>
+                <div class="lg-dim-title">Estructura del curso</div>
                 <div id="langCourseStructureDetail" class="muted u-mt-2">{{ o?.structure ?? '—' }}</div>
               </div>
               <div id="langAccountActivityBlock" class="observed-dim">
-                <div class="u-d-flex u-jc-space-between u-ai-baseline">
-                  <span class="u-fwt-600 u-c-muted">3. Actividad de cuenta (XP y sesiones)</span>
+                <div class="lg-split">
+                  <span class="lg-dim-title">Actividad de cuenta (XP y sesiones)</span>
                 </div>
                 <div id="langAccountActivityDetail" class="muted u-mt-2">{{ activityToday() ?? '—' }}</div>
               </div>
@@ -184,8 +188,8 @@
           </div>
         </div>
 
-        <div class="card u-mb-12">
-          <div class="u-d-flex u-jc-space-between u-ai-center u-mb-8">
+        <div class="card lg-card">
+          <div class="u-mb-8 lg-split lg-center">
             <h2 class="u-m-0">Actividad de cuenta — últimos 90 días</h2>
           </div>
           <div id="langXpTimeline" class="lg-tl" role="img" [attr.aria-label]="isNA(tl) ? null : tl?.summary">
@@ -195,7 +199,7 @@
               @if (tl.empty) { <div class="muted">{{ tl.empty }}</div> }
             }
           </div>
-          <div class="muted u-fs-sm u-mt-8" id="langXpSummary">{{ isNA(tl) ? '' : tl?.summary }}</div>
+          <div class="u-mt-8 muted" id="langXpSummary">{{ isNA(tl) ? '' : tl?.summary }}</div>
         </div>
 
         <!-- Bloques A y B: Intensidad y Perfil Semanal -->
@@ -207,8 +211,8 @@
               @if (isNA(i)) { <div class="muted">{{ i }}</div> }
               @else if (i) {
                 <div class="form-split u-mb-12">
-                  <div><div class="muted u-fs-xs u-ls-p04em u-tt-uppercase">XP / sesión</div><div class="u-fs-h u-fwt-700">{{ i.xp }}</div><div class="muted u-fs-xs">global · med: {{ i.xpMed }}</div></div>
-                  <div><div class="muted u-fs-xs u-ls-p04em u-tt-uppercase">Tiempo / sesión</div><div class="u-fs-h u-fwt-700">{{ i.time }}</div><div class="muted u-fs-xs">global · med: {{ i.timeMed }}</div></div>
+                  <div><div class="lg-label">XP / sesión</div><div class="u-fs-h u-fwt-700">{{ i.xp }}</div><div class="lg-note">global · med: {{ i.xpMed }}</div></div>
+                  <div><div class="lg-label">Tiempo / sesión</div><div class="u-fs-h u-fwt-700">{{ i.time }}</div><div class="lg-note">global · med: {{ i.timeMed }}</div></div>
                 </div>
               }
             </div>
@@ -222,7 +226,7 @@
                 @for (r of wd.rows; track $index) {
                   <div class="hist-row"><span>{{ r.day }}</span><div class="bar"><i class="hist-fill" [style.width.%]="r.width"></i></div><span class="muted lg-hist-r120">{{ r.text }}</span></div>
                 }
-                @if (wd.rows.length) { <div class="muted u-fs-xs u-mt-8">Medianas observadas por día de la semana en la ventana de {{ wd.calendarDays }} días.</div> }
+                @if (wd.rows.length) { <div class="u-mt-8 lg-note">Medianas observadas por día de la semana en la ventana de {{ wd.calendarDays }} días.</div> }
                 @else { <div class="muted">Sin datos suficientes</div> }
               }
             </div>
@@ -230,7 +234,7 @@
         </div>
 
         <!-- Bloque D: Concentración Histórica de Cursos -->
-        <div class="card u-mb-12" id="langConcentrationCard">
+        <div class="card lg-card" id="langConcentrationCard">
           <h2>En qué cursos pones el esfuerzo · catálogo</h2>
           <div id="langConcentrationBody">
             @let hc = concentration();
@@ -241,33 +245,33 @@
                   <div class="hist-row"><span class="lg-hist-name">{{ c.name }}</span><div class="bar"><i class="bar-win" [style.width.%]="c.width"></i></div><span class="lg-hist-r70">{{ c.share }}</span></div>
                 }
               </div>
-              <div class="muted u-fs-xs u-mt-8">{{ hc.footer }}</div>
+              <div class="u-mt-8 lg-note">{{ hc.footer }}</div>
             }
           </div>
         </div>
 
         <!-- Bloque E: Comparabilidad Curricular Longitudinal -->
-        <div class="card u-mb-12" id="langComparabilityCard">
+        <div class="card lg-card" id="langComparabilityCard">
           <h2>Cómo avanza cada curso</h2>
           <div id="langComparabilityBody">
             @let cmp = comparability();
             @if (isNA(cmp)) { <div class="muted">{{ cmp }}</div> }
-            @else if (cmp === null) { <div class="muted">No se registran múltiples observaciones curriculares para comparar.</div> }
+            @else if (cmp === null) { <div class="muted">Aún no hay dos lecturas de un mismo curso para comparar.</div> }
             @else if (cmp) {
               @for (r of cmp.rows; track $index) {
-                <div class="row row-p8"><div class="u-flex-1">
-                  <div class="u-d-flex u-jc-space-between u-ai-center"><b>{{ r.name }}</b><span [class]="r.pill">{{ r.status }}</span></div>
+                <div class="row row-p8"><div class="lg-grow">
+                  <div class="lg-split lg-center"><b>{{ r.name }}</b><span [class]="r.pill">{{ r.status }}</span></div>
                   <div class="u-fs-sm u-mt-4">{{ r.text }}</div>
-                  <div class="muted u-fs-xs u-mt-2">{{ r.observed }}</div>
+                  <div class="u-mt-2 lg-note">{{ r.observed }}</div>
                 </div></div>
               }
               @for (c of cmp.waiting; track c.key) {
-                <div class="row row-p8"><div class="u-flex-1">
-                  <div class="u-d-flex u-jc-space-between u-ai-center"><b>{{ c.name }}</b><span class="pill pill-draw">ESPERANDO OTRA LECTURA</span></div>
-                  <div class="muted u-fs-xs u-mt-2">Hay una sola lectura de este curso; con otra se podrá comparar.</div>
+                <div class="row row-p8"><div class="lg-grow">
+                  <div class="lg-split lg-center"><b>{{ c.name }}</b><span class="pill pill-draw">Esperando otra lectura</span></div>
+                  <div class="u-mt-2 lg-note">Hay una sola lectura de este curso; con otra se podrá comparar.</div>
                 </div></div>
               }
-              <div class="muted u-fs-xs u-mt-8">Si Duolingo cambia el tamaño del curso (más o menos unidades), no calculamos el progreso para no inventarlo.</div>
+              <div class="u-mt-8 lg-note">Si Duolingo cambia el tamaño del curso (más o menos unidades), no calculamos el progreso para no inventarlo.</div>
             }
           </div>
         </div>

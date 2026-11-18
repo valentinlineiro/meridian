@@ -39,6 +39,8 @@ export class Languages {
   protected readonly data = rxResource<Load, unknown>({ stream: () => this.load() });
   protected readonly state = computed(() => this.data.hasValue() ? this.data.value() : undefined);
   protected readonly d = computed(() => { const s = this.state(); return s?.kind === 'ok' ? s.d : null; });
+  /** Some of the page's requests failed: its blocks say "No disponible", and this is where the owner can try again. */
+  protected readonly partial = computed(() => { const d = this.d(); return !!d && (d.xp === null || d.analytics === null || d.goal === undefined); });
 
   /** URL param if in the catalogue, else the saved choice, else the most-XP course (resolveSelectedCourseId :388). */
   protected readonly selected = computed(() => { const d = this.d(); return d ? resolveSelectedCourseId(d.courses, this.courseId()) : null; });

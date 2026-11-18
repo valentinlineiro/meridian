@@ -13,7 +13,7 @@ function cefrRows(sections: Section[]) {
     e.completed += s.completedUnits || 0; e.total += s.totalUnits || 0; e.count++;
     byLevel.set(lvl, e);
   }
-  return [...byLevel].map(([lvl, e]) => ({ key: lvl, label: `Nivel ${lvl} (${e.count} sec)`, units: `${e.completed} / ${e.total} unidades`, width: e.total ? e.completed / e.total * 100 : 0 }));
+  return [...byLevel].map(([lvl, e]) => ({ key: lvl, label: `Nivel ${lvl} (${e.count} ${e.count === 1 ? 'sección' : 'secciones'})`, units: `${e.completed} / ${e.total} unidades`, width: e.total ? e.completed / e.total * 100 : 0 }));
 }
 
 function sectionRows(sections: Section[]) {
@@ -22,7 +22,7 @@ function sectionRows(sections: Section[]) {
     title: `SECCIÓN ${s.sectionIndex}: ${cefrLabel(s)}`,
     units: `${s.completedUnits ?? 0} / ${s.totalUnits ?? 0} unidades`,
     width: s.totalUnits ? (s.completedUnits || 0) / s.totalUnits * 100 : 0,
-    meta: `Section ID: ${s.sectionId} · Tipo: ${s.type || 'learning'} · ` + (s.lastSeenAt ? 'Última observación: ' + s.lastSeenAt.slice(0, 10) : ''),
+    meta: `ID de sección: ${s.sectionId} · Tipo: ${s.type || 'learning'} · ` + (s.lastSeenAt ? 'Última observación: ' + s.lastSeenAt.slice(0, 10) : ''),
   }));
 }
 
@@ -33,25 +33,25 @@ function sectionRows(sections: Section[]) {
       <div class="u-mb-12">
         <button type="button" class="btn btn-g" id="btnBackToLanguages" (click)="back.emit()">← Volver a todos los cursos</button>
       </div>
-      <div class="card u-mb-12" id="langCourseDetailCard">
+      <div class="card lg-card" id="langCourseDetailCard">
         <div class="lg-detail-head">
           <div>
             <h2 id="langDetailTitle" class="lg-detail-title">{{ head()?.title }}</h2>
-            <div class="muted u-fs-sm u-mt-2" id="langDetailSub">{{ head()?.sub }}</div>
+            <div class="u-mt-2 muted" id="langDetailSub">{{ head()?.sub }}</div>
           </div>
           <span id="langDetailXpPill" class="pill u-fs-lg u-fwt-700">{{ head()?.xp }}</span>
         </div>
       </div>
-      <div class="card u-mb-12" id="langCefrCard">
+      <div class="card lg-card" id="langCefrCard">
         <h2 class="u-m-0-0-4">Unidades curriculares por nivel CEFR</h2>
-        <div class="muted u-fs-xs u-mb-10">Mide unidades del árbol clasificadas por la fuente bajo cada nivel; no constituye evaluación ni certificación de competencia lingüística.</div>
+        <div class="u-mb-10 lg-note">Mide unidades del árbol clasificadas por la fuente bajo cada nivel; no constituye evaluación ni certificación de competencia lingüística.</div>
         <div id="langCefrBody">
           @let c = cefr();
           @if (typeof c === 'string') { <div class="muted">{{ c }}</div> }
           @else {
             @for (r of c; track r.key) {
-              <div class="row"><div class="u-flex-1">
-                <div class="u-d-flex u-jc-space-between u-ai-baseline"><b>{{ r.label }}</b><span><b>{{ r.units }}</b></span></div>
+              <div class="row"><div class="lg-grow">
+                <div class="lg-split"><b>{{ r.label }}</b><span><b>{{ r.units }}</b></span></div>
                 <div class="u-mt-4"><div class="bar"><i class="hist-fill" [style.width.%]="r.width"></i></div></div>
               </div></div>
             } @empty { <div class="muted">Sin información de CEFR</div> }
@@ -65,11 +65,11 @@ function sectionRows(sections: Section[]) {
           @if (typeof ss === 'string') { <div class="muted">{{ ss }}</div> }
           @else {
             @for (s of ss; track s.key) {
-              <div class="row row-sec-10"><div class="u-flex-1">
-                <div class="u-d-flex u-jc-space-between u-ai-baseline"><b>{{ s.title }}</b><span><b>{{ s.units }}</b></span></div>
+              <div class="row row-sec-10"><div class="lg-grow">
+                <div class="lg-split"><b>{{ s.title }}</b><span><b>{{ s.units }}</b></span></div>
                 <div class="u-mt-6"><div class="bar"><i class="bar-win" [style.width.%]="s.width"></i></div></div>
-                <details class="u-mt-6"><summary class="muted u-fs-xs">Detalle de sección</summary>
-                  <div class="muted u-fs-sm u-mt-4">{{ s.meta }}</div>
+                <details class="u-mt-6"><summary class="lg-note">Detalle de sección</summary>
+                  <div class="u-mt-4 muted">{{ s.meta }}</div>
                 </details>
               </div></div>
             } @empty { <div class="muted">Sin secciones registradas</div> }

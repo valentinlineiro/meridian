@@ -203,12 +203,15 @@ A native `<dialog>`: bottom sheet on phones (full width, 90vh max, 12px top corn
 ### Segmented control
 Ghost buttons in a row with `aria-pressed`; the pressed one turns primary. Four periods and a caption fit one row at 390px.
 
+### Idiomas layout classes
+Named `lg-*` classes in place of utility stacks: `lg-split` (label left, value right, baseline; `lg-center`, `lg-start`, `lg-gap`, `lg-wrap` modify it), `lg-inline` (flag plus title), `lg-actions` (right-aligned button group), `lg-label` (11px uppercase muted, 0.05em; 13px on phones), `lg-note` (11px muted, 13px on phones), `lg-dim-title`, `lg-card` (12px below), `lg-grow`. At 360px and below the weekday text wraps in 92px so the bar keeps about 75px.
+
 ### Disclosure
-`<details>` with a muted 600 summary, 24px minimum (44px on phones) and a "Ver criterio" / "Ocultar" hint in link colour. Used for criteria, methodology and chess groups.
+`<details>` with a muted 600 summary, 24px minimum (44px on phones) and a "Ver criterio" / "Ocultar" hint in link colour. Used for criteria, methodology and chess groups. A page section (`Section`) puts its title in an `<h2>` inside the summary, which inherits the summary's look, so heading navigation finds every collapsible block; its side note stays outside the heading.
 
 ### Notes and errors
 - **Note:** sunken box, 1px strong hairline, 8px radius. **Loss note** (legacy): warning ground with a 3px left rule; new notes use a warning ground and a 1px border instead.
-- **Error box:** loss ground and line, message left, retry button right; it spans the grid. Every section either loads or shows this with a retry.
+- **Error box:** loss ground and line, message left, retry button right; it spans the grid. Every section either loads or shows this with a retry. When only some of a page's requests fail (Idiomas), its blocks say "No disponible" and one error box at the top offers Reintentar for all of them.
 
 ### Bottom sheet ("Más")
 Fixed above the tab bar, 12px top corners, 48px rows at 16px, group labels in 11px uppercase, current page in Text on Selected.
@@ -236,4 +239,4 @@ Fixed above the tab bar, 12px top corners, 48px rows at 16px, group labels in 11
 - **Don't** put a thick coloured left or right border on a card or note (`.loss-note`, `.hl` are legacy).
 - **Don't** add streaks, loss framing, confetti or progress bars that exploit completion (PRODUCT.md principle 2).
 - **Don't** introduce a new status colour outside the Verdict triples.
-- **Don't** add inline `style="..."` attributes (none remain; only dynamic `[style.x]` bindings); add or extend a named class. The ~80 `u-*` utilities are `!important` and legacy: use them sparingly and retire them when a surface is touched.
+- **Don't** add inline `style="..."` attributes (none remain; only dynamic `[style.x]` bindings); add or extend a named class. The ~80 `u-*` utilities are `!important` and legacy: use them sparingly and retire them when a surface is touched. Idiomas has retired its layout and label utilities (196 uses down to 93); what remains there are one-off margins and type steps, and the phone font-size rules still key on `u-fs-*`.
