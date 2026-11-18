@@ -1,7 +1,7 @@
 <div class="hero-card" id="gameReportFigures">
   <div class="u-d-flex u-jc-space-between u-ai-center u-wrap-wrap u-gap-8">
     <div class="muted u-fs-xs u-tt-uppercase u-ls-p05em">Frente a la media de LinkedIn · {{ rangeName() }}</div>
-    @if (verdict(); as v) {<app-verdict [verdict]="v" />}
+    @if (verdict(); as v) {<span class="verdict-tr"><span class="muted">Tendencia</span><app-verdict [verdict]="v" /></span>}
   </div>
   @if (figs(); as f) {
     <div class="gr-n u-mt-8"><span class="gr-fig" id="gameFigBig">{{ f.big }}</span><span class="muted" id="gameFigCap">{{ f.cap }}</span>@if (f.delta) {<span class="gr-delta muted" id="gameFigDelta">{{ f.delta }}</span>}</div>
@@ -45,7 +45,7 @@
         </g>
       }
     </svg>
-    <div class="muted u-fs-sm">Línea de puntos: tu media del juego. En rojo, el día en que más se pierde.</div>
+    <div class="muted u-fs-sm">Línea de puntos: tu media del juego. @if (d.stands) {En rojo, el día que destaca por perder más.} @else {Ningún día destaca por perder más.}</div>
   } @else {<p class="muted u-m-0">No disponible</p>}
 </div>
 
@@ -62,7 +62,7 @@
 <div class="hero-card" id="gameReportHero">
   <div class="u-d-flex u-jc-space-between u-ai-flex-start u-wrap-wrap u-gap-8">
     <div class="muted u-fs-xs u-tt-uppercase u-ls-p05em">Informe individual · {{ rangeName() }}</div>
-    @if (verdict(); as v) {<app-verdict [verdict]="v" />}
+    @if (verdict(); as v) {<span class="verdict-tr"><span class="muted">Tendencia</span><app-verdict [verdict]="v" /></span>}
   </div>
   @if (sentence().length) {<p class="grow-line" id="gameReportSentence">{{ sentence().join('. ') }}.</p>}
   <app-help label="Cómo se calcula">@for (l of how(); track $index) {<p>{{ l }}</p>}</app-help>

@@ -511,3 +511,7 @@ h2.lg-detail-title{margin:0;font-size:var(--fs-h);letter-spacing:0;text-transfor
 .pill.pill-wrap{margin-top:10px;white-space:normal}
 .grid-auto-240{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
 .ul-ind{padding-left:18px}
+
+/* Games: the verdict pill is the trend; the word says so, so it is not read as a verdict on the big number next to it */
+.verdict-tr{display:inline-flex;align-items:center;gap:6px;font-size:var(--fs-sm)}
+.gc .verdict-tr{flex-direction:column;align-items:flex-start;gap:2px} /* hub cards: the label sits above the pill so the number column keeps its width */
