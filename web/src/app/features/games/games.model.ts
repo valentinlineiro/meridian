@@ -67,11 +67,6 @@ export const beatText = gpct;
 
 export const LABEL_TEXT: Record<Label, string> = { mejora_sostenida: 'Mejora sostenida', estable: 'Estable (sin cambio detectable)', deterioro: 'Deterioro', datos_insuficientes: 'Datos insuficientes' };
 
-/** A manual log has no broken streak: with no record for 2+ days the run is 0 because nothing was recorded. */
-const streakActive = (x: Game, s: Summary) => x.beatStreak.current > 0 || !!(s.playStreak && s.playStreak.current > 0);
-/** The run, or "—": a stale log is said once (hero, tooltip), not in every row. */
-export const gbeatStreak = (x: Game, s: Summary) => streakActive(x, s) ? gdays(x.beatStreak.current) : '—';
-export const staleTitle = (x: Game, s: Summary) => !streakActive(x, s) && s.to ? 'Sin registro desde ' + fmtDate(s.to) : null;
 
 export function interpretationLines(x: Game): string[] {
   const i = x.interpretation, b = i.bands, t = x.trend112, r = x.recent28vBase56, out: string[] = [];
@@ -107,15 +102,13 @@ export function formLines(x: Game, range: Range): string[] {
 /** Cards in verdict order: what needs a look first. A game without a readable verdict goes last. */
 export const cardOrder = (s: Summary): string[] => attentionOrder(s.games);
 
-/** Port of gamesStreakView (src/dashboard.client.js:828) for the hero. */
+/** The hub footer: the span of the record and, when the manual log has lapsed, since when. No streak and no record: a log is not a score. */
 export function gamesHero(s: Summary) {
-  if (!Object.keys(s.games).length) return { label: 'LinkedIn Games · días seguidos jugando', streak: '—', meta: 'Aún no hay datos.', days: '—' };
+  if (!Object.keys(s.games).length) return { since: '—', meta: 'Aún no hay datos.', days: '—' };
   if (typeof s.days !== 'number') throw new TypeError('summary.days is not a number');
-  const cur = s.playStreak?.current ?? 0, max = s.playStreak?.max ?? 0;
-  const maxTxt = max > 0 ? 'Tu récord: ' + gdays(max) : '';
   const days = gdays(s.days) + ' registrados · ' + fmtDate(s.from) + ' → ' + fmtDate(s.to);
-  if (cur > 0) return { label: 'LinkedIn Games · días seguidos jugando', streak: gdays(cur) + (cur === 1 ? ' seguido' : ' seguidos'), meta: maxTxt, days };
-  return { label: 'LinkedIn Games · último registro', streak: s.to ? 'Sin registro desde ' + fmtDate(s.to) : '—', meta: [maxTxt, 'registro manual'].filter(Boolean).join(' · '), days };
+  if ((s.playStreak?.current ?? 0) > 0) return { since: '', meta: '', days };
+  return { since: s.to ? 'Sin registro desde ' + fmtDate(s.to) : '—', meta: 'registro manual', days };
 }
 
 /** The game charted by default: the one with the most observations (first on a tie). */
@@ -192,17 +185,12 @@ export function figures(x: Game, range: Range) {
 }
 
 const names = (n: string[]) => n.length < 2 ? n.join('') : n.slice(0, -1).join(', ') + ' y ' + n[n.length - 1];
-/** "How you are doing": how many games improve, one segment per game (worst first) and one sentence that names them. Null with no games. */
+/** "How you are doing": one sentence that names each game by its state, worst first. Null with no games. */
 export function overview(rows: { name: string; verdict: Verdict }[]) {
   if (!rows.length) return null;
   const by = (f: (v: Verdict) => boolean) => rows.filter((r) => f(r.verdict)).map((r) => r.name).sort((a, b) => a.localeCompare(b, 'es'));
   const down = by((v) => v.dir === 'down'), flat = by((v) => v.state === 'no-signal'), few = by((v) => v.state === 'few-data'), up = by((v) => v.dir === 'up');
-  const n = rows.length;
-  const counts = [[down, 'bajando', 'down'], [flat, flat.length === 1 ? 'estable' : 'estables', 'flat'], [few, 'con pocos datos', 'few'], [up, 'mejorando', 'up']] as const;
   return {
-    big: `${up.length} de ${n}`, cap: up.length === 1 ? 'juego mejora' : 'juegos mejoran',
-    segments: counts.flatMap(([l, , kind]) => l.map(() => kind)),
-    aria: `${n === 1 ? 'Estado del juego' : `Estado de los ${n} juegos`}: ${counts.filter(([l]) => l.length).map(([l, t]) => `${l.length} ${t}`).join(', ')}.`,
     sentence: [down.length && `${names(down)} ${down.length > 1 ? 'bajan' : 'baja'}`, up.length && `${names(up)} ${up.length > 1 ? 'mejoran' : 'mejora'}`,
       flat.length && `${names(flat)}, sin cambios`, few.length && `${names(few)}, pocos datos`].filter(Boolean).join('. ') + '.',
   };

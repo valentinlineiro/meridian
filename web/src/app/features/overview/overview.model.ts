@@ -3,7 +3,7 @@
 import { Delta, fmtDate, fmtDelta, pc1, scaleDelta } from '../../core/format';
 import { calendarDaysAgo, DAY, isStale, shortDate, sign } from '../../core/xp-week';
 import { resultBars, ResultBarsData } from '../../shared/result-bars';
-import { attentionOrder, gameName, gdays, intervalVerdict, Verdict, verdictFor } from '../../core/words';
+import { attentionOrder, gameName, intervalVerdict, Verdict, verdictFor } from '../../core/words';
 
 // What this page reads of each domain's response: a subset of the Chess and Games models (a feature does not import another feature).
 export interface ChessRecentIn { games?: number | null; winRate?: number | null; delta?: Delta | null }
@@ -76,9 +76,9 @@ function focusOf(k: string, g: GameIn): GamesFocus | null {
   if (typeof m !== 'number' || !Number.isFinite(m)) return null;
   return { big: `${sign(Math.round((m - 1) * 100))} %`, cap: `${gameName(k)} · ${m > 1 ? 'más rápido' : m < 1 ? 'más lento' : 'igual'} que la media`, bars: resultBars(g.series ?? []) };
 }
-export function gamesRow(s: GamesSummaryIn): { verdict: Verdict | null; name: string | null; link: string; line: string; streak: string; focus: GamesFocus | null } {
+export function gamesRow(s: GamesSummaryIn): { verdict: Verdict | null; name: string | null; link: string; line: string; note: string; focus: GamesFocus | null } {
   const keys = attentionOrder(s.games);
-  if (!keys.length) return { verdict: null, name: null, link: '/games', line: 'Sin partidas registradas aún', streak: '', focus: null };
+  if (!keys.length) return { verdict: null, name: null, link: '/games', line: 'Sin partidas registradas aún', note: '', focus: null };
   const vs = keys.map((k) => verdictFor(s.games[k]!.interpretation));
   const head = vs[0]!.state === 'confirmed' || vs[0]!.state === 'possible';
   const rest = head ? vs.slice(1) : vs; // the head is said once, not counted again
@@ -92,7 +92,7 @@ export function gamesRow(s: GamesSummaryIn): { verdict: Verdict | null; name: st
     link: head ? `/games/${keys[0]}` : '/games',
     focus: head ? focusOf(keys[0]!, s.games[keys[0]!]!) : null,
     line: [...(head ? [`${gameName(keys[0]!)}: ${vs[0]!.label}`] : []), ...counts].join(' · '),
-    streak: cur > 0 ? `Racha: ${gdays(cur)} ${cur === 1 ? 'seguido' : 'seguidos'}` : s.to ? `Sin registro desde ${fmtDate(s.to)} · registro manual` : '',
+    note: cur > 0 ? '' : s.to ? `Sin registro desde ${fmtDate(s.to)} · registro manual` : '',
   };
 }
 

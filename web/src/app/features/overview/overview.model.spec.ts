@@ -126,10 +126,10 @@ describe('gamesRow: what needs a look first across the games', () => {
   it('shouldSayFewDataWhenNoGameHasHistory', () => {
     expect(gamesRow(sum({ zip: g('datos_insuficientes') }))!.verdict).toMatchObject({ state: 'few-data' });
   });
-  it('shouldGiveTheStreakOrTheLastRecordDate', () => {
-    expect(gamesRow(sum({ zip: g('estable') }))!.streak).toBe('Racha: 3 días seguidos');
-    expect(gamesRow(sum({ zip: g('estable') }, { playStreak: { current: 1, max: 9 } }))!.streak).toBe('Racha: 1 día seguido');
-    expect(gamesRow(sum({ zip: g('estable') }, { playStreak: { current: 0, max: 9 }, to: '2026-11-03' }))!.streak).toBe('Sin registro desde 3 nov 2026 · registro manual');
+  it('shouldGiveNothingWhileLoggingAndTheLastRecordDateWhenTheLogHasLapsed', () => {
+    expect(gamesRow(sum({ zip: g('estable') }))!.note).toBe('');
+    expect(gamesRow(sum({ zip: g('estable') }, { playStreak: { current: 1, max: 9 } }))!.note).toBe('');
+    expect(gamesRow(sum({ zip: g('estable') }, { playStreak: { current: 0, max: 9 }, to: '2026-11-03' }))!.note).toBe('Sin registro desde 3 nov 2026 · registro manual');
   });
   describe('focus: the number of the game behind the verdict', () => {
     const withData = (label: string, median: number | null) => ({ interpretation: { label, pending: null }, series: [{ date: '2026-11-01', eff: 1.3 }, { date: '2026-11-02', eff: 0.7 }], windows: { '28': { eff: { median } } } });
@@ -148,7 +148,7 @@ describe('gamesRow: what needs a look first across the games', () => {
     });
   });
   it('shouldSayTheLogIsEmptyAndGiveNoVerdict', () => {
-    expect(gamesRow(sum({}))).toEqual({ verdict: null, name: null, link: '/games', line: 'Sin partidas registradas aún', streak: '', focus: null });
+    expect(gamesRow(sum({}))).toEqual({ verdict: null, name: null, link: '/games', line: 'Sin partidas registradas aún', note: '', focus: null });
   });
 });
 

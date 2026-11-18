@@ -11,7 +11,6 @@
     <div><span class="muted">Tiempo normal</span><b id="gameFigTime">{{ time() }}</b></div>
     <div><span class="muted">Mejor marca</span><b id="gameFigBest">{{ best() }}</b></div>
     <div><span class="muted">Partidas</span><b id="gameFigGames">{{ x().n }}</b></div>
-    <div><span class="muted">Días seguidos mejor que la media</span><b id="gameFigStreak">{{ streak()?.now ?? '—' }}</b></div>
   </div>
   @if (verdict(); as v) {<p class="u-m-0 u-mt-10" id="gameReportVerdictSentence">{{ v.sentence }}</p>}
 </div>
@@ -100,10 +99,6 @@
     <p class="muted" id="gameReportWeekdaysWindow">Ventana fija: todo el histórico. «Destaca» es que el límite inferior del intervalo de derrotas de ese día supera la tasa de derrotas del juego.</p>
     <p class="muted" id="gameReportWeekdaysNote">Entre semana la media es mucho más rápida, así que perder un lunes no es lo mismo que perder un domingo.</p>
   } @else {<p class="muted" id="gameReportWeekdaysWindow">No disponible</p>}
-
-  @if (streak(); as st) {
-    <p class="u-m-16-0-0" id="gameReportStreak"><b>Días seguidos mejor que la media</b> · actual @if (st.now === '—') {sin racha activa@if (st.stale) { ({{ st.stale }})}} @else {{{ st.now }}} · máxima {{ st.max }}@if (st.maxDate) { (hasta el {{ fmtDate(st.maxDate) }})}</p>
-  }
 </app-section>
 
 <app-section title="Nivel" sectionId="gameReportLevelSection">

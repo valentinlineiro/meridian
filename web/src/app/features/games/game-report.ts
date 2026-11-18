@@ -10,7 +10,7 @@ import { VerdictPill } from '../../shared/verdict';
 import { fmtClock } from '../../core/format';
 import { diagnosisBlock, evidenceLines, evolutionFacts, extraLines, levelRows, normalRange, reportSentence, resultSplit, secondsWeeks, weekdayReport, weekdayWins, weeklyBeat, weeklyTimes } from './game-report.model';
 import { GamesChart } from './games-chart';
-import { figures, gbeatStreak, formLines, gdays, interpretationLines, Range, RANGE_NAMES, staleTitle, Summary, trajectory } from './games.model';
+import { figures, formLines, interpretationLines, Range, RANGE_NAMES, Summary, trajectory } from './games.model';
 
 type Wk = NonNullable<ReturnType<typeof weeklyTimes>>[number];
 
@@ -29,7 +29,6 @@ export class GameReport {
   readonly range = input.required<Range>();
 
   protected readonly fmtDate = fmtDate;
-  protected readonly gdays = gdays;
   protected readonly x = computed(() => this.summary().games[this.game()]!);
   protected readonly rangeName = computed(() => RANGE_NAMES[this.range()]);
   protected readonly verdict = computed(() => safe(() => verdictFor(this.x().interpretation), null));
@@ -48,8 +47,6 @@ export class GameReport {
   }, null));
   /** The weekly (90-day) trajectory the chart draws; null when it cannot be read. */
   protected readonly traj = computed(() => safe(() => trajectory(this.summary(), this.game(), '90'), null));
-  /** The run of days beating the average, as the list says it: a stale manual log is "sin racha activa", never a zero. */
-  protected readonly streak = computed(() => safe(() => ({ now: gbeatStreak(this.x(), this.summary()), stale: staleTitle(this.x(), this.summary()), max: gdays(this.x().beatStreak.max), maxDate: this.x().beatStreak.maxDate ?? null }), null));
   protected readonly seconds = computed(() => safe(() => secondsWeeks(this.x()), null));
   protected readonly extras = computed(() => safe(() => extraLines(this.x()), [] as string[]));
   protected readonly evidence = computed(() => safe(() => evidenceLines(this.x()), [] as string[]));

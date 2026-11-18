@@ -365,9 +365,8 @@ app-tab-bar{display:none}
 .gb i{display:block;width:100%;border-radius:var(--r-sm)}
 @media(min-width:761px){.gcs{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
-/* Games overview: how many games improve, one segment per game */
-.go{display:grid;gap:8px;margin:0 0 16px}.go-n{display:flex;align-items:baseline;gap:8px}.go-n .gc-big{font-size:var(--fs-display)}
-.go-bar{display:flex;gap:4px}.go-bar span{flex:1;height:10px;border-radius:var(--r-pill)}.go-down{background:var(--err)}.go-flat,.go-few{background:var(--neutral)}.go-few{opacity:.5}.go-up{background:var(--ok)}
+/* Games overview: one sentence naming each game by its state */
+.go{display:grid;gap:8px;margin:0 0 16px}
 
 /* Games header: today's log first, the streak as a small line, the long-run facts as a footer */
 .gh>h2,.go>h2{margin:0;font-size:var(--fs-xl);letter-spacing:0;text-transform:none;color:var(--text)}
@@ -399,7 +398,7 @@ app-tab-bar{display:none}
 
 /* Game report: the first look (big number, key figures) and the three charts */
 .gr-fig{font-size:var(--fs-display);font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
-.gr-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+.gr-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
 .gr-kpis div{display:grid;gap:2px;font-size:var(--fs-sm)}.gr-kpis b{font-size:var(--fs-xl);font-variant-numeric:tabular-nums}
 .gr-svg{display:block;max-height:180px;margin-top:8px}
 .gr-legend{display:flex;gap:16px;flex-wrap:wrap;font-size:var(--fs-md);color:var(--text-2)}.gr-legend span{display:inline-flex;align-items:center;gap:6px}
