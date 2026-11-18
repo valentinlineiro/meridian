@@ -292,7 +292,7 @@ describe('m-chess-board', () => {
   };
   it('shouldPlaceEveryPieceAndExpandEmptySquares', async () => {
     const b = await render(START);
-    expect(b).toBe('♜♞♝♛♚♝♞♜♟♟♟♟♟♟♟♟♙♙♙♙♙♙♙♙♖♘♗♕♔♗♘♖');
+    expect(b).toBe('♜♞♝♛♚♝♞♜' + '♟\uFE0E'.repeat(8) + '♙♙♙♙♙♙♙♙♖♘♗♕♔♗♘♖'); // the pawn asks for its text form so iOS does not draw an emoji
   });
   it('shouldDrawAnEmptyBoardWhenTheFenIsNotAString', async () => {
     const f = TestBed.createComponent(ChessBoard);
