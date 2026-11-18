@@ -64,7 +64,7 @@
       }
       </div>
 
-      <app-section sectionId="langAccountDetails" title="Tu cuenta" [open]="false">
+      <app-section sectionId="langAccountDetails" title="Tu cuenta" [meta]="acc ? acc.xp + ' · ' + acc.days : ''" [open]="false">
       <div class="card u-mb-12" id="langAccountCard">
         <div class="u-d-flex u-jc-space-between u-ai-center u-wrap-wrap u-gap-8">
           <div>
@@ -188,7 +188,7 @@
           <div class="u-d-flex u-jc-space-between u-ai-center u-mb-8">
             <h2 class="u-m-0">Actividad de cuenta — últimos 90 días</h2>
           </div>
-          <div id="langXpTimeline" class="lg-tl">
+          <div id="langXpTimeline" class="lg-tl" role="img" [attr.aria-label]="isNA(tl) ? null : tl?.summary">
             @if (isNA(tl)) { <div class="muted">{{ tl }}</div> }
             @else if (tl) {
               @for (b of tl.bars; track $index) { <div [title]="b.title" class="lg-tlbar" [style.height.px]="b.height" [style.background]="b.color"></div> }
