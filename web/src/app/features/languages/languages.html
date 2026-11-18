@@ -56,7 +56,7 @@
 
       @if (activity(); as act) {
         <div class="card u-mb-12" id="langActivity">
-          <div class="u-d-flex u-jc-space-between u-ai-baseline"><h2 class="u-m-0">Actividad</h2><span class="muted u-fs-sm" id="langActivityStreak">{{ act.streak }}</span></div>
+          <div class="u-d-flex u-jc-space-between u-ai-baseline"><h2 class="u-m-0">Actividad</h2></div>
           <div class="hc-n u-mt-8"><span class="hc-big" id="langActivityBig">{{ act.big }}</span><span class="muted">XP en 7 días · de toda la cuenta</span>@if (act.delta) {<span class="hc-delta muted">{{ act.delta }}</span>}</div>
           @if (act.bars.length) {<div class="wk u-mt-8" role="img" [attr.aria-label]="act.aria">@for (b of act.bars; track $index) {<div><i [style.height.px]="b.h"></i><span>{{ b.letter }}</span></div>}</div>}
           <p class="muted u-fs-sm u-m-0 u-mt-8" id="langActivityNote">{{ act.note }}</p>
@@ -73,7 +73,6 @@
         </div>
         <div class="kpis u-m-14-0-0">
           <div class="kpi"><span class="kl">Total XP</span><b id="langAccountXp">{{ acc?.xp ?? '—' }}</b></div>
-          <div class="kpi"><span class="kl">Racha</span><b id="langAccountStreak">{{ acc?.streak ?? '—' }}</b></div>
           <div class="kpi"><span class="kl">Días con Actividad</span><b id="langAccountDays">{{ acc?.days ?? '—' }}</b>@if (acc?.daysSub) {<small id="langAccountDaysSub">{{ acc?.daysSub }}</small>}</div>
           <div class="kpi"><span class="kl">Catálogo</span><b id="langAccountCourses">{{ acc?.courses ?? '—' }}</b></div>
         </div>
@@ -117,7 +116,7 @@
             @else if (cl) {
               @for (c of cl; track c.id) {
                 <details class="card lg-clcard" [open]="c.isSelected">
-                  <summary class="lg-clsum" (click)="select(c.id)">
+                  <summary class="lg-clsum">
                     <div class="u-d-flex u-ai-center u-gap-8">
                       <span class="u-fs-h">{{ c.flag }}</span>
                       <div><b>{{ c.title }}</b>@if (c.isSelected) {&ngsp;<span class="pill pill-selected u-fs-xs">Seleccionado</span>}<div class="muted u-fs-xs">{{ c.fromTo }}</div></div>
@@ -145,7 +144,8 @@
                         <div class="progress-bar pb-6"><div class="pf-info" [style.width]="c.prog.pct + '%'"></div></div>
                       </div>
                     }
-                    <div class="u-mt-8 u-d-flex u-jc-flex-end">
+                    <div class="u-mt-8 u-d-flex u-jc-flex-end u-gap-8 u-wrap-wrap">
+                      @if (!c.isSelected) { <button type="button" class="btn btn-sm" (click)="select(c.id)">Elegir este curso</button> }
                       <button type="button" class="btn btn-g btn-sm" (click)="openDetail(c.id)">Ver detalle curricular completo</button>
                     </div>
                   </div>
@@ -279,7 +279,7 @@
           <b class="u-fs-sm u-ls-p04em u-tt-uppercase u-c-text">Lo que estos datos no pueden decir</b>
         </summary>
         <div class="muted lg-limbody">
-          No miden comprensión auditiva, expresión oral, lectura ni competencia comunicativa real. XP, racha y lecciones completadas son métricas de actividad y avance curricular en la plataforma, no representan dominio lingüístico ni una evaluación de competencia real.
+          No miden comprensión auditiva, expresión oral, lectura ni competencia comunicativa real. XP y lecciones completadas son métricas de actividad y avance curricular en la plataforma, no representan dominio lingüístico ni una evaluación de competencia real.
         </div>
       </details>
       <!-- ¿Cómo sabemos esto? (MethodologyDisclosure) -->

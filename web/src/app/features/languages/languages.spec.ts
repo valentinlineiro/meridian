@@ -176,16 +176,6 @@ describe('Languages', () => {
       expect(text('langActiveHeroMeta')).toBe('45.000 XP acumulado en el curso · ES → XC');
       http.verify();
     });
-
-    it('shouldSelectTheCourseWhenItsSummaryIsClicked', async () => {
-      await open('/languages');
-      const summaries = [...el().querySelectorAll<HTMLElement>('#langCoursesList summary')];
-      summaries[1].click();
-      await tick();
-      expect(router.url).toBe('/languages/XC_ES');
-      await answer(langApi());
-      http.verify();
-    });
   });
 
   describe('scope isolation (#16.9.2)', () => {
@@ -193,7 +183,7 @@ describe('Languages', () => {
       await open();
       expect(text('langActiveHeroMeta')).toBe('94.000 XP acumulado en el curso · EN → XB');
       expect(text('langAccountXp')).toBe('421.500 XP');
-      expect(text('langAccountStreak')).toBe('🔥 1212 días');
+      expect(q('#langAccountStreak')).toBeNull();
       expect(text('langAccountDays')).toBe('1 de 1 días');
       expect(text('langAccountDaysSub')).toBe(`con XP · registro desde ${fmtDate(utcDay(0))}`);
       expect(text('langAccountCourses')).toBe('2 cursos');
@@ -230,9 +220,9 @@ describe('Languages', () => {
       expect(q('#langTab')!.classList).not.toContain('tab-panel'); // the global CSS hides a .tab-panel that is not .active
     });
 
-    it('shouldSayWhenXpAndStreakWereObservedOnAnotherDay', async () => {
+    it('shouldSayWhenXpWasObservedOnAnotherDay', async () => {
       await open('/languages', langApi({ '/api/languages': { ...langsBody(), totalXpObservedAt: iso(3 * DAY) } }));
-      expect(text('langSyncMeta')).toContain(` · XP y racha observados el ${utcDay(3)}`);
+      expect(text('langSyncMeta')).toContain(` · XP observado el ${utcDay(3)}`);
     });
 
     it('shouldRenderGoalColorByXp', async () => {
@@ -255,6 +245,19 @@ describe('Languages', () => {
       const dots = [...el().querySelectorAll<HTMLElement>('#langActivityStrip > div > div')].map((d) => d.style.background);
       expect(dots[6]).toBe('var(--muted)');
       expect(text('langGoalToday')).toBe('Sin objetivo diario configurado.');
+    });
+
+    it('shouldOnlyExpandARowAndSelectOnlyWithTheExplicitButton', async () => {
+      await open();
+      const items = [...el().querySelectorAll<HTMLDetailsElement>('#langCoursesList > details')];
+      expect(items[0].textContent).not.toContain('Elegir este curso'); // the selected course offers nothing to choose
+      const nav = vi.spyOn(router, 'navigate');
+      items[1].querySelector('summary')!.click();
+      expect(nav).not.toHaveBeenCalled();
+      expect(localStorage.getItem('longitudinal_selected_course')).not.toBe('XC_ES');
+      [...items[1].querySelectorAll('button')].find((b) => b.textContent!.includes('Elegir este curso'))!.click();
+      await tick();
+      expect(router.url).toBe('/languages/XC_ES');
     });
 
     it('shouldListTheCoursesWithTheSelectedOneOpenAndItsSections', async () => {
@@ -398,7 +401,7 @@ describe('Languages', () => {
       const legacy = { createdAt: iso(DAY), totalXp: 1500, streak: 3, totals: { days: 3, activeDays: 2 }, summaries: [{ date: 1782345600 }, { date: nowSec() }], courseProgressIndex: [{ capturedAt: iso(2 * DAY) }] };
       await open('/languages', { '/api/languages': { courses: [] }, '/api/stats/lang': legacy });
       expect(text('langAccountXp')).toBe('1500 XP'); // es-ES groups from five digits
-      expect(text('langAccountStreak')).toBe('🔥 3 días');
+      expect(q('#langAccountStreak')).toBeNull();
       expect(text('langAccountDays')).toBe('2 de 3 días');
       expect(text('langAccountDaysSub')).toBe('con XP · registro desde 25 jun 2026');
       expect(text('langSyncMeta')).toBe(`Sincronizado ayer · Actividad hasta ${fmtDate(utcDay(0))} · Path hace 2d`);
@@ -509,7 +512,7 @@ describe('Languages', () => {
 
     it('shouldOpenTheDetailOfAnotherCourseAndAskForItOnce', async () => {
       await open('/languages');
-      el().querySelectorAll<HTMLButtonElement>('#langCoursesList details button')[1].click();
+      [...el().querySelectorAll<HTMLButtonElement>('#langCoursesList details button')].filter((b) => b.textContent!.includes('Ver detalle'))[1].click();
       await tick();
       expect(router.url).toBe('/languages/XC_ES');
       expect(asked('/api/languages/courses/XC_ES')).toHaveLength(1);
@@ -599,9 +602,9 @@ describe('Languages', () => {
       expect(text('langGoalToday')).toContain('/ 100 XP');
     });
 
-    it('shouldSayXpAndStreakWereNeverObservedWhenNoObservationExists', async () => {
+    it('shouldSayXpWasNeverObservedWhenNoObservationExists', async () => {
       await open('/languages', langApi({ '/api/languages': { ...langsBody(), totalXpObservedAt: null, streakObservedAt: null } }));
-      expect(text('langSyncMeta')).toContain(' · XP y racha: sin observar');
+      expect(text('langSyncMeta')).toContain(' · XP: sin observar');
     });
 
     it('shouldStaySilentWhenXpAndStreakWereObservedInTheLastSnapshot', async () => {
@@ -654,12 +657,13 @@ describe('Languages', () => {
   });
 
   describe('activity', () => {
-    it('shouldShowTheXpOfTheLastSevenDaysTheBarsAndTheStreak', async () => {
+    it('shouldShowTheXpOfTheLastSevenDaysAndTheBarsButNoStreak', async () => {
       const rows = Array.from({ length: 7 }, (_, i) => ({ date: Math.floor((Date.now() - (i + 1) * DAY) / 1000), gainedXp: 100, numSessions: 2 }));
       await open('/languages', langApi({ '/api/languages/xp': { summaries: rows } }));
       expect(text('langActivityBig')).toBe('700');
       expect(q('#langActivity')!.querySelectorAll('.wk > div')).toHaveLength(7);
-      expect(text('langActivityStreak')).toBe('Racha: 1212 días');
+      expect(q('#langActivityStreak')).toBeNull();
+      expect(text('langActivity')).not.toMatch(/racha|🔥/i);
     });
 
     it('shouldFoldTheAccountCardsUnderTuCuenta', async () => {

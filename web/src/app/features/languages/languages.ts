@@ -5,7 +5,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { RouterLink, Router } from '@angular/router';
 import { catchError, forkJoin, map, Observable, of, switchMap } from 'rxjs';
 import { ApiClient } from '../../core/api-client';
-import { Course, CourseDetail, es, Langs, resolveSelectedCourseId, SELECTED_COURSE_KEY, XpDay } from '../../core/courses';
+import { Course, CourseDetail, Langs, resolveSelectedCourseId, SELECTED_COURSE_KEY, XpDay } from '../../core/courses';
 import { list, safe } from '../../core/guard';
 import { xpBars, xpSummary, xpWeek, xpWeekLine } from '../../core/xp-week';
 import { CourseDetailView } from './course-detail';
@@ -66,24 +66,23 @@ export class Languages {
     const deltas = d.analytics?.curriculum?.recentDeltas;
     return safe(() => levelView(det, Array.isArray(deltas) ? deltas.find((x) => x?.courseId === this.selected()) : undefined), null);
   });
-  /** The last seven complete days of XP (account-wide) and the streak: the supporting card under the level. */
+  /** The last seven complete days of XP (account-wide): the supporting card under the level. */
   protected readonly activity = computed(() => {
     const d = this.d();
     if (!d) return null;
     return safe(() => {
       const now = Date.now(), today = new Date(now).toISOString().slice(0, 10);
       const w = d.xp ? xpWeek(d.xp, d.langs.updatedAt, now) : null;
-      const streak = d.langs.streak == null ? '' : `Racha: ${es(Number(d.langs.streak))} días`;
-      if (w?.state === 'ok') return { ...xpSummary(w, today), ...xpBars(w), streak };
-      return { big: '—', delta: '', note: !d.xp ? NA : !w ? 'Sin sincronizar todavía' : xpWeekLine(w, today), bars: [], aria: '', streak };
-    }, { big: '—', delta: '', note: NA, bars: [], aria: '', streak: '' });
+      if (w?.state === 'ok') return { ...xpSummary(w, today), ...xpBars(w) };
+      return { big: '—', delta: '', note: !d.xp ? NA : !w ? 'Sin sincronizar todavía' : xpWeekLine(w, today), bars: [], aria: '' };
+    }, { big: '—', delta: '', note: NA, bars: [], aria: '' });
   });
   protected readonly account = computed(() => {
     const s = this.state();
-    if (s?.kind === 'legacy') return safe(() => ({ ...legacyAccount(s.legacy), courses: '—', gap: '' }), { xp: '—', streak: '—', days: '—', daysSub: '', sync: NA, courses: '—', gap: '' });
+    if (s?.kind === 'legacy') return safe(() => ({ ...legacyAccount(s.legacy), courses: '—', gap: '' }), { xp: '—', days: '—', daysSub: '', sync: NA, courses: '—', gap: '' });
     const d = this.d();
     if (!d) return null;
-    return { ...safe(() => account(d), { xp: '—', streak: '—', courses: '—', gap: '' }), ...safe(() => accountActivity(d), { days: '—', daysSub: '', sync: NA }) };
+    return { ...safe(() => account(d), { xp: '—', courses: '—', gap: '' }), ...safe(() => accountActivity(d), { days: '—', daysSub: '', sync: NA }) };
   });
   protected readonly week = computed(() => { const d = this.d(); return d && safe(() => week(d), { cells: [], summary: NA, goal: NA }); });
   protected readonly pace = computed(() => { const d = this.d(); return d && safe(() => pace(d), null); });
