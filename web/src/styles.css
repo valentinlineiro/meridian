@@ -11,6 +11,7 @@
   --r-sm:4px;--r-md:8px;--r-lg:12px;--r-pill:999px;
   --fs-xs:11px;--fs-sm:12px;--fs-md:13px;--fs-lg:14px;--fs-xl:16px;--fs-h:20px;--fs-display:26px;
   --sq-dark:#5b7a9e;--sq-ink:#0b1220;
+  --scrim:rgba(5,10,18,.65); /* modal, bottom-sheet and register backdrops */
 }
 
 *{box-sizing:border-box}body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;margin:0;background:var(--bg);color:var(--text);line-height:1.4}
@@ -108,7 +109,7 @@ svg text{font-family:system-ui,sans-serif}
 .rowbtn{all:inherit;display:inline-flex;align-items:center;min-height:24px;padding:0;cursor:pointer;text-align:left}
 .rowbtn:focus-visible{outline:2px solid var(--link);outline-offset:2px}
 .chev{color:var(--muted);margin-left:4px}
-.modal{position:fixed;inset:0;background:rgba(5,10,18,.75);align-items:center;justify-content:center;z-index:50;padding:12px}
+.modal{position:fixed;inset:0;background:var(--scrim);align-items:center;justify-content:center;z-index:50;padding:12px}
 .gamecard{width:min(760px,100%);max-height:92vh;overflow:auto}
 .gamehead{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
 .gamegrid{display:grid;grid-template-columns:minmax(0,400px) minmax(0,1fr);gap:14px;align-items:start}.gamestage{display:grid;gap:10px}.gameside{min-width:0}
@@ -210,6 +211,7 @@ summary{padding-block:5px} /* WCAG 2.5.8: at least 24px tall on desktop too */
 .gtable tbody th{font-weight:400;text-align:left;padding:9px 6px;border-bottom:1px solid var(--line);text-transform:none;letter-spacing:0;font-size:var(--fs-md);color:var(--text-2)}
 .observed-dim{padding:8px 10px;background:color-mix(in srgb,var(--sunken) 60%,transparent);border:1px solid var(--line);border-radius:var(--r-md)}
 .btn-sm{font-size:var(--fs-xs);padding:3px 8px;min-height:28px}
+@media(max-width:760px){.btn-sm{min-height:44px}} /* declared after the phone .btn rule, so it must restate the touch size */
 @media(max-width:600px){
  .lgcard select,.lgcard input{min-height:44px}
  .chips button.pill{min-height:44px;padding:6px 14px}
@@ -225,7 +227,7 @@ summary{padding-block:5px} /* WCAG 2.5.8: at least 24px tall on desktop too */
 .dot{display:inline-block;width:8px;height:18px;border-radius:var(--r-sm);background:var(--draw-line)}
 
 .grow-tag{font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-right:8px}
-.loss-note{margin:0 0 8px;padding:8px 12px;border-left:3px solid var(--warn-line);background:var(--warn-bg);color:var(--warn-fg);border-radius:var(--r-sm)}.gl-n{display:block;font-size:var(--fs-xs);font-weight:400}
+.loss-note{margin:0 0 8px;padding:8px 12px;border:1px solid var(--warn-line);background:var(--warn-bg);color:var(--warn-fg);border-radius:var(--r-sm)}.gl-n{display:block;font-size:var(--fs-xs);font-weight:400}
 .grow-tag{white-space:nowrap}
 
 /* notch / system bars when installed (viewport-fit=cover): the header owns the top inset (its own background covers it, nothing scrolls behind),
@@ -261,7 +263,7 @@ app-tab-bar{display:none}
  .tab.active{color:var(--on-accent);border-top-color:var(--accent);background:var(--selected)}
  .tab svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
  .tab:focus-visible,.sheet a:focus-visible,.sheet button:focus-visible{outline:2px solid var(--link);outline-offset:-2px}
- .scrim{position:fixed;inset:0;z-index:30;border:0;padding:0;background:rgba(5,10,18,.6)}
+ .scrim{position:fixed;inset:0;z-index:30;border:0;padding:0;background:var(--scrim)}
  .sheet{position:fixed;left:0;right:0;bottom:calc(56px + env(safe-area-inset-bottom));z-index:35;background:var(--surface);border-top:1px solid var(--line-strong);border-radius:var(--r-lg) var(--r-lg) 0 0;padding:8px 0 4px;max-height:calc(100vh - 140px);overflow-y:auto}
  .sheet a,.sheet .row{display:flex;align-items:center;width:100%;min-height:48px;padding:0 18px;background:none;border:0;color:var(--text-2);font:inherit;font-size:var(--fs-xl);text-align:left;cursor:pointer;text-decoration:none}
  .sheet-group{font-size:var(--fs-xs);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:12px 18px 2px}.sheet a[aria-current=page]{color:var(--text);font-weight:600;background:var(--selected)}
@@ -273,7 +275,7 @@ app-tab-bar{display:none}
 @media(max-width:760px){#langCourseFlag{display:none}.course-select{font-weight:500;padding:8px 4px 8px 8px}} /* the option text already carries the flag; the whole width goes to the course name */
 .wkbeat>div{min-width:0}
 @media(max-width:760px){.wkbeat>div:nth-child(even)>span:last-child{visibility:hidden}} /* 13 weeks do not fit at 390 px with every date label: the bars shrink, a date every other week */
-.hl{margin:0 0 6px;padding-left:10px;border-left:3px solid var(--line-strong)}.hl[data-kind=debilidad]{border-color:var(--orange)}.hl[data-kind=fortaleza]{border-color:var(--ok)}
+.hl{margin:0 0 6px}.hl[data-kind=debilidad]>b{color:var(--orange)}.hl[data-kind=fortaleza]>b{color:var(--ok-soft)} /* the label word carries the kind, not a side rule */
 
 /* Utilities generated from former inline styles (phase 4.3): !important keeps the precedence the inline attribute had. */
 .u-ai-baseline{align-items:baseline!important}
@@ -345,6 +347,7 @@ app-tab-bar{display:none}
 .u-tt-none{text-transform:none!important}
 .u-tt-uppercase{text-transform:uppercase!important}
 .u-wrap-wrap{flex-wrap:wrap!important}
+@media(max-width:760px){:root{--fs-xs:12px}} /* phone floor: nothing is read at 11px outdoors; the xs→sm overrides above keep their 12px result */
 /* phone bump for the .u-fs-xs utility: same step as .pill and .kpi small above */
 @media(max-width:760px){.u-fs-xs{font-size:var(--fs-sm)!important}}
 @media(max-width:760px){.muted.u-fs-xs,.muted.u-fs-sm{font-size:var(--fs-md)!important}} /* keeps the phone .muted rule winning over former inline font-sizes */
@@ -385,7 +388,7 @@ app-tab-bar{display:none}
 
 /* Games register: the same dialog is a bottom sheet on a phone and a side panel on a desktop */
 .lgreg{border:1px solid var(--line-strong);background:var(--surface);color:var(--text);padding:16px;max-width:none;overflow:auto}
-.lgreg::backdrop{background:rgba(0,0,0,.55)}
+.lgreg::backdrop{background:var(--scrim)}
 @media(max-width:760px){.lgreg{margin:auto 0 0;width:100%;max-height:90vh;border-radius:var(--r-lg) var(--r-lg) 0 0}}
 @media(min-width:761px){.lgreg{margin:0 0 0 auto;height:100%;max-height:none;width:380px;border-radius:0}}
 .lgreg-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
