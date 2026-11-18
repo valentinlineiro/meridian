@@ -256,15 +256,15 @@
             @else if (cmp) {
               @for (r of cmp.rows; track $index) {
                 <div class="row row-p8"><div class="u-flex-1">
-                  <div class="u-d-flex u-jc-space-between u-ai-center"><b>{{ r.key }}</b><span [class]="r.pill">{{ r.status }}</span></div>
+                  <div class="u-d-flex u-jc-space-between u-ai-center"><b>{{ r.name }}</b><span [class]="r.pill">{{ r.status }}</span></div>
                   <div class="u-fs-sm u-mt-4">{{ r.text }}</div>
                   <div class="muted u-fs-xs u-mt-2">{{ r.observed }}</div>
                 </div></div>
               }
               @for (c of cmp.waiting; track c.key) {
                 <div class="row row-p8"><div class="u-flex-1">
-                  <div class="u-d-flex u-jc-space-between u-ai-center"><b>{{ c.name }}</b><span class="pill pill-draw">ESPERANDO 2ª OBSERVACIÓN</span></div>
-                  <div class="muted u-fs-xs u-mt-2">Aún no hay una segunda captura del Path de este curso para poder comparar.</div>
+                  <div class="u-d-flex u-jc-space-between u-ai-center"><b>{{ c.name }}</b><span class="pill pill-draw">ESPERANDO OTRA LECTURA</span></div>
+                  <div class="muted u-fs-xs u-mt-2">Hay una sola lectura de este curso; con otra se podrá comparar.</div>
                 </div></div>
               }
               <div class="muted u-fs-xs u-mt-8">Si Duolingo cambia el tamaño del curso (más o menos unidades), no calculamos el progreso para no inventarlo.</div>

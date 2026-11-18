@@ -69,7 +69,7 @@ export function progress(d: LangData, selected: string | null, detail: Detail) {
   }
   if (total > 0) { const p = unitPct(completed, total); return { text: `${completed} / ${total} unidades (${pc1(Number(p))})`, width: Number(p) }; }
   // a failed request is unknown; "not synced" is said only when the source answered without units
-  return { text: detail === null ? NA : 'Sin observación aún · Path no sincronizado para este curso', width: 0 };
+  return { text: detail === null ? NA : 'Aún no se han leído las unidades de este curso', width: 0 };
 }
 
 /** Account card, the part read from the catalogue alone. */
@@ -102,7 +102,7 @@ export function accountActivity(d: LangData) {
     days: s.length ? activeDaysText(s.filter((x) => (x.gainedXp ?? 0) > 0).length, s.length) : '—',
     daysSub: s.length ? activeDaysSub(first) : '',
     sync: 'Sincronizado ' + relDate(l.updatedAt || l.createdAt || '') + (last ? ' · Actividad hasta ' + fmtDate(last) : '')
-      + (cur && d.courses.some((c) => c.courseId === cur) ? ' · Último curso en Duolingo: ' + cur : '') + staleNote(l),
+      + (cur && d.courses.some((c) => c.courseId === cur) ? ' · Último curso en Duolingo: ' + (d.courses.find((c) => c.courseId === cur)!.title || cur) : '') + staleNote(l),
   };
 }
 
@@ -116,7 +116,7 @@ export function legacyAccount(l: LegacyLang) {
     xp: l.totalXp != null ? es(l.totalXp) + ' XP' : '—',
     days: activeDaysText(t.activeDays ?? 0, t.days ?? 0),
     daysSub: activeDaysSub(s.length ? s[0].date : null),
-    sync: 'Sincronizado ' + relDate(l.createdAt || '') + ' · Actividad hasta ' + (lastIso ? fmtDate(lastIso) : '—') + (lastSync ? ' · Path ' + relDate(lastSync) : ''),
+    sync: 'Sincronizado ' + relDate(l.createdAt || '') + ' · Actividad hasta ' + (lastIso ? fmtDate(lastIso) : '—') + (lastSync ? ' · Unidades leídas ' + relDate(lastSync) : ''),
   };
 }
 
@@ -263,6 +263,7 @@ export function comparability(a: Analytics, courses: Course[]) {
       const comp = x.status === 'comparable', struct = x.status === 'structural_change';
       return {
         key: x.courseId,
+        name: courses.find((c) => c.courseId === x.courseId)?.title || x.courseId,
         pill: comp ? 'pill pill-win' : struct ? 'pill pill-loss' : 'pill pill-draw',
         status: comp ? 'COMPARABLE' : struct ? 'CAMBIO ESTRUCTURAL' : 'INSUFICIENTE',
         text: comp ? `+${x.deltaCompletedUnits ?? 0} unidades completadas` : struct ? `Duolingo ha cambiado el curso (${x.previousTotalUnits} → ${x.latestTotalUnits} unidades en total)` : 'Solo hay una lectura de este curso',
