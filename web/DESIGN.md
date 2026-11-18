@@ -228,6 +228,7 @@ Fixed above the tab bar, 12px top corners, 48px rows at 16px, group labels in 11
 - **Do** honour `prefers-reduced-motion` and keep focus rings visible (2px Link).
 - **Do** lead a surface with status, then evidence, then detail; show the age of data when it is not today's.
 - **Do** use native elements (`dialog`, `details`, `button`, `a`) before custom widgets.
+- **Do** let the verdict lead: when it says "Pocos datos" or "Estable" the figure steps back (16px, muted) so a number never outweighs its evidence.
 
 ### Don't:
 - **Don't** add a light theme, web fonts or decorative gradients.
