@@ -515,3 +515,9 @@ h2.lg-detail-title{margin:0;font-size:var(--fs-h);letter-spacing:0;text-transfor
 /* Games: the verdict pill is the trend; the word says so, so it is not read as a verdict on the big number next to it */
 .verdict-tr{display:inline-flex;align-items:center;gap:6px;font-size:var(--fs-sm)}
 .gc .verdict-tr{flex-direction:column;align-items:flex-start;gap:2px} /* hub cards: the label sits above the pill so the number column keeps its width */
+
+/* a figure never outweighs its verdict: with "Pocos datos" or "Estable" the number steps back so the verdict leads */
+.gc-weak .gc-big,.gr-weak .gr-fig{font-size:var(--fs-xl);font-weight:600;color:var(--muted-bright)}
+/* links and summaries get the same 2px ring as buttons (the sidebar scrolls, so its ring sits inside) */
+a:focus-visible,summary:focus-visible{outline:2px solid var(--link);outline-offset:2px}
+.side-item:focus-visible{outline-offset:-2px}

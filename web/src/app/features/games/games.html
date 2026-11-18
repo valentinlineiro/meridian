@@ -37,7 +37,7 @@
   <app-section title="Tus juegos" sectionId="cg-games-now">
     <div id="gamesNow" class="gcs">
       @for (r of rows(); track r.k) {
-        <a class="gc card" [routerLink]="['/games', r.k]">
+        <a class="gc card" [class.gc-weak]="r.verdict.state === 'few-data' || r.verdict.state === 'no-signal'" [routerLink]="['/games', r.k]">
           <span class="gc-name"><b>{{ r.name }}</b><span class="verdict-tr"><span class="muted">Tendencia</span><app-verdict [verdict]="r.verdict" /></span></span>
           <span class="gc-n"><span class="gc-big">{{ r.big }}</span><span class="gc-cap muted">{{ r.cap }}</span></span>
           <app-result-bars [data]="r.bars" />

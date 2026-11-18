@@ -187,7 +187,8 @@
       "Do put the observation window beside every figure and show unknown as unknown, never zero.",
       "Do honour prefers-reduced-motion and keep focus rings visible (2px Link).",
       "Do lead a surface with status, then evidence, then detail; show the age of data when it is not today's.",
-      "Do use native elements (dialog, details, button, a) before custom widgets."
+      "Do use native elements (dialog, details, button, a) before custom widgets.",
+      "Do let the verdict lead: when it says Pocos datos or Estable the figure steps back (16px, muted) so a number never outweighs its evidence."
     ],
     "donts": [
       "Don't add a light theme, web fonts or decorative gradients.",

@@ -4,7 +4,7 @@
     @if (verdict(); as v) {<span class="verdict-tr"><span class="muted">Tendencia</span><app-verdict [verdict]="v" /></span>}
   </div>
   @if (figs(); as f) {
-    <div class="gr-n u-mt-8"><span class="gr-fig" id="gameFigBig">{{ f.big }}</span><span class="muted" id="gameFigCap">{{ f.cap }}</span>@if (f.delta) {<span class="gr-delta muted" id="gameFigDelta">{{ f.delta }}</span>}</div>
+    <div class="gr-n u-mt-8" [class.gr-weak]="verdict()?.state === 'few-data' || verdict()?.state === 'no-signal'"><span class="gr-fig" id="gameFigBig">{{ f.big }}</span><span class="muted" id="gameFigCap">{{ f.cap }}</span>@if (f.delta) {<span class="gr-delta muted" id="gameFigDelta">{{ f.delta }}</span>}</div>
   }
   @if (bars(); as b) {<div class="u-mt-10"><app-result-bars [data]="b" /></div>}
   <div class="gr-kpis">
