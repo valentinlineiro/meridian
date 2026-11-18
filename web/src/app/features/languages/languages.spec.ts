@@ -666,6 +666,13 @@ describe('Languages', () => {
       expect(text('langActivity')).not.toMatch(/racha|🔥/i);
     });
 
+    it('shouldPreviewTheAccountAndGiveTheTimelineATextAlternative', async () => {
+      await open();
+      expect(q('#langAccountDetails summary')!.textContent).toContain('421.500 XP');
+      expect(q('#langXpTimeline')!.getAttribute('role')).toBe('img');
+      expect(q('#langXpTimeline')!.getAttribute('aria-label')).toBe(text('langXpSummary'));
+    });
+
     it('shouldFoldTheAccountCardsUnderTuCuenta', async () => {
       await open('/languages', langApi());
       const more = q('#langAccountDetails') as HTMLDetailsElement;
