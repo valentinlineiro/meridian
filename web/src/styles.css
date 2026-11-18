@@ -469,3 +469,4 @@ app-chess{--muted:var(--muted-bright)}
 .gt-name{font-weight:600}.gt-state{font-variant-numeric:tabular-nums;color:var(--text)}.gt-todo{color:var(--muted);font-weight:400}
 @media(min-width:761px){.gt{grid-template-columns:repeat(2,minmax(0,1fr))}}
 #gamesTab>.gh-foot{padding:0 12px;margin:16px 0}
+@media(max-width:480px){.seg .btn{padding-left:9px;padding-right:9px}} /* four options (Semana / 4 semanas / 3 meses / Todo) and a caption fit one row at 390px */
