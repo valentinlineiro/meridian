@@ -35,7 +35,7 @@ const MISSING = 'Esta partida no tiene jugadas guardadas.';
             @let n = ply();
             <div class="u-d-block" id="gBody">
               <div class="gamegrid">
-                <div class="gamestage"><m-chess-board id="gBoard" [fen]="n ? g.plies[n - 1].fen : g.startFen" [flip]="g.userColor === 'black'" [caption]="n ? 'tras la jugada ' + n + ', ' + g.plies[n - 1].san : 'inicial'" />
+                <div class="gamestage"><m-chess-board id="gBoard" [fen]="n ? g.plies[n - 1].fen : g.startFen" [flip]="g.userColor === 'black'" [prevFen]="n ? (n > 1 ? g.plies[n - 2].fen : g.startFen) : null" [caption]="n ? 'tras la jugada ' + n + ', ' + g.plies[n - 1].san : 'inicial'" />
                   <div class="gamectl"><button class="btn btn-g" id="gPrev" type="button" [disabled]="n === 0" (click)="step(-1)" aria-label="Jugada anterior">‹</button><span class="muted" id="gPos" role="status" aria-live="polite">{{ n ? 'Jugada ' + n + ' de ' + g.plies.length + ': ' + g.plies[n - 1].san : 'Posición inicial' }}</span><button class="btn btn-g" id="gNext" type="button" [disabled]="n === g.plies.length" (click)="step(1)" aria-label="Jugada siguiente">›</button></div>
                 </div>
                 <div class="gameside">

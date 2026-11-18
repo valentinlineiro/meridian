@@ -20,20 +20,32 @@ function describe(fen: string, caption: string): string {
 @Component({
   selector: 'm-chess-board',
   host: { class: 'board', role: 'img', '[attr.aria-label]': 'label()' },
-  template: `@for (s of squares(); track $index) {<i class="sq" aria-hidden="true" [class.dk]="s.dk" [class.lt]="!s.dk">{{ s.g }}</i>}`,
+  template: `@for (s of squares(); track $index) {<i class="sq" aria-hidden="true" [class.dk]="s.dk" [class.lt]="!s.dk" [class.mv]="s.mv">{{ s.g }}@if (s.file) {<s class="co co-f">{{ s.file }}</s>}@if (s.rank) {<s class="co co-r">{{ s.rank }}</s>}</i>}`,
 })
 export class ChessBoard {
   readonly fen = input.required<string>();
   readonly flip = input(false);
+  /** The position before the move shown: the squares that differ from `fen` are framed as the last move. */
+  readonly prevFen = input<string | null>(null);
   /** What follows "Posición" in the description: "inicial", or "tras la jugada 12, Cxd4". */
   readonly caption = input('');
   /** One sentence for assistive technology: where each piece stands, by colour and kind. */
   protected readonly label = computed(() => describe(this.fen(), this.caption()));
   protected readonly squares = computed(() => {
     // a position it cannot read is an empty board, never a thrown template
-    const fen = this.fen();
-    const rows = (typeof fen === 'string' ? fen : '8/8/8/8/8/8/8/8').split(' ')[0].split('/').map((r) => [...r].flatMap((ch) => /\d/.test(ch) ? Array<string>(+ch).fill('') : [GLYPH[ch] || '']));
-    if (this.flip()) { rows.reverse(); rows.forEach((r) => r.reverse()); }
-    return rows.flatMap((r, y) => r.map((g, x) => ({ g, dk: (x + y) % 2 === 1 })));
+    const grid = (fen: unknown) => (typeof fen === 'string' ? fen : '8/8/8/8/8/8/8/8').split(' ')[0].split('/').map((r) => [...r].flatMap((ch) => /\d/.test(ch) ? Array<string>(+ch).fill('') : [ch]));
+    const rows = grid(this.fen());
+    const before = this.prevFen() === null ? null : grid(this.prevFen());
+    const flip = this.flip();
+    const at = (y: number, x: number) => flip ? [7 - y, 7 - x] : [y, x];
+    return Array.from({ length: 64 }, (_, i) => {
+      const y = i >> 3, x = i & 7, [ry, rx] = at(y, x);
+      const ch = rows[ry]?.[rx] ?? '';
+      return {
+        g: GLYPH[ch] || '', dk: (x + y) % 2 === 1,
+        mv: !!before && (before[ry]?.[rx] ?? '') !== ch,
+        file: y === 7 ? 'abcdefgh'[rx] : '', rank: x === 0 ? String(8 - ry) : '',
+      };
+    });
   });
 }

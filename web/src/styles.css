@@ -113,6 +113,8 @@ svg text{font-family:system-ui,sans-serif}
 .board{display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(8,1fr);width:min(400px,100%);aspect-ratio:1;border:1px solid var(--line-strong)}
 .sq{min-height:0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-style:normal;font-size:clamp(20px,6vw,36px);line-height:1;color:var(--sq-ink)}
 .sq.lt{background:var(--text-2)}.sq.dk{background:var(--sq-dark)}
+.sq{position:relative}.sq.mv{box-shadow:inset 0 0 0 3px var(--warn)} /* last move: a frame, not only a tint */
+.co{position:absolute;text-decoration:none;font-size:var(--fs-xs);font-weight:700;line-height:1;color:var(--sq-ink);pointer-events:none}.co-f{right:3px;bottom:2px}.co-r{left:3px;top:2px}
 .moves{max-height:400px;overflow:auto;line-height:1.9;font-size:var(--fs-md);margin-top:8px}
 .gm{background:none;border:0;font:inherit;cursor:pointer;color:var(--text-2);text-decoration:none;padding:1px 4px;border-radius:var(--r-sm)}.linkbtn{background:none;border:0;padding:0;font:inherit;color:var(--link);text-align:left;cursor:pointer}.linkbtn:hover{text-decoration:underline}.gm.on{background:var(--line-strong);color:var(--on-accent);font-weight:700}
 .gm:focus-visible{outline:2px solid var(--link);outline-offset:1px}
