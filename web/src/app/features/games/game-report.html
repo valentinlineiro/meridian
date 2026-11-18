@@ -136,13 +136,13 @@
       </div>
       <p class="muted">Últimas 8 semanas. La media publicada de LinkedIn varía con el día de la semana y con quién juega: no es una vara neutra.</p>
     }
-    @if (extras().length) {<ul id="gameReportExtras" style="margin:12px 0 0;padding-left:18px">@for (l of extras(); track $index) {<li>{{ l }}</li>}</ul>}
+    @if (extras().length) {<ul id="gameReportExtras" class="ul-ind u-m-12-0-0">@for (l of extras(); track $index) {<li>{{ l }}</li>}</ul>}
   </app-section>
 }
 
 <app-section title="Qué sabemos y qué no" sectionId="gameReportEvidence">
   <p class="muted u-m-0-0-4"><b class="u-c-text">Evidencia</b> (lo que muestran los datos)</p>
-  <ul style="margin:0 0 10px;padding-left:18px">@for (l of evidence(); track $index) {<li>{{ l }}</li>}</ul>
+  <ul class="ul-ind u-m-0-0-10">@for (l of evidence(); track $index) {<li>{{ l }}</li>}</ul>
   <p class="muted u-m-0"><b class="u-c-text">Límite de lo medible</b>: solo se guarda el tiempo total de cada partida, sin errores ni pasos intermedios, así que los datos no permiten decir por qué tardas más o menos.</p>
 </app-section>
 </app-section>

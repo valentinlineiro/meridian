@@ -8,22 +8,22 @@
 <p class="muted u-m-0-0-8-0" id="profileContext">{{ x?.context ?? 'Calculado con Stockfish sobre tus partidas guardadas.' }}</p>
 <div class="kpis" id="profileKpis">
   @if (failed()) {
-    <app-error-block style="grid-column:1/-1" role="status" message="No pudimos cargar el análisis del motor." [loading]="loading()" (retry)="retry.emit()" />
+    <app-error-block class="span-all" role="status" message="No pudimos cargar el análisis del motor." [loading]="loading()" (retry)="retry.emit()" />
   } @else if (x && !a) {
-    <div class="empty" style="grid-column:1/-1">Todavía no hay partidas analizadas; el motor las analiza solo tras cada sincronización y el perfil aparecerá aquí</div>
+    <div class="empty span-all">Todavía no hay partidas analizadas; el motor las analiza solo tras cada sincronización y el perfil aparecerá aquí</div>
   } @else if (a) {
     @for (k of a.kpis; track k.label) { <m-kpi [label]="k.label" [value]="k.value" [sub]="k.sub" /> }
   }
 </div>
 <p id="profileVerdict" class="prof-verdict">{{ a?.verdict }}</p>
 <div class="card" id="profileCutCard"><h2>Antes y después de un corte</h2><div class="muted u-mb-8">Para un experimento: compara las partidas anteriores a una partida con las posteriores. Pega el id de la última partida de antes (lo ves en la URL del visor).</div>
-  <div class="filters"><input id="profileSinceInput" type="text" aria-label="Id de la partida de corte" placeholder="id de la partida de corte" style="width:100%;max-width:340px" [value]="cut()" #since><button class="btn btn-p" id="profileSinceApply" type="button" (click)="apply(since.value)">Aplicar</button><button class="btn btn-g" id="profileSinceClear" type="button" (click)="since.value = ''; apply('')">Quitar</button></div>
+  <div class="filters"><input id="profileSinceInput" type="text" aria-label="Id de la partida de corte" placeholder="id de la partida de corte" [value]="cut()" #since><button class="btn btn-p" id="profileSinceApply" type="button" (click)="apply(since.value)">Aplicar</button><button class="btn btn-g" id="profileSinceClear" type="button" (click)="since.value = ''; apply('')">Quitar</button></div>
   <div class="muted" id="profileSinceNote">{{ x?.sinceNote }}</div>
   <div id="profileCut">@if (a?.cut?.na) {<div class="muted">No disponible</div>} @else if (a?.cut?.v; as c) {
     <div class="prof-cmp"><span class="h"></span><span class="h">Antes</span><span class="h">Después</span><span class="h">Cambio</span>
       @for (r of c.rows; track r.label) {<span>{{ r.label }}</span><b>{{ r.x }}</b><b>{{ r.y }}</b><span>@if (r.d; as d) {<span [class]="d.cls">{{ d.t }}</span>}</span>}
     </div>
-    @if (c.warn) { <p class="pill pill-warn" style="margin-top:10px;white-space:normal">{{ c.warn }}</p> }
+    @if (c.warn) { <p class="pill pill-warn pill-wrap">{{ c.warn }}</p> }
   }</div>
 </div>
 <div class="grid2">
@@ -66,7 +66,7 @@
   @if (rows?.na) {<div class="muted">No disponible</div>} @else {
   @for (r of rs.slice(0, reviewShown); track r.id) {<ng-container *ngTemplateOutlet="gameTpl; context: { $implicit: r }" />}
   @if (rs.length > reviewShown) {
-    <details class="more-rows u-mt-6"><summary style="cursor:pointer;color:var(--muted);font-size:var(--fs-md);padding:6px 0">Ver {{ rs.length - reviewShown }} partidas más</summary>
+    <details class="more-rows u-mt-6"><summary>Ver {{ rs.length - reviewShown }} partidas más</summary>
       @for (r of rs.slice(reviewShown); track r.id) {<ng-container *ngTemplateOutlet="gameTpl; context: { $implicit: r }" />}</details>
   }}
 </ng-template>

@@ -186,7 +186,7 @@ export function evaluationCards(evals: readonly unknown[], findingFor: (e: Evalu
         @if (c.observed) {<div class="u-fs-md u-c-text-2 u-mb-4"><strong>Observado:</strong> {{ c.observed }}</div>}
         @if (c.color; as cc) {<div class="evcolor u-fs-sm u-c-text-2 u-mb-4">{{ cc.line1 }}<br>{{ cc.line2 }}</div>}
         @if (c.indicio) {<div class="u-fs-md u-fwt-600 u-c-text-2 u-mb-4">{{ c.indicio }}</div>}
-        <ul class="muted" style="font-size:var(--fs-sm);margin:0;padding-left:18px">@for (r of c.reasons; track $index) {<li>{{ r }}</li>}</ul>
+        <ul class="muted ul-ind u-fs-sm u-m-0">@for (r of c.reasons; track $index) {<li>{{ r }}</li>}</ul>
       }
     </ng-template>
     @for (c of cards(); track $index) {

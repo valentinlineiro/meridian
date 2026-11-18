@@ -27,7 +27,7 @@ const GROUPS = [
       <div class="side-group">Cuenta</div>
       <button id="syncBtn" class="btn btn-p side-sync" type="button" (click)="sync.start()" [disabled]="sync.busy()"
         aria-describedby="syncScopeHint" title="Sincroniza Ajedrez e Idiomas. LinkedIn Games es registro manual.">{{ sync.lastSyncLabel() }}</button>
-      <div class="muted side-note" id="syncScopeHint" style="font-size:var(--fs-xs);margin-top:2px;line-height:1.3">Ajedrez e Idiomas se sincronizan · Games es manual</div>
+      <div class="muted side-note" id="syncScopeHint">Ajedrez e Idiomas se sincronizan · Games es manual</div>
       <small class="muted side-note" aria-live="polite">{{ sync.note() }}</small>
       <a class="side-item" routerLink="/settings" routerLinkActive="active" ariaCurrentWhenActive="page">Configuración</a>
       <form class="u-m-0" method="post" action="/logout"><button class="side-item" type="submit">Salir</button></form>

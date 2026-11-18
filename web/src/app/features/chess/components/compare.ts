@@ -38,7 +38,7 @@ function row(g: Group, total: number) {
     } @else {
       @for (r of rs.slice(0, shown()); track $index) { <ng-container *ngTemplateOutlet="rowTpl; context: { $implicit: r }" /> }
       @if (rs.length > shown()) {
-        <details class="more-rows u-mt-6"><summary style="cursor:pointer;color:var(--muted);font-size:var(--fs-md);padding:6px 0">Ver {{ rs.length - shown() }} {{ noun() }} más</summary>
+        <details class="more-rows u-mt-6"><summary>Ver {{ rs.length - shown() }} {{ noun() }} más</summary>
           @for (r of rs.slice(shown()); track $index) { <ng-container *ngTemplateOutlet="rowTpl; context: { $implicit: r }" /> }
         </details>
       }

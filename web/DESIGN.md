@@ -235,4 +235,4 @@ Fixed above the tab bar, 12px top corners, 48px rows at 16px, group labels in 11
 - **Don't** put a thick coloured left or right border on a card or note (`.loss-note`, `.hl` are legacy).
 - **Don't** add streaks, loss framing, confetti or progress bars that exploit completion (PRODUCT.md principle 2).
 - **Don't** introduce a new status colour outside the Verdict triples.
-- **Don't** add new inline styles; extend a named class. The ~80 `u-*` utilities (all `!important`) and the phone overrides keyed on `[style*=...]` or `!important` are legacy from the inline-style cleanup: do not extend them and retire them when a surface is touched.
+- **Don't** add inline `style="..."` attributes (none remain; only dynamic `[style.x]` bindings); add or extend a named class. The ~80 `u-*` utilities are `!important` and legacy: use them sparingly and retire them when a surface is touched.
