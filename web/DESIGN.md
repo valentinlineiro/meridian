@@ -210,7 +210,7 @@ Named `lg-*` classes in place of utility stacks: `lg-split` (label left, value r
 `<details>` with a muted 600 summary, 24px minimum (44px on phones) and a "Ver criterio" / "Ocultar" hint in link colour. Used for criteria, methodology and chess groups. A page section (`Section`) puts its title in an `<h2>` inside the summary, which inherits the summary's look, so heading navigation finds every collapsible block; its side note stays outside the heading.
 
 ### Notes and errors
-- **Note:** sunken box, 1px strong hairline, 8px radius. **Loss note** (legacy): warning ground with a 3px left rule; new notes use a warning ground and a 1px border instead.
+- **Note:** sunken box, 1px strong hairline, 8px radius. **Loss note:** warning ground with a 1px warning border. Highlights ("Qué destaca") carry their kind in the coloured label word, with no side rule.
 - **Error box:** loss ground and line, message left, retry button right; it spans the grid. Every section either loads or shows this with a retry. When only some of a page's requests fail (Idiomas), its blocks say "No disponible" and one error box at the top offers Reintentar for all of them.
 
 ### Bottom sheet ("Más")
