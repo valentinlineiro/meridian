@@ -1,6 +1,6 @@
 import { Component, computed, input } from '@angular/core';
 
-const GLYPH: Record<string, string> = { K: '♔', Q: '♕', R: '♖', B: '♗', N: '♘', P: '♙', k: '♚', q: '♛', r: '♜', b: '♝', n: '♞', p: '♟' };
+const GLYPH: Record<string, string> = { K: '♔', Q: '♕', R: '♖', B: '♗', N: '♘', P: '♙', k: '♚', q: '♛', r: '♜', b: '♝', n: '♞', p: '♟\uFE0E' }; // the black pawn is the one piece Apple draws as a colour emoji unless it is asked for as text (U+FE0E)
 
 const NAMES: Record<string, [string, string]> = { k: ['rey', 'reyes'], q: ['dama', 'damas'], r: ['torre', 'torres'], b: ['alfil', 'alfiles'], n: ['caballo', 'caballos'], p: ['peón', 'peones'] };
 const list = (xs: string[]) => xs.length < 2 ? xs.join('') : xs.slice(0, -1).join(', ') + ' y ' + xs[xs.length - 1];
