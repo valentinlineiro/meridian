@@ -39,7 +39,7 @@ const dayLabel = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString
           <p id="lgRegUnread" class="lgreg-note">No pudimos leer lo guardado de hoy. Lo que escribas se añade o cambia; no se borra nada. <button type="button" class="btn btn-g" (click)="reread.emit()">Volver a leer</button></p>
         }
         @if (restored()) { <p id="lgRegRestored" class="muted u-fs-sm">Recuperamos lo que habías escrito.</p> }
-        <div class="lgreg-row muted u-fs-xs" aria-hidden="true"><span></span><span>Tu tiempo</span><span>Media</span></div>
+        <div class="lgreg-row muted u-fs-xs" aria-hidden="true"><span></span><span>Tu tiempo</span><span>Media LinkedIn</span></div>
         <div id="lgRegRows">
           @for (g of games; track g.k) {
             <div class="lgreg-row" [attr.data-game]="g.k">
