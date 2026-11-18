@@ -16,6 +16,7 @@
 *{box-sizing:border-box}body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;margin:0;background:var(--bg);color:var(--text);line-height:1.4}
 a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
 button{font-family:inherit} /* buttons otherwise render in the browser default (Arial), not the system stack */
+button:focus-visible,.btn:focus-visible{outline:2px solid var(--link);outline-offset:2px} /* the browser default is a 1px light ring; more specific focus rules below still win */
 header{position:sticky;top:0;z-index:10;background:var(--surface);border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;padding:14px 20px;gap:16px;flex-wrap:wrap}
 .h-left .brand{margin:0;font-weight:700;font-size:var(--fs-h);letter-spacing:.02em;display:flex;gap:8px;align-items:center}
 .h-left small{color:var(--muted);font-size:var(--fs-sm);display:block;margin-top:2px}
@@ -224,7 +225,7 @@ summary{padding-block:5px} /* WCAG 2.5.8: at least 24px tall on desktop too */
 .dot{display:inline-block;width:8px;height:18px;border-radius:var(--r-sm);background:var(--draw-line)}
 
 .grow-tag{font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-right:8px}
-.loss-note{margin:0 0 8px;padding:8px 12px;border-left:3px solid var(--warn-line);background:var(--warn-bg);color:var(--warn-fg);border-radius:var(--r-sm)}.gl-n{display:block;font-size:var(--fs-xs);font-weight:400;opacity:.7}
+.loss-note{margin:0 0 8px;padding:8px 12px;border-left:3px solid var(--warn-line);background:var(--warn-bg);color:var(--warn-fg);border-radius:var(--r-sm)}.gl-n{display:block;font-size:var(--fs-xs);font-weight:400}
 .grow-tag{white-space:nowrap}
 
 /* notch / system bars when installed (viewport-fit=cover): the header owns the top inset (its own background covers it, nothing scrolls behind),
