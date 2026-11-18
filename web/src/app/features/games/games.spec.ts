@@ -186,6 +186,12 @@ describe('Games', () => {
       expect(text('gamesHeroMeta')).toBe('Tu récord: 122 días · registro manual');
     });
 
+    it('shouldExposeTodayAndHowYouAreDoingAsHeadingsWhenTheHubLoads', async () => {
+      await open({ zip: game() });
+      expect(el.querySelector('h2#gamesHeroToday')).not.toBeNull();
+      expect([...el.querySelectorAll('.go > h2')].map((h) => h.textContent)).toEqual(['Cómo vas']);
+    });
+
     it('shouldCountTodaysRecordedGamesInTheHeroTitle', async () => {
       await open({ zip: game() }, { ok: true, day: { games: { zip: { score: '0:08' }, tango: { score: '0:20' } } } });
       expect(text('gamesHeroToday')).toBe('Hoy · faltan 4');

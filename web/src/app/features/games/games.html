@@ -17,7 +17,7 @@
   @if (summary() === null) { <app-error-block message="No pudimos cargar tus juegos." [loading]="data.isLoading()" (retry)="data.reload()" /> }
   @let h = hero();
   <div class="hero-card gh" id="gamesHero">
-    <b id="gamesHeroToday">{{ todayTitle() }}</b>
+    <h2 id="gamesHeroToday">{{ todayTitle() }}</h2>
     <ul class="gt" id="gamesToday">
       @for (t of today(); track t.k) {
         <li><button type="button" class="btn btn-g gt-row" [id]="'gamesToday-' + t.k" [attr.aria-label]="t.aria" (click)="reg.open(t.k)"><span class="gt-name">{{ t.name }}</span><span [class]="'gt-state' + (t.state === 'todo' ? ' gt-todo' : '')">{{ t.text }}</span></button></li>
@@ -29,7 +29,7 @@
   <div id="gamesNote" class="muted" role="status">{{ saveNote() || note() }}</div>
   @if (overview(); as o) {
     <div id="gamesOverview" class="go card">
-      <b>Cómo vas</b>
+      <h2>Cómo vas</h2>
       <div class="go-n"><span class="gc-big" id="gamesOverviewBig">{{ o.big }}</span><span class="muted" id="gamesOverviewCap">{{ o.cap }}</span></div>
       <div id="gamesOverviewBar" class="go-bar" role="img" [attr.aria-label]="o.aria">@for (k of o.segments; track $index) {<span [class]="'go-' + k"></span>}</div>
       <p class="u-m-0" id="gamesOverviewSentence">{{ o.sentence }}</p>
