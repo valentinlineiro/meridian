@@ -25,7 +25,7 @@ Evidence-first memory. Snapshots are stored once and never rewritten, every find
 
 ## Operating Context
 
-The owner checks the app on a phone, often outdoors, in short sittings. In production with continuous deploy on every green push to main; migrations are manual. Mature and in audit-and-polish. The Games register build is next. Design docs live in `docs/ux/` (briefs, copy, accessibility and journey notes per surface).
+The owner checks the app on a phone, often outdoors, in short sittings. In production with continuous deploy on every green push to main; migrations are manual. Mature and in audit-and-polish. The Games register, today-first hub and base accessibility pass are in production (#222-#227), and the Chess game viewer has board coordinates and a last-move frame (#228). Design docs live in `docs/ux/` (briefs, copy, accessibility and journey notes per surface).
 
 ## Capabilities and Constraints
 

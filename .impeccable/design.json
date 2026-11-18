@@ -1,0 +1,201 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-18T12:00:00Z",
+  "title": "Design System: Meridian",
+  "extensions": {
+    "colorMeta": {
+      "accent": {
+        "role": "primary",
+        "displayName": "Signal Blue",
+        "canonical": "#1f6feb",
+        "tonalRamp": [
+          "#0a1d3d",
+          "#12294d",
+          "#15458f",
+          "#1f6feb",
+          "#2a7bff",
+          "#58a6ff",
+          "#7aa7e6",
+          "#c8d7ea"
+        ]
+      },
+      "bg": {
+        "role": "neutral",
+        "displayName": "Night Ground",
+        "canonical": "#0e141c",
+        "tonalRamp": [
+          "#0b1220",
+          "#0d1b2a",
+          "#0e141c",
+          "#131f33",
+          "#16263c",
+          "#1c2d42",
+          "#2a3d56",
+          "#5b7699"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "KPI numbers and game report figure."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Uppercase captions, table heads, card h2."
+      }
+    },
+    "shadows": [
+      {
+        "name": "sticky-column",
+        "value": "2px 0 4px rgba(0,0,0,.25)",
+        "purpose": "Edge of the sticky first column in wide tables."
+      },
+      {
+        "name": "scrim",
+        "value": "rgba(5,10,18,.75)",
+        "purpose": "Modal backdrop."
+      }
+    ],
+    "motion": [],
+    "breakpoints": [
+      {
+        "name": "phone-sm",
+        "value": "480px"
+      },
+      {
+        "name": "phone",
+        "value": "760px"
+      },
+      {
+        "name": "tablet",
+        "value": "860px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one primary action.",
+      "html": "<button class=\"ds-btn-p\">Guardar</button>",
+      "css": ".ds-btn-p{background:var(--accent);color:#fff;border:1px solid transparent;border-radius:8px;padding:8px 14px;font-weight:600;font-size:13px;cursor:pointer}.ds-btn-p:hover{background:var(--accent-hover)}.ds-btn-p:focus-visible{outline:2px solid var(--link);outline-offset:2px}"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Secondary action with a 3:1 border.",
+      "html": "<button class=\"ds-btn-g\">Cancelar</button>",
+      "css": ".ds-btn-g{background:var(--line);color:var(--text-2);border:1px solid var(--line-ui);border-radius:8px;padding:8px 14px;font-weight:600;font-size:13px;cursor:pointer}.ds-btn-g:focus-visible{outline:2px solid var(--link);outline-offset:2px}"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Panel with uppercase label.",
+      "html": "<div class=\"ds-card\"><h2>Esta semana</h2><b>26</b></div>",
+      "css": ".ds-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px}.ds-card h2{margin:0 0 12px;font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}.ds-card b{font-size:26px;color:var(--text)}"
+    },
+    {
+      "name": "Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Sunken field.",
+      "html": "<input class=\"ds-in\" value=\"12:30\">",
+      "css": ".ds-in{background:var(--sunken);color:var(--text-2);border:1px solid #5b7a9e;border-radius:8px;padding:8px 10px;font:inherit;font-size:13px}.ds-in:focus-visible{outline:2px solid var(--link);outline-offset:1px}"
+    },
+    {
+      "name": "Win Pill",
+      "kind": "chip",
+      "refersTo": "pill",
+      "description": "Verdict chip.",
+      "html": "<span class=\"ds-pill\">Victoria</span>",
+      "css": ".ds-pill{font-size:11px;padding:2px 7px;border-radius:999px;border:1px solid #1f6b3a;background:#12291e;color:#7ee2a0}"
+    },
+    {
+      "name": "Game Row",
+      "kind": "custom",
+      "refersTo": "game-row",
+      "description": "Full-width row that opens the register sheet.",
+      "html": "<button class=\"ds-gt\"><span class=\"ds-gt-n\">Queens</span><span class=\"ds-gt-s\">Sin registrar</span></button>",
+      "css": ".ds-gt{display:flex;justify-content:space-between;align-items:center;gap:12px;width:100%;min-height:48px;background:var(--line);color:var(--text-2);border:1px solid var(--line-ui);border-radius:8px;padding:8px 14px;font:inherit;font-size:13px;text-align:left;cursor:pointer}.ds-gt-n{font-weight:600}.ds-gt-s{color:var(--muted);font-variant-numeric:tabular-nums}.ds-gt:focus-visible{outline:2px solid var(--link);outline-offset:2px}"
+    },
+    {
+      "name": "Status Block",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Hoy card: title, verdict and staleness pills, big number, evidence line.",
+      "html": "<div class=\"ds-st\"><div class=\"ds-st-h\"><b>Ajedrez</b><span class=\"ds-p\">Estable</span><span class=\"ds-p w\">datos de hace 2 días</span></div><div class=\"ds-big\">900 <small>ELO</small></div><p>Últimas 50 partidas · sin evidencia suficiente</p></div>",
+      "css": ".ds-st{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;color:var(--text)}.ds-st-h{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.ds-st-h b{font-size:16px}.ds-p{font-size:11px;padding:2px 7px;border-radius:999px;border:1px solid var(--line-strong);color:var(--text-2)}.ds-p.w{background:#2b2210;border-color:#7a5a1e;color:#f0c674}.ds-big{font-size:26px;font-weight:700;margin-top:8px}.ds-big small{font-size:12px;color:var(--muted);font-weight:400}.ds-st p{margin:8px 0 0;font-size:13px;color:var(--text-2)}"
+    },
+    {
+      "name": "Segmented Control",
+      "kind": "chip",
+      "refersTo": "button-ghost",
+      "description": "Period selector with aria-pressed.",
+      "html": "<div class=\"ds-seg\"><button aria-pressed=\"false\">Semana</button><button aria-pressed=\"true\">4 semanas</button><button aria-pressed=\"false\">Todo</button></div>",
+      "css": ".ds-seg{display:flex;gap:6px}.ds-seg button{background:var(--line);color:var(--text-2);border:1px solid var(--line-ui);border-radius:8px;padding:8px 14px;font:inherit;font-size:13px;font-weight:600;cursor:pointer}.ds-seg button[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:#fff}.ds-seg button:focus-visible{outline:2px solid var(--link);outline-offset:2px}"
+    },
+    {
+      "name": "Error Box",
+      "kind": "custom",
+      "refersTo": "card",
+      "description": "Section failed to load; offers a retry.",
+      "html": "<div class=\"ds-err\"><span>No se pudo cargar.</span><button>Reintentar</button></div>",
+      "css": ".ds-err{background:var(--loss-bg,#2a1616);border:1px solid #7a2e2e;border-radius:12px;padding:12px;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;color:var(--text)}.ds-err button{background:var(--line);color:var(--text-2);border:1px solid var(--line-ui);border-radius:8px;padding:8px 14px;font:inherit;font-size:13px;font-weight:600;cursor:pointer}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Lab Notebook",
+    "overview": "A quiet dark ledger. One navy theme, system fonts, flat tonal surfaces and 1px rules. Numbers are tabular, every figure sits next to the window it came from, and colour is spent on verdicts rather than decoration.",
+    "keyCharacteristics": [
+      "One dark theme; no light mode.",
+      "Flat, tonal, restrained: depth from surface tints and borders.",
+      "Verdict colours are a fixed vocabulary.",
+      "Status first: verdict pill, one big number, then the evidence line.",
+      "Small uppercase labels over large plain numbers.",
+      "Touch targets grow to 44px on phones.",
+      "Staleness is shown, never hidden: a pill carries the age of the data."
+    ],
+    "rules": [
+      {
+        "name": "The Verdict Vocabulary Rule",
+        "body": "Win, loss, draw and warning each own one triple (ground, line, text). Reuse the triple; never invent a new status colour.",
+        "section": "colors"
+      },
+      {
+        "name": "The Evidence Colour Rule",
+        "body": "Colour marks a finding's verdict, not its category. Decorative colour is out.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tabular Figures Rule",
+        "body": "Numbers that line up in columns or compare across rows use tabular-nums.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-At-Rest Rule",
+        "body": "Surfaces carry no shadow at rest. Overlap is shown with a scrim or an edge, not a glow.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do take colours, radii and sizes from the :root tokens; add a token before adding a literal.",
+      "Do keep 3:1 contrast on field and ghost-button borders and 44px targets on phones.",
+      "Do put the observation window beside every figure and show unknown as unknown, never zero.",
+      "Do honour prefers-reduced-motion and keep focus rings visible (2px Link).",
+      "Do lead a surface with status, then evidence, then detail; show the age of data when it is not today's.",
+      "Do use native elements (dialog, details, button, a) before custom widgets."
+    ],
+    "donts": [
+      "Don't add a light theme, web fonts or decorative gradients.",
+      "Don't add shadows at rest or glows.",
+      "Don't put a thick coloured left or right border on a card or note (.loss-note, .hl are legacy).",
+      "Don't add streaks, loss framing, confetti or progress bars that exploit completion.",
+      "Don't introduce a new status colour outside the Verdict triples.",
+      "Don't add new inline styles; extend a named class. The ~80 u-* utilities and the phone overrides keyed on [style*=...] or !important are legacy: do not extend them."
+    ]
+  }
+}

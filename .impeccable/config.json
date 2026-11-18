@@ -5,5 +5,20 @@
       "maxFindings": 5,
       "maxChars": 8000
     }
+  },
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "border-accent-on-rounded",
+        "value": "*",
+        "files": [
+          "web/src/styles.css"
+        ],
+        "createdAt": "2026-11-18T09:24:37.060Z",
+        "reason": "assistant triage: .gr-key is a 3px chart-legend line swatch, not a card border; not confirmed by user"
+      }
+    ]
   }
 }
