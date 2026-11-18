@@ -75,7 +75,7 @@ describe('MatchDetailModal', () => {
     expect(el.querySelector('#gPgn')!.getAttribute('href')).toBe('/api/me/matches/a%20b%2Fc/game.pgn');
     const squares = [...el.querySelectorAll('#gBoard .sq')];
     expect(squares).toHaveLength(64);
-    expect(squares.slice(0, 8).map((s) => s.textContent).join('')).toBe('♜♞♝♛♚♝♞♜');
+    expect(squares.slice(0, 8).map((s) => s.firstChild?.textContent ?? '').join('')).toBe('♜♞♝♛♚♝♞♜');
     expect(squares[0].className).toBe('sq lt');
     expect(squares[1].className).toBe('sq dk');
     expect(text('gMoves')).toBe('1. e4 e5 2. Bc4 Nc6 3. Qh5 Nf6 4. Qxf7#');
@@ -84,7 +84,7 @@ describe('MatchDetailModal', () => {
   it('shouldDrawTheBoardFromTheOwnersSideWhenPlayingBlack', async () => {
     await open('m1', { ...GAME, userColor: 'black' });
     expect(text('gTitle')).toBe('vs Bot · negras');
-    expect([...el.querySelectorAll('#gBoard .sq')].slice(0, 8).map((s) => s.textContent).join('')).toBe('♖♘♗♔♕♗♘♖');
+    expect([...el.querySelectorAll('#gBoard .sq')].slice(0, 8).map((s) => s.firstChild?.textContent ?? '').join('')).toBe('♖♘♗♔♕♗♘♖');
   });
 
   it('shouldStepPliesWithinBounds', async () => {
@@ -95,7 +95,7 @@ describe('MatchDetailModal', () => {
     expect(text('gPos')).toBe('Posición inicial');
     next.click(); await tick();
     expect(text('gPos')).toBe('Jugada 1 de 7: e4');
-    expect(el.querySelector('#gBoard .sq:nth-child(37)')!.textContent).toBe('♙'); // e4 after the first move
+    expect(el.querySelector('#gBoard .sq:nth-child(37)')!.firstChild?.textContent).toBe('♙'); // e4 after the first move
     expect(el.querySelector('#gMoves .gm.on')!.textContent).toBe('e4');
     for (let i = 0; i < 9; i++) await key('ArrowRight');
     expect(text('gPos')).toBe('Jugada 7 de 7: Qxf7#');
@@ -288,7 +288,7 @@ describe('m-chess-board', () => {
     f.componentRef.setInput('fen', fen);
     f.componentRef.setInput('flip', flip);
     await f.whenStable();
-    return [...(f.nativeElement as HTMLElement).querySelectorAll('.sq')].map((s) => s.textContent).join('');
+    return [...(f.nativeElement as HTMLElement).querySelectorAll('.sq')].map((s) => s.firstChild?.textContent ?? '').join('');
   };
   it('shouldPlaceEveryPieceAndExpandEmptySquares', async () => {
     const b = await render(START);
@@ -299,6 +299,29 @@ describe('m-chess-board', () => {
     f.componentRef.setInput('fen', undefined as unknown as string);
     await f.whenStable();
     expect((f.nativeElement as HTMLElement).querySelectorAll('.sq')).toHaveLength(64);
+  });
+  const board = async (fen: string, flip: boolean, prevFen: string | null) => {
+    const f = TestBed.createComponent(ChessBoard);
+    f.componentRef.setInput('fen', fen);
+    f.componentRef.setInput('flip', flip);
+    f.componentRef.setInput('prevFen', prevFen);
+    await f.whenStable();
+    return f.nativeElement as HTMLElement;
+  };
+  it('shouldLabelFilesAlongTheBottomAndRanksAlongTheLeftSeenFromWhite', async () => {
+    const el = await board(START, false, null);
+    expect([...el.querySelectorAll('.co-f')].map((c) => c.textContent).join('')).toBe('abcdefgh');
+    expect([...el.querySelectorAll('.co-r')].map((c) => c.textContent).join('')).toBe('87654321');
+  });
+  it('shouldReverseTheLabelsWhenTheBoardIsFlipped', async () => {
+    const el = await board(START, true, null);
+    expect([...el.querySelectorAll('.co-f')].map((c) => c.textContent).join('')).toBe('hgfedcba');
+    expect([...el.querySelectorAll('.co-r')].map((c) => c.textContent).join('')).toBe('12345678');
+  });
+  it('shouldFrameTheTwoSquaresOfTheLastMoveAndNothingWhenThereIsNoPreviousPosition', async () => {
+    const after = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1';
+    expect((await board(after, false, START)).querySelectorAll('.sq.mv')).toHaveLength(2);
+    expect((await board(after, false, null)).querySelectorAll('.sq.mv')).toHaveLength(0);
   });
   it('shouldMirrorTheBoardWhenFlipped', async () => {
     expect(await render('k7/8/8/8/8/8/8/7K w - - 0 1', true)).toBe('♔♚');
