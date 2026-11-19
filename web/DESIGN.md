@@ -195,7 +195,7 @@ Desktop: sticky sidebar, 3px left rule on the active item. Phone: fixed tab bar,
 A card per surface: bold 16px title, a verdict pill and a staleness pill on the same line, the big number with its unit, then one evidence sentence. Stale data turns the staleness pill warning-yellow.
 
 ### Game row (Games, today first)
-A full-width ghost button, 48px high, game name left (600) and state right (tabular, muted "Sin registrar" when empty); two columns from 761px. The whole row opens the register sheet on that game.
+A ruled ledger line, 48px high, game name left (600) and the time right (tabular, 20px bold) or "Registrar" in the link colour when empty; a drawn chevron on every row; two columns from 761px. The whole row opens the register sheet on that game, titled "Zip · hoy" with its row marked. The sheet asks for the optional average per row ("+ Media").
 
 ### Register sheet
 A native `<dialog>`: bottom sheet on phones (full width, 90vh max, 12px top corners), 380px side panel on desktop. Rows are name plus two 44px centred numeric fields; an invalid field takes a loss-coloured border and a 12px message under the row; a full-width 48px primary save button closes it.

@@ -2,6 +2,10 @@
   @if (game(); as g) {
     <a routerLink="/games" class="muted gr-back">← Todos los juegos</a>
     <h1>{{ gameName(g) }}</h1>
+    @if (summary() !== undefined) {
+      <button id="gameRegisterOpen" type="button" class="btn btn-g" (click)="regG.open(g)">Registrar {{ gameName(g) }} hoy</button>
+      <app-games-register #regG [day]="dayGames()" (saved)="saved($event)" (reread)="data.reload()" />
+    }
     @if (summary() === null) {
       <app-error-block message="No pudimos cargar tus juegos." [loading]="data.isLoading()" (retry)="data.reload()" />
     } @else if (summary(); as s) {
@@ -17,49 +21,50 @@
   @if (summary() === null) { <app-error-block message="No pudimos cargar tus juegos." [loading]="data.isLoading()" (retry)="data.reload()" /> }
   @let h = hero();
   <div class="hero-card gh" id="gamesHero">
-    <div class="gh-head"><h2 id="gamesHeroToday">{{ todayTitle() }}</h2>@if (h.since) {<span id="gamesHeroSince" class="pill pill-warn">{{ h.since }}</span>}</div>
+    <div class="gh-head"><h2 id="gamesHeroToday">{{ todayTitle() }}</h2>@if (h.since) {<span id="gamesHeroSince" class="pill">{{ h.since }}</span>}</div>
     <ul class="gt" id="gamesToday">
       @for (t of today(); track t.k) {
         <li><button type="button" class="btn btn-g gt-row" [id]="'gamesToday-' + t.k" [attr.aria-label]="t.aria" (click)="reg.open(t.k)"><span class="gt-name">{{ t.name }}</span><span [class]="'gt-state' + (t.state === 'todo' ? ' gt-todo' : '')">{{ t.text }}</span></button></li>
       }
     </ul>
-    <div class="u-mt-14"><button id="gamesRegisterOpen" type="button" [class]="'btn ' + (allDone() ? 'btn-g' : 'btn-p')" (click)="reg.open()">{{ allDone() ? 'Editar lo de hoy' : 'Registrar hoy' }}</button></div>
+    <div id="gamesNote" role="status">{{ saveNote() || note() }}</div>
+    @if (summary() === undefined) { <p class="muted u-mt-14" role="status">Cargando tus juegos…</p> }
+    @else {
+      <div class="gh-actions u-mt-14">
+        <button id="gamesRegisterOpen" type="button" [class]="'btn ' + (noneDone() ? 'btn-p' : 'btn-g')" (click)="reg.open()">{{ allDone() ? 'Editar lo de hoy' : 'Registrar hoy' }}</button>
+        @if (draftWaiting()) { <button id="gamesDraftResume" type="button" class="btn btn-g" (click)="draftWaiting.set(false); reg.open()">Continuar lo que escribías</button> }
+      </div>
+    }
     <app-games-register #reg [day]="dayGames()" (saved)="saved($event)" (reread)="data.reload()" />
   </div>
-  <div id="gamesNote" class="muted" role="status">{{ saveNote() || note() }}</div>
-  @if (overview(); as o) {
-    <div id="gamesOverview" class="go card">
-      <h2>Cómo vas</h2>
-      <p class="u-m-0" id="gamesOverviewSentence">{{ o.sentence }}</p>
-    </div>
-  }
   <app-segmented groupId="gamesRange" label="Periodo de análisis" caption="Periodo" idPrefix="gr-" [options]="ranges" [value]="range()" (picked)="pickRange($event)" />
   <app-section title="Tus juegos" sectionId="cg-games-now">
+    @if (overview(); as o) { <p class="gc-sentence" id="gamesOverview"><span id="gamesOverviewSentence">{{ o.sentence }}</span></p> }
     <div id="gamesNow" class="gcs">
       @for (r of rows(); track r.k) {
         <a class="gc card" [class.gc-weak]="r.verdict.state === 'few-data' || r.verdict.state === 'no-signal'" [routerLink]="['/games', r.k]">
-          <span class="gc-name"><b>{{ r.name }}</b><span class="verdict-tr"><span class="muted">Tendencia</span><app-verdict [verdict]="r.verdict" /></span></span>
+          <span class="gc-name"><b>{{ r.name }}</b><span class="verdict-tr"><span class="sr-only">Tendencia: </span><app-verdict [verdict]="r.verdict" /></span></span>
           <span class="gc-n"><span class="gc-big">{{ r.big }}</span><span class="gc-cap muted">{{ r.cap }}</span></span>
           <app-result-bars [data]="r.bars" />
         </a>
       }
     </div>
     <app-help label="Cómo leerlo">
-      <p>El número grande es lo más rápido o lento que vas frente a la media de LinkedIn, en el periodo elegido. Cada barra es una de tus últimas 14 partidas con media: hacia arriba, mejor que la media ese día; hacia abajo, peor; cuanto más alta, mayor la diferencia. La etiqueta (Mejorando, Estable, Bajando) se confirma cuando el cambio se repite dos semanas seguidas; hasta entonces la frase te dice que queda por confirmar. «Estable» significa que con los datos de este periodo no hay un cambio medible, no que sea imposible que lo haya. «Pocos datos»: faltan partidas para valorar. Debajo, «Más detalle» tiene las tablas y los gráficos.</p>
+      <p>El número grande es cuánto más rápido o lento vas que la media de LinkedIn en el periodo elegido; con pocos datos, es el número de partidas. Cada barra es una de tus últimas 14 partidas con media: sobre la línea, mejor que la media; bajo la línea, peor. La etiqueta (Mejorando, Estable, Bajando) se confirma cuando el cambio se repite dos semanas seguidas.</p>
+      <p>«Estable»: con estos datos no hay un cambio medible. «Pocos datos»: faltan partidas para valorar.</p>
     </app-help>
   </app-section>
-  <div class="gh-foot muted"><span id="gamesHeroDays">{{ h.days }}</span><span id="gamesHeroMeta">{{ h.meta }}</span><a id="gamesExport" href="/api/me/linkedin-games/export.csv" download>Descargar resultados (CSV)</a></div>
   <app-section title="Por día de la semana" sectionId="cg-games-loss" [open]="false">
     @if (loss(); as l) {
       <p class="loss-note" id="gamesLossNote">{{ l.sentence }}</p>
       <div class="tblwrap" tabindex="0" role="region" aria-label="Derrotas por juego y día de la semana (desplazable)"><table class="gtable gloss" id="gamesLoss"><caption class="sr-only">Porcentaje de partidas en las que no le ganas a la media, por juego y día de la semana. Un guion es que hay pocas partidas.</caption>
         <thead><tr><th scope="col">Juego</th>@for (d of l.days; track d) {<th scope="col">{{ d }}</th>}</tr></thead>
         <tbody>@for (r of l.rows; track r.k) {<tr><th scope="row">{{ r.name }}</th>@for (c of r.cells; track $index) {<td [class]="'num gl' + c.level" [attr.title]="c.title">{{ c.text }}@if (c.level >= 0) {<small class="gl-n">{{ c.n }}<span class="sr-only"> partidas</span></small>}</td>}</tr>}</tbody></table></div>
-      <p class="muted" id="gamesLossNear">Derrotas por poco: @for (r of l.rows; track r.k) {{{ r.name }} {{ r.near }}@if (!$last) {; }}.</p>
+      <p class="muted" id="gamesLossNear">Por poco (menos de un 15 % más lento que la media): @for (r of l.rows; track r.k) {{{ r.name }} {{ r.near }}@if (!$last) {; }}.</p>
     } @else if (loss() === null) {<div class="muted">No disponible</div>}
     <app-help label="Cómo leer este mapa">
-      <p>Cada casilla es la parte de las partidas de ese juego y día en las que tu tiempo no fue mejor que la media. Solo se muestran con 8 partidas o más. El número pequeño es cuántas partidas hay detrás. Pasa el ratón por encima para ver las derrotas y el intervalo de confianza.</p>
-      <p>«Por poco» son las derrotas en las que tu tiempo estuvo menos de un 15 % por encima de la media. Entre semana la media es mucho más rápida, así que perder un lunes no es lo mismo que perder un domingo.</p>
+      <p>Cada casilla es la parte de las partidas de ese juego y día en las que no le ganaste a la media. Solo se muestran con 8 partidas o más. El número pequeño es cuántas partidas hay detrás.</p>
+      <p>«Por poco»: tu tiempo estuvo menos de un 15 % por encima de la media. Entre semana la media es mucho más rápida, así que perder un lunes no es lo mismo que perder un domingo.</p>
     </app-help>
   </app-section>
   <app-section title="Más detalle" sectionId="cg-games-more" [open]="false">
@@ -86,5 +91,6 @@
     </app-help>
   </app-section>
   </app-section>
+  <div class="gh-foot muted"><span id="gamesHeroDays">{{ h.days }}</span><span id="gamesHeroMeta">{{ h.meta }}</span><a id="gamesExport" href="/api/me/linkedin-games/export.csv" download>Descargar resultados (CSV)</a></div>
   }
 </section>

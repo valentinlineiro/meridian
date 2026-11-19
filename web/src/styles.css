@@ -362,7 +362,7 @@ app-tab-bar{display:none}
 .gc{display:grid;grid-template-columns:auto minmax(0,1fr) 84px;gap:4px 12px;align-items:center;min-height:64px;padding:10px 12px;color:inherit;text-decoration:none}
 .gc-name{display:grid;justify-items:start;gap:4px}
 .gc-n{display:grid;justify-items:end}.gc-big{font-size:var(--fs-h);font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums}.gc-cap{font-size:var(--fs-xs);text-align:right}
-.gc .gbars{height:28px;gap:2px}
+.gc .gbars{height:40px;gap:2px}.gc-weak .gbars{opacity:.55}
 .gbars{display:grid;grid-template-columns:repeat(14,minmax(0,1fr));gap:3px;height:56px;position:relative}
 .gbars::before{content:"";position:absolute;left:0;right:0;top:50%;border-top:1px dashed var(--selected-line)}
 .gb{display:grid;grid-template-rows:1fr 1fr}.gb-up,.gb-dn{display:flex}.gb-up{align-items:flex-end}.gb-dn{align-items:flex-start}
@@ -475,8 +475,23 @@ app-chess{--muted:var(--muted-bright)}
 /* Games, today first: one row per game, the whole row opens the sheet on that game */
 .gt{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:6px}
 .gt-row{display:flex;justify-content:space-between;align-items:center;gap:12px;width:100%;min-height:48px;text-align:left}
-.gt-name{font-weight:600}.gt-state{font-variant-numeric:tabular-nums;color:var(--text)}.gt-todo{color:var(--muted);font-weight:400}
-@media(min-width:761px){.gt{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* The ledger: ruled lines, the time is the figure; a game still to log offers "Registrar" with a drawn chevron instead of reading as a gap */
+.gt{gap:0}
+.gt-row{background:none;border:0;border-bottom:1px solid var(--line);border-radius:0;padding-inline:2px}
+.gt-row:hover{background:var(--hover)}
+.gt-name{font-weight:600}
+.gt-state{font-variant-numeric:tabular-nums;font-size:var(--fs-h);font-weight:700;color:var(--text);letter-spacing:.01em}
+.gt-state{display:inline-flex;align-items:center;gap:8px}
+.gt-state::after{content:"";width:7px;height:7px;border-top:2px solid var(--muted);border-right:2px solid var(--muted);transform:rotate(45deg)} /* every row can be tapped, logged or not */
+.gt-todo{font-size:var(--fs-md);font-weight:500;color:var(--link);letter-spacing:0}
+.gt-todo::after{border-color:var(--link)}
+.gh-actions{display:flex;flex-wrap:wrap;gap:8px}
+#gamesNote:not(:empty){margin:12px 0 0;font-weight:600;color:var(--text)}
+.lgreg-row.lgreg-focus{background:var(--selected);border-radius:var(--r-md);padding-inline:6px;margin-inline:-6px}
+#gameRegisterOpen{margin:4px 0 12px}
+.gc-sentence{margin:0 0 10px;max-width:65ch}
+.gc .bar-loss{background:var(--orange)} /* worse than the average is information, not an alarm */
+@media(min-width:761px){.gt{grid-template-columns:repeat(2,minmax(0,1fr));column-gap:24px}}
 #gamesTab>.gh-foot{padding:0 12px;margin:16px 0}
 @media(max-width:480px){.seg{gap:4px}.seg .btn{padding-left:6px;padding-right:6px}} /* four options (Semana / 4 semanas / 3 meses / Todo) and a caption fit one row at 390px */
 
