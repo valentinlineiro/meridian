@@ -34,7 +34,7 @@ const dayLabel = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString
     <dialog #dlg id="gamesRegister" class="lgreg" aria-labelledby="lgRegTitle" (cancel)="$event.preventDefault(); requestClose()">
       <form (submit)="submit($event)">
         <div class="lgreg-head"><h2 id="lgRegTitle" class="u-m-0">{{ focusName() ? focusName() + ' · hoy, ' : 'Hoy, ' }}{{ label() }}</h2><button type="button" class="btn btn-g" (click)="requestClose()">Cerrar</button></div>
-        <p id="lgRegHelp" class="muted u-fs-sm">Tu tiempo y la media de LinkedIn de cada juego, como m:ss (por ejemplo 1:06). Deja vacío el que no hayas jugado; vacía uno ya guardado para quitarlo.</p>
+        <p id="lgRegHelp" class="muted u-fs-sm">Tu tiempo como m:ss, por ejemplo 1:06. Deja vacío el que no hayas jugado; vacía uno guardado para quitarlo. La media de LinkedIn es opcional.</p>
         @if (day() === null) {
           <p id="lgRegUnread" class="lgreg-note">No pudimos leer lo guardado de hoy. Lo que escribas se añade o cambia; no se borra nada. <button type="button" class="btn btn-g" (click)="reread.emit()">Volver a leer</button></p>
         }
@@ -50,7 +50,7 @@ const dayLabel = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString
               } @else {
                 @for (f of fields; track f) {
                   @if (f === 'avg' && !avgShown(g.k)) {
-                    <button type="button" class="btn btn-g lgreg-addavg" [id]="'lgReg-' + g.k + '-addavg'" [attr.aria-label]="'Añadir la media de LinkedIn de ' + g.name" (click)="showAvg(g.k)">+ Media</button>
+                    <button type="button" class="linkbtn lgreg-addavg" [id]="'lgReg-' + g.k + '-addavg'" [attr.aria-label]="'Añadir la media de LinkedIn de ' + g.name" (click)="showAvg(g.k)">+ Media</button>
                   } @else {
                   <input type="text" inputmode="numeric" autocomplete="off" placeholder="m:ss" [id]="'lgReg-' + g.k + '-' + f"
                     [attr.aria-label]="g.name + (f === 'score' ? ': tu tiempo' : ': media de LinkedIn')"
