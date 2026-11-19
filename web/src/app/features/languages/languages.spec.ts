@@ -210,7 +210,7 @@ describe('Languages', () => {
     it('shouldRenderHeroAccountAndSyncLines', async () => {
       await open();
       const opts = [...el().querySelectorAll('#langCourseSelect option')].map((o) => o.textContent!.trim());
-      expect(opts).toEqual(['🌐 Demo Beta · EN → XB (94.000 XP)', '🌐 Demo Gamma · ES → XC (45.000 XP)']);
+      expect(opts).toEqual(['Demo Beta · EN → XB (94.000 XP)', 'Demo Gamma · ES → XC (45.000 XP)']);
       expect(text('langCourseFlag')).toBe('🌐');
       expect(q('#langActiveProgressBar')!.style.width).toBe('30%');
       expect(text('langSyncMeta')).toBe(`Sincronizado hoy · Actividad hasta ${fmtDate(utcDay(0))} · Último curso en Duolingo: Demo Beta`);
@@ -505,11 +505,12 @@ describe('Languages', () => {
       await tick();
       expect(q('#langGlobalView')).toBeNull();
       expect(text('langDetailTitle')).toBe('🌐 Demo Beta');
-      expect(text('langDetailSub')).toBe('EN → XB · ID: XB_EN');
+      expect(text('langDetailSub')).toBe('EN → XB');
       expect(text('langDetailXpPill')).toBe('94.000 XP');
       expect(text('langCefrBody')).toBe('Nivel A1 (1 sección)3 / 10 unidades');
       expect(text('langSectionsList')).toContain('SECCIÓN 1: A1.23 / 10 unidades');
-      expect(text('langSectionsList')).toContain('ID de sección: s1 · Tipo: learning · Última observación: 2026-11-05');
+      expect(text('langSectionsList')).toContain('Última observación: 2026-11-05');
+      expect(text('langSectionsList')).not.toContain('ID de sección');
       expect(router.url).toBe('/languages/XB_EN');
       expect(asked('/api/languages/courses/XB_EN')).toHaveLength(1); // the selected course's detail was read with the page, not again
 
@@ -548,7 +549,7 @@ describe('Languages', () => {
       await tick();
       expect(q('#langDetailView img')).toBeNull();
       expect(text('langCefrBody')).toContain(`Nivel ${HOSTILE}`);
-      expect(text('langSectionsList')).toContain(`ID de sección: ${HOSTILE} · Tipo: ${HOSTILE}`);
+      expect(text('langSectionsList')).toContain('Última observación: ' + HOSTILE.slice(0, 10)); // the escaped text, never markup
     });
   });
 
@@ -588,6 +589,41 @@ describe('Languages', () => {
         await open('/languages', langApi({ '/api/languages': langs, '/api/languages/xp': { summaries: history } }));
         expect(text('langPaceLine')).toBe('Sin datos nuevos desde hace 5 días · no se compara con tu media');
       });
+    });
+
+    describe('a stale sync is said on the hero', () => {
+      it('shouldShowTheAgeOnTheHeroAndNotReadTheWeekAsZeroWhenTheSyncIsOld', async () => {
+        await open('/languages', langApi({ '/api/languages': { ...langsBody(), updatedAt: iso(5 * DAY) } }));
+        expect(text('langStalePill')).toBe('Datos de hace 5 días');
+        expect(text('langWeekSummary')).toBe('Sin datos recientes');
+        expect(text('langAccountActivityDetail')).toBe('Sin datos recientes: no se sabe qué pasó hoy');
+      });
+
+      it('shouldShowNoAgePillWhenTheSyncIsFresh', async () => {
+        await open();
+        expect(q('#langStalePill')).toBeNull();
+      });
+
+      it('shouldStepTheFigureBackAndKeepTheAgeOnTheSameLineWhenStale', async () => {
+        await open('/languages', langApi({ '/api/languages': { ...langsBody(), updatedAt: iso(5 * DAY) } }));
+        expect(q('#langCourseHero')!.classList.contains('lg-stale')).toBe(true);
+        expect(q('#langStalePill')!.parentElement!.querySelector('#langUnitsBig, #langLevel')).not.toBeNull();
+      });
+
+      it('shouldCarryTheAgeToTheCourseDetailAndNotHeadlineADashWhenTheWeekIsUnknown', async () => {
+        await open('/languages', langApi({ '/api/languages': { ...langsBody(), updatedAt: iso(5 * DAY) } }));
+        expect(q('#langActivityBig')).toBeNull();
+        expect(text('langActivityNote')).toContain('Sin datos nuevos desde hace 5 días');
+        q('#langCoursesList details[open] button')!.click();
+        await tick();
+        expect(text('langDetailStalePill')).toBe('Datos de hace 5 días');
+      });
+    });
+
+    it('shouldNameARawSectionTypeInsteadOfPrintingItsKey', async () => {
+      await open('/languages/XC_ES');
+      expect(q('#langCoursesList')!.textContent).toContain('SECCIÓN 1: Repaso diario');
+      expect(q('#langCoursesList')!.textContent).not.toContain('daily_refresh');
     });
 
     it('shouldLabelTheCefrCardAsCurricularUnitsNotProficiency', async () => { // tests/uxPhase0.test.ts

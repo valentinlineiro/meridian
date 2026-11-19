@@ -12,7 +12,7 @@ import { CourseDetailView } from './course-detail';
 import { levelView } from './level';
 import {
   account, accountActivity, activityToday, Analytics, comparability, concentration, courseList, Detail, hero, intensity, LangData, legacyAccount, LegacyLang,
-  Load, NA, observed, pace, progress, timeline, week, weekdays,
+  Load, NA, observed, pace, progress, staleLabel, timeline, week, weekdays,
 } from './languages.view';
 
 // Port of loadLanguagesDashboard/selectCourse/showCourseDetail (src/dashboard.client.js:298–419, 1143–1179).
@@ -59,8 +59,9 @@ export class Languages {
   protected readonly selectedCourse = computed(() => this.d()?.courses.find((c) => c.courseId === this.selected()));
 
   // Every card is built on its own: a body one cannot read degrades that card alone.
+  protected readonly staleAge = computed(() => { const d = this.d(); return d ? staleLabel(d) : null; });
   protected readonly hero = computed(() => { const d = this.d(); return d && safe(() => hero(d, this.selected()), null); });
-  protected readonly progress = computed(() => { const d = this.d(); return d ? safe(() => progress(d, this.selected(), this.detail()), { text: NA, width: 0 }) : null; });
+  protected readonly progress = computed(() => { const d = this.d(); return d ? safe(() => progress(d, this.selected(), this.detail()), { text: NA, width: 0, big: '', sub: '' }) : null; });
   /** The level the selected course has reached and the progress in it; the change comes from the course's comparable observation. */
   protected readonly lv = computed(() => {
     const d = this.d(), det = this.detail();
