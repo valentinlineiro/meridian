@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, input, linkedSignal, signal, untracked, viewChild } from '@angular/core';
+import { Component, computed, effect, inject, input, linkedSignal, signal, untracked } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
 import { catchError, forkJoin, Observable, of } from 'rxjs';
@@ -62,17 +62,17 @@ export class Games {
     const s = r.s?.summary;
     return s && typeof s.games === 'object' && s.games !== null ? s : null;
   });
-  private readonly reg = viewChild(GamesRegister); // only the hub renders the sheet
   /** What the last save did ("Guardado: Zip 0:48."), until the next one. */
   protected readonly saveNote = signal('');
-  protected saved(note: string): void { this.saveNote.set(note); this.data.reload(); }
+  protected saved(note: string): void { this.saveNote.set(note); this.draftWaiting.set(false); this.data.reload(); }
   private draftChecked = false;
+  protected readonly draftWaiting = signal(false);
   constructor() {
-    // A sheet interrupted by a login redirect or a reload comes back by itself, once today's record has been read.
+    // A sheet interrupted by a login redirect or a reload leaves a "Continuar" button, once today's record has been read; it never opens by itself.
     effect(() => {
       if (!this.loaded() || this.draftChecked || this.game()) return; // a game's report has no sheet: wait for the hub
       this.draftChecked = true;
-      if (GamesRegister.hasDraft()) untracked(() => this.reg()?.open());
+      if (GamesRegister.hasDraft()) untracked(() => this.draftWaiting.set(true));
     });
   }
   protected readonly note = computed(() => {
@@ -103,22 +103,32 @@ export class Games {
     return Object.keys(GAME_NAMES).map((k) => {
       const name = gameName(k), rec = day?.[k];
       const state = !day ? 'unknown' : rec ? 'done' : 'todo';
-      const text = state === 'unknown' ? 'No se pudo leer' : rec ? rec.score || 'Solo media' : 'Sin registrar';
+      const text = state === 'unknown' ? 'No se pudo leer' : rec ? rec.score || 'Solo media' : 'Registrar';
       return { k, name, state, text, aria: state === 'done' ? `${name}, registrado ${text}. Editar` : state === 'todo' ? `${name}, sin registrar. Registrar` : `${name}, no se pudo leer hoy. Abrir` };
     });
   });
+  protected readonly noneDone = computed(() => this.todayGames().every((g) => !g.done));
   protected readonly allDone = computed(() => this.todayGames().length > 0 && this.todayGames().every((g) => g.done));
-  /** "Hoy · faltan 4" (never "N de 6", which the trend headline already uses); just "Hoy" while the day could not be read: unknown is never said as zero. */
+  /** "Hoy · 2 registrados" (never "N de 6" or a count of what is left: a log is not a to-do list); just "Hoy" while nothing is logged or the day could not be read: unknown is never said as zero. */
   protected readonly todayTitle = computed(() => {
     const games = this.todayGames(), done = this.recorded();
     if (!games.length) return '';
     if (!done) return 'Hoy';
     const left = games.filter((g) => !g.done).length;
-    return left === games.length ? 'Hoy · sin registrar' : left ? `Hoy · faltan ${left}` : 'Hoy · todo registrado';
+    const n = games.length - left;
+    return n === 0 ? 'Hoy' : left ? `Hoy · ${n} registrado${n === 1 ? '' : 's'}` : 'Hoy · todo registrado';
   });
   protected readonly loss = computed(() => { const s = this.summary(); return s ? safe(() => lossRows(s) ?? null, null) : undefined; });
   protected readonly diff = computed(() => { const s = this.summary(); return s ? safe(() => difficultyGrid(s) ?? null, null) : undefined; });
-  protected readonly rows = computed(() => { const s = this.summary(), range = this.range(); return s ? safe(() => summaryRows(s, range), []) : []; });
+  /** Cards keep the register's order, so a game is always in the same place; the overview sentence still names the worst first. */
+  protected readonly rows = computed(() => {
+    const s = this.summary(), range = this.range(), order = Object.keys(GAME_NAMES);
+    return s ? safe(() => summaryRows(s, range).sort((a, b) => order.indexOf(a.k) - order.indexOf(b.k)).map((r) => {
+      const n = s.games[r.k]!.windows[range].eff.nEff, few = r.verdict.state === 'few-data';
+      // too few games to judge: the number is how many have an average in the period, never a big percentage beside "Pocos datos"; the caption is short, the help says "frente a la media"
+      return { ...r, big: few ? String(n) : r.big, cap: few ? (n === 1 ? 'partida' : 'partidas') : r.cap.replace(' que la media', '') };
+    }), []) : [];
+  });
   protected readonly overview = computed(() => safe(() => overview(this.rows()), null));
   /** undefined: nothing to draw (loading, failed, no games); null: the trajectory could not be read. */
   protected readonly traj = computed(() => {

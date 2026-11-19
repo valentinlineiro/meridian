@@ -86,6 +86,14 @@ describe('Games', () => {
       return el;
     };
 
+    it('shouldOfferToRegisterTheGameFromItsOwnReport', async () => {
+      await openReport({ queens: game(), zip: game() });
+      expect(el.querySelector('#gameRegisterOpen')!.textContent).toContain('Registrar Queens hoy');
+      await click('#gameRegisterOpen');
+      expect(el.querySelector('#gamesRegister')!.hasAttribute('open')).toBe(true);
+      expect(el.querySelector('#lgRegTitle')!.textContent).toContain('Queens · hoy');
+    });
+
     it('shouldShowTheReportOfTheGameInsteadOfTheListWhenTheRouteHasAGame', async () => {
       await openReport({ queens: game(), zip: game() });
       expect(el.querySelector('h1')!.textContent).toBe('Queens');
@@ -183,7 +191,7 @@ describe('Games', () => {
     it('shouldSayLastRecordInTheHeroWhenThePlayStreakIsZero', async () => {
       await open({ zip: game() }, undefined, { playStreak: { current: 0, max: 122 } });
       expect(text('gamesHeroSince')).toMatch(/^Último registro: 3 nov( 2026)?$/);
-      expect(el.querySelector('#gamesHeroSince')!.classList.contains('pill-warn')).toBe(true);
+      expect(el.querySelector('#gamesHeroSince')!.classList.contains('pill-warn')).toBe(false); // a gap in the log is a note, not an alert
       expect(el.querySelector('#gamesHero .gh-head')!.contains(el.querySelector('#gamesHeroSince'))).toBe(true); // beside the title, not in the footer
       expect(text('gamesHeroMeta')).toBe('registro manual');
     });
@@ -191,18 +199,18 @@ describe('Games', () => {
     it('shouldExposeTodayAndHowYouAreDoingAsHeadingsWhenTheHubLoads', async () => {
       await open({ zip: game() });
       expect(el.querySelector('h2#gamesHeroToday')).not.toBeNull();
-      expect([...el.querySelectorAll('.go > h2')].map((h) => h.textContent)).toEqual(['Cómo vas']);
+      expect(el.querySelector('#gamesNow')!.parentElement!.contains(el.querySelector('#gamesOverview'))).toBe(true); // the sentence heads the games, not a card of its own
     });
 
     it('shouldCountTodaysRecordedGamesInTheHeroTitle', async () => {
       await open({ zip: game() }, { ok: true, day: { games: { zip: { score: '0:08' }, tango: { score: '0:20' } } } });
-      expect(text('gamesHeroToday')).toBe('Hoy · faltan 4');
+      expect(text('gamesHeroToday')).toBe('Hoy · 2 registrados');
     });
 
-    it('shouldListTheSixGamesWithTodaysTimeOrSinRegistrar', async () => {
+    it('shouldListTheSixGamesWithTodaysTimeOrRegistrar', async () => {
       await open({ zip: game() }, { ok: true, day: { games: { zip: { score: '0:08' }, tango: { avg: '0:20' } } } });
       const rows = [...el.querySelectorAll('#gamesToday button')].map((b) => [b.querySelector('.gt-name')!.textContent, b.querySelector('.gt-state')!.textContent]);
-      expect(rows).toEqual([['Zip', '0:08'], ['Tango', 'Solo media'], ['Queens', 'Sin registrar'], ['Mini Sudoku', 'Sin registrar'], ['Patches', 'Sin registrar'], ['Wend', 'Sin registrar']]);
+      expect(rows).toEqual([['Zip', '0:08'], ['Tango', 'Solo media'], ['Queens', 'Registrar'], ['Mini Sudoku', 'Registrar'], ['Patches', 'Registrar'], ['Wend', 'Registrar']]);
       expect(el.querySelector('#gamesToday-queens')!.getAttribute('aria-label')).toBe('Queens, sin registrar. Registrar');
       expect(el.querySelector('#gamesToday-zip')!.getAttribute('aria-label')).toBe('Zip, registrado 0:08. Editar');
     });
@@ -210,7 +218,7 @@ describe('Games', () => {
     it('shouldNotSaySinRegistrarWhenTodayCouldNotBeRead', async () => {
       await open({ zip: game() }, FAIL);
       expect(el.querySelector('#gamesToday-zip .gt-state')!.textContent).toBe('No se pudo leer');
-      expect(el.querySelector('#gamesToday')!.textContent).not.toContain('Sin registrar');
+      expect(el.querySelector('#gamesToday')!.textContent).not.toContain('Registrar');
     });
 
     it('shouldOpenTheSheetOnTheGameOfTheRowTapped', async () => {
@@ -253,6 +261,30 @@ describe('Games', () => {
       await open({ zip: game() }, { ok: true, day: { games: six } });
       expect(text('gamesRegisterOpen')).toBe('Editar lo de hoy');
       expect(text('gamesHeroToday')).toBe('Hoy · todo registrado');
+    });
+
+    it('shouldMakeRegistrarHoyThePrimaryButtonOnlyWhileNothingIsLogged', async () => {
+      await open({ zip: game() });
+      expect(el.querySelector('#gamesRegisterOpen')!.className).toContain('btn-p');
+      await open({ zip: game() }, { ok: true, day: { games: { zip: { score: '0:08' } } } });
+      expect(el.querySelector('#gamesRegisterOpen')!.className).toContain('btn-g');
+    });
+
+    it('shouldKeepTheCardsInTheRegistersOrderNotTheTrendOrder', async () => {
+      await open({ wend: game(), zip: game(), queens: game() });
+      const names = [...el.querySelectorAll('#gamesNow .gc-name b')].map((b) => b.textContent);
+      expect(names).toEqual(['Zip', 'Queens', 'Wend']);
+    });
+
+    it('shouldOfferToContinueAWaitingDraftInsteadOfOpeningTheSheet', async () => {
+      const d = new Date(), pad = (n: number) => String(n).padStart(2, '0');
+      sessionStorage.setItem('meridian.gamesRegisterDraft', JSON.stringify({ date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`, values: { zip: { score: '0:48', avg: '' } }, removed: [] }));
+      await open({ zip: game() });
+      expect(el.querySelector('#gamesRegister')!.hasAttribute('open')).toBe(false);
+      await click('#gamesDraftResume');
+      expect(el.querySelector('#gamesRegister')!.hasAttribute('open')).toBe(true);
+      expect((el.querySelector('#lgReg-zip-score') as HTMLInputElement).value).toBe('0:48');
+      sessionStorage.clear();
     });
 
     it('shouldOfferTheWholeHistoryAsCsvFromTheFooter', async () => {
@@ -522,7 +554,7 @@ describe('Games', () => {
       expect(cells[0]).toBe('70 %10 partidas'); // rate + sample size
       expect(cells[6]).toBe('—'); // Sunday has 3 games
       expect(cells.length).toBe(7);
-      expect(text('gamesLossNear')).toBe('Derrotas por poco: Queens 25 %.');
+      expect(text('gamesLossNear')).toBe('Por poco (menos de un 15 % más lento que la media): Queens 25 %.');
     });
 
     it('shouldStillNameTheWorstWeekdayWhenEveryRateIsLow', async () => {
@@ -578,9 +610,21 @@ describe('Games', () => {
       await open({ zip: game(), tango: game() });
       const zip = rowOf('Zip');
       expect(zip.querySelector('.gc-big')!.textContent!.trim()).toBe('+13 %');
-      expect(zip.querySelector('.gc-cap')!.textContent!.trim()).toBe('más rápido que la media');
+      expect(zip.querySelector('.gc-cap')!.textContent!.trim()).toBe('más rápido');
       expect(zip.textContent).toContain('Estable');
       expect(zip.querySelector('.gc-line, .gc-delta')).toBeNull(); // the sentence and the change live in the report
+    });
+
+    it('shouldShowTheNumberOfGamesInsteadOfAPercentageWhenThereIsTooLittleData', async () => {
+      await open({ zip: game(), tango: game({ interpretation: interp({ label: 'insuficiente', reason: 'pocos_datos' }), windows: { ...game().windows, '28': { ...win28(), eff: { median: 1.2, nEff: 4 } } } }) });
+      expect(rowOf('Tango').querySelector('.gc-big')!.textContent!.trim()).toBe('4');
+      expect(rowOf('Tango').querySelector('.gc-cap')!.textContent!.trim()).toBe('partidas');
+      expect(rowOf('Zip').querySelector('.gc-big')!.textContent!.trim()).toBe('+13 %');
+    });
+
+    it('shouldShowTheSaveNoteInsideTheTodayCard', async () => {
+      await open({ zip: game() }, FAIL);
+      expect(el.querySelector('#gamesHero')!.contains(el.querySelector('#gamesNote'))).toBe(true);
     });
 
     it('shouldSayMoreSlowAndShowADashWhenTheMedianSpeedIsBelowOrMissing', async () => {
@@ -590,7 +634,7 @@ describe('Games', () => {
       (none.windows['28'] as any).eff = { median: null, nEff: 0 };
       await open({ zip: slow, tango: none });
       expect(rowOf('Zip').querySelector('.gc-big')!.textContent!.trim()).toBe('−6 %');
-      expect(rowOf('Zip').querySelector('.gc-cap')!.textContent!.trim()).toBe('más lento que la media');
+      expect(rowOf('Zip').querySelector('.gc-cap')!.textContent!.trim()).toBe('más lento');
       expect(rowOf('Tango').querySelector('.gc-big')!.textContent!.trim()).toBe('—');
     });
 

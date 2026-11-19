@@ -14,7 +14,7 @@ describe('GamesRegister', () => {
   let saved: string[];
   const tick = async () => { TestBed.tick(); await new Promise((r) => setTimeout(r)); TestBed.tick(); };
   const input = (game: string, field: 'score' | 'avg') => el.querySelector<HTMLInputElement>(`#lgReg-${game}-${field}`)!;
-  const fill = async (game: string, field: 'score' | 'avg', v: string) => { input(game, field).value = v; input(game, field).dispatchEvent(new Event('input')); await tick(); };
+  const fill = async (game: string, field: 'score' | 'avg', v: string) => { if (field === 'avg' && !input(game, field)) { el.querySelector<HTMLElement>(`#lgReg-${game}-addavg`)!.click(); await tick(); } input(game, field).value = v; input(game, field).dispatchEvent(new Event('input')); await tick(); };
   const save = () => el.querySelector<HTMLButtonElement>('#lgRegSave')!;
   /** What the submit button (or Enter in a field) does in a browser; jsdom does not submit on click. */
   const submit = () => el.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true }));
@@ -42,8 +42,11 @@ describe('GamesRegister', () => {
     await open();
     const rows = [...el.querySelectorAll('#lgRegRows [data-game]')];
     expect(rows.map((r) => r.getAttribute('data-game'))).toEqual(['zip', 'tango', 'queens', 'mini_sudoku', 'patches', 'wend']);
-    for (const r of rows) expect(r.querySelectorAll('input')).toHaveLength(2);
+    for (const r of rows) { expect(r.querySelectorAll('input')).toHaveLength(1); expect(r.querySelector('.lgreg-addavg')).not.toBeNull(); } // the average is asked for, not shown six times
     expect(el.querySelector('#lgReg-zip-score')!.getAttribute('aria-label')).toBe('Zip: tu tiempo');
+    expect(el.querySelector('#lgReg-zip-addavg')!.getAttribute('aria-label')).toBe('Añadir la media de LinkedIn de Zip');
+    el.querySelector<HTMLElement>('#lgReg-zip-addavg')!.click();
+    await tick();
     expect(el.querySelector('#lgReg-zip-avg')!.getAttribute('aria-label')).toBe('Zip: media de LinkedIn');
     expect(input('zip', 'score').getAttribute('aria-describedby')).toBe('lgRegHelp');
   });
@@ -51,7 +54,8 @@ describe('GamesRegister', () => {
   it('shouldOpenTheDialogAndFillTheFieldsFromTodaysRecord', async () => {
     await open({ zip: { score: '0:48', avg: '0:53' }, queens: { score: '1:12', avg: null } });
     expect(isOpen()).toBe(true);
-    expect([input('zip', 'score').value, input('zip', 'avg').value, input('queens', 'score').value, input('queens', 'avg').value]).toEqual(['0:48', '0:53', '1:12', '']);
+    expect([input('zip', 'score').value, input('zip', 'avg').value, input('queens', 'score').value]).toEqual(['0:48', '0:53', '1:12']);
+    expect(input('queens', 'avg')).toBeNull(); // no stored average: asked for with "+ Media"
     expect(input('tango', 'score').value).toBe('');
   });
 
@@ -195,6 +199,37 @@ describe('GamesRegister', () => {
     expect(el.querySelector('#lgRegRestored')!.textContent).toContain('Recuperamos');
     await fill('zip', 'score', '49');
     expect(el.querySelector('#lgRegRestored')).toBeNull();
+  });
+
+  it('shouldFlagAnImpossibleTimeWhenTheFieldIsLeftNotOnlyOnSave', async () => {
+    await open();
+    await fill('zip', 'score', '999');
+    expect(el.querySelector('#lgReg-zip-err')).toBeNull();
+    input('zip', 'score').dispatchEvent(new Event('blur'));
+    await tick();
+    expect(el.querySelector('#lgReg-zip-err')!.textContent).toContain('no es un tiempo');
+    expect(input('zip', 'score').getAttribute('aria-invalid')).toBe('true');
+  });
+
+  it('shouldDisableGuardarAndSayWhatToDoWhileAFieldIsMarkedInvalid', async () => {
+    await open();
+    await fill('zip', 'score', '999');
+    input('zip', 'score').dispatchEvent(new Event('blur'));
+    await tick();
+    expect(save().disabled).toBe(true);
+    expect(save().textContent).toContain('Corrige lo marcado');
+    await fill('zip', 'score', '48');
+    expect(save().disabled).toBe(false);
+    expect(save().textContent).toContain('Guardar');
+  });
+
+  it('shouldNameAndMarkTheGameWhenTheSheetIsOpenedOnARow', async () => {
+    fixture.componentRef.setInput('day', {});
+    fixture.componentInstance.open('zip');
+    await tick();
+    expect(el.querySelector('#lgRegTitle')!.textContent).toContain('Zip · hoy');
+    expect(el.querySelector('[data-game="zip"]')!.classList.contains('lgreg-focus')).toBe(true);
+    expect(el.querySelector('[data-game="tango"]')!.classList.contains('lgreg-focus')).toBe(false);
   });
 
   it('shouldClearTheDraftOnDiscardAndOnSave', async () => {

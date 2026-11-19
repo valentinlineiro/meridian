@@ -5,7 +5,7 @@ import { ApiClient } from '../../core/api-client';
 import { GamesQuickEntry } from './games-quick-entry';
 import { GAME_NAMES, gameName } from '../../core/words';
 import { localToday } from '../../core/format';
-import { Cell, dirtyGames, errorText, FieldCode, maskTime, plan, RowError, Values } from './games-register.model';
+import { Cell, dirtyGames, errorText, FieldCode, isTime, maskTime, plan, RowError, Values } from './games-register.model';
 
 const URL = '/api/me/linkedin-games/day';
 const DRAFT_KEY = 'meridian.gamesRegisterDraft';
@@ -33,27 +33,31 @@ const dayLabel = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString
   template: `
     <dialog #dlg id="gamesRegister" class="lgreg" aria-labelledby="lgRegTitle" (cancel)="$event.preventDefault(); requestClose()">
       <form (submit)="submit($event)">
-        <div class="lgreg-head"><h2 id="lgRegTitle" class="u-m-0">Hoy, {{ label() }}</h2><button type="button" class="btn btn-g" (click)="requestClose()">Cerrar</button></div>
+        <div class="lgreg-head"><h2 id="lgRegTitle" class="u-m-0">{{ focusName() ? focusName() + ' · hoy, ' : 'Hoy, ' }}{{ label() }}</h2><button type="button" class="btn btn-g" (click)="requestClose()">Cerrar</button></div>
         <p id="lgRegHelp" class="muted u-fs-sm">Tu tiempo y la media de LinkedIn de cada juego, como m:ss (por ejemplo 1:06). Deja vacío el que no hayas jugado; vacía uno ya guardado para quitarlo.</p>
         @if (day() === null) {
           <p id="lgRegUnread" class="lgreg-note">No pudimos leer lo guardado de hoy. Lo que escribas se añade o cambia; no se borra nada. <button type="button" class="btn btn-g" (click)="reread.emit()">Volver a leer</button></p>
         }
         @if (restored()) { <p id="lgRegRestored" class="muted u-fs-sm">Recuperamos lo que habías escrito.</p> }
-        <div class="lgreg-row muted u-fs-xs" aria-hidden="true"><span></span><span>Tu tiempo</span><span>Media LinkedIn</span></div>
+        <div class="lgreg-row muted u-fs-xs" aria-hidden="true"><span></span><span>Tu tiempo</span><span>Media</span></div>
         <div id="lgRegRows">
           @for (g of games; track g.k) {
-            <div class="lgreg-row" [attr.data-game]="g.k">
+            <div class="lgreg-row" [class.lgreg-focus]="focus() === g.k" [attr.data-game]="g.k">
               <span class="u-fwt-700">{{ g.name }}</span>
               @if (removed().has(g.k)) {
                 <span class="lgreg-gone muted">Se quitará al guardar</span>
                 <button type="button" class="btn btn-g" [attr.aria-label]="'Deshacer: quitar ' + g.name" (click)="undo(g.k)">Deshacer</button>
               } @else {
                 @for (f of fields; track f) {
+                  @if (f === 'avg' && !avgShown(g.k)) {
+                    <button type="button" class="btn btn-g lgreg-addavg" [id]="'lgReg-' + g.k + '-addavg'" [attr.aria-label]="'Añadir la media de LinkedIn de ' + g.name" (click)="showAvg(g.k)">+ Media</button>
+                  } @else {
                   <input type="text" inputmode="numeric" autocomplete="off" placeholder="m:ss" [id]="'lgReg-' + g.k + '-' + f"
                     [attr.aria-label]="g.name + (f === 'score' ? ': tu tiempo' : ': media de LinkedIn')"
                     [attr.aria-describedby]="errors()[g.k]?.field === f ? 'lgReg-' + g.k + '-err lgRegHelp' : 'lgRegHelp'"
                     [attr.aria-invalid]="errors()[g.k]?.field === f ? 'true' : null"
-                    [value]="cell(g.k)[f]" (input)="type(g.k, f, $event)">
+                    [value]="cell(g.k)[f]" (input)="type(g.k, f, $event)" (blur)="check(g.k, f)">
+                  }
                 }
               }
               @if (errors()[g.k]; as e) { <div class="lgreg-err" [id]="'lgReg-' + g.k + '-err'">{{ e.text }}</div> }
@@ -76,7 +80,7 @@ const dayLabel = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString
             <button id="lgRegDrop" type="button" class="btn btn-g" (click)="drop()">Descartar cambios</button>
           </div>
         }
-        <button id="lgRegSave" class="btn btn-p lgreg-save" type="submit" [disabled]="!canSave()" aria-describedby="lgRegSaveHint">{{ saving() ? 'Guardando…' : 'Guardar' }}</button>
+        <button id="lgRegSave" class="btn btn-p lgreg-save" type="submit" [disabled]="!canSave() || hasErrors()" aria-describedby="lgRegSaveHint">{{ saving() ? 'Guardando…' : hasErrors() ? 'Corrige lo marcado' : 'Guardar' }}</button>
         <p id="lgRegSaveHint" class="muted u-fs-sm u-m-0">{{ canSave() || saving() ? '' : 'Escribe al menos un tiempo.' }}</p>
         </div>
       </form>
@@ -115,6 +119,17 @@ export class GamesRegister {
   protected readonly midnight = signal(false);
   protected readonly discard = signal(false);
   protected readonly saving = signal(false);
+  /** The game whose row was tapped (null for "Registrar hoy"): the sheet names it and marks its row. */
+  protected readonly focus = signal<string | null>(null);
+  protected readonly focusName = computed(() => { const k = this.focus(); return k ? gameName(k) : ''; });
+  /** Games whose average field was asked for; one with a stored or typed average is shown without asking. */
+  private readonly avgAsked = signal<ReadonlySet<string>>(new Set());
+  protected avgShown(k: string): boolean { return this.avgAsked().has(k) || !!this.cell(k).avg; }
+  protected showAvg(k: string): void {
+    this.avgAsked.update((s) => new Set(s).add(k));
+    setTimeout(() => this.dlg().nativeElement.querySelector<HTMLElement>(`#lgReg-${k}-avg`)?.focus());
+  }
+  protected readonly hasErrors = computed(() => Object.keys(this.errors()).length > 0);
   private readonly isOpen = signal(false);
   private listening = false;
 
@@ -141,6 +156,7 @@ export class GamesRegister {
     this.now.set(localToday());
     this.values.set(Object.fromEntries(this.keys.map((k) => [k, { score: d[k]?.score ?? '', avg: d[k]?.avg ?? '' }])));
     this.removed.set(new Set());
+    this.avgAsked.set(new Set());
     this.errors.set({});
     this.message.set('');
     this.midnight.set(false);
@@ -152,6 +168,7 @@ export class GamesRegister {
     this.isOpen.set(true);
     if (!this.listening) { this.listening = true; el.addEventListener('click', (e) => { if (e.target === el) this.requestClose(); }); } // a tap on the backdrop
     if (!el.open) { if (el.showModal) el.showModal(); else el.setAttribute('open', ''); }
+    this.focus.set(game && this.keys.includes(game) ? game : null);
     const first = game && this.keys.includes(game) ? game : this.keys.find((k) => !this.values()[k]?.score); // typing starts at once: the keypad opens on the asked game, else on the first empty time
     if (first) el.querySelector<HTMLElement>(`#lgReg-${first}-score`)?.focus();
   }
@@ -181,6 +198,11 @@ export class GamesRegister {
     this.values.update((all) => ({ ...all, [k]: { ...this.cell(k), [f]: v } }));
     if (f === 'score' && !v && this.day()?.[k]) this.removed.update((s) => new Set(s).add(k)); // emptying a stored time removes the game, until Guardar
     this.touched(k);
+  }
+  /** A finished field that is not a time ("9:99") says so as soon as you leave it, not only when you press Guardar. */
+  protected check(k: string, f: keyof Cell): void {
+    const v = this.cell(k)[f];
+    if (v && !isTime(v)) this.errors.update((all) => ({ ...all, [k]: { field: f, text: errorText(f, v, '') } }));
   }
   protected undo(k: string): void {
     const had = this.day()?.[k];
