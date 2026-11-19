@@ -496,13 +496,13 @@ summary{cursor:pointer}
 .hist-row span.lg-hist-name{width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lg-hist-r120{min-width:120px;text-align:right}
 @media(max-width:360px){.lg-hist-r120{min-width:0;max-width:92px}.hist-row span.lg-hist-name{width:96px}} /* at 320px the weekday text kept the bar at 33px: the text now wraps in 92px */.lg-hist-r70{min-width:70px;text-align:right}
-.lg-limits{margin:16px 0;background:var(--sunken);border:1px solid var(--selected)}
-.lg-limsum{display:flex;align-items:center;gap:6px}
-.lg-limbody{font-size:var(--fs-sm);line-height:1.5;margin-top:8px}
+/* Old data leads with its age, not its number: the figure and the bar step back to muted/neutral while the sync is stale. */
+.lg-stale .lv-big{font-size:var(--fs-xl);font-weight:600;color:var(--muted)}
+.lg-stale .progress-bar>div{background:var(--neutral)}
 .lg-method{margin-top:10px;font-size:var(--fs-sm);line-height:1.5;color:var(--muted)}
 .lg-detail-head{display:flex;justify-content:space-between;align-items:center} /* the inline version had an invalid "flex-wrap:gap:8px": rendered as no wrap, no gap */
 .card.lg-card{margin-bottom:12px}
-.lg-split{display:flex;justify-content:space-between;align-items:baseline}.lg-inline{display:flex;align-items:center;gap:8px}.lg-actions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.lg-split{display:flex;justify-content:space-between;align-items:baseline}.lg-inline{display:flex;align-items:center;gap:8px}.lg-actions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}@media(max-width:760px){.lg-actions .btn{flex:1 1 100%}}
 .lg-center{align-items:center}.lg-start{align-items:flex-start}.lg-wrap{flex-wrap:wrap}.lg-gap{gap:8px}.lg-grow{flex:1}
 .lg-note,.lg-label{color:var(--muted);font-size:var(--fs-xs)}.lg-label{text-transform:uppercase;letter-spacing:.05em}.lg-dim-title{font-weight:600;color:var(--muted)}
 @media(max-width:760px){.lg-note,.lg-label{font-size:var(--fs-md)}} /* the phone step the .muted.u-fs-xs pair used to take */

@@ -1,5 +1,5 @@
 import { fmtDate, pc1, relDate } from '../../core/format';
-import { xpWeek, xpWeekLine } from '../../core/xp-week';
+import { calendarDaysAgo, isStale, xpWeek, xpWeekLine } from '../../core/xp-week';
 import { activeDaysSub, activeDaysText, Course, CourseDetail, courseProgress, es, flag, Langs, lastSevenDays, Section, toDay, xpText, XpDay } from '../../core/courses';
 import { list } from '../../core/guard';
 import { goalColor, goalSummary } from './goal-summary';
@@ -42,9 +42,18 @@ const dec1 = (v: number) => v.toFixed(1).replace('.', ',');
 const pair = (c: Course) => c.fromLanguage && c.learningLanguage ? `${c.fromLanguage.toUpperCase()} → ${c.learningLanguage.toUpperCase()}` : '';
 /** "EN → XB" with whichever side is known (legacy course list and detail). */
 export const looseFromTo = (c: Course) => (c.fromLanguage ? c.fromLanguage.toUpperCase() + ' → ' : '') + (c.learningLanguage ? c.learningLanguage.toUpperCase() : '');
-export const cefrLabel = (s: Section) => s.cefrLevel ? s.cefrLevel + (s.cefrSublevel ? '.' + s.cefrSublevel : '') : (s.type || 'General');
+// a raw source key (daily_refresh) never reaches the owner: the one known type has a name, any other reads General
+export const cefrLabel = (s: Section) => s.cefrLevel ? s.cefrLevel + (s.cefrSublevel ? '.' + s.cefrSublevel : '') : s.type === 'daily_refresh' ? 'Repaso diario' : 'General';
 // Unit progress prints like every other percentage in the UI ("30,0 %"); the width stays the numeric string.
 const unitPct = (completed: number, total: number) => (completed / total * 100).toFixed(1);
+
+/** "Datos de hace N días" once the last sync is older than the app's stale rule; null while fresh or when no sync date is known. */
+export function staleLabel(d: LangData, now = Date.now()): string | null {
+  const at = d.langs.updatedAt;
+  if (!at || !isStale(at, now)) return null;
+  const n = calendarDaysAgo(at, now);
+  return `Datos de hace ${n} ${n === 1 ? 'día' : 'días'}`;
+}
 
 export function hero(d: LangData, selected: string | null) {
   const active = d.courses.find((c) => c.courseId === selected);
@@ -52,24 +61,25 @@ export function hero(d: LangData, selected: string | null) {
   return {
     options: d.courses.map((c) => ({
       id: c.courseId,
-      label: (c.learningLanguage ? flag(c.learningLanguage) + ' ' : '') + (c.title || c.courseId) + (pair(c) ? ' · ' + pair(c) : '') + ` (${xpText(c.xp)} XP)`,
+      label: (c.title || c.courseId) + (pair(c) ? ' · ' + pair(c) : '') + ` (${xpText(c.xp)} XP)`,
     })),
     flag: active?.learningLanguage ? flag(active.learningLanguage) : '',
+    stale: staleLabel(d),
     meta: `${xpText(active?.xp)} XP acumulado en el curso` + (fromTo ? ' · ' + fromTo : ''),
   };
 }
 
 export function progress(d: LangData, selected: string | null, detail: Detail) {
   // the old course's units are never shown while the new one loads
-  if (detail === undefined) return { text: '—', width: 0 };
+  if (detail === undefined) return { text: '—', width: 0, big: '', sub: '' };
   let { completed, total } = detail ? courseProgress(detail) : { completed: 0, total: 0 };
   if (total === 0) {
     const cur = arr(d.analytics?.curriculum?.courses).find((c) => c.courseId === selected);
     if (cur?.totalUnits != null && cur.totalUnits > 0) { completed = cur.completedUnits || 0; total = cur.totalUnits; }
   }
-  if (total > 0) { const p = unitPct(completed, total); return { text: `${completed} / ${total} unidades (${pc1(Number(p))})`, width: Number(p) }; }
+  if (total > 0) { const p = unitPct(completed, total); return { text: `${completed} / ${total} unidades (${pc1(Number(p))})`, width: Number(p), big: `${completed} / ${total}`, sub: `unidades · ${pc1(Number(p))}` }; }
   // a failed request is unknown; "not synced" is said only when the source answered without units
-  return { text: detail === null ? NA : 'Aún no se han leído las unidades de este curso', width: 0 };
+  return { text: detail === null ? NA : 'Aún no se han leído las unidades de este curso', width: 0, big: '', sub: '' };
 }
 
 /** Account card, the part read from the catalogue alone. */
@@ -142,7 +152,9 @@ export function week(d: LangData) {
     return { date, letter, color: goalColor(xp, d.goal ?? null), label: xp > 0 ? String(xp) : '—', title: `${date}: ${xp} XP · ${ses} ses · ${Math.round(sec / 60)} min` };
   });
   const wMin = Math.round(wSec / 60);
-  return { cells, summary: `${es(wXp)} XP · ${wSes} ses` + (wMin > 0 ? ` · ${wMin} min` : ''), goal: goalText(xpOf) };
+  // days after the last sync are unknown, not zero: a stale sync does not print a total that reads as "nothing this week"
+  const summary = staleLabel(d) ? 'Sin datos recientes' : `${es(wXp)} XP · ${wSes} ses` + (wMin > 0 ? ` · ${wMin} min` : '');
+  return { cells, summary, goal: goalText(xpOf) };
 }
 
 export function courseList(d: LangData, selected: string | null, detail: Detail) {
@@ -199,6 +211,7 @@ export function activityToday(d: LangData, selected: string | null): string {
   const today = new Date().toISOString().slice(0, 10);
   const s = d.xp.find((x) => toDay(x.date) === today);
   const xp = s ? s.gainedXp || 0 : 0;
+  if (staleLabel(d)) return 'Sin datos recientes: no se sabe qué pasó hoy';
   if (!(xp > 0)) return 'Sin XP registrado hoy en la cuenta';
   const active = d.courses.find((c) => c.courseId === selected);
   const focus = active ? ' · Curso en foco: ' + (active.title || active.courseId) + (pair(active) ? ` (${pair(active)})` : '') : '';

@@ -22,7 +22,7 @@ function sectionRows(sections: Section[]) {
     title: `SECCIÓN ${s.sectionIndex}: ${cefrLabel(s)}`,
     units: `${s.completedUnits ?? 0} / ${s.totalUnits ?? 0} unidades`,
     width: s.totalUnits ? (s.completedUnits || 0) / s.totalUnits * 100 : 0,
-    meta: `ID de sección: ${s.sectionId} · Tipo: ${s.type || 'learning'} · ` + (s.lastSeenAt ? 'Última observación: ' + s.lastSeenAt.slice(0, 10) : ''),
+    meta: s.lastSeenAt ? 'Última observación: ' + s.lastSeenAt.slice(0, 10) : 'Sin observación registrada',
   }));
 }
 
@@ -38,6 +38,7 @@ function sectionRows(sections: Section[]) {
           <div>
             <h2 id="langDetailTitle" class="lg-detail-title">{{ head()?.title }}</h2>
             <div class="u-mt-2 muted" id="langDetailSub">{{ head()?.sub }}</div>
+            @if (stale()) { <div class="u-mt-6"><span class="pill pill-warn" id="langDetailStalePill">{{ stale() }}</span></div> }
           </div>
           <span id="langDetailXpPill" class="pill u-fs-lg u-fwt-700">{{ head()?.xp }}</span>
         </div>
@@ -67,7 +68,7 @@ function sectionRows(sections: Section[]) {
             @for (s of ss; track s.key) {
               <div class="row row-sec-10"><div class="lg-grow">
                 <div class="lg-split"><b>{{ s.title }}</b><span><b>{{ s.units }}</b></span></div>
-                <div class="u-mt-6"><div class="bar"><i class="bar-win" [style.width.%]="s.width"></i></div></div>
+                <div class="u-mt-6"><div class="bar"><i class="hist-fill" [style.width.%]="s.width"></i></div></div>
                 <details class="u-mt-6"><summary class="lg-note">Detalle de sección</summary>
                   <div class="u-mt-4 muted">{{ s.meta }}</div>
                 </details>
@@ -84,13 +85,15 @@ export class CourseDetailView {
   readonly detail = input.required<Detail>();
   /** The catalogue entry: names the course while its detail loads or when it failed. */
   readonly course = input<Course | undefined>();
+  /** "Datos de hace N días" when the last sync is old; the detail is the evidence view, so it says it too. */
+  readonly stale = input<string | null>(null);
   readonly back = output<void>();
 
   protected readonly head = computed(() => {
     const c = this.detail()?.course ?? this.course();
     return c ? safe(() => ({
       title: (c.learningLanguage ? flag(c.learningLanguage) + ' ' : '') + (c.title || c.courseId),
-      sub: looseFromTo(c) + ' · ID: ' + c.courseId,
+      sub: looseFromTo(c),
       xp: xpText(c.xp) + ' XP',
     }), null) : null;
   });
