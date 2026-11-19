@@ -61,6 +61,7 @@ main{max-width:1120px;margin:0 auto;padding:20px 16px 40px}
 .hist-row span:first-child{width:76px;color:var(--muted);text-align:right}
 .hist-row .bar{flex:1}
 input:not([type=checkbox]):not([type=radio]),select,textarea{background:var(--sunken);color:var(--text-2);border:1px solid var(--sq-dark);border-radius:var(--r-md);padding:8px 10px;font:inherit;font-size:var(--fs-md)}
+input::placeholder,textarea::placeholder{color:var(--muted);opacity:1} /* the browser default grey measured 3.78:1 on the field background */
 input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--link);outline-offset:1px}
 .filters{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
 .filters input{width:108px}.filters select{min-width:118px}
@@ -493,6 +494,7 @@ app-chess{--muted:var(--muted-bright)}
 .lgreg-row.lgreg-focus{background:var(--selected);border-radius:var(--r-md);padding-inline:6px;margin-inline:-6px}
 #gameRegisterOpen{margin:4px 0 12px}
 .gc-sentence{margin:0 0 10px;max-width:65ch}
+.gc-cap,.gr-win,#gamesTab .pill{font-size:max(var(--fs-xs),12px)} /* Games reads at 12px on desktop too (the phone floor already does) */
 .lgreg-addavg{min-height:44px;text-align:center;font-size:var(--fs-md)}
 .gc .bar-loss,#gameReportFigures .bar-loss{background:var(--orange)} /* worse than the average is information, not an alarm */
 @media(min-width:761px){.gt{grid-template-columns:repeat(2,minmax(0,1fr));column-gap:24px}}
