@@ -4,7 +4,7 @@
     <h1>{{ gameName(g) }}</h1>
     @if (summary() !== undefined) {
       <button id="gameRegisterOpen" type="button" class="btn btn-g" (click)="regG.open(g)">Registrar {{ gameName(g) }} hoy</button>
-      <app-games-register #regG [day]="dayGames()" (saved)="saved($event)" (reread)="data.reload()" />
+      <app-games-register #regG [day]="dayGames()" (saved)="saved($event)" (savedGames)="flash($event)" (reread)="data.reload()" />
     }
     @if (summary() === null) {
       <app-error-block message="No pudimos cargar tus juegos." [loading]="data.isLoading()" (retry)="data.reload()" />
@@ -24,7 +24,7 @@
     <div class="gh-head"><h2 id="gamesHeroToday">{{ todayTitle() }}</h2>@if (h.since) {<span id="gamesHeroSince" class="pill">{{ h.since }}</span>}</div>
     <ul class="gt" id="gamesToday">
       @for (t of today(); track t.k) {
-        <li><button type="button" class="btn btn-g gt-row" [id]="'gamesToday-' + t.k" [attr.aria-label]="t.aria" (click)="reg.open(t.k)"><span class="gt-name">{{ t.name }}</span><span [class]="'gt-state' + (t.state === 'todo' ? ' gt-todo' : '')">{{ t.text }}</span></button></li>
+        <li><button type="button" class="btn btn-g gt-row" [class.gt-flash]="flashed().includes(t.k)" [id]="'gamesToday-' + t.k" [attr.aria-label]="t.aria" (click)="reg.open(t.k)"><span class="gt-name">{{ t.name }}</span><span [class]="'gt-state' + (t.state === 'todo' ? ' gt-todo' : '')">{{ t.text }}</span></button></li>
       }
     </ul>
     @if (summary() === undefined) { <p class="muted u-mt-14" role="status">Cargando tus juegos…</p> }
@@ -35,7 +35,7 @@
       </div>
     }
     <div id="gamesNote" role="status">{{ saveNote() || note() }}</div>
-    <app-games-register #reg [day]="dayGames()" (saved)="saved($event)" (reread)="data.reload()" />
+    <app-games-register #reg [day]="dayGames()" (saved)="saved($event)" (savedGames)="flash($event)" (reread)="data.reload()" />
   </div>
   <app-segmented groupId="gamesRange" label="Periodo de análisis" caption="Periodo" idPrefix="gr-" [options]="ranges" [value]="range()" (picked)="pickRange($event)" />
   <app-section title="Tus juegos" sectionId="cg-games-now">
@@ -43,14 +43,14 @@
     <div id="gamesNow" class="gcs">
       @for (r of rows(); track r.k) {
         <a class="gc card" [class.gc-weak]="r.verdict.state === 'few-data' || r.verdict.state === 'no-signal'" [routerLink]="['/games', r.k]">
-          <span class="gc-name"><b>{{ r.name }}</b><span class="verdict-tr"><app-verdict [verdict]="r.verdict" />@if (r.verdict.state !== 'few-data') {<span class="muted gc-axis">frente a antes</span>}</span></span>
+          <span class="gc-name"><b>{{ r.name }}</b><span class="verdict-tr"><app-verdict [verdict]="r.verdict" /></span></span>
           <span class="gc-n"><span class="gc-big">{{ r.big }}</span><span class="gc-cap muted">{{ r.cap }}</span></span>
           <app-result-bars [data]="r.bars" />
         </a>
       }
     </div>
     <app-help label="Cómo leerlo">
-      <p>El número grande es cuánto más rápido o lento vas que la media de LinkedIn en el periodo elegido; con pocos datos, es el número de partidas. Cada barra es una de tus últimas 14 partidas con media: sobre la línea, mejor que la media; bajo la línea, peor. La etiqueta (Mejorando, Estable, Bajando) se confirma cuando el cambio se repite dos semanas seguidas.</p>
+      <p>El número grande es cuánto más rápido o lento vas que la media de LinkedIn en el periodo elegido; con pocos datos, es el número de partidas. La etiqueta (Mejorando, Estable, Bajando) compara con tu periodo anterior, no con la media. Cada barra es una de tus últimas 14 partidas con media: sobre la línea, mejor que la media; bajo la línea, peor. La etiqueta (Mejorando, Estable, Bajando) se confirma cuando el cambio se repite dos semanas seguidas.</p>
       <p>«Estable»: con estos datos no hay un cambio medible. «Pocos datos»: faltan partidas para valorar.</p>
     </app-help>
   </app-section>
