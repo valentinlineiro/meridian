@@ -58,6 +58,16 @@ describe('GameReport', () => {
     expect(el.querySelector('#gameChartEvolution')).not.toBeNull(); // the main chart stays in view
   });
 
+  it('shouldGroupTheDetailInThreeNamedCollapsedSections', async () => {
+    await open(summary({ queens: queens() }));
+    const groups = ['gameReportWhen', 'gameReportRegular', 'gameReportTrust'].map((id) => el.querySelector<HTMLDetailsElement>('#' + id)!);
+    expect(groups.map((g) => g.querySelector('summary h2')!.textContent)).toEqual(['Cuándo', 'Cómo de regular', 'Cuánto confiar']);
+    expect(groups.every((g) => !g.open)).toBe(true);
+    expect(groups[0]!.contains(el.querySelector('#gameChartWeekdays'))).toBe(true);
+    expect(groups[1]!.contains(el.querySelector('#gameReportLevelSection'))).toBe(true);
+    expect(groups[2]!.contains(el.querySelector('#gameReportEvidence'))).toBe(true);
+  });
+
   it('shouldKeepTheAdjustedFormFormulasInComoSeCalcula', async () => {
     await open(summary({ queens: queens() }));
     const help = text('gameReportHero');
