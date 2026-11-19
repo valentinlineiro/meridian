@@ -67,6 +67,9 @@ export class Games {
   protected saved(note: string): void { this.saveNote.set(note); this.draftWaiting.set(false); this.data.reload(); }
   private draftChecked = false;
   protected readonly draftWaiting = signal(false);
+  /** The games just saved: their ledger rows flash for a moment, so the change is seen where it happened. */
+  protected readonly flashed = signal<string[]>([]);
+  protected flash(keys: string[]): void { this.flashed.set(keys); setTimeout(() => this.flashed.set([]), 4000); }
   constructor() {
     // A sheet interrupted by a login redirect or a reload leaves a "Continuar" button, once today's record has been read; it never opens by itself.
     effect(() => {

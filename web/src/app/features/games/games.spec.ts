@@ -276,6 +276,14 @@ describe('Games', () => {
       expect(names).toEqual(['Zip', 'Queens', 'Wend']);
     });
 
+    it('shouldFlashTheLedgerRowOfAGameJustSaved', async () => {
+      await open({ zip: game() }, { ok: true, day: { games: { zip: { score: '0:08' } } } });
+      (fixture.componentInstance as any).flash(['zip']);
+      await tick();
+      expect(el.querySelector('#gamesToday-zip')!.classList.contains('gt-flash')).toBe(true);
+      expect(el.querySelector('#gamesToday-tango')!.classList.contains('gt-flash')).toBe(false);
+    });
+
     it('shouldOfferToContinueAWaitingDraftInsteadOfOpeningTheSheet', async () => {
       const d = new Date(), pad = (n: number) => String(n).padStart(2, '0');
       sessionStorage.setItem('meridian.gamesRegisterDraft', JSON.stringify({ date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`, values: { zip: { score: '0:48', avg: '' } }, removed: [] }));
@@ -615,10 +623,11 @@ describe('Games', () => {
       expect(zip.querySelector('.gc-line, .gc-delta')).toBeNull(); // the sentence and the change live in the report
     });
 
-    it('shouldSayWhatTheVerdictAndTheNumberCompareTo', async () => {
+    it('shouldKeepOneComparisonOnTheCardAndExplainTheLabelInTheHelp', async () => {
       await open({ zip: game() });
-      expect(rowOf('Zip').querySelector('.gc-axis')!.textContent).toBe('frente a antes');
       expect(rowOf('Zip').querySelector('.gc-cap')!.textContent).toContain('que la media');
+      expect(rowOf('Zip').textContent).not.toContain('frente a antes');
+      expect(el.querySelector('#cg-games-now app-help')!.textContent).toContain('compara con tu periodo anterior');
     });
 
     it('shouldShowTheNumberOfGamesInsteadOfAPercentageWhenThereIsTooLittleData', async () => {

@@ -486,11 +486,13 @@ app-chess{--muted:var(--muted-bright)}
 .gt-todo{font-size:var(--fs-md);font-weight:500;color:var(--link);letter-spacing:0}
 .gt-todo::after{border-color:var(--link)}
 .gh-actions{display:flex;flex-wrap:wrap;gap:8px}
+@keyframes gtflash{from{background:var(--selected-line)}to{background:transparent}}
+.gt-row.gt-flash{animation:gtflash 2.5s ease-out}
+@media(prefers-reduced-motion:reduce){.gt-row.gt-flash{animation:none;background:var(--selected)}}
 #gamesNote:not(:empty){margin:12px 0 0;font-weight:600;color:var(--text)}
 .lgreg-row.lgreg-focus{background:var(--selected);border-radius:var(--r-md);padding-inline:6px;margin-inline:-6px}
 #gameRegisterOpen{margin:4px 0 12px}
 .gc-sentence{margin:0 0 10px;max-width:65ch}
-.gc-axis{font-size:var(--fs-xs)}
 .gc .bar-loss,#gameReportFigures .bar-loss{background:var(--orange)} /* worse than the average is information, not an alarm */
 @media(min-width:761px){.gt{grid-template-columns:repeat(2,minmax(0,1fr));column-gap:24px}}
 #gamesTab>.gh-foot{padding:0 12px;margin:16px 0}

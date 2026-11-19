@@ -61,17 +61,18 @@
 </div>
 </div>
 <div class="hero-card" id="gameReportHero">
-  <div class="u-d-flex u-jc-space-between u-ai-flex-start u-wrap-wrap u-gap-8">
-    <div class="muted u-fs-xs u-tt-uppercase u-ls-p05em">Informe individual · {{ rangeName() }}</div>
-    @if (verdict(); as v) {<span class="verdict-tr"><span class="muted">Tendencia</span><app-verdict [verdict]="v" /></span>}
-  </div>
   @if (sentence().length) {<p class="grow-line" id="gameReportSentence">{{ sentence().join('. ') }}.</p>}
-  <app-help label="Cómo se calcula">@for (l of how(); track $index) {<p>{{ l }}</p>}</app-help>
+  <app-help label="Cómo se calcula">@for (l of how(); track $index) {<p>{{ l }}</p>}
+    @if (weekdays(); as d) {
+      <p class="muted" id="gameReportWeekdaysWindow">Ventana fija del gráfico por día de la semana: todo el histórico. «Destaca» es que el límite inferior del intervalo de derrotas de ese día supera la tasa de derrotas del juego.</p>
+      <p class="muted" id="gameReportWeekdaysNote">Entre semana la media es mucho más rápida, así que perder un lunes no es lo mismo que perder un domingo.</p>
+    } @else {<p class="muted" id="gameReportWeekdaysWindow">No disponible</p>}
+  </app-help>
 </div>
 
 @if (diag(); as b) {
   <app-section title="Qué destaca" sectionId="gameReportHighlights">
-    @for (h of b.highlights; track $index) {<p class="hl" [attr.data-kind]="h.kind"><b>{{ h.kind === 'fortaleza' ? 'Fortaleza' : 'Debilidad' }}</b> · {{ h.text }}</p>}
+    @for (h of b.highlights; track $index) {<p class="hl" [attr.data-kind]="h.kind"><b>{{ h.kind === 'fortaleza' ? 'Va bien' : 'Para vigilar' }}</b> · {{ h.text }}</p>}
     @if (!b.stale && !b.highlights.length && !b.notes.length) {<p class="muted">Nada destaca por ahora.</p>}
     @if (b.watch; as w) {<p class="muted" id="gameReportWatch">{{ w.text }}. Es una pista exploratoria, no un hallazgo.</p>}
     @for (n of b.notes; track n) {<p class="muted">{{ n }}</p>}
@@ -95,12 +96,6 @@
     </div>
     <p class="muted" id="gameReportWeeksWindow">Ventana fija: últimos 90 días, una barra por semana. Las barras discontinuas son semanas incompletas.</p>
   } @else {<p class="muted" id="gameReportWeeksWindow">No disponible</p>}
-
-  <p class="u-m-16-0-4"><b>Por día de la semana</b> <span class="muted">— cómo leer el gráfico de arriba (victorias y derrotas de cada día, al pasar el ratón)</span></p>
-  @if (weekdays(); as d) {
-    <p class="muted" id="gameReportWeekdaysWindow">Ventana fija: todo el histórico. «Destaca» es que el límite inferior del intervalo de derrotas de ese día supera la tasa de derrotas del juego.</p>
-    <p class="muted" id="gameReportWeekdaysNote">Entre semana la media es mucho más rápida, así que perder un lunes no es lo mismo que perder un domingo.</p>
-  } @else {<p class="muted" id="gameReportWeekdaysWindow">No disponible</p>}
 </app-section>
 
 <app-section title="Nivel" sectionId="gameReportLevelSection">

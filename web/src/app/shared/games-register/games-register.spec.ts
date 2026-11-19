@@ -217,7 +217,7 @@ describe('GamesRegister', () => {
     input('zip', 'score').dispatchEvent(new Event('blur'));
     await tick();
     expect(save().disabled).toBe(true);
-    expect(save().textContent).toContain('Corrige lo marcado');
+    expect(save().textContent).toContain('Corrige Zip');
     await fill('zip', 'score', '48');
     expect(save().disabled).toBe(false);
     expect(save().textContent).toContain('Guardar');

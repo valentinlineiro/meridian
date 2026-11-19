@@ -80,7 +80,7 @@ const dayLabel = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString
             <button id="lgRegDrop" type="button" class="btn btn-g" (click)="drop()">Descartar cambios</button>
           </div>
         }
-        <button id="lgRegSave" class="btn btn-p lgreg-save" type="submit" [disabled]="!canSave() || hasErrors()" aria-describedby="lgRegSaveHint">{{ saving() ? 'Guardando…' : hasErrors() ? 'Corrige lo marcado' : 'Guardar' }}</button>
+        <button id="lgRegSave" class="btn btn-p lgreg-save" type="submit" [disabled]="!canSave() || hasErrors()" aria-describedby="lgRegSaveHint">{{ saving() ? 'Guardando…' : hasErrors() ? 'Corrige ' + errorNames() : 'Guardar' }}</button>
         <p id="lgRegSaveHint" class="muted u-fs-sm u-m-0">{{ canSave() || saving() ? '' : 'Escribe al menos un tiempo.' }}</p>
         </div>
       </form>
@@ -96,6 +96,8 @@ export class GamesRegister {
   readonly day = input<Record<string, { score?: string | null; avg?: string | null }> | null | undefined>(null);
   /** Results were stored: the page refreshes its summary and shows the note ("Guardado: Zip 0:48. Quitado: Queens."). */
   readonly saved = output<string>();
+  /** Which games were set or changed by the save (for the page to show where). */
+  readonly savedGames = output<string[]>();
   /** The person asked to read the stored day again. */
   readonly reread = output<void>();
 
@@ -129,6 +131,7 @@ export class GamesRegister {
     this.avgAsked.update((s) => new Set(s).add(k));
     setTimeout(() => this.dlg().nativeElement.querySelector<HTMLElement>(`#lgReg-${k}-avg`)?.focus());
   }
+  protected readonly errorNames = computed(() => list(this.keys.filter((k) => this.errors()[k]).map(gameName)));
   protected readonly hasErrors = computed(() => Object.keys(this.errors()).length > 0);
   private readonly isOpen = signal(false);
   private listening = false;
@@ -240,6 +243,7 @@ export class GamesRegister {
         const changed = r.games.filter((g) => g.status !== 'same');
         if (!changed.length && !r.removed.length) { this.message.set(MSG.same); return; }
         this.finish();
+        this.savedGames.emit(changed.map((g) => g.game));
         this.saved.emit([
           changed.length ? `Guardado: ${list(changed.map((g) => `${gameName(g.game)} ${g.score}`))}.` : '',
           r.removed.length ? `Quitado: ${list(r.removed.map(gameName))}.` : '',
