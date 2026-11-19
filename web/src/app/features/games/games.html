@@ -27,7 +27,6 @@
         <li><button type="button" class="btn btn-g gt-row" [id]="'gamesToday-' + t.k" [attr.aria-label]="t.aria" (click)="reg.open(t.k)"><span class="gt-name">{{ t.name }}</span><span [class]="'gt-state' + (t.state === 'todo' ? ' gt-todo' : '')">{{ t.text }}</span></button></li>
       }
     </ul>
-    <div id="gamesNote" role="status">{{ saveNote() || note() }}</div>
     @if (summary() === undefined) { <p class="muted u-mt-14" role="status">Cargando tus juegos…</p> }
     @else {
       <div class="gh-actions u-mt-14">
@@ -35,6 +34,7 @@
         @if (draftWaiting()) { <button id="gamesDraftResume" type="button" class="btn btn-g" (click)="draftWaiting.set(false); reg.open()">Continuar lo que escribías</button> }
       </div>
     }
+    <div id="gamesNote" role="status">{{ saveNote() || note() }}</div>
     <app-games-register #reg [day]="dayGames()" (saved)="saved($event)" (reread)="data.reload()" />
   </div>
   <app-segmented groupId="gamesRange" label="Periodo de análisis" caption="Periodo" idPrefix="gr-" [options]="ranges" [value]="range()" (picked)="pickRange($event)" />
@@ -43,7 +43,7 @@
     <div id="gamesNow" class="gcs">
       @for (r of rows(); track r.k) {
         <a class="gc card" [class.gc-weak]="r.verdict.state === 'few-data' || r.verdict.state === 'no-signal'" [routerLink]="['/games', r.k]">
-          <span class="gc-name"><b>{{ r.name }}</b><span class="verdict-tr"><span class="sr-only">Tendencia: </span><app-verdict [verdict]="r.verdict" /></span></span>
+          <span class="gc-name"><b>{{ r.name }}</b><span class="verdict-tr"><app-verdict [verdict]="r.verdict" />@if (r.verdict.state !== 'few-data') {<span class="muted gc-axis">frente a antes</span>}</span></span>
           <span class="gc-n"><span class="gc-big">{{ r.big }}</span><span class="gc-cap muted">{{ r.cap }}</span></span>
           <app-result-bars [data]="r.bars" />
         </a>

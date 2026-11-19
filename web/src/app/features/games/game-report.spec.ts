@@ -47,6 +47,17 @@ describe('GameReport', () => {
     expect(text('gameReportSentence')).toContain('Se pierde más los lunes');
   });
 
+  it('shouldNameTheWindowOfEachFigureAndKeepWeekdaysAndSplitInsideMasDetalle', async () => {
+    await open(summary({ queens: queens() }));
+    expect(el.querySelector('#gameReportFigures')!.textContent).toContain('de siempre');
+    expect(el.querySelector('#gameReportFigures')!.textContent).toContain('en total');
+    const more = el.querySelector('#gameReportMore')!;
+    expect(more.contains(el.querySelector('#gameChartWeekdays'))).toBe(true);
+    expect(more.contains(el.querySelector('#gameChartSplit'))).toBe(true);
+    expect(el.querySelector('#gameChartWeekdays')!.textContent).toContain('todo el histórico');
+    expect(el.querySelector('#gameChartEvolution')).not.toBeNull(); // the main chart stays in view
+  });
+
   it('shouldKeepTheAdjustedFormFormulasInComoSeCalcula', async () => {
     await open(summary({ queens: queens() }));
     const help = text('gameReportHero');

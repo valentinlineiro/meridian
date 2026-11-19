@@ -85,7 +85,7 @@ const dayLabel = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString
         </div>
       </form>
       <details id="lgRegMore" class="u-mt-12">
-        <summary class="muted">Pegar texto o varias fechas</summary>
+        <summary class="muted">Pegar resultados de varios días</summary>
         <app-games-quick-entry (saved)="pasted()" />
       </details>
     </dialog>

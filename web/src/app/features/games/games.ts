@@ -125,8 +125,8 @@ export class Games {
     const s = this.summary(), range = this.range(), order = Object.keys(GAME_NAMES);
     return s ? safe(() => summaryRows(s, range).sort((a, b) => order.indexOf(a.k) - order.indexOf(b.k)).map((r) => {
       const n = s.games[r.k]!.windows[range].eff.nEff, few = r.verdict.state === 'few-data';
-      // too few games to judge: the number is how many have an average in the period, never a big percentage beside "Pocos datos"; the caption is short, the help says "frente a la media"
-      return { ...r, big: few ? String(n) : r.big, cap: few ? (n === 1 ? 'partida' : 'partidas') : r.cap.replace(' que la media', '') };
+      // too few games to judge: the number is how many have an average in the period, never a big percentage beside "Pocos datos"
+      return { ...r, big: few ? String(n) : r.big, cap: few ? (n === 1 ? 'partida' : 'partidas') : r.cap };
     }), []) : [];
   });
   protected readonly overview = computed(() => safe(() => overview(this.rows()), null));
