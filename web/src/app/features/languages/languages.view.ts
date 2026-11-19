@@ -136,10 +136,13 @@ export function pace(d: LangData, now = Date.now()): string | null {
 }
 
 export interface DayCell { date: string; letter: string; color: string; label: string; title: string }
-export function week(d: LangData) {
-  const days = lastSevenDays();
+export function week(d: LangData, now = Date.now()) {
+  // the same seven complete days as the Actividad card (xpWeek: up to the day before the last sync); the calendar week only when that rule has nothing to say
+  const w = d.xp ? xpWeek(d.xp, d.langs.updatedAt, now) : null;
+  const days = w?.state === 'ok' ? w.days.map(({ date }) => ({ date, letter: 'DLMXJVS'[new Date(date + 'T00:00:00Z').getUTCDay()]! })) : lastSevenDays();
+  const todayDate = new Date(now).toISOString().slice(0, 10);
   const goalText = (xpOf: ((day: string) => number) | null) =>
-    d.goal === undefined ? NA : d.goal === null ? 'Sin objetivo diario configurado.' : xpOf ? goalSummary(days.map((x) => x.date), xpOf, d.goal) : NA;
+    d.goal === undefined ? NA : d.goal === null ? 'Sin objetivo diario configurado.' : xpOf ? goalSummary(days.map((x) => x.date), xpOf, d.goal, todayDate) : NA;
   if (!d.xp) return { cells: [] as DayCell[], summary: NA, goal: goalText(null) };
   const byDay = new Map<string, XpDay>();
   for (const s of d.xp) { const k = toDay(s.date); if (!byDay.has(k)) byDay.set(k, s); } // the first one wins, as legacy find()

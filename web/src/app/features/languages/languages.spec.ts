@@ -231,17 +231,18 @@ describe('Languages', () => {
       await open('/languages', langApi({ '/api/languages/xp': { summaries } }));
       const dots = [...el().querySelectorAll<HTMLElement>('#langActivityStrip > div > div')].map((d) => d.style.background);
       expect(dots).toHaveLength(7);
-      expect(dots[6]).toBe('var(--ok)'); // goal met
-      expect(dots[5]).toBe('var(--info)'); // some XP, under the goal
-      expect(dots[4]).toBe('var(--ok)'); // exactly the goal is met
-      expect(dots[3]).toBe('var(--line)'); // no XP
-      expect(text('langGoalToday')).toBe('Hoy: 150 / 100 XP · objetivo cumplido · 2 de 7 días con objetivo cumplido');
-      expect(text('langWeekSummary')).toBe('300 XP · 4 ses · 11 min');
-      expect(el().querySelectorAll<HTMLElement>('#langActivityStrip > div')[6].title).toBe(`${utcDay(0)}: 150 XP · 2 ses · 10 min`);
+      // the strip is the same seven complete days as the Actividad card (through yesterday); today is only the goal line
+      expect(dots[6]).toBe('var(--info)'); // yesterday: some XP, under the goal
+      expect(dots[5]).toBe('var(--ok)'); // two days ago: exactly the goal is met
+      expect(dots[4]).toBe('var(--line)'); // no XP
+      expect(text('langGoalToday')).toBe('Hoy: 150 / 100 XP · objetivo cumplido · 1 de 7 días con objetivo cumplido');
+      expect(text('langWeekSummary')).toBe('150 XP · 2 ses · 1 min');
+      expect(el().querySelectorAll<HTMLElement>('#langActivityStrip > div')[6].title).toBe(`${utcDay(1)}: 50 XP · 1 ses · 1 min`);
     });
 
     it('shouldColourEveryActiveDayGreyWithoutAGoal', async () => {
-      await open('/languages', langApi({ '/api/me/settings': { dailyGoalXp: null } }));
+      const summaries = [{ date: nowSec() - 86400, gainedXp: 50, numSessions: 1, totalSessionTime: 60 }];
+      await open('/languages', langApi({ '/api/me/settings': { dailyGoalXp: null }, '/api/languages/xp': { summaries } }));
       const dots = [...el().querySelectorAll<HTMLElement>('#langActivityStrip > div > div')].map((d) => d.style.background);
       expect(dots[6]).toBe('var(--muted)');
       expect(text('langGoalToday')).toBe('Sin objetivo diario configurado.');
@@ -370,7 +371,15 @@ describe('Languages', () => {
     it('shouldSayNoDisponibleWhenTheSettingsFail', async () => {
       await open('/languages', langApi({ '/api/me/settings': FAIL }));
       expect(text('langGoalToday')).toBe('No disponible');
-      expect(text('langWeekSummary')).toBe('5072 XP · 89 ses · 87 min');
+      expect(text('langWeekSummary')).toBe('0 XP · 0 ses'); // the default fixture's XP is today's: not one of the seven complete days
+    });
+
+    it('shouldGiveTheWeekStripAndTheActividadCardTheSameSevenDays', async () => {
+      const rows = Array.from({ length: 7 }, (_, i) => ({ date: Math.floor((Date.now() - (i + 1) * DAY) / 1000), gainedXp: 100, numSessions: 2, totalSessionTime: 0 }));
+      rows.push({ date: nowSec(), gainedXp: 999, numSessions: 9, totalSessionTime: 0 }); // today, still partial
+      await open('/languages', langApi({ '/api/languages/xp': { summaries: rows } }));
+      expect(text('langActivityBig')).toBe('700');
+      expect(text('langWeekSummary')).toBe('700 XP · 14 ses');
     });
 
     it('shouldSayNoDisponibleWhenTheCourseDetailFailsAndNothingElseKnowsItsUnits', async () => {
