@@ -610,9 +610,15 @@ describe('Games', () => {
       await open({ zip: game(), tango: game() });
       const zip = rowOf('Zip');
       expect(zip.querySelector('.gc-big')!.textContent!.trim()).toBe('+13 %');
-      expect(zip.querySelector('.gc-cap')!.textContent!.trim()).toBe('más rápido');
+      expect(zip.querySelector('.gc-cap')!.textContent!.trim()).toBe('más rápido que la media');
       expect(zip.textContent).toContain('Estable');
       expect(zip.querySelector('.gc-line, .gc-delta')).toBeNull(); // the sentence and the change live in the report
+    });
+
+    it('shouldSayWhatTheVerdictAndTheNumberCompareTo', async () => {
+      await open({ zip: game() });
+      expect(rowOf('Zip').querySelector('.gc-axis')!.textContent).toBe('frente a antes');
+      expect(rowOf('Zip').querySelector('.gc-cap')!.textContent).toContain('que la media');
     });
 
     it('shouldShowTheNumberOfGamesInsteadOfAPercentageWhenThereIsTooLittleData', async () => {
@@ -634,7 +640,7 @@ describe('Games', () => {
       (none.windows['28'] as any).eff = { median: null, nEff: 0 };
       await open({ zip: slow, tango: none });
       expect(rowOf('Zip').querySelector('.gc-big')!.textContent!.trim()).toBe('−6 %');
-      expect(rowOf('Zip').querySelector('.gc-cap')!.textContent!.trim()).toBe('más lento');
+      expect(rowOf('Zip').querySelector('.gc-cap')!.textContent!.trim()).toBe('más lento que la media');
       expect(rowOf('Tango').querySelector('.gc-big')!.textContent!.trim()).toBe('—');
     });
 
