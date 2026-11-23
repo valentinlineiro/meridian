@@ -78,7 +78,7 @@ describe('Overview', () => {
 
   it('shouldSayHowYouAreDoingInOneRowPerDomainWhenEverythingAnswers', async () => {
     const el = await open(fullApi());
-    expect(el.querySelector('#overviewHero')!.textContent!.trim()).toBe('Hoy'); // the cards say it; the header does not repeat them
+    expect(el.querySelector('#overviewHero h1')!.textContent!.trim()).toBe('Hoy'); // the cards say it; the header does not repeat them
 
     expect(el.querySelector('#overviewChessRow .pill')!.textContent).toBe('▲ Mejorando');
     expect(text(el, 'overviewChessForm')).toMatch(/^Últimas 50 partidas \(desde el .+\): 60,0 % de victorias · \+6,0 puntos de % \(entre \+1,0 y \+11,0\) frente a las anteriores$/);
@@ -93,7 +93,7 @@ describe('Overview', () => {
     expect(el.querySelectorAll('#overviewLangRow .wk > div')).toHaveLength(7);
 
     expect(el.querySelector('#overviewGamesRow .pill')!.textContent).toBe('▼ Bajando');
-    expect(text(el, 'overviewGamesLine')).toBe('Tango: Bajando · 1 sin cambios');
+    expect(text(el, 'overviewGamesLine')).toBe('Tango: Bajando · además 1 sin cambios');
     expect(text(el, 'overviewGamesNote')).toBe(''); // a log is not a score: no streak line while logging
   });
 

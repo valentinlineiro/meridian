@@ -91,7 +91,7 @@ export function gamesRow(s: GamesSummaryIn, now = Date.now()): { verdict: Verdic
     name: gameName(keys[0]!),
     link: head ? `/games/${keys[0]}` : '/games',
     focus: head ? focusOf(keys[0]!, s.games[keys[0]!]!) : null,
-    line: [...(head ? [`${gameName(keys[0]!)}: ${vs[0]!.label}`] : []), ...counts].join(' · '),
+    line: head ? `${gameName(keys[0]!)}: ${vs[0]!.label}` + (counts.length ? ` · además ${counts.join(', ')}` : '') : counts.join(' · '),
     note: cur > 0 ? '' : s.to ? `Último registro: ${shortDate(s.to, now)} · registro manual` : '',
   };
 }
