@@ -106,6 +106,7 @@ const CHIPS: { group: FilterGroup; label: string; options: { k: string; l: strin
       <div class="pager u-d-flex" id="matchPager"><button class="btn btn-g" type="button" id="prev" [disabled]="m.failed() || m.offset() === 0" (click)="m.page(-1)">‹ Anterior</button><span class="muted" id="mc" role="status" aria-live="polite">{{ counter() }}</span><button class="btn btn-g" type="button" id="next" [disabled]="m.failed() || m.offset() + m.pageSize() >= m.total()" (click)="m.page(1)">Siguiente ›</button></div>
     } @else {
       <button class="btn btn-g u-mt-10" type="button" id="btnAllMatches" (click)="expand()">Ver todas y filtrar</button>
+      <a class="btn btn-g u-mt-10" href="/api/export/matches.csv" download>Exportar CSV</a>
     }
   `,
 })

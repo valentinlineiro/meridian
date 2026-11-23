@@ -144,9 +144,9 @@ describe('MatchesTable', () => {
     expect([...el.querySelectorAll('td[data-l="ELO"]')].map((c) => c.textContent)).toEqual(['1500', '—']);
   });
 
-  it('shouldOfferTheCsvExportOnlyWithTheFullFilterRow', async () => {
+  it('shouldOfferTheCsvExportInBothCompactAndFullLayouts', async () => {
     await answer({ rows: [row()], total: 120 });
-    expect(el.querySelector('a[href="/api/export/matches.csv"]')).toBeNull();
+    expect(el.querySelector('a[href="/api/export/matches.csv"]')!.textContent).toBe('Exportar CSV');
     await click('#btnAllMatches');
     expect(el.querySelector('#matchFilters a[href="/api/export/matches.csv"]')!.textContent).toBe('Exportar CSV');
   });
