@@ -160,6 +160,7 @@ function bodyView(b: Body, w: Win) {
             </div>
             @if (v.header.canMark) {<button type="button" class="btn btn-p" id="btnMarkSeen" [disabled]="saving()" (click)="markSeen()">{{ markFailed() ? 'No se pudo guardar; reintenta' : 'Marcar como visto' }}</button>}
           </div>
+          @if (v.header.canMark) {<div class="muted u-fs-xs u-mt-6">Marcar como visto fija este momento como el punto de partida de la próxima comparación.</div>}
           @if (v.header.markNote) {<div class="muted u-fs-xs u-mt-6">Para marcar como visto, elige «Desde última visita»: esta ventana no cubre todo lo que no has visto.</div>}
           <app-segmented class="u-d-block u-mt-12" label="Periodo" [options]="windows" [value]="v.header.value" (picked)="choose($event)" />
         </div>

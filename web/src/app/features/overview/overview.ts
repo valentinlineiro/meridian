@@ -46,13 +46,18 @@ function view(d: OverviewData, now: number) {
   let g: ReturnType<typeof gamesRow> | null = null;
   try { g = d.games ? gamesRow(d.games) : null; } catch { g = null; } // a malformed summary is unavailable, not an empty log
 
+  const cf = syncChip(chessSynced, now), lf = syncChip(xpSynced, now);
+  const ago = (t: string) => t.replace('datos de ', '');
+  const fresh = [cf && `Ajedrez ${ago(cf.text)}`, lf && `Idiomas ${ago(lf.text)}`].filter(Boolean).join(' · ');
+
   return {
-    chess: { ...c, form: c.form ?? NA, trend, freshChip: syncChip(chessSynced, now) },
+    fresh,
+    chess: { ...c, form: c.form ?? NA, trend, freshChip: cf },
     lang: {
       ...(w?.state === 'ok' ? (({ big, delta, note }) => ({ big, delta, line: note }))(xpSummary(w, today))
         : { big: '—', delta: '', line: !d.summaries ? NA : !w ? 'Sin sincronizar todavía' : xpWeekLine(w, today) }),
       bars, aria: xb?.aria ?? '',
-      freshChip: syncChip(xpSynced, now),
+      freshChip: lf,
     },
     games: { registered: !!d.games && d.games.to === localToday(), line: d.games ? g?.line ?? NA : NA, verdict: g?.verdict ?? null, note: g?.note ?? '', link: g?.link ?? '/games', focus: g?.focus ?? null },
   };
@@ -68,6 +73,7 @@ export class Overview {
   private readonly stats = inject(StatsService);
 
   protected readonly data = rxResource<OverviewData, unknown>({ stream: () => this.load() });
+  protected readonly today = new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
   protected readonly v = computed(() => { const d = this.data.value(); return d ? view(d, Date.now()) : null; });
 
   /** Any section that did not answer: one retry for the page, not one per row. */

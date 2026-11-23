@@ -76,6 +76,13 @@ describe('Games', () => {
     });
   });
 
+  describe('the card says what its pill compares', () => {
+    it('shouldShowTheVerdictSentenceUnderEachGameRow', async () => {
+      await open({ queens: game() });
+      expect(el.querySelector('#gamesNow .gc .gc-why')!.textContent!.trim().length).toBeGreaterThan(0);
+    });
+  });
+
   describe('report mode (/games/:game)', () => {
     const openReport = async (games: Record<string, unknown> | Body, key = 'queens') => {
       fixture = TestBed.createComponent(Games);

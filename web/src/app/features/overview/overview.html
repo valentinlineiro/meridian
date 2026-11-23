@@ -2,6 +2,7 @@
 <section id="overviewTab">
   <div class="hero-card" id="overviewHero">
     <h1>Hoy</h1>
+    <p class="muted u-fs-sm u-m-0 u-mt-2" id="overviewDate">{{ today }}@if (d?.fresh) { · {{ d!.fresh }}}</p>
   </div>
 
   @let c = d?.chess;
@@ -18,7 +19,8 @@
       <div class="hc-h"><b>Ajedrez</b>@if (c?.verdict; as vd) {<app-verdict [verdict]="vd" />}@if (c?.freshChip; as f) {<span id="overviewChessFresh" class="pill" [class.pill-warn]="f.stale">{{ f.text }}</span>}</div>
       <div class="hc-n"><span class="hc-big" id="overviewChessBig">{{ c?.elo ?? '—' }}</span><span class="muted">ELO</span><span class="hc-delta muted" id="overviewChessElo">{{ c?.eloChange }}</span></div>
       @if (c && c.trend.length > 1) {<m-sparkline [points]="c.trend" />}
-      <p class="hc-line" id="overviewChessForm">{{ c?.form ?? '—' }}</p>
+      @if (c?.verdict; as vd) {<p class="hc-line" id="overviewChessSentence">{{ vd.sentence }}</p>}
+      <p [class]="c?.verdict ? 'muted hc-sub' : 'hc-line'" id="overviewChessForm">{{ c?.form ?? '—' }}</p>
     </a>
 
     <a class="hc card" id="overviewLangRow" routerLink="/languages">

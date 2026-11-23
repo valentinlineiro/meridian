@@ -103,12 +103,12 @@ describe('gamesRow: what needs a look first across the games', () => {
     const r = gamesRow(sum({ zip: g('mejora_sostenida'), tango: g('deterioro'), queens: g('estable'), patches: g('datos_insuficientes') }));
     expect(r!.verdict).toMatchObject({ state: 'confirmed', dir: 'down' });
     expect(r!.name).toBe('Tango'); // the game that originates the verdict
-    expect(r!.line).toBe('Tango: Bajando · 1 mejorando · 1 sin cambios · 1 con pocos datos'); // the others, not the head again
+    expect(r!.line).toBe('Tango: Bajando · además 1 mejorando, 1 sin cambios, 1 con pocos datos'); // the others, not the head again
   });
   it('shouldRankAPossibleFallAboveAConfirmedRise', () => {
     const r = gamesRow(sum({ zip: g('mejora_sostenida'), tango: g('estable', 'deterioro') }));
     expect(r!.verdict).toMatchObject({ state: 'possible', dir: 'down' });
-    expect(r!.line).toBe('Tango: Bajando · 1 mejorando');
+    expect(r!.line).toBe('Tango: Bajando · además 1 mejorando');
   });
   it('shouldJustCountWhenNoGameSaysAnything', () => {
     const r = gamesRow(sum({ zip: g('estable'), tango: g('estable'), queens: g('datos_insuficientes') }));

@@ -184,6 +184,12 @@ describe('Chess', () => {
       expect(t.text('chessHeroStreak')).toBe('3 derrotas consecutivas');
     });
 
+    it('shouldKeepTheStreakPillNeutralWhenOnlyOneOrTwoLossesInARow', async () => {
+      await t.open(chessApi({ '/api/stats/summary': { ...summary, currentStreak: 1, currentStreakKind: 'loss' } }));
+      expect(t.el().querySelector('#chessHeroStreak')!.className.replace(/ ?u-\S+/g, '').trim()).toBe('pill');
+      expect(t.text('chessHeroStreak')).toBe('1 derrota consecutiva');
+    });
+
     it('shouldUseSingularAndTheWinColourForAStreakOfOneWin', async () => {
       await t.open(chessApi({ '/api/stats/summary': { ...summary, currentStreak: 1, currentStreakKind: 'win' } }));
       expect(t.el().querySelector('#chessHeroStreak')!.className.replace(/ ?u-\S+/g, '').trim()).toBe('pill pill-win');

@@ -46,6 +46,7 @@
           <span class="gc-name"><b>{{ r.name }}</b><span class="verdict-tr"><app-verdict [verdict]="r.verdict" /></span></span>
           <span class="gc-n"><span class="gc-big">{{ r.big }}</span><span class="gc-cap muted">{{ r.cap }}</span></span>
           <app-result-bars [data]="r.bars" />
+          <span class="gc-why muted">{{ r.verdict.sentence }}</span>
         </a>
       }
     </div>
