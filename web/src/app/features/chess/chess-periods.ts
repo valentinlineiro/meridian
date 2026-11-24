@@ -1,8 +1,10 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { catchError, of } from 'rxjs';
 import { ApiClient } from '../../core/api-client';
 import { fmtDate } from '../../core/format';
+import { agoLabel, isStale } from '../../core/xp-week';
 import { StatsService } from '../../core/stats.service';
 import { ErrorBlock } from '../../shared/error-block';
 import { Help } from '../../shared/help';
@@ -18,7 +20,7 @@ const POINTS_SHOWN = 3;
 /** Ajedrez by period: the ELO and its trend, strengths and weaknesses, colour, openings and long games — all from one weekly request. */
 @Component({
   selector: 'app-chess-periods',
-  imports: [Segmented, Sparkline, PointsBars, RateRows, ErrorBlock, Help],
+  imports: [NgTemplateOutlet, Segmented, Sparkline, PointsBars, RateRows, ErrorBlock, Help],
   template: `
     <section id="chessPeriods" aria-labelledby="chessPeriodsH">
       <h2 id="chessPeriodsH" class="sr-only">Tu ajedrez por periodos</h2>
@@ -33,14 +35,17 @@ const POINTS_SHOWN = 3;
         <app-segmented groupId="chessPeriodSeg" label="Periodo" caption="Periodo" idPrefix="chessPeriod-" event="chess-period" [options]="periods" [value]="period()" (picked)="period.set($any($event))" />
         <div class="card u-mt-12">
           <div class="u-d-flex u-ai-baseline u-gap-8 u-wrap-wrap">
-            <span id="chessPeriodElo" class="hc-big">{{ elo() ?? '—' }}</span><span class="muted u-fs-sm">ELO</span>
+            <span id="chessPeriodElo" class="hc-big">{{ elo() ?? '—' }}</span><span class="muted u-fs-sm">ELO</span>@if (age(); as a) { <span id="chessAge" class="pill" [class.pill-warn]="a.stale">{{ a.text }}</span> }
             @if (trend().delta !== null) { <span id="chessPeriodDelta" class="u-fwt-700">{{ delta() }}</span><span class="muted u-fs-sm">{{ deltaWhy() }}</span> }
           </div>
           @if (summary().rate !== null) {
-            <p id="chessSummary" class="u-mt-8"><b>{{ summaryRate() }} de victorias</b>@if (summaryDelta(); as d) { <span class="muted"> · {{ d }}</span> }</p>
+            <p id="chessSummary" class="u-mt-8"><b>{{ summaryRate() }} de victorias</b><span class="muted"> en {{ periodLabel() }}</span>@if (summaryDelta(); as d) { <span class="muted"> · {{ d }}</span> }</p>
           }
           @if (eloPoints().length === 1) {
             <p class="muted u-mt-8">Una sola lectura de ELO en este periodo: la tendencia aparecerá con la siguiente.</p>
+            <ng-container *ngTemplateOutlet="recent" />
+          } @else if (!eloPoints().length) {
+            <ng-container *ngTemplateOutlet="recent" />
           } @else if (eloPoints().length > 1) {
             <div class="u-mt-8"><m-sparkline [points]="eloPoints()" /></div>
             @if (eloSince(); as since) { <p id="chessEloSince" class="muted u-fs-sm">ELO observado en las sincronizaciones desde la semana del {{ fmtDate(since) }}; antes no hay lecturas.</p> }
@@ -61,8 +66,10 @@ const POINTS_SHOWN = 3;
         @if (games()) {
           <div class="card u-mt-12" id="chessStrengths">
             <h2>Puntos fuertes y débiles</h2>
-            <p class="muted u-fs-sm">Frente a tu porcentaje medio de victorias del periodo ({{ baseline() }}). Solo se señalan diferencias que no parecen casualidad, con {{ min }} partidas o más.</p>
-            <app-help label="Cómo se decide" helpId="chessStrengthsHelp">Un punto se señala solo si el intervalo de confianza del 95 % de su porcentaje queda entero por encima o por debajo de tu media del periodo. Con diez partidas, +4 puntos puede ser casualidad.</app-help>
+            @if (!ranked().strong.length && !ranked().weak.length) {
+              <p id="chessNoDiff" class="muted">Sin diferencias claras con tu media del periodo ({{ baseline() }}).</p>
+            } @else {
+            <p class="muted u-fs-sm">Frente a tu porcentaje medio de victorias del periodo ({{ baseline() }}).</p>
             <div class="grid2">
               <div>
                 <app-points-bars id="chessStrongTop" title="Puntos fuertes" [points]="strongSplit().top" [scale]="scale()" empty="Ninguna diferencia clara con tu media." />
@@ -81,6 +88,8 @@ const POINTS_SHOWN = 3;
                 }
               </div>
             </div>
+            }
+            <app-help label="Cómo se decide" helpId="chessStrengthsHelp">Un punto se señala solo si el intervalo de confianza del 95 % de su porcentaje queda entero por encima o por debajo de tu media del periodo, y con {{ min }} partidas o más. Con diez partidas, +4 puntos puede ser casualidad.</app-help>
           </div>
           <details id="chessDetail" class="card u-mt-12">
             <summary class="dsum dsum-main">Ver detalle: color, aperturas y partidas largas</summary>
@@ -98,6 +107,11 @@ const POINTS_SHOWN = 3;
         }
       }
     </section>
+    <ng-template #recent>
+      @if (last5().length) {
+        <p id="chessLast5" class="u-mt-8"><span class="muted">Últimas {{ last5().length }} partidas </span>@for (r of last5(); track $index) {<span [class]="r.cls">{{ r.label }}</span> }</p>
+      }
+    </ng-template>
   `,
 })
 export class ChessPeriods {
@@ -112,9 +126,19 @@ export class ChessPeriods {
   });
   constructor() {
     // The header's "actualizado": it comes with the weekly answer, so the page asks for nothing else to say it.
-    effect(() => { const at = this.weekly.value()?.syncedAt; if (at) this.stats.chessUpdated.set('Ajedrez · actualizado ' + at.slice(0, 10)); });
+    effect(() => { const at = this.weekly.value()?.syncedAt; if (at) this.stats.chessUpdated.set('Ajedrez · actualizado ' + agoLabel(at)); });
   }
 
+  /** With fewer than two ELO readings the period has no trend to show: the latest games say how it is going instead. Asked only then. */
+  private readonly needRecent = computed(() => !this.failed() && this.weekly.hasValue() && this.all().weeks.length > 0 && this.eloPoints().length < 2);
+  private readonly recentRes = rxResource<{ rows?: { result?: string | null; outcome?: string | null }[] } | null, boolean | undefined>({
+    params: () => this.needRecent() || undefined,
+    stream: () => this.api.get<{ rows?: { result?: string | null; outcome?: string | null }[] }>('/api/matches', { limit: 5 }).pipe(catchError(() => of(null))),
+  });
+  protected readonly last5 = computed(() => (this.recentRes.value()?.rows ?? []).slice(0, 5).map((m) => {
+    const r = (m.result || m.outcome || '').toLowerCase();
+    return r.includes('win') || r === 'won' ? { cls: 'pill pill-win', label: 'Victoria' } : r.includes('los') || r.includes('defeat') ? { cls: 'pill pill-loss', label: 'Derrota' } : r.includes('draw') || r.includes('tie') ? { cls: 'pill pill-draw', label: 'Tablas' } : null;
+  }).filter((x): x is { cls: string; label: string } => x !== null));
   protected readonly failed = computed(() => !this.weekly.isLoading() && (!this.weekly.hasValue() || this.weekly.value() === null));
   protected readonly all = computed(() => this.weekly.value() ?? { weeks: [], undated: { games: 0, w: 0, d: 0, l: 0, u: 0, disconnections: 0 } });
   protected readonly slice = computed(() => sliceWeeks(this.all().weeks, this.period(), new Date()));
@@ -132,6 +156,9 @@ export class ChessPeriods {
   });
   protected readonly ranked = computed(() => rankPoints(this.slice().current));
   protected readonly summary = computed(() => periodSummary(this.slice().current, this.slice().previous));
+  /** How old the data behind the figures is, said where the figures are (a stale pill past two days, never a stale number read as current). */
+  protected readonly age = computed(() => { const at = this.weekly.value()?.syncedAt; return at ? { text: 'datos de ' + agoLabel(at), stale: isStale(at, Date.now()) } : null; });
+  protected readonly periodLabel = computed(() => PERIODS.find((p) => p.k === this.period())?.l.toLowerCase() ?? '');
   protected readonly summaryRate = computed(() => `${Math.round((this.summary().rate ?? 0) * 100)} %`);
   protected readonly summaryDelta = computed(() => { const d = this.summary().delta; if (d === null) return null; const r = Math.round(d); return r === 0 ? 'igual que el periodo anterior' : `${r > 0 ? '+' : '−'}${Math.abs(r)} pts frente al periodo anterior`; });
   /** One bar scale for strengths and weaknesses, so a folded row is never drawn longer than a visible one that beat it. */

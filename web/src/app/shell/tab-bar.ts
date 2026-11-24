@@ -36,7 +36,7 @@ const SECONDARY = ['changes', 'settings']; // live under "Más"
         <div class="sheet-group" id="sheetGroupCuenta">Cuenta</div>
         <div role="group" aria-labelledby="sheetGroupCuenta">
           <button id="tabSyncBtn" class="btn btn-p sync" type="button" (click)="sync.start()" [disabled]="sync.busy()" aria-describedby="tabSyncHint"
-            title="Sincroniza Ajedrez e Idiomas. LinkedIn Games es registro manual.">{{ sync.lastSyncLabel() }}</button>
+            title="Sincroniza Ajedrez e Idiomas. Games es registro manual.">{{ sync.lastSyncLabel() }}</button>
           <p class="muted hint" id="tabSyncHint">Ajedrez e Idiomas se sincronizan · Games es manual</p>
           <small class="muted hint" aria-live="polite">{{ sync.note() }}</small>
           <a routerLink="/settings" replaceUrl [attr.aria-current]="current() === 'settings' ? 'page' : null">Configuración</a>

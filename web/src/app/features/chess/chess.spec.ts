@@ -475,7 +475,7 @@ describe('Chess', () => {
     it('shouldWriteTheChessUpdateDateWhileTheChessViewIsOpenAndClearItWhenLeaving', async () => {
       const stats = TestBed.inject(StatsService);
       await t.open();
-      expect(stats.chessUpdated()).toBe('Ajedrez · actualizado 2026-10-08');
+      expect(stats.chessUpdated()).toMatch(/^Ajedrez · actualizado hace \d+ días$/);
       await t.harness.navigateByUrl('/elsewhere');
       expect(stats.chessUpdated()).toBe('');
     });
@@ -785,7 +785,7 @@ describe('Chess', () => {
       const stats = TestBed.inject(StatsService);
       await t.harness.navigateByUrl('/profile');
       await t.answer(chessApi());
-      expect(stats.chessUpdated()).toBe('Ajedrez · actualizado 2026-10-08');
+      expect(stats.chessUpdated()).toMatch(/^Ajedrez · actualizado hace \d+ días$/);
       await t.harness.navigateByUrl('/elsewhere');
       expect(stats.chessUpdated()).toBe('');
     });

@@ -36,7 +36,7 @@ describe('courseRows', () => {
   it('shouldSayTheUnitsWereNotReadWhenTheCourseHasNoCurriculumData', () => {
     const [r] = courseRows([course('a')], [], []);
     expect(r!.state).toBe('unread');
-    expect(r!.units).toBe('Unidades sin leer');
+    expect(r!.units).toBe('Sin lectura de unidades');
     expect(r!.pct).toBeNull();
   });
 

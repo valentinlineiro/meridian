@@ -170,6 +170,12 @@ describe('Overview', () => {
       expect(text(await open(api), 'overviewChessFresh')).toBe('datos de hace 5 días');
     });
 
+    it('shouldDateTheChessDataByTheLastSnapshotWithEloWhenAnotherSourceSyncedLater', async () => {
+      const api = fullApi();
+      (api['/api/stats/bundle'] as { timeline: object }).timeline = { snapshots: [{ createdAt: iso(40 * DAY), elo: 850 }, { createdAt: iso(10 * DAY), elo: 900 }, { createdAt: iso(1 * DAY), elo: null }] };
+      expect(text(await open(api), 'overviewChessFresh')).toBe('datos de hace 10 días');
+    });
+
     it('shouldReadEachStatsRouteWhenTheBundleRouteIsMissing', async () => {
       const el = await open({
         ...fullApi(), '/api/stats/bundle': MISSING,
@@ -203,7 +209,7 @@ describe('Overview', () => {
     await harness.navigateByUrl('/overview');
     const el = harness.routeNativeElement as HTMLElement;
     expect(el.querySelectorAll('.hc .sk')).toHaveLength(9); // told apart from "No disponible": a slow load is not missing data
-    expect(el.querySelector('[role=status]')!.textContent).toContain('Cargando tu resumen');
+    expect(el.querySelector('.hcs[role=status]')!.textContent).toContain('Cargando tu resumen');
     expect(el.querySelector('#overviewChessBig')).toBeNull();
     expect(el.textContent).not.toContain('0 XP');
     expect(el.textContent).not.toContain('No disponible');

@@ -179,14 +179,14 @@ describe('Languages', () => {
     });
 
     it('shouldFallBackToTheLegacyStatsWhenTheCatalogueIsEmpty', async () => {
-      vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-11-09T12:00:00Z') }); // "ayer" / "hace 2d" are read against the clock: pinned, not the machine's
+      vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-11-09T12:00:00Z') }); // "ayer" / "hace 2 días" are read against the clock: pinned, not the machine's
       const legacy = { createdAt: iso(DAY), totalXp: 1500, streak: 3, totals: { days: 3, activeDays: 2 }, summaries: [{ date: 1782345600 }, { date: nowSec() }], courseProgressIndex: [{ capturedAt: iso(2 * DAY) }] };
       await open('/languages', { '/api/languages': { courses: [] }, '/api/stats/lang': legacy });
       expect(text('langAccountXp')).toBe('1500 XP'); // es-ES groups from five digits
       expect(q('#langAccountStreak')).toBeNull();
       expect(text('langAccountDays')).toBe('2 de 3 días');
       expect(text('langAccountDaysSub')).toBe('con XP · registro desde 25 jun 2026');
-      expect(text('langSyncMeta')).toBe(`Sincronizado ayer · Actividad hasta ${fmtDate(utcDay(0))} · Unidades leídas hace 2d`);
+      expect(text('langSyncMeta')).toBe(`Sincronizado ayer · Actividad hasta ${fmtDate(utcDay(0))} · Unidades leídas hace 2 días`);
       http.verify();
     });
   });
@@ -368,16 +368,16 @@ describe('Languages', () => {
       expect(row('XB_EN')).toContain('94.000 XP');
     });
 
-    it('shouldShowADashAndTheUnitsWhenTheCourseHasNoLevel', async () => {
+    it('shouldShowTheUnitsAndNoLevelWhenTheCourseHasNoLevel', async () => {
       await open('/languages', withCourses([cur('XB_EN', [[null, 3, 10]]), cur('XC_ES', [['A1', 5, 20]])]));
-      expect(row('XB_EN')).toContain('—');
+      expect(row('XB_EN')).not.toContain('—');
       expect(row('XB_EN')).toContain('3 de 10 unidades');
       expect(row('XB_EN')).not.toContain('Nivel ');
     });
 
     it('shouldSayTheUnitsWereNotReadWhenACourseHasNoCurriculumData', async () => {
       await open('/languages', withCourses([cur('XC_ES', [['A1', 5, 20]])]));
-      expect(row('XB_EN')).toContain('Unidades sin leer');
+      expect(row('XB_EN')).toContain('Sin lectura de unidades');
       expect(row('XB_EN')).not.toContain('0,0 %');
     });
 

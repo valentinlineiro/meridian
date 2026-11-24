@@ -14,6 +14,9 @@ export const calendarDaysAgo = (iso: string, now: number): number => {
   return Math.max(0, Math.round((Date.UTC(n.getFullYear(), n.getMonth(), n.getDate()) - Date.UTC(t.getFullYear(), t.getMonth(), t.getDate())) / DAY));
 };
 
+/** 'hoy' / 'ayer' / 'hace N días': the one phrase for how old a moment is. */
+export const agoLabel = (iso: string, now = Date.now()): string => { const n = calendarDaysAgo(iso, now); return n <= 0 ? 'hoy' : n === 1 ? 'ayer' : `hace ${n} días`; };
+
 export const shift = (date: string, days: number) => new Date(Date.parse(date + 'T00:00:00Z') + days * DAY).toISOString().slice(0, 10);
 /** '3 nov' within the current year, '3 nov 2025' otherwise. */
 export const shortDate = (date: string, now: number) => { const f = fmtDate(date); return date.slice(0, 4) === new Date(now).toISOString().slice(0, 4) ? f.slice(0, -5) : f; };

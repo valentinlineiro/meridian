@@ -294,17 +294,15 @@ describe('MatchesTable', () => {
     expect(el.querySelector('#mc')!.getAttribute('role')).toBe('status');
   });
 
-  it('shouldMarkRowsThatOpenAndSayWhyOneDoesNotWhenItIsTapped', async () => {
+  it('shouldMarkRowsThatOpenAndLeaveTheOnesWithoutMovesInertWhenTapped', async () => {
     await answer({ rows: [row(), row({ match_id: null, ply_count: null, opponent_name: 'Bot 8' })], total: 2 });
     const [a, b] = [...el.querySelectorAll('#mb tr')];
     expect(a.querySelector('.chev')).not.toBeNull();
     expect(a.querySelector('.chev')!.getAttribute('aria-hidden')).toBe('true');
     expect(b.querySelector('.chev')).toBeNull();
+    expect(b.classList.contains('gamerow')).toBe(false);
     (b as HTMLElement).click(); await tick();
-    expect(text('matchNotice')).toBe('Esta partida no tiene jugadas guardadas.');
     expect(svc.openId()).toBeNull();
-    await click('[data-chip="color:white"]');
-    expect(text('matchNotice')).toBe(''); // the next filter change clears it
   });
 
   it('shouldOfferTheOpeningsGroupedByColour', async () => {

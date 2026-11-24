@@ -11,13 +11,17 @@ const week = (back: number, w: number, l: number, eloEnd: number | null) => ({
   week: monday(back), games: w + l, total: T(w, 0, l), byColor: { white: T(w, 0, l) }, byFamily: { Italiana: T(w, 0, l) }, byPhase: {}, eloEnd,
 });
 
-async function mount(body: Weekly | 'fail') {
+async function mount(body: Weekly | 'fail', recent: { result: string }[] = []) {
   TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
   const f = TestBed.createComponent(ChessPeriods);
   f.detectChanges();
   const http = TestBed.inject(HttpTestingController);
   const req = http.expectOne((r) => r.url.includes('/api/stats/weekly'));
   if (body === 'fail') req.flush('x', { status: 500, statusText: 'err' }); else req.flush(body);
+  f.detectChanges();
+  await new Promise((r) => setTimeout(r));
+  f.detectChanges();
+  for (const r of http.match((q) => q.url.includes('/api/matches'))) r.flush({ rows: recent });
   await f.whenStable();
   f.detectChanges();
   return f.nativeElement as HTMLElement;
@@ -44,6 +48,17 @@ describe('ChessPeriods', () => {
     const el = await mount({ weeks: [week(2, 5, 5, 900), week(0, 8, 2, 925)], undated: { games: 0, ...T() } });
     expect(el.querySelector('#chessPeriodElo')!.textContent).toContain('925');
     expect(el.querySelector('#chessPeriodDelta')!.textContent).toContain('+25');
+  });
+
+  it('shouldShowTheLastGamesWhenThePeriodHasFewerThanTwoEloReadings', async () => {
+    const el = await mount({ weeks: [week(0, 8, 2, 925)], undated: { games: 0, ...T() } }, [{ result: 'win' }, { result: 'loss' }, { result: 'draw' }]);
+    expect(el.querySelector('#chessLast5')!.textContent).toContain('Últimas 3 partidas');
+    expect(el.querySelectorAll('#chessLast5 .pill')).toHaveLength(3);
+  });
+
+  it('shouldNotAskForTheLastGamesWhenTheEloHasATrend', async () => {
+    const el = await mount({ weeks: [week(2, 5, 5, 900), week(0, 8, 2, 925)], undated: { games: 0, ...T() } });
+    expect(el.querySelector('#chessLast5')).toBeNull();
   });
 
   it('shouldNotRepeatTheEloWhenThereIsASingleReading', async () => {
@@ -97,7 +112,7 @@ describe('ChessPeriods', () => {
   it('shouldSayNoClearDifferenceWhenNothingStandsOutFromTheAverage', async () => {
     const w = { week: monday(0), games: 40, total: T(20, 0, 20), byColor: { white: T(10, 0, 10), black: T(10, 0, 10) }, byFamily: { Italiana: T(10, 0, 10), Siciliana: T(10, 0, 10) }, byPhase: {}, eloEnd: null };
     const el = await mount({ weeks: [w], undated: { games: 0, ...T() } });
-    expect(el.querySelector('#chessStrengths')!.textContent).toContain('Ninguna diferencia clara');
+    expect(el.querySelector('#chessStrengths')!.textContent).toContain('Sin diferencias claras');
   });
 
   it('shouldSayWhereTheEloReadingsStartWhenTheyDoNotCoverThePeriod', async () => {
@@ -112,7 +127,7 @@ describe('ChessPeriods', () => {
 
   it('shouldPublishTheSyncTimeInTheHeaderWhenWeeklyCarriesIt', async () => {
     await mount({ weeks: [week(0, 8, 2, 925)], undated: { games: 0, ...T() }, syncedAt: '2026-11-19T10:00:00Z' });
-    expect(TestBed.inject(StatsService).chessUpdated()).toBe('Ajedrez · actualizado 2026-11-19');
+    expect(TestBed.inject(StatsService).chessUpdated()).toMatch(/^Ajedrez · actualizado hace \d+ días$/);
   });
 
   it('shouldLeaveTheHeaderAloneWhenWeeklyHasNoSyncTime', async () => {
