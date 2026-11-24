@@ -12,10 +12,14 @@
   } @else {
   <h1 class="sr-only">Ajedrez</h1>
   <app-chess-periods />
-  <a class="hc card u-mt-12" id="chessGamesLink" routerLink="/chess/partidas">
+  <a class="hc card u-mt-12" id="chessGamesLink" routerLink="/chess/partidas" data-umami-event="chess-games-open">
     <div class="hc-h"><b>Partidas</b></div>
     <p class="muted hc-sub">Revisar partidas, filtrar y exportar CSV</p>
   </a>
+  <app-section sectionId="chessEngineProfileDetails" title="Tu perfil de jugador" meta="análisis de motor (Stockfish)" [open]="false" #engineDetails>
+    <div id="chessEngineProfileContent"><app-engine-profile [profile]="profile()" [cut]="cut()" [loading]="profileLoading()" (cutChange)="setCut($event)" (retry)="retryProfile()" /></div>
+  </app-section>
+  <div id="chessLegacy" hidden>
   @if (loadingFirst()) {
     <span class="sr-only" role="status">Cargando tu ajedrez</span>
     <div class="hero-card" aria-hidden="true"><i class="sk sk-t"></i><i class="sk sk-n"></i><i class="sk"></i></div>
@@ -126,9 +130,6 @@
     </details>
   </app-section>
 
-  <app-section sectionId="chessEngineProfileDetails" title="Perfil de juego y análisis de motor (Stockfish)" [open]="false" #engineDetails>
-    <div id="chessEngineProfileContent"><app-engine-profile [profile]="profile()" [cut]="cut()" [loading]="profileLoading()" (cutChange)="setCut($event)" (retry)="retryProfile()" /></div>
-  </app-section>
   <details class="methodology-disclosure u-mt-16 u-mb-16" id="chessMethodology">
     <summary class="dsum">¿Cómo sabemos esto?</summary>
     <div class="prose-sm">
@@ -139,6 +140,7 @@
   </details>
   </app-section>
   }
+  </div>
   }
 </section>
 <app-match-detail-modal />

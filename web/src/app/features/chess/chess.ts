@@ -287,7 +287,7 @@ export class Chess {
       const once = effect(() => {
         if (this.data.isLoading() || this.profile() === undefined) return;
         once.destroy();
-        afterNextRender(() => this.within(this.engineDetails()), { injector });
+        afterNextRender(() => this.engineDetails().reveal(), { injector });
       });
     }
   }

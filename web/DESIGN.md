@@ -222,6 +222,9 @@ Fixed above the tab bar, 12px top corners, 48px rows at 16px, group labels in 11
 ### Bars and charts
 8 to 10px pill bars on a Hairline track; weekly bars with a dashed outline when a week is incomplete. SVG text uses the system stack.
 
+### Ajedrez by period
+`/chess` opens on one period selector (30 días, 90 días, 1 año, Todo; segmented control) over four blocks fed by a single weekly request: ELO with its change and a line (one reading is a sentence, not a chart), strengths and weaknesses, colour with openings and long games, and the player profile (collapsed). Strengths and weaknesses are divergent bars around the period's own average: the bar repeats what the text already says (+7 pts · 70 % · 30 partidas), so the list is its own data table. Rows under 8 games are dimmed and say "pocas partidas" and are never ranked. Win/loss fills are the existing Verdict tokens. The games list, filters, viewer, review banner and CSV live in `/chess/partidas`. The old hero and "Estadísticas" stay in the DOM inside a hidden wrapper until the Umami review (2026-12-15) removes them.
+
 ## Do's and Don'ts
 
 ### Do:

@@ -25,7 +25,7 @@ import { Weekly } from './weekly.model';
       } @else if (!all().weeks.length) {
         <p class="muted">Aún no hay partidas con fecha para mostrar por periodos.</p>
       } @else {
-        <app-segmented groupId="chessPeriodSeg" label="Periodo" caption="Periodo" idPrefix="chessPeriod-" [options]="periods" [value]="period()" (picked)="period.set($any($event))" />
+        <app-segmented groupId="chessPeriodSeg" label="Periodo" caption="Periodo" idPrefix="chessPeriod-" event="chess-period" [options]="periods" [value]="period()" (picked)="period.set($any($event))" />
         <div class="card u-mt-12">
           <div class="u-d-flex u-ai-baseline u-gap-8 u-wrap-wrap">
             <span id="chessPeriodElo" class="hc-big">{{ elo() ?? '—' }}</span><span class="muted u-fs-sm">ELO</span>

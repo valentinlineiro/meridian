@@ -23,6 +23,16 @@ async function mount(body: Weekly | 'fail') {
 }
 
 describe('ChessPeriods', () => {
+  it('shouldShowASkeletonAndALoadingStatusWhileTheWeeksLoad', () => {
+    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+    const f = TestBed.createComponent(ChessPeriods);
+    f.detectChanges();
+    const el = f.nativeElement as HTMLElement;
+    expect(el.querySelector('[role=status].sr-only')!.textContent).toContain('Cargando tus periodos');
+    expect(el.querySelector('.sk')).not.toBeNull();
+    expect(el.querySelector('#chessPeriodElo')).toBeNull(); // no dash that reads as a value
+  });
+
   it('shouldRenderTheEmptyStateWhenThereAreNoWeeks', async () => {
     const el = await mount({ weeks: [], undated: { games: 0, ...T() } });
     expect(el.textContent).toContain('Aún no hay partidas con fecha');

@@ -219,9 +219,9 @@ describe('Chess', () => {
       await t.harness.navigateByUrl('/chess');
       expect(t.el().querySelector('#chessHeroElo')).toBeNull(); // no dashes that read as values
       expect(t.el().querySelector('#chessTab .sk')).not.toBeNull();
-      expect(t.el().querySelector('#chessTab > [role=status].sr-only')!.textContent).toBe('Cargando tu ajedrez');
+      expect(t.el().querySelector('#chessLegacy > [role=status].sr-only')!.textContent).toBe('Cargando tu ajedrez');
       expect(t.text('kpis')).toBe('');
-      expect(t.el().querySelector('#chessTab > p.muted')).toBeNull(); // the long-wait line comes after 3 s
+      expect(t.el().querySelector('#chessLegacy > p.muted')).toBeNull(); // the long-wait line comes after 3 s
     });
 
     it('shouldSayItIsStillLoadingAfterThreeSeconds', async () => {
@@ -230,7 +230,7 @@ describe('Chess', () => {
         await t.harness.navigateByUrl('/chess');
         vi.advanceTimersByTime(3100);
         TestBed.tick();
-        expect(t.el().querySelector('#chessTab > p.muted')!.textContent).toBe('Cargando tu ajedrez…');
+        expect(t.el().querySelector('#chessLegacy > p.muted')!.textContent).toBe('Cargando tu ajedrez…');
       } finally { vi.useRealTimers(); }
     });
   });
@@ -817,13 +817,9 @@ describe('Chess', () => {
       expect(t.el().querySelector('#allMatchesCard')).not.toBeNull();
     });
 
-    it('shouldMoveFocusToWhatTheUrlOpened', async () => {
+    it('shouldLandOnTheGamesListWhenAnOldPartidasLinkIsOpened', async () => {
       await t.open();
       Element.prototype.scrollIntoView = function () {};
-      await t.harness.navigateByUrl('/chess?s=aperturas');
-      await t.tick();
-      await t.tick();
-      expect(document.activeElement).toBe(t.el().querySelector('#cg-open summary'));
       await t.harness.navigateByUrl('/chess?s=partidas');
       await t.tick();
       await t.tick();
@@ -1167,6 +1163,31 @@ describe('Ajedrez: the games list lives in /chess/partidas', () => {
       expect(el.querySelector('#allMatchesCard')).toBeNull();
       expect(el.querySelector('#chessPatternsCard')).toBeNull();
       expect(el.querySelector('#chessGamesLink')!.getAttribute('href')).toBe('/chess/partidas');
+    });
+
+    it('shouldKeepThePlayerProfileVisibleAndTheOldHeroHiddenWhenOnChess', async () => {
+      await t.open(chessApi());
+      const el = t.el();
+      const legacy = el.querySelector<HTMLElement>('#chessLegacy')!;
+      expect(legacy.hidden).toBe(true);
+      expect(legacy.querySelector('#chessHero')).not.toBeNull();
+      expect(legacy.querySelector('#cg-stats')).not.toBeNull();
+      const profile = el.querySelector('#chessEngineProfileDetails')!;
+      expect(profile).not.toBeNull();
+      expect(legacy.contains(profile)).toBe(false);
+    });
+
+    it('shouldTagThePeriodButtonsAndTheGamesLinkForUsageCounts', async () => {
+      await t.open(chessApi({ '/api/stats/weekly': { weeks: [{ week: '2026-11-16', games: 10, total: { w: 5, d: 0, l: 5, u: 0, disconnections: 0 }, byColor: {}, byFamily: {}, byPhase: {}, eloEnd: 900 }], undated: { games: 0, w: 0, d: 0, l: 0, u: 0, disconnections: 0 } } }));
+      const el = t.el();
+      expect(el.querySelectorAll('#chessPeriods button[data-umami-event="chess-period"]')).toHaveLength(4);
+      expect(el.querySelector('#chessGamesLink')!.getAttribute('data-umami-event')).toBe('chess-games-open');
+    });
+
+    it('shouldOpenTheEngineProfileWhenOnTheProfileRoute', async () => {
+      Element.prototype.scrollIntoView = function () {};
+      await t.open(chessApi(), '/profile');
+      expect((t.el().querySelector('#chessEngineProfileDetails') as HTMLDetailsElement).open).toBe(true);
     });
 
     it('shouldShowTheGamesListWithABackLinkWhenOnChessPartidas', async () => {
