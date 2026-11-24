@@ -1,5 +1,5 @@
 import { fmtDate, pc1, relDate } from '../../core/format';
-import { calendarDaysAgo, isStale } from '../../core/xp-week';
+import { agoLabel, isStale } from '../../core/xp-week';
 import { activeDaysSub, activeDaysText, Course, CourseDetail, es, Langs, Section, XpDay } from '../../core/courses';
 import { list } from '../../core/guard';
 
@@ -43,12 +43,11 @@ export const looseFromTo = (c: Course) => (c.fromLanguage ? c.fromLanguage.toUpp
 // a raw source key (daily_refresh) never reaches the owner: the one known type has a name, any other reads General
 export const cefrLabel = (s: Section) => s.cefrLevel ? s.cefrLevel + (s.cefrSublevel ? '.' + s.cefrSublevel : '') : s.type === 'daily_refresh' ? 'Repaso diario' : 'General';
 
-/** "Datos de hace N días" once the last sync is older than the app's stale rule; null while fresh or when no sync date is known. */
+/** "Sincronizado hace N días" once the last sync is older than the app's stale rule; null while fresh or when no sync date is known. */
 export function staleLabel(d: LangData, now = Date.now()): string | null {
   const at = d.langs.updatedAt;
   if (!at || !isStale(at, now)) return null;
-  const n = calendarDaysAgo(at, now);
-  return `Datos de hace ${n} ${n === 1 ? 'día' : 'días'}`;
+  return `Sincronizado ${agoLabel(at, now)}`;
 }
 
 /** Account card, the part read from the catalogue alone. */

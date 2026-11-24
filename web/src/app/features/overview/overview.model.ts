@@ -25,7 +25,7 @@ export interface GamesSummaryIn {
 export function syncChip(iso: string | null | undefined, now: number): { text: string; stale: boolean } | null {
   if (!iso) return null;
   const days = calendarDaysAgo(iso, now);
-  return { text: 'datos de ' + (days === 0 ? 'hoy' : days === 1 ? 'ayer' : `hace ${days} días`), stale: isStale(iso, now) };
+  return { text: 'sincronizado ' + (days === 0 ? 'hoy' : days === 1 ? 'ayer' : `hace ${days} días`), stale: isStale(iso, now) };
 }
 
 // ── Ajedrez ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -50,8 +50,16 @@ function chessForm(r: ChessRecentIn, since: string | null, now = Date.now()): st
   if (!r.games) return 'Aún sin partidas registradas';
   const head = `Últimas ${r.games} partidas${since ? ` (desde el ${shortDate(since, now)})` : ''}: ${r.winRate != null ? pc1(r.winRate * 100) : '—'} de victorias · `;
   if (!r.delta) return head + 'sin partidas anteriores con las que comparar';
-  const [delta, note] = fmtDelta(scaleDelta(r.delta, 100)).split(' · '); // fmtDelta appends its "sin evidencia suficiente" note after a " · "
-  return head + delta + ' frente a las anteriores' + (note ? ' · ' + note : '');
+  const d = scaleDelta(r.delta, 100)!;
+  // an interval that spans 0 says nothing about a change: say so plainly instead of printing a number the evidence does not support
+  if (d.lower <= 0 && d.upper >= 0) return head + 'sin diferencia clara frente a las anteriores';
+  return head + fmtDelta(d) + ' frente a las anteriores';
+}
+
+/** The date of the newest loaded game: how old the PLAY is, apart from how old the sync is. */
+export function lastGame(matches: { played_at?: number | null }[], now: number): string | null {
+  const t = matches.map((m) => m.played_at).filter((v): v is number => typeof v === 'number' && Number.isFinite(v));
+  return t.length ? 'Última partida: ' + shortDate(new Date(Math.max(...t) * 1000).toISOString().slice(0, 10), now) : null;
 }
 
 export function chessRow(i: {
@@ -62,6 +70,7 @@ export function chessRow(i: {
   return {
     verdict: r ? intervalVerdict(scaleDelta(r.delta, 100)) : null,
     form: r ? chessForm(r, since, i.now) : null,
+    lastGame: lastGame(i.matches ?? [], i.now),
     elo, eloChange: ch ? `${sign(ch.diff)} desde el ${shortDate(ch.since, i.now)}` : null,
   };
 }
