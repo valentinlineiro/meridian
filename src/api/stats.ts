@@ -455,7 +455,7 @@ const WEEK_SQL = "date(m.played_at, 'unixepoch', 'weekday 0', '-6 days')";
 
 export async function handleStatsWeekly(db: D1Database, url: URL): Promise<Response> {
   const userId = url.searchParams.get("userId");
-  const bind = <T extends { bind: (...a: any[]) => any }>(stmt: T) => (userId ? stmt.bind(userId) : stmt);
+  const bind = (stmt: D1PreparedStatement): D1PreparedStatement => (userId ? stmt.bind(userId) : stmt);
   const rows = ((await bind(db.prepare(`
     SELECT ${WEEK_SQL} AS week, LOWER(m.user_color) AS color, md.opening_family AS family, md.phase_key AS phase,
            m.result AS result, m.outcome AS outcome,
