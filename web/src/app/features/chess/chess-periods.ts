@@ -11,6 +11,8 @@ import { RateRows, PointsBars } from './components/rate-bars';
 import { eloTrend, PERIODS, PeriodKey, Point, rankPoints, sliceWeeks, sumTally, winRate } from './periods';
 import { Weekly } from './weekly.model';
 
+const OPENINGS_SHOWN = 8;
+
 /** Ajedrez by period: the ELO and its trend, strengths and weaknesses, colour, openings and long games — all from one weekly request. */
 @Component({
   selector: 'app-chess-periods',
@@ -62,8 +64,13 @@ import { Weekly } from './weekly.model';
           </div>
           <div class="card u-mt-12" id="chessColorOpenings">
             <app-rate-rows title="Por color" [points]="byKind('color')" empty="Sin partidas con color." />
-            <app-rate-rows title="Aperturas" [points]="openings()" empty="Sin aperturas identificadas en este periodo." />
-            <app-rate-rows title="Partidas largas (más de 80 jugadas)" [points]="byKind('long')" empty="Sin partidas largas en este periodo." />
+            <app-rate-rows id="chessOpeningsTop" title="Aperturas" [points]="openingsSplit().top" empty="Sin aperturas identificadas en este periodo." />
+            @if (openingsSplit().rest.length) {
+              <details id="chessOpeningsRest" class="u-mt-6"><summary class="dsum">Otras {{ openingsSplit().rest.length }} aperturas, menos jugadas</summary>
+                <app-rate-rows title="" [points]="openingsSplit().rest" empty="" />
+              </details>
+            }
+            <app-rate-rows id="chessLong" title="Partidas largas" [points]="longRows()" empty="Sin partidas largas en este periodo." />
           </div>
         }
       }
@@ -102,7 +109,15 @@ export class ChessPeriods {
   });
   protected readonly ranked = computed(() => rankPoints(this.slice().current));
   protected byKind(kind: Point['kind']): Point[] { return this.ranked().all.filter((p) => p.kind === kind).sort((a, b) => b.rate - a.rate); }
-  protected readonly openings = computed(() => this.byKind('opening'));
+  /** The eight most played openings (they carry the evidence), still ordered by win rate; the rarer ones fold away. */
+  protected readonly openingsSplit = computed(() => {
+    const all = this.byKind('opening');
+    if (all.length <= OPENINGS_SHOWN) return { top: all, rest: [] as Point[] };
+    const keep = new Set([...all].sort((a, b) => b.n - a.n).slice(0, OPENINGS_SHOWN));
+    return { top: all.filter((p) => keep.has(p)), rest: all.filter((p) => !keep.has(p)) };
+  });
+  /** The block is titled "Partidas largas"; its one row says what that means. */
+  protected readonly longRows = computed(() => this.byKind('long').map((p) => ({ ...p, label: 'Más de 80 jugadas' })));
   protected readonly games = computed(() => this.slice().current.reduce((n, w) => n + w.games, 0));
   protected readonly weeksLabel = computed(() => { const n = this.slice().current.length; return `${n} ${n === 1 ? 'semana' : 'semanas'}`; });
   protected readonly baseline = computed(() => { const r = winRate(sumTally(this.slice().current.map((w) => w.total)), true).rate; return r === null ? '—' : `${Math.round(r * 100)} %`; });

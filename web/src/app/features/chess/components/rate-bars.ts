@@ -45,7 +45,7 @@ export class PointsBars {
 @Component({
   selector: 'app-rate-rows',
   template: `
-    <h3 class="rate-title">{{ title() }}</h3>
+    @if (title()) { <h3 class="rate-title">{{ title() }}</h3> }
     @if (!points().length) {
       <p class="muted">{{ empty() }}</p>
     } @else {

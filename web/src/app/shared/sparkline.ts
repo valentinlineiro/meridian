@@ -20,12 +20,14 @@ const W = 520, H = 90, PAD = 10;
       </div>
     } @else {
       @let c = chart()!;
-      <svg class="u-d-block" aria-hidden="true" [attr.viewBox]="'0 0 ' + W + ' ' + H" width="100%" height="96">
-        <path [attr.d]="c.area" fill="#1f6feb18" stroke="none" />
-        <path [attr.d]="c.line" fill="none" stroke="var(--info)" stroke-width="1.8" stroke-linejoin="round" />
-        <text [attr.x]="PAD" y="12" fill="var(--muted)" font-size="10">{{ c.max }}</text>
-        <text [attr.x]="PAD" [attr.y]="H - 2" fill="var(--muted)" font-size="10">{{ c.min }}</text>
-      </svg>
+      <div class="sp-wrap">
+        <svg class="u-d-block" aria-hidden="true" [attr.viewBox]="'0 0 ' + W + ' ' + H" width="100%" height="96">
+          <path [attr.d]="c.area" fill="#1f6feb18" stroke="none" />
+          <path [attr.d]="c.line" fill="none" stroke="var(--info)" stroke-width="1.8" stroke-linejoin="round" />
+        </svg>
+        <!-- html, not svg text: svg text scaled with the width (6.6px on a phone, 19px on a desktop) -->
+        <span class="sp-lbl sp-max" aria-hidden="true">{{ c.max }}</span><span class="sp-lbl sp-min" aria-hidden="true">{{ c.min }}</span>
+      </div>
       <div class="muted u-d-flex u-jc-space-between"><span>{{ axis(ps[0].date) }}</span><span>{{ axis(ps[ps.length - 1].date) }}</span></div>
     }
   `,

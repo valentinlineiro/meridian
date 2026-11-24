@@ -43,7 +43,7 @@ export function winRate(t: Tally, competitive = false): { n: number; rate: numbe
 export interface Point { kind: 'color' | 'opening' | 'long'; label: string; n: number; rate: number; delta: number }
 
 const COLOR_LABEL: Record<string, string> = { white: 'Con blancas', black: 'Con negras' };
-const LONG_LABEL = 'Partidas largas (más de 80 jugadas)';
+const LONG_LABEL = 'Partidas largas';
 
 /** Wilson 95 % interval of wins/n (the formula of src/domain/proportion.ts), as fractions. */
 function wilsonInterval(wins: number, n: number): { lower: number; upper: number } {
