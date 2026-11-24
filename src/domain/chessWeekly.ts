@@ -49,3 +49,12 @@ export function foldWeekly(rows: readonly WeeklyRow[], eloByWeek: ReadonlyMap<st
   }
   return { weeks: [...byWeek.values()].sort((a, b) => a.week.localeCompare(b.week)), undated };
 }
+
+/** The Monday (YYYY-MM-DD, UTC) of the week an ISO timestamp falls in: the key `week` uses. */
+export function mondayOf(iso: string): string | null {
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) return null;
+  const d = new Date(t);
+  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+  return d.toISOString().slice(0, 10);
+}

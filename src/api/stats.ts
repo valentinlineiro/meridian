@@ -10,6 +10,7 @@ import { readMateThreats, type MateThreatsOk, type ThreatPhase } from "../domain
 import { median } from "../analytics/median.ts";
 import { handleStatsProfile } from "./profileStats.ts";
 import { PHASE_META, type PhaseKey } from "../analytics/phases.ts";
+import { foldWeekly, mondayOf, type WeeklyRow } from "../domain/chessWeekly.ts";
 
 export interface OpeningStat {
   key: string;
@@ -216,6 +217,7 @@ export async function handleStats(db: D1Database, kind: string, url: URL): Promi
   if (kind === "threats") return handleStatsThreats(db, url);
   if (kind === "profile") return handleStatsProfile(db, url);
   if (kind === "phases") return handleStatsPhases(db, url);
+  if (kind === "weekly") return handleStatsWeekly(db, url);
   if (kind === "bundle") return handleStatsBundle(db, url);
 
   switch (kind) {
@@ -445,6 +447,41 @@ export async function handleStatsPhases(db: D1Database, url: URL): Promise<Respo
     phases,
     medianPlies,
   });
+}
+
+// Weekly chess aggregates for the periods view. SQL only groups (one row per week/colour/family/phase/result/disconnection, never raw games);
+// foldWeekly counts them with the one result classifier. A week is its Monday, UTC (`played_at` is Unix seconds).
+const WEEK_SQL = "date(m.played_at, 'unixepoch', 'weekday 0', '-6 days')";
+
+export async function handleStatsWeekly(db: D1Database, url: URL): Promise<Response> {
+  const userId = url.searchParams.get("userId");
+  const bind = <T extends { bind: (...a: any[]) => any }>(stmt: T) => (userId ? stmt.bind(userId) : stmt);
+  const rows = ((await bind(db.prepare(`
+    SELECT ${WEEK_SQL} AS week, LOWER(m.user_color) AS color, md.opening_family AS family, md.phase_key AS phase,
+           m.result AS result, m.outcome AS outcome,
+           CASE WHEN md.end_condition = 'disconnection' THEN 1 ELSE 0 END AS disconnection, COUNT(*) AS n
+    FROM matches m LEFT JOIN match_details md ON md.match_id = m.match_id
+    ${userId ? "WHERE m.user_id = ?" : ""}
+    GROUP BY 1, 2, 3, 4, 5, 6, 7
+  `)).all<WeeklyRow>()).results ?? []) as WeeklyRow[];
+
+  // The ELO closing each week: the last elo_after of the week, else the last chess snapshot of that week.
+  const elo = new Map<string, number>();
+  for (const s of await snapshotElos(db, userId)) {
+    const wk = s.elo == null ? null : mondayOf(String(s.created_at));
+    if (wk) elo.set(wk, Number(s.elo)); // ascending by created_at: the last one wins
+  }
+  const closing = ((await bind(db.prepare(`
+    SELECT week, elo_after FROM (
+      SELECT ${WEEK_SQL} AS week, md.elo_after AS elo_after,
+             ROW_NUMBER() OVER (PARTITION BY ${WEEK_SQL} ORDER BY m.played_at DESC, m.rowid DESC) AS rn
+      FROM matches m JOIN match_details md ON md.match_id = m.match_id
+      WHERE m.played_at IS NOT NULL AND md.elo_after IS NOT NULL ${userId ? "AND m.user_id = ?" : ""}
+    ) WHERE rn = 1
+  `)).all<{ week: string; elo_after: number }>()).results ?? []);
+  for (const c of closing) elo.set(c.week, Number(c.elo_after));
+
+  return json(foldWeekly(rows, elo));
 }
 
 // How many past syncs to scan for other courses' last-known Path. Bounded: each row keeps levels only
