@@ -1,19 +1,21 @@
-import { Section } from '../../shared/section';
+import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, inject, input, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
-import { RouterLink, Router } from '@angular/router';
+import { Router } from '@angular/router';
 import { catchError, forkJoin, map, Observable, of, switchMap } from 'rxjs';
 import { ApiClient } from '../../core/api-client';
-import { Course, CourseDetail, Langs, resolveSelectedCourseId, SELECTED_COURSE_KEY, XpDay } from '../../core/courses';
+import { Course, CourseDetail, es, Langs, resolveSelectedCourseId, SELECTED_COURSE_KEY, XpDay } from '../../core/courses';
 import { list, safe } from '../../core/guard';
-import { xpBars, xpSummary, xpWeek, xpWeekLine } from '../../core/xp-week';
+import { Choice, Segmented } from '../../shared/segmented';
 import { CourseDetailView } from './course-detail';
-import { levelView } from './level';
 import {
-  account, accountActivity, activityToday, Analytics, comparability, concentration, courseList, Detail, hero, intensity, LangData, legacyAccount, LegacyLang,
-  Load, NA, observed, pace, progress, staleLabel, timeline, week, weekdays,
+  account, accountActivity, Analytics, concentration, Detail, intensity, LangData, legacyAccount, LegacyLang, Load, NA, staleLabel, weekdays,
 } from './languages.view';
+import { courseRows, periodSummary } from './scoreboard';
+
+type PeriodKey = '7' | '30' | '90';
+const PERIODS: readonly Choice[] = [{ k: '7', l: '7 días' }, { k: '30', l: '30 días' }, { k: '90', l: '90 días' }];
 
 // Port of loadLanguagesDashboard/selectCourse/showCourseDetail (src/dashboard.client.js:298–419, 1143–1179).
 
@@ -25,7 +27,7 @@ const ok = <T>(v: T | typeof NONE | null): v is T => v !== null && v !== NONE &&
 
 @Component({
   selector: 'app-languages',
-  imports: [CourseDetailView, RouterLink, Section],
+  imports: [CourseDetailView, NgTemplateOutlet, Segmented],
   templateUrl: './languages.html',
 })
 export class Languages {
@@ -46,7 +48,7 @@ export class Languages {
   protected readonly selected = computed(() => { const d = this.d(); return d ? resolveSelectedCourseId(d.courses, this.courseId()) : null; });
   // A new selection cancels the request of the one before and empties the value: an old course never paints.
   private readonly detailRes = rxResource<CourseDetail | null, string | undefined>({
-    params: () => this.selected() ?? undefined,
+    params: () => this.showDetail() ? this.selected() ?? undefined : undefined,
     stream: ({ params: id }) => attempt(this.api.get<CourseDetail>('/api/languages/courses/' + encodeURIComponent(id))).pipe(
       map((r) => r === NONE ? {} : ok(r) ? r : null),
     ),
@@ -58,28 +60,7 @@ export class Languages {
   protected readonly showDetail = computed(() => this.detailFor() !== null && this.detailFor() === this.selected());
   protected readonly selectedCourse = computed(() => this.d()?.courses.find((c) => c.courseId === this.selected()));
 
-  // Every card is built on its own: a body one cannot read degrades that card alone.
   protected readonly staleAge = computed(() => { const d = this.d(); return d ? staleLabel(d) : null; });
-  protected readonly hero = computed(() => { const d = this.d(); return d && safe(() => hero(d, this.selected()), null); });
-  protected readonly progress = computed(() => { const d = this.d(); return d ? safe(() => progress(d, this.selected(), this.detail()), { text: NA, width: 0, big: '', sub: '' }) : null; });
-  /** The level the selected course has reached and the progress in it; the change comes from the course's comparable observation. */
-  protected readonly lv = computed(() => {
-    const d = this.d(), det = this.detail();
-    if (!d || !det) return null;
-    const deltas = d.analytics?.curriculum?.recentDeltas;
-    return safe(() => levelView(det, Array.isArray(deltas) ? deltas.find((x) => x?.courseId === this.selected()) : undefined), null);
-  });
-  /** The last seven complete days of XP (account-wide): the supporting card under the level. */
-  protected readonly activity = computed(() => {
-    const d = this.d();
-    if (!d) return null;
-    return safe(() => {
-      const now = Date.now(), today = new Date(now).toISOString().slice(0, 10);
-      const w = d.xp ? xpWeek(d.xp, d.langs.updatedAt, now) : null;
-      if (w?.state === 'ok') return { ...xpSummary(w, today), ...xpBars(w) };
-      return { big: '—', delta: '', note: !d.xp ? NA : !w ? 'Sin sincronizar todavía' : xpWeekLine(w, today), bars: [], aria: '' };
-    }, { big: '—', delta: '', note: NA, bars: [], aria: '' });
-  });
   protected readonly account = computed(() => {
     const s = this.state();
     if (s?.kind === 'legacy') return safe(() => ({ ...legacyAccount(s.legacy), courses: '—', gap: '' }), { xp: '—', days: '—', daysSub: '', sync: NA, courses: '—', gap: '' });
@@ -87,28 +68,38 @@ export class Languages {
     if (!d) return null;
     return { ...safe(() => account(d), { xp: '—', courses: '—', gap: '' }), ...safe(() => accountActivity(d), { days: '—', daysSub: '', sync: NA }) };
   });
-  protected readonly week = computed(() => { const d = this.d(); return d && safe(() => week(d), { cells: [], summary: NA, goal: NA }); });
-  protected readonly pace = computed(() => { const d = this.d(); return d && safe(() => pace(d), null); });
-  protected readonly courses = computed(() => { const d = this.d(); return d && safe(() => courseList(d, this.selected(), this.detail()), NA); });
-  protected readonly observed = computed(() => {
+  protected readonly periods = PERIODS;
+  protected readonly period = signal<PeriodKey>('30');
+  protected pickPeriod(k: string) { this.period.set(k as PeriodKey); }
+  /** The account's XP over the chosen period; null while unknown (the XP request failed). */
+  protected readonly summary = computed(() => {
     const d = this.d();
     if (!d) return null;
-    const failed = { synthesis: NA, progress: NA, structure: NA };
-    return d.analytics ? safe(() => observed(d, d.analytics!), failed) : failed;
+    if (!d.xp) return { text: NA };
+    const days = Number(this.period()), s = periodSummary(d.xp, days, new Date());
+    if (!d.xp.length) return { text: 'Sin actividad registrada.' };
+    return { text: `Últimos ${days} días, toda la cuenta: ${es(s.xp)} XP · ${s.activeDays} ${s.activeDays === 1 ? 'día' : 'días'} con actividad`
+      + (s.delta === null ? '' : ` · ${s.delta > 0 ? '+' : s.delta < 0 ? '−' : ''}${Math.abs(Math.round(s.delta))} % frente a los ${days} anteriores`) };
   });
-  protected readonly activityToday = computed(() => { const d = this.d(); return d && safe(() => activityToday(d, this.selected()), NA); });
-  protected readonly timeline = computed(() => { const d = this.d(); return d && (d.xp ? safe(() => timeline(d.xp!), NA) : NA); });
+  /** One row per course: the ones under way (and those whose units were not read) first, the finished or not started ones folded. */
+  private readonly allRows = computed(() => {
+    const d = this.d();
+    if (!d) return null;
+    return safe(() => courseRows(d.courses, d.analytics?.curriculum?.courses ?? [], d.analytics?.curriculum?.recentDeltas ?? []), null);
+  });
+  protected readonly rows = computed(() => this.allRows()?.filter((r) => r.state === 'progress' || r.state === 'unread') ?? null);
+  protected readonly restRows = computed(() => this.allRows()?.filter((r) => r.state === 'done' || r.state === 'new') ?? []);
   // The four analytics cards: unavailable when the request failed, blank when the source sent no activity (legacy).
   private readonly a = computed(() => { const d = this.d(); return !d ? undefined : !d.analytics ? null : d.analytics.activity ? d.analytics : undefined; });
   protected readonly intensity = computed(() => this.card((a) => intensity(a)));
   protected readonly weekdays = computed(() => this.card((a) => weekdays(a)));
   protected readonly concentration = computed(() => this.card((a) => concentration(a)));
-  protected readonly comparability = computed(() => this.card((a) => comparability(a, this.d()!.courses)));
 
   private card<T>(build: (a: Analytics) => T): T | typeof NA | undefined {
     const a = this.a();
     return a === undefined ? undefined : a === null ? NA : safe(() => build(a), NA);
   }
+  protected readonly NA = NA;
   protected isNA = (v: unknown): v is typeof NA => v === NA;
 
   /** selectCourse :398 — remember the choice and put it in the URL; the course already in the URL adds no history entry. */
