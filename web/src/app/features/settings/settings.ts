@@ -19,7 +19,7 @@ interface Reply { ok?: boolean; error?: string; dailyGoalXp?: unknown }
         <label for="goalInput" class="muted">XP por día</label>
         <input id="goalInput" type="number" min="1" max="10000" step="1" inputmode="numeric" placeholder="sin objetivo"
           [value]="goal()" (input)="onInput($event)">
-        <button id="goalSave" type="button" class="btn btn-p" [disabled]="saving() || loadFailed()" (click)="save()">Guardar</button>
+        <button id="goalSave" data-umami-event="goal-save" type="button" class="btn btn-p" [disabled]="saving() || loadFailed()" (click)="save()">Guardar</button>
         <span id="goalStatus" class="muted" role="status">{{ status() }}</span>
       </div>
     </section>

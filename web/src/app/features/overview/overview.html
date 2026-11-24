@@ -32,7 +32,7 @@
 
     <div class="hc-wrap">
       <div class="hc-act">
-        <button id="overviewGamesRegister" type="button" [class]="'btn ' + (g?.registered ? 'btn-g' : 'btn-p')" (click)="openRegister()">{{ g?.registered ? 'Editar lo de hoy' : 'Registrar hoy' }}</button>
+        <button id="overviewGamesRegister" data-umami-event="overview-games-register" type="button" [class]="'btn ' + (g?.registered ? 'btn-g' : 'btn-p')" (click)="openRegister()">{{ g?.registered ? 'Editar lo de hoy' : 'Registrar hoy' }}</button>
         <p id="overviewGamesNote" class="muted hc-sub u-m-0" role="status">{{ note() }}</p>
       </div>
       <a class="hc card" id="overviewGamesRow" [routerLink]="g?.link ?? '/games'">
