@@ -149,7 +149,7 @@
                     }
                     <div class="u-mt-8 lg-actions">
                       @if (!c.isSelected) { <button type="button" class="btn btn-p btn-sm" (click)="select(c.id)">Elegir este curso</button> }
-                      <button type="button" class="btn btn-g btn-sm" (click)="openDetail(c.id)">Ver detalle</button>
+                      <button type="button" class="btn btn-g btn-sm" data-umami-event="course-detail" (click)="openDetail(c.id)">Ver detalle</button>
                     </div>
                   </div>
                 </details>

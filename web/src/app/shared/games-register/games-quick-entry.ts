@@ -35,7 +35,7 @@ const BADGE = { new: 'nuevo', changed: 'cambia', same: 'igual' } as const;
         }
       </div>
       <div class="u-d-flex u-ai-center u-gap-10 u-mt-8">
-        <button id="lgQuickSave" class="btn btn-p" type="button" [disabled]="!canSave()" (click)="save()">Guardar</button>
+        <button id="lgQuickSave" data-umami-event="games-save" class="btn btn-p" type="button" [disabled]="!canSave()" (click)="save()">Guardar</button>
         <span class="muted u-fs-xs">Enter guarda · Mayús+Enter, otra línea</span>
       </div>
     </div>

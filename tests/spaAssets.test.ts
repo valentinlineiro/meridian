@@ -25,7 +25,7 @@ const get = (path: string, w: { fetch: (r: Request, e: Env) => Response | Promis
   w.fetch(new Request("https://stats.example.com" + path, { redirect: "manual" }), env);
 
 const ANGULAR_CSP =
-  "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; manifest-src 'self'; worker-src 'self'; form-action 'self'; base-uri 'self'; frame-ancestors 'none'";
+  "default-src 'none'; script-src 'self' https://umami-analytics-ashen-six.vercel.app; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://umami-analytics-ashen-six.vercel.app; manifest-src 'self'; worker-src 'self'; form-action 'self'; base-uri 'self'; frame-ancestors 'none'";
 const CANONICAL = [
   "/", "/index.html", "/overview", "/overview/", "/chess", "/chess/", "/languages", "/languages/", "/languages/DUOLINGO_ES",
   "/changes", "/trajectory", "/profile", "/games", "/games/", "/settings",

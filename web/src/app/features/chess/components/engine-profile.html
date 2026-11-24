@@ -60,7 +60,7 @@
 <div class="muted u-mt-8" id="profileNote">{{ failed() ? '' : x?.note }}</div>
 
 <ng-template #barTpl let-b><div class="prof-bar"><span>{{ b.label }}</span><div class="bar"><i class="bar-err" [style.width.%]="b.w"></i></div><b>{{ b.rate }}</b><span class="muted">{{ b.detail }}</span></div></ng-template>
-<ng-template #gameTpl let-r><a href="#" class="prof-game" [attr.data-g]="r.id" (click)="open($event, r.id)"><b>{{ r.opp }}</b>&ngsp;<span [class]="r.cls">{{ r.res }}</span>&ngsp;<span class="muted">{{ r.when }}</span><br><span class="muted">{{ r.what }}</span></a></ng-template>
+<ng-template #gameTpl let-r><a href="#" class="prof-game" data-umami-event="engine-game-open" [attr.data-g]="r.id" (click)="open($event, r.id)"><b>{{ r.opp }}</b>&ngsp;<span [class]="r.cls">{{ r.res }}</span>&ngsp;<span class="muted">{{ r.when }}</span><br><span class="muted">{{ r.what }}</span></a></ng-template>
 <ng-template #listTpl let-rows>
   @let rs = rows?.v ?? [];
   @if (rows?.na) {<div class="muted">No disponible</div>} @else {

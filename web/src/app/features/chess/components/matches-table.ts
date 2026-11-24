@@ -80,7 +80,7 @@ const CHIPS: { group: FilterGroup; label: string; options: { k: string; l: strin
             <optgroup [label]="g.label">@for (o of g.items; track o.key) { <option [value]="o.key" [selected]="f.opening === o.key">{{ o.label }}</option> }</optgroup>
           }</select>
         <button class="btn btn-g" type="button" (click)="clear()">Limpiar filtros</button>
-        <a class="btn btn-g" href="/api/export/matches.csv" download>Exportar CSV</a>
+        <a class="btn btn-g" href="/api/export/matches.csv" data-umami-event="chess-export-csv" download>Exportar CSV</a>
       </div>
       <div id="eloErr" class="field-error" role="status">{{ m.eloInvalid() ? 'ELO mín no puede ser mayor que ELO máx.' : '' }}</div>
     }
@@ -106,7 +106,7 @@ const CHIPS: { group: FilterGroup; label: string; options: { k: string; l: strin
       <div class="pager u-d-flex" id="matchPager"><button class="btn btn-g" type="button" id="prev" [disabled]="m.failed() || m.offset() === 0" (click)="m.page(-1)">‹ Anterior</button><span class="muted" id="mc" role="status" aria-live="polite">{{ counter() }}</span><button class="btn btn-g" type="button" id="next" [disabled]="m.failed() || m.offset() + m.pageSize() >= m.total()" (click)="m.page(1)">Siguiente ›</button></div>
     } @else {
       <button class="btn btn-g u-mt-10" type="button" id="btnAllMatches" (click)="expand()">Ver todas y filtrar</button>
-      <a class="btn btn-g u-mt-10" href="/api/export/matches.csv" download>Exportar CSV</a>
+      <a class="btn btn-g u-mt-10" href="/api/export/matches.csv" data-umami-event="chess-export-csv" download>Exportar CSV</a>
     }
   `,
 })
