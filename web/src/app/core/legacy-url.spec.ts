@@ -28,6 +28,8 @@ describe('legacyRedirect', () => {
     ['/', '#games/mini_sudoku', '', '/games/mini_sudoku'],
     ['/games/nope', '', '', '/games'],
     ['/games/queens/extra', '', '', '/games'],
+    ['/', '#/chess/partidas', '', '/chess/partidas'],
+    ['/chess/otra', '', '', '/chess'],
   ])('shouldRedirectHashRouteToCanonicalPath %s %s %s', (path, hash, search, expected) => {
     expect(legacyRedirect(path, hash, search)).toBe(expected);
   });
@@ -46,7 +48,7 @@ describe('legacyRedirect', () => {
     expect(legacyRedirect('/', '', '?course=X')).toBe('/overview');
   });
 
-  it.each([['/'], ['/overview'], ['/languages'], ['/languages/DUOLINGO_ES'], ['/trajectory'], ['/settings'], ['/games'], ['/games/queens'], ['/games/mini_sudoku']])(
+  it.each([['/'], ['/overview'], ['/languages'], ['/languages/DUOLINGO_ES'], ['/trajectory'], ['/settings'], ['/games'], ['/games/queens'], ['/games/mini_sudoku'], ['/chess'], ['/chess/partidas']])(
     'shouldNotRedirectWhenAlreadyCanonical %s',
     (path) => expect(legacyRedirect(path, '', '')).toBeNull(),
   );

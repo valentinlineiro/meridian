@@ -1,9 +1,8 @@
 import { afterNextRender, Component, computed, DestroyRef, effect, ElementRef, inject, input, Injector, linkedSignal, signal, viewChild } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { catchError, finalize, forkJoin, map, Observable, of } from 'rxjs';
 import { ApiClient } from '../../core/api-client';
-import { scrollBehavior } from '../../core/motion';
 import { fmtDelta, pc1, pctCi } from '../../core/format';
 import { StatsService } from '../../core/stats.service';
 import { ErrorBlock } from '../../shared/error-block';
@@ -186,7 +185,7 @@ function view(d: ChessData) {
 
 @Component({
   selector: 'app-chess',
-  imports: [ChessPeriods, ErrorBlock, Kpi, Section, Segmented, Donut, Sparkline, Compare, MatchesTable, MatchDetailModal, OpeningsBlock, ReviewSuggestion, EngineProfile],
+  imports: [ChessPeriods, RouterLink, ErrorBlock, Kpi, Section, Segmented, Donut, Sparkline, Compare, MatchesTable, MatchDetailModal, OpeningsBlock, ReviewSuggestion, EngineProfile],
   providers: [MatchesService],
   templateUrl: './chess.html',
 })
@@ -248,10 +247,14 @@ export class Chess {
 
   private readonly matches = inject(MatchesService);
   private readonly injector = inject(Injector);
-  /** A count in «Resultados»: open the full list already filtered to those games, and move there. */
+  private readonly router = inject(Router);
+  /** The `:view` route param: `partidas` is the games list (a mode of this page, like a game's report in Games); absent is the periods view. */
+  readonly view = input<string>();
+  protected readonly isGames = computed(() => this.view() === 'partidas');
+  /** A count in «Resultados»: open the games list already filtered to those games. */
   protected showEnding(result: 'loss' | 'draw', end: string): void {
     this.matches.showEnding(result, end);
-    afterNextRender(() => this.show('partidas'), { injector: this.injector });
+    void this.router.navigate(['/chess', 'partidas']);
   }
   protected retryProfile(): void { this.profileRes.reload(); }
   protected readonly profileLoading = computed(() => this.profileRes.isLoading());
@@ -305,7 +308,6 @@ export class Chess {
   private readonly cgComp = viewChild.required<Section>('cgComp');
   private readonly cgOpen = viewChild.required<Section>('cgOpen');
   private readonly cgEvo = viewChild.required<Section>('cgEvo');
-  private readonly allMatches = viewChild.required<ElementRef<HTMLElement>>('allMatches');
 
 
   /** Blocks live inside the collapsed «Estadísticas»: open it, then the block. */
@@ -315,12 +317,7 @@ export class Chess {
     if (k === 'comparativa') this.within(this.cgComp());
     else if (k === 'aperturas') this.within(this.cgOpen());
     else if (k === 'evolucion') this.within(this.cgEvo());
-    else if (k === 'partidas') {
-      const card = this.allMatches().nativeElement;
-      card.scrollIntoView({ behavior: scrollBehavior(), block: 'start' });
-      const h = card.querySelector<HTMLElement>('h2');
-      if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }); }
-    }
+    else if (k === 'partidas') void this.router.navigate(['/chess', 'partidas'], { replaceUrl: true }); // old ?s=partidas links
   }
 
   private load(): Observable<ChessData> {

@@ -88,6 +88,45 @@ test.describe('Frontend E2E Integration Suite', () => {
     await expect(page).toHaveURL(/\/games/);
   });
 
+  test('shouldOpenTheGamesListWhenNavigatingToChessPartidas', async ({ page }) => {
+    await page.goto('/login?next=%2Fchess');
+    await page.fill('input[name="email"]', 'owner@localhost');
+    await page.fill('input[name="password"]', 'local-dev-password-123');
+    await page.click('button[type="submit"]');
+    await expect(page.locator('#chessPeriods')).toBeVisible();
+    await expect(page.locator('#allMatchesCard')).toHaveCount(0);
+    await page.click('#chessGamesLink');
+    await expect(page).toHaveURL(/\/chess\/partidas$/);
+    await expect(page).toHaveTitle('Partidas · Ajedrez · Meridian');
+    await expect(page.locator('#allMatchesCard')).toBeVisible();
+    await expect(page.locator('#chessPeriods')).toHaveCount(0);
+    await page.click('#chessGamesBack');
+    await expect(page).toHaveURL(/\/chess$/);
+    await expect(page.locator('#chessPeriods')).toBeVisible();
+  });
+
+  test('shouldKeepChessTabActiveOnTheSubroute', async ({ page }) => {
+    await page.goto('/login?next=%2Fchess%2Fpartidas');
+    await page.fill('input[name="email"]', 'owner@localhost');
+    await page.fill('input[name="password"]', 'local-dev-password-123');
+    await page.click('button[type="submit"]');
+    await expect(page).toHaveURL(/\/chess\/partidas$/);
+    await expect(page.locator('a.side-item.active')).toHaveText('Ajedrez');
+  });
+
+  test('shouldReloadChessPartidasWithoutA404', async ({ page }) => {
+    await page.goto('/login?next=%2Fchess%2Fpartidas');
+    await page.fill('input[name="email"]', 'owner@localhost');
+    await page.fill('input[name="password"]', 'local-dev-password-123');
+    await page.click('button[type="submit"]');
+    await page.reload();
+    await expect(page).toHaveURL(/\/chess\/partidas$/);
+    await expect(page).toHaveTitle('Partidas · Ajedrez · Meridian');
+    await expect(page.locator('#allMatchesCard')).toBeVisible();
+    await page.goto('/chess/otra'); // an unknown sub-path of a tab lands on the tab, as /games/nope does
+    await expect(page).toHaveURL(/\/chess$/);
+  });
+
   test('shouldHandleBrowserBackAndForwardNavigation', async ({ page }) => {
     // Session login
     await page.goto('/login?next=%2Foverview');
@@ -162,8 +201,8 @@ test.describe('Frontend E2E Integration Suite', () => {
       });
     });
 
-    // Session login to /chess
-    await page.goto('/login?next=%2Fchess');
+    // Session login to the games list (its rows live in /chess/partidas)
+    await page.goto('/login?next=%2Fchess%2Fpartidas');
     await page.fill('input[name="email"]', 'owner@localhost');
     await page.fill('input[name="password"]', 'local-dev-password-123');
     await page.click('button[type="submit"]');

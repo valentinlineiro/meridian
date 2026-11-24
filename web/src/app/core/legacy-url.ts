@@ -22,7 +22,8 @@ export function legacyRedirect(pathname: string, hash: string, search: string): 
   if (seg && !hash && !course && !TABS.includes(seg) && seg !== 'languages' && !seg.startsWith('DUOLINGO_')) return null;
   const courseId = seg === 'languages' ? sub || course : seg.startsWith('DUOLINGO_') ? seg : null;
   const gameKey = seg === 'games' && sub && sub in GAME_NAMES ? sub : null; // /games/:game is the same route as /games
-  const canonical = TABS.includes(seg) ? '/' + seg + (gameKey ? '/' + gameKey : '')
+  const chessView = seg === 'chess' && sub === 'partidas'; // /chess/partidas is the same route as /chess (the games list)
+  const canonical = TABS.includes(seg) ? '/' + seg + (gameKey ? '/' + gameKey : chessView ? '/partidas' : '')
     : courseId ? '/languages/' + encodeURIComponent(courseId)
     : seg === 'languages' ? '/languages'
     : '/overview';

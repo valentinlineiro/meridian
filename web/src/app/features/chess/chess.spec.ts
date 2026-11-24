@@ -2,14 +2,14 @@ import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting, TestRequest } from '@angular/common/http/testing';
-import { provideRouter, withComponentInputBinding } from '@angular/router';
+import { provideRouter, Router, UrlSegment, withComponentInputBinding } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { StatsService } from '../../core/stats.service';
 import { Chess } from './chess';
 import { Compare } from './components/compare';
 import { MatchesService } from './services/matches.service';
 import { EngineProfile, Profile } from './components/engine-profile';
-import { routes } from '../../app.routes';
+import { chessMatcher, routes } from '../../app.routes';
 
 // Ports of tests/chessDashboard, chessDashboardThreats, chessDashboardEngine (chess tab), frontendErrorIsNotZero and
 // frontendEmptyAndErrorStates (chess cases), frontendNetwork (chess), frontendWinRateCi, frontendDeltas (colour/form),
@@ -65,7 +65,7 @@ class Elsewhere {}
 export const setupChess = async () => {
   localStorage.clear();
   TestBed.configureTestingModule({
-    providers: [provideRouter([{ path: 'chess', component: Chess }, routes.find((r) => r.path === 'profile')!, { path: ':other', component: Elsewhere }], withComponentInputBinding()), provideHttpClient(), provideHttpClientTesting()],
+    providers: [provideRouter([{ matcher: chessMatcher, component: Chess }, routes.find((r) => r.path === 'profile')!, { path: ':other', component: Elsewhere }], withComponentInputBinding()), provideHttpClient(), provideHttpClientTesting()],
   });
   const http = TestBed.inject(HttpTestingController);
   const harness = await RouterTestingHarness.create();
@@ -89,7 +89,7 @@ export const setupChess = async () => {
     await harness.fixture.whenStable();
     return harness.routeNativeElement as HTMLElement;
   };
-  const open = async (api: Api = chessApi()) => { await harness.navigateByUrl('/chess'); return answer(api); };
+  const open = async (api: Api = chessApi(), url = '/chess') => { await harness.navigateByUrl(url); return answer(api); };
   const el = () => harness.routeNativeElement as HTMLElement;
   // Renders what has arrived without waiting for open requests (whenStable() would).
   const tick = async () => { TestBed.tick(); await new Promise((r) => setTimeout(r)); TestBed.tick(); };
@@ -135,7 +135,7 @@ describe('Chess', () => {
   describe('layout (tests/ux-viewport.test.ts)', () => {
     it('shouldOrderSectionsLogicallyAndKeepTheOpponentEloCollapsed', async () => {
       await t.open();
-      const ids = ['chessHero', 'chessPatternsCard', 'allMatchesCard', 'cg-stats', 'kpis', 'evoCard', 'formCard', 'cg-comp', 'colCard', 'oppCard', 'cg-evo', 'resCard', 'eloDetails'];
+      const ids = ['chessPeriods', 'chessGamesLink', 'chessHero', 'cg-stats', 'kpis', 'evoCard', 'formCard', 'cg-comp', 'colCard', 'oppCard', 'cg-evo', 'resCard', 'eloDetails'];
       const els = ids.map((id) => t.el().querySelector('#' + id)!);
       expect(els.every(Boolean)).toBe(true);
       for (let i = 1; i < els.length; i++) expect(els[i - 1].compareDocumentPosition(els[i]) & Node.DOCUMENT_POSITION_FOLLOWING, ids[i]).toBeTruthy();
@@ -388,7 +388,8 @@ describe('Chess', () => {
       await t.tick();
       const req = t.pending().filter((r) => r.request.url === '/api/matches').at(-1)!.request.params;
       expect([req.get('result'), req.get('endCondition'), req.get('limit')]).toEqual(['loss', 'resignation', '50']);
-      expect(document.activeElement).toBe(t.el().querySelector('#allMatchesCard h2'));
+      expect(TestBed.inject(Router).url).toBe('/chess/partidas');
+      expect(t.el().querySelector('#allMatchesCard')).not.toBeNull();
     });
 
     it('shouldNotAddALossRateNoteWhenNoLossWasADisconnection', async () => {
@@ -492,6 +493,8 @@ describe('Chess', () => {
       expect(t.el().querySelector('#tabBtn-black')!.getAttribute('aria-pressed')).toBe('true');
       expect(t.text('openingsBlack')).toContain('Siciliana');
       expect(t.text('openingsPop')).toBe('Con detalle: 5 de 100 partidas');
+      await t.harness.navigateByUrl('/chess/partidas');
+      await t.tick();
       t.el().querySelector<HTMLButtonElement>('#btnAllMatches')!.click();
       await t.tick();
       expect([...t.el().querySelectorAll('#fOpening option')].map((o) => (o as HTMLOptionElement).value)).toEqual(['', 'ruy_lopez', 'sicilian']);
@@ -633,7 +636,7 @@ describe('Chess', () => {
     });
 
     it('shouldSkipMatchRowsThatAreNotObjects', async () => {
-      await t.open(chessApi({ '/api/matches': { rows: [null, 'x', { match_id: 'm1', opponent_name: 'Bot 8', result: 'win' }], total: 3 } }));
+      await t.open(chessApi({ '/api/matches': { rows: [null, 'x', { match_id: 'm1', opponent_name: 'Bot 8', result: 'win' }], total: 3 } }), '/chess/partidas');
       expect(t.el().querySelectorAll('#mb tr')).toHaveLength(1);
       expect(t.text('mb')).toContain('Bot 8');
     });
@@ -641,14 +644,16 @@ describe('Chess', () => {
 
   describe('review suggestion', () => {
     it('shouldSayTheCoverageIsUnavailableNotZeroWhenTheProfileFails', async () => {
-      await t.open(chessApi({ '/api/stats/profile': FAIL }));
+      await t.open(chessApi({ '/api/stats/profile': FAIL }), '/chess/partidas');
       expect(t.text('chessPatternSuggested')).toContain('No pudimos cargar la partida sugerida.');
+      await t.harness.navigateByUrl('/chess');
+      await t.tick();
       expect(t.text('profileKpis')).toContain('No pudimos cargar el análisis del motor.');
     });
 
     it('shouldOfferTheSuggestedGameAndOpenItSafely', async () => {
       const worst = [{ matchId: 'game_malicious"onclick=alert(1)', opponent: 'Stockfish 8', serious: 4, acpl: 250 }];
-      await t.open(chessApi({ '/api/stats/profile': { ...PROFILE, review: { worst, best: [] } } }));
+      await t.open(chessApi({ '/api/stats/profile': { ...PROFILE, review: { worst, best: [] } } }), '/chess/partidas');
       expect(t.text('chessPatternSuggested')).toContain('Partida sugerida para revisión (mayor pérdida media por jugada)');
       const btn = t.el().querySelector<HTMLButtonElement>('#chessPatternSuggested button')!;
       expect(btn.textContent).toBe('Revisar vs Stockfish 8 (4 errores graves)');
@@ -662,7 +667,7 @@ describe('Chess', () => {
     const rows = { rows: [{ match_id: 'new1', ply_count: 40, opponent_name: 'Bot 8', result: 'win' }, { match_id: 'old', ply_count: 30, result: 'loss' }], total: 2 };
 
     it('shouldOfferTheNewestGameWithMovesNextToTheSuggestedOne', async () => {
-      await t.open(chessApi({ '/api/matches': rows }));
+      await t.open(chessApi({ '/api/matches': rows }), '/chess/partidas');
       const btn = [...t.el().querySelectorAll<HTMLButtonElement>('#chessPatternSuggested button')].find((b) => b.textContent === 'Última partida')!;
       btn.click();
       await t.tick();
@@ -670,7 +675,7 @@ describe('Chess', () => {
     });
 
     it('shouldNotOfferTheNewestGameWhenItHasNoStoredMoves', async () => {
-      await t.open(chessApi({ '/api/matches': { rows: [{ match_id: 'm1', opponent_name: 'Bot 8' }], total: 1 } }));
+      await t.open(chessApi({ '/api/matches': { rows: [{ match_id: 'm1', opponent_name: 'Bot 8' }], total: 1 } }), '/chess/partidas');
       expect(t.text('chessPatternSuggested')).not.toContain('Última partida');
     });
   });
@@ -737,7 +742,7 @@ describe('Chess', () => {
 
   describe('game viewer', () => {
     it('shouldOpenTheGameOfAClickedRowInTheViewer', async () => {
-      await t.open(chessApi({ '/api/matches': { rows: [{ match_id: 'm1', ply_count: 2, opponent_name: 'Bot 8', result: 'win' }], total: 1 } }));
+      await t.open(chessApi({ '/api/matches': { rows: [{ match_id: 'm1', ply_count: 2, opponent_name: 'Bot 8', result: 'win' }], total: 1 } }), '/chess/partidas');
       t.el().querySelector<HTMLElement>('#mb tr.gamerow')!.click();
       await t.tick();
       const asked = t.pending().filter((x) => x.request.url === '/api/me/matches/m1/game');
@@ -797,7 +802,7 @@ describe('Chess', () => {
       await t.open();
       const scrolled: string[] = [];
       Element.prototype.scrollIntoView = function (this: Element) { scrolled.push(this.id); };
-      for (const [k, id] of [['comparativa', 'cg-comp'], ['aperturas', 'cg-open'], ['evolucion', 'cg-evo'], ['partidas', 'allMatchesCard']]) {
+      for (const [k, id] of [['comparativa', 'cg-comp'], ['aperturas', 'cg-open'], ['evolucion', 'cg-evo']]) {
         await t.harness.navigateByUrl('/chess?s=' + k);
         await t.tick();
         await t.tick();
@@ -805,6 +810,11 @@ describe('Chess', () => {
       }
       expect(t.el().querySelector<HTMLDetailsElement>('#cg-stats')!.open).toBe(true);
       expect(t.el().querySelector('nav[aria-label="Secciones de ajedrez"]')).toBeNull();
+      await t.harness.navigateByUrl('/chess?s=partidas'); // an old link lands on the games list
+      await t.tick();
+      await t.tick();
+      expect(TestBed.inject(Router).url).toBe('/chess/partidas');
+      expect(t.el().querySelector('#allMatchesCard')).not.toBeNull();
     });
 
     it('shouldMoveFocusToWhatTheUrlOpened', async () => {
@@ -817,7 +827,7 @@ describe('Chess', () => {
       await t.harness.navigateByUrl('/chess?s=partidas');
       await t.tick();
       await t.tick();
-      expect(document.activeElement).toBe(t.el().querySelector('#allMatchesCard h2'));
+      expect(t.el().querySelector('#allMatchesCard')).not.toBeNull();
     });
 
     it('shouldOpenTheBlockNamedInTheUrl', async () => {
@@ -1133,5 +1143,39 @@ describe('EngineProfile', () => {
     el.querySelector<HTMLButtonElement>('#profileSinceClear')!.click();
     expect(applied).toEqual(['bot|1793359067|5j8ad1m8', '']);
     expect(el.querySelector<HTMLInputElement>('#profileSinceInput')!.value).toBe('');
+  });
+});
+
+describe('Ajedrez: the games list lives in /chess/partidas', () => {
+  const seg = (...p: string[]) => p.map((path) => new UrlSegment(path, {}));
+  it('shouldMatchChessAndChessPartidasOnlyWhenTheUrlIsOneOfThem', () => {
+    expect(chessMatcher(seg('chess'), null as never, null as never)).not.toBeNull();
+    expect(chessMatcher(seg('chess', 'partidas'), null as never, null as never)!.posParams!['view']!.path).toBe('partidas');
+    expect(chessMatcher(seg('chess', 'otra'), null as never, null as never)).toBeNull();
+    expect(chessMatcher(seg('chess', 'partidas', 'x'), null as never, null as never)).toBeNull();
+    expect(chessMatcher(seg('games'), null as never, null as never)).toBeNull();
+  });
+
+  describe('views', () => {
+    let t: Awaited<ReturnType<typeof setupChess>>;
+    beforeEach(async () => { t = await setupChess(); });
+
+    it('shouldShowThePeriodsAndALinkToThePartidasWhenOnChess', async () => {
+      await t.open(chessApi());
+      const el = t.el();
+      expect(el.querySelector('#chessPeriods')).not.toBeNull();
+      expect(el.querySelector('#allMatchesCard')).toBeNull();
+      expect(el.querySelector('#chessPatternsCard')).toBeNull();
+      expect(el.querySelector('#chessGamesLink')!.getAttribute('href')).toBe('/chess/partidas');
+    });
+
+    it('shouldShowTheGamesListWithABackLinkWhenOnChessPartidas', async () => {
+      await t.open(chessApi(), '/chess/partidas');
+      const el = t.el();
+      expect(el.querySelector('#allMatchesCard')).not.toBeNull();
+      expect(el.querySelector('#chessPatternsCard')).not.toBeNull();
+      expect(el.querySelector('#chessPeriods')).toBeNull();
+      expect(el.querySelector('#chessGamesBack')!.getAttribute('href')).toBe('/chess');
+    });
   });
 });

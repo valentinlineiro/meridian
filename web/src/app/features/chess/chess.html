@@ -2,8 +2,20 @@
 @let h = hero();
 @let x = v();
 <section id="chessTab">
+  @if (isGames()) {
+  <h1 class="sr-only">Partidas · Ajedrez</h1>
+  <a id="chessGamesBack" routerLink="/chess" class="muted gr-back">← Ajedrez</a>
+  <div class="card u-mt-12" id="chessPatternsCard"><app-review-suggestion [profile]="profile()" [loading]="profileLoading()" (retry)="retryProfile()" /></div>
+  <div class="card u-mt-14" id="allMatchesCard" #allMatches>
+    <app-matches-table [openings]="d()?.op ?? null" />
+  </div>
+  } @else {
   <h1 class="sr-only">Ajedrez</h1>
   <app-chess-periods />
+  <a class="hc card u-mt-12" id="chessGamesLink" routerLink="/chess/partidas">
+    <div class="hc-h"><b>Partidas</b></div>
+    <p class="muted hc-sub">Revisar partidas, filtrar y exportar CSV</p>
+  </a>
   @if (loadingFirst()) {
     <span class="sr-only" role="status">Cargando tu ajedrez</span>
     <div class="hero-card" aria-hidden="true"><i class="sk sk-t"></i><i class="sk sk-n"></i><i class="sk"></i></div>
@@ -35,14 +47,10 @@
     </div>
   </div>
   }
-  <div class="card u-mt-12" id="chessPatternsCard"><app-review-suggestion [profile]="profile()" [loading]="profileLoading()" (retry)="retryProfile()" /></div>
   <div id="chessError">
     @if (failed() || (retried() && data.isLoading())) {
       <app-error-block [message]="failMessage()" [loading]="data.isLoading()" [again]="retried()" (retry)="retryPage()" />
     }
-  </div>
-  <div class="card u-mt-14" id="allMatchesCard" #allMatches>
-    <app-matches-table [openings]="d()?.op ?? null" />
   </div>
   @if (!failed()) {
   <app-section sectionId="cg-stats" title="Estadísticas" [open]="false" #cgStats>
@@ -130,6 +138,7 @@
     </div>
   </details>
   </app-section>
+  }
   }
 </section>
 <app-match-detail-modal />
