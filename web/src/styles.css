@@ -572,3 +572,12 @@ a:focus-visible,summary:focus-visible{outline:2px solid var(--link);outline-offs
 .pb-fill{position:absolute;top:0;bottom:0;min-width:2px}.pb-up{background:var(--ok)}.pb-down{background:var(--err)}
 app-rate-rows,app-points-bars{display:block}app-rate-rows+app-rate-rows{margin-top:10px}
 .sp-wrap{position:relative}.sp-lbl{position:absolute;left:2px;font-size:var(--fs-sm);line-height:1;color:var(--muted);font-variant-numeric:tabular-nums;pointer-events:none}.sp-max{top:0}.sp-min{bottom:0}
+
+/* Idiomas scoreboard: one tappable row per course */
+.lg-rows{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.lg-row{all:unset;box-sizing:border-box;display:grid;gap:8px;width:100%;min-height:44px;padding:12px 14px;cursor:pointer;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg,12px)}
+.lg-row:hover{background:var(--hover)}.lg-row:focus-visible{outline:2px solid var(--link);outline-offset:2px}
+.lg-row-head{display:flex;align-items:center;gap:10px}.lg-row-title{flex:1;min-width:0;font-size:var(--fs-lg)}
+.lg-row-level{font-size:var(--fs-h);font-weight:800;font-variant-numeric:tabular-nums}
+.lg-row .progress-bar{display:block}.lg-row .pf-info{display:block;height:100%}
+.lg-row-meta{font-size:max(var(--fs-xs),12px);font-variant-numeric:tabular-nums}

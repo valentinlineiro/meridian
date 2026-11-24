@@ -1,8 +1,7 @@
 import { fmtDate, pc1, relDate } from '../../core/format';
-import { calendarDaysAgo, isStale, xpWeek, xpWeekLine } from '../../core/xp-week';
-import { activeDaysSub, activeDaysText, Course, CourseDetail, courseProgress, es, flag, Langs, lastSevenDays, Section, toDay, xpText, XpDay } from '../../core/courses';
+import { calendarDaysAgo, isStale } from '../../core/xp-week';
+import { activeDaysSub, activeDaysText, Course, CourseDetail, es, Langs, Section, XpDay } from '../../core/courses';
 import { list } from '../../core/guard';
-import { goalColor, goalSummary } from './goal-summary';
 
 // View builders of the Idiomas page: port of renderLang/renderLanguagesView/renderLanguagesAnalytics
 // (src/dashboard.client.js:283–296, 436–782). Each one is run under safe() by the component, so a body it cannot read
@@ -39,13 +38,10 @@ export type Detail = CourseDetail | null | undefined;
 /** A list where one is expected; absent is empty, anything else is a body this view cannot read. */
 const arr = <T>(v: T[] | null | undefined): T[] => { if (v == null) return []; if (!list(v)) throw new Error('not a list'); return v; };
 const dec1 = (v: number) => v.toFixed(1).replace('.', ',');
-const pair = (c: Course) => c.fromLanguage && c.learningLanguage ? `${c.fromLanguage.toUpperCase()} → ${c.learningLanguage.toUpperCase()}` : '';
 /** "EN → XB" with whichever side is known (legacy course list and detail). */
 export const looseFromTo = (c: Course) => (c.fromLanguage ? c.fromLanguage.toUpperCase() + ' → ' : '') + (c.learningLanguage ? c.learningLanguage.toUpperCase() : '');
 // a raw source key (daily_refresh) never reaches the owner: the one known type has a name, any other reads General
 export const cefrLabel = (s: Section) => s.cefrLevel ? s.cefrLevel + (s.cefrSublevel ? '.' + s.cefrSublevel : '') : s.type === 'daily_refresh' ? 'Repaso diario' : 'General';
-// Unit progress prints like every other percentage in the UI ("30,0 %"); the width stays the numeric string.
-const unitPct = (completed: number, total: number) => (completed / total * 100).toFixed(1);
 
 /** "Datos de hace N días" once the last sync is older than the app's stale rule; null while fresh or when no sync date is known. */
 export function staleLabel(d: LangData, now = Date.now()): string | null {
@@ -53,33 +49,6 @@ export function staleLabel(d: LangData, now = Date.now()): string | null {
   if (!at || !isStale(at, now)) return null;
   const n = calendarDaysAgo(at, now);
   return `Datos de hace ${n} ${n === 1 ? 'día' : 'días'}`;
-}
-
-export function hero(d: LangData, selected: string | null) {
-  const active = d.courses.find((c) => c.courseId === selected);
-  const fromTo = active ? pair(active) : '';
-  return {
-    options: d.courses.map((c) => ({
-      id: c.courseId,
-      label: (c.title || c.courseId) + (pair(c) ? ' · ' + pair(c) : '') + ` (${xpText(c.xp)} XP)`,
-    })),
-    flag: active?.learningLanguage ? flag(active.learningLanguage) : '',
-    stale: staleLabel(d),
-    meta: `${xpText(active?.xp)} XP acumulado en el curso` + (fromTo ? ' · ' + fromTo : ''),
-  };
-}
-
-export function progress(d: LangData, selected: string | null, detail: Detail) {
-  // the old course's units are never shown while the new one loads
-  if (detail === undefined) return { text: '—', width: 0, big: '', sub: '' };
-  let { completed, total } = detail ? courseProgress(detail) : { completed: 0, total: 0 };
-  if (total === 0) {
-    const cur = arr(d.analytics?.curriculum?.courses).find((c) => c.courseId === selected);
-    if (cur?.totalUnits != null && cur.totalUnits > 0) { completed = cur.completedUnits || 0; total = cur.totalUnits; }
-  }
-  if (total > 0) { const p = unitPct(completed, total); return { text: `${completed} / ${total} unidades (${pc1(Number(p))})`, width: Number(p), big: `${completed} / ${total}`, sub: `unidades · ${pc1(Number(p))}` }; }
-  // a failed request is unknown; "not synced" is said only when the source answered without units
-  return { text: detail === null ? NA : 'Aún no se han leído las unidades de este curso', width: 0, big: '', sub: '' };
 }
 
 /** Account card, the part read from the catalogue alone. */
@@ -130,113 +99,7 @@ export function legacyAccount(l: LegacyLang) {
   };
 }
 
-/** The complete last seven days against the four weeks before: the rule Hoy uses (core/xp-week). Null while the XP rows are unknown. */
-export function pace(d: LangData, now = Date.now()): string | null {
-  return d.xp ? xpWeekLine(xpWeek(d.xp, d.langs.updatedAt, now), new Date(now).toISOString().slice(0, 10)) : null;
-}
-
 export interface DayCell { date: string; letter: string; color: string; label: string; title: string }
-export function week(d: LangData, now = Date.now()) {
-  // the same seven complete days as the Actividad card (xpWeek: up to the day before the last sync); the calendar week only when that rule has nothing to say
-  const w = d.xp ? xpWeek(d.xp, d.langs.updatedAt, now) : null;
-  const days = w?.state === 'ok' ? w.days.map(({ date }) => ({ date, letter: 'DLMXJVS'[new Date(date + 'T00:00:00Z').getUTCDay()]! })) : lastSevenDays();
-  const todayDate = new Date(now).toISOString().slice(0, 10);
-  const goalText = (xpOf: ((day: string) => number) | null) =>
-    d.goal === undefined ? NA : d.goal === null ? 'Sin objetivo diario configurado.' : xpOf ? goalSummary(days.map((x) => x.date), xpOf, d.goal, todayDate) : NA;
-  if (!d.xp) return { cells: [] as DayCell[], summary: NA, goal: goalText(null) };
-  const byDay = new Map<string, XpDay>();
-  for (const s of d.xp) { const k = toDay(s.date); if (!byDay.has(k)) byDay.set(k, s); } // the first one wins, as legacy find()
-  const xpOf = (day: string) => byDay.get(day)?.gainedXp || 0;
-  let wXp = 0, wSes = 0, wSec = 0;
-  const cells = days.map(({ date, letter }): DayCell => {
-    const s = byDay.get(date);
-    const xp = s?.gainedXp || 0, ses = s?.numSessions || 0, sec = s?.totalSessionTime || 0;
-    wXp += xp; wSes += ses; wSec += sec;
-    return { date, letter, color: goalColor(xp, d.goal ?? null), label: xp > 0 ? String(xp) : '—', title: `${date}: ${xp} XP · ${ses} ses · ${Math.round(sec / 60)} min` };
-  });
-  const wMin = Math.round(wSec / 60);
-  // days after the last sync are unknown, not zero: a stale sync does not print a total that reads as "nothing this week"
-  const summary = staleLabel(d) ? 'Sin datos recientes' : `${es(wXp)} XP · ${wSes} ses` + (wMin > 0 ? ` · ${wMin} min` : '');
-  return { cells, summary, goal: goalText(xpOf) };
-}
-
-export function courseList(d: LangData, selected: string | null, detail: Detail) {
-  const cur = arr(d.analytics?.curriculum?.courses);
-  return d.courses.map((c) => {
-    const isSelected = c.courseId === selected;
-    const secs = isSelected && detail ? list<Section>(detail.sections) : null;
-    let units = '', sections: { key: string; title: string; units: string; pct: string; pctText: string; width: number }[] = [], prog: { text: string; pct: string; pctText: string } | null = null;
-    if (secs?.length) {
-      const p = courseProgress(detail);
-      units = `${p.completed} / ${p.total} unidades`;
-      sections = secs.map((s, i) => {
-        const comp = s.completedUnits || 0, pct = ((s.totalUnits ? comp / s.totalUnits : 0) * 100).toFixed(1);
-        return { key: (s.sectionId ?? '') + i, title: `SECCIÓN ${s.sectionIndex}: ${cefrLabel(s)}`, units: `${comp} / ${s.totalUnits ?? 0} unidades`, pct, pctText: pc1(Number(pct)), width: Number(pct) };
-      });
-    } else {
-      const m = cur.find((x) => x.courseId === c.courseId);
-      if (m && m.totalUnits != null && m.totalUnits > 0) {
-        units = `${m.completedUnits} / ${m.totalUnits} unidades`;
-        prog = { text: `Progreso: ${m.completedUnits} / ${m.totalUnits} unidades`, pct: (Number(m.ratio) * 100).toFixed(1), pctText: pc1(Number(m.ratio) * 100) };
-      }
-    }
-    return { id: c.courseId, isSelected, flag: flag(c.learningLanguage), title: c.title || c.courseId, fromTo: looseFromTo(c), xp: xpText(c.xp) + ' XP', units, sections, prog };
-  });
-}
-
-/** Observed changes: comparable / structural / insufficient stay distinct, never collapsed into "stable". */
-export function observed(d: LangData, a: Analytics) {
-  const deltas = arr(a.curriculum?.recentDeltas);
-  const total = a.curriculum?.totalCourses || d.courses.length;
-  // comparable only with a confirmed identical denominator; an unknown one (null) is an insufficient observation
-  const strict = deltas.filter((x) => x.status === 'comparable' && (x.deltaTotalUnits === 0 || (x.deltaTotalUnits === undefined && x.previousTotalUnits == null)));
-  const structural = deltas.filter((x) => x.status === 'structural_change' || (x.deltaTotalUnits != null && x.deltaTotalUnits !== 0)).length;
-  const insufficient = deltas.filter((x) => x.status === 'insufficient_observation' || (x.status === 'comparable' && x.deltaTotalUnits === null)).length;
-  const comparable = strict.length;
-  const synthesis = comparable || structural || insufficient
-    ? `${comparable} de ${total} cursos comparables sin cambio estructural` + (insufficient ? ` · ${insufficient} con observación insuficiente` : '') + (structural ? ` · ${structural} con cambio estructural` : '')
-    : 'Sin observaciones curriculares registradas';
-  const comp = strict.find((x) => x.deltaTotalUnits === 0 && x.deltaCompletedUnits != null && x.deltaCompletedUnits > 0);
-  const compCourse = comp && d.courses.find((c) => c.courseId === comp.courseId);
-  const progressText = comp ? `+${comp.deltaCompletedUnits} unidades completadas en ${compCourse ? compCourse.title || compCourse.courseId : comp.courseId} (mismo árbol curricular: denominador idéntico)`
-    : comparable > 0 ? 'Sin variación en unidades completadas en cursos comparables (mismo denominador)'
-    : 'Sin observaciones curriculares con denominador idéntico (no se calcula avance)';
-  const structure = structural > 0 ? `${structural} ${structural === 1 ? 'curso con cambio estructural' : 'cursos con cambio estructural'} en el árbol curricular (variación en total de unidades; progreso no comparable)`
-    : comparable > 0 ? 'Árbol curricular estable sin cambios estructurales en los cursos observados'
-    : insufficient > 0 ? 'Observación insuficiente para determinar estabilidad (esperando 2ª sincronización)'
-    : 'No se detectaron reestructuraciones de árbol curricular en las sincronizaciones observadas.';
-  return { synthesis, progress: progressText, structure };
-}
-
-/** Account XP today with the course in focus (account scope: never attributed to the course). */
-export function activityToday(d: LangData, selected: string | null): string {
-  if (!d.xp) return NA;
-  const today = new Date().toISOString().slice(0, 10);
-  const s = d.xp.find((x) => toDay(x.date) === today);
-  const xp = s ? s.gainedXp || 0 : 0;
-  if (staleLabel(d)) return 'Sin datos recientes: no se sabe qué pasó hoy';
-  if (!(xp > 0)) return 'Sin XP registrado hoy en la cuenta';
-  const active = d.courses.find((c) => c.courseId === selected);
-  const focus = active ? ' · Curso en foco: ' + (active.title || active.courseId) + (pair(active) ? ` (${pair(active)})` : '') : '';
-  return `+${es(xp)} XP hoy (cuenta)${focus}`;
-}
-
-export function timeline(xp: XpDay[]) {
-  if (!xp.length) return { bars: [], summary: '', empty: 'Sin actividad registrada en los últimos 90 días' };
-  const max = Math.max(...xp.map((s) => s.gainedXp || 0), 1);
-  const bars = xp.map((s) => {
-    const g = s.gainedXp || 0;
-    return {
-      height: Math.max(3, Math.round(g / max * 56)),
-      color: g >= 500 ? 'var(--ok)' : g >= 100 ? 'var(--info)' : g > 0 ? 'var(--muted)' : 'var(--line)',
-      title: `${new Date(Number(s.date) * 1000).toISOString().slice(0, 10)}: ${g} XP (${s.numSessions} ses)`,
-    };
-  });
-  const sum = (f: (s: XpDay) => number) => xp.reduce((a, s) => a + f(s), 0);
-  const hours = Math.round(sum((s) => s.totalSessionTime || 0) / 3600);
-  return { bars, summary: `${es(sum((s) => s.gainedXp || 0))} XP acumulados en ${xp.length} días · ${sum((s) => s.numSessions || 0)} sesiones · ~${hours} horas de práctica`, empty: '' };
-}
-
 export function intensity(a: Analytics) {
   const g = a.intensity!.global, dd = a.intensity!.dailyDistribution;
   return {
@@ -267,25 +130,3 @@ export function concentration(a: Analytics) {
   };
 }
 
-/** Every catalogued course shows up: one with no delta yet reads "waiting", not "missing". */
-export function comparability(a: Analytics, courses: Course[]) {
-  const deltas = arr(a.curriculum?.recentDeltas);
-  const covered = new Set(deltas.map((x) => x.courseId));
-  const waiting = courses.filter((c) => !covered.has(c.courseId));
-  if (!deltas.length && !waiting.length) return null;
-  const day = (v?: string | null) => v ? fmtDate(v.slice(0, 10)) : '—';
-  return {
-    rows: deltas.map((x) => {
-      const comp = x.status === 'comparable', struct = x.status === 'structural_change';
-      return {
-        key: x.courseId,
-        name: courses.find((c) => c.courseId === x.courseId)?.title || x.courseId,
-        pill: comp ? 'pill pill-win' : struct ? 'pill pill-loss' : 'pill pill-draw',
-        status: comp ? 'Comparable' : struct ? 'Cambio estructural' : 'Insuficiente',
-        text: comp ? `+${x.deltaCompletedUnits ?? 0} unidades completadas` : struct ? `Duolingo ha cambiado el curso (${x.previousTotalUnits} → ${x.latestTotalUnits} unidades en total)` : 'Solo hay una lectura de este curso',
-        observed: `Observado: ${day(x.previousObservedAt)} → ${day(x.latestObservedAt)}`,
-      };
-    }),
-    waiting: waiting.map((c) => ({ key: c.courseId, name: c.title || c.courseId })),
-  };
-}
