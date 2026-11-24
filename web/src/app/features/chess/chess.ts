@@ -5,6 +5,7 @@ import { catchError, finalize, forkJoin, map, Observable, of } from 'rxjs';
 import { ApiClient } from '../../core/api-client';
 import { fmtDelta, pc1, pctCi } from '../../core/format';
 import { StatsService } from '../../core/stats.service';
+import { agoLabel } from '../../core/xp-week';
 import { ErrorBlock } from '../../shared/error-block';
 import { Kpi } from '../../shared/kpi';
 import { Section } from '../../shared/section';
@@ -165,7 +166,7 @@ function view(d: ChessData) {
   const s = d.s;
   const last = d.t?.snapshots?.[d.t.snapshots.length - 1];
   return {
-    syncMeta: last?.createdAt ? 'Ajedrez · actualizado ' + last.createdAt.slice(0, 10) : '',
+    syncMeta: last?.createdAt ? 'Ajedrez · actualizado ' + agoLabel(last.createdAt) : '',
     kpis: [
       { label: 'Puntuación', value: s.scoreRate != null ? pc1(s.scoreRate * 100) : '—', sub: 'victoria 1 · tablas 0,5' },
     ],

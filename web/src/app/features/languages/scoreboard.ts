@@ -23,7 +23,7 @@ export function courseRows(courses: readonly Course[], curriculum: readonly Curr
     const cur = curriculum.find((x) => x.courseId === c.courseId);
     const done = cur?.completedUnits ?? 0, total = cur?.totalUnits ?? 0;
     const base = { id: c.courseId, title: c.title || c.courseId, flag: flag(c.learningLanguage), fromTo: pair(c), xp: xpText(c.xp) + ' XP' };
-    if (!cur || total <= 0) return { ...base, state: 'unread' as const, level: null, units: 'Unidades sin leer', pct: null, pctText: '—', change: '' };
+    if (!cur || total <= 0) return { ...base, state: 'unread' as const, level: null, units: 'Sin lectura de unidades', pct: null, pctText: '', change: '' };
     const sections: Section[] = (cur.cefrBreakdown ?? []).filter((g) => (g.totalUnits ?? 0) > 0)
       .map((g) => ({ cefrLevel: g.cefrLevel, completedUnits: g.completedUnits, totalUnits: g.totalUnits }));
     const lv = levelView({ sections }, deltas.find((d) => d.courseId === c.courseId));

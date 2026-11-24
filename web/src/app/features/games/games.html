@@ -17,7 +17,7 @@
       }
     }
   } @else {
-  <h1 class="sr-only">LinkedIn Games</h1>
+  <h1 class="sr-only">Games</h1>
   @if (summary() === null) { <app-error-block message="No pudimos cargar tus juegos." [loading]="data.isLoading()" (retry)="data.reload()" /> }
   @let h = hero();
   <div class="hero-card gh" id="gamesHero">

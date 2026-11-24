@@ -32,7 +32,8 @@ function view(d: OverviewData, now: number) {
   const today = new Date(now).toISOString().slice(0, 10);
 
   const snaps = d.timeline?.snapshots ?? [];
-  const chessSynced = snaps[snaps.length - 1]?.createdAt ?? null;
+  // /api/stats/timeline lists the snapshots of every source: only one with an ELO reading is a chess sync (the last of any source would be a language sync)
+  const chessSynced = snaps.filter((s) => s.elo != null).at(-1)?.createdAt ?? null;
   const c = chessRow({ recent: d.recent, summary: d.stats, timeline: d.timeline, matches: d.matches, now });
   const trend = snaps.filter((s) => s.elo != null).slice(-30).map((s) => ({ date: s.createdAt.slice(0, 10), elo: s.elo! }));
 
@@ -47,11 +48,8 @@ function view(d: OverviewData, now: number) {
   try { g = d.games ? gamesRow(d.games) : null; } catch { g = null; } // a malformed summary is unavailable, not an empty log
 
   const cf = syncChip(chessSynced, now), lf = syncChip(xpSynced, now);
-  const ago = (t: string) => t.replace('datos de ', '');
-  const fresh = [cf && `Ajedrez ${ago(cf.text)}`, lf && `Idiomas ${ago(lf.text)}`].filter(Boolean).join(' · ');
 
   return {
-    fresh,
     chess: { ...c, form: c.form ?? NA, trend, freshChip: cf },
     lang: {
       ...(w?.state === 'ok' ? (({ big, delta, note }) => ({ big, delta, line: note }))(xpSummary(w, today))

@@ -1,4 +1,4 @@
-import { afterNextRender, Component, computed, effect, ElementRef, inject, Injector, input, signal } from '@angular/core';
+import { afterNextRender, Component, computed, ElementRef, inject, Injector, input, signal } from '@angular/core';
 import { ErrorBlock } from '../../../shared/error-block';
 import { Segmented } from '../../../shared/segmented';
 import { formatMatchDate } from '../../../core/format';
@@ -84,18 +84,17 @@ const CHIPS: { group: FilterGroup; label: string; options: { k: string; l: strin
       </div>
       <div id="eloErr" class="field-error" role="status">{{ m.eloInvalid() ? 'ELO mín no puede ser mayor que ELO máx.' : '' }}</div>
     }
-    <div id="matchNotice" class="muted" role="status">{{ notice() }}</div>
     <table class="tbl" role="table"><thead><tr role="row"><th role="columnheader">Fecha</th><th role="columnheader">Rival</th><th role="columnheader">Tipo</th>@if (showElo()) {<th role="columnheader">ELO</th>}<th role="columnheader">Color</th><th role="columnheader">Resultado</th><th role="columnheader">Fin</th><th role="columnheader">Rev.</th></tr></thead>
       <tbody id="mb">
         @for (r of rows(); track (r.id ?? r.date + r.opp)) {
-          <tr role="row" [class.gamerow]="!!r.id" [attr.title]="r.id ? 'Ver partida' : null" (click)="r.id ? m.open(r.id) : tellNoMoves()">
+          <tr role="row" [class.gamerow]="!!r.id" [attr.title]="r.id ? 'Ver partida' : null" (click)="r.id && m.open(r.id)">
             <td role="cell" data-l="Fecha" [attr.title]="r.fullDate">{{ r.date }}</td>
             <td role="cell" data-l="Rival">@if (r.id) {<button type="button" class="rowbtn" [attr.aria-label]="(r.named ? 'Ver partida vs ' + r.opp : 'Ver partida') + ', ' + r.date" (click)="$event.stopPropagation(); m.open(r.id)">{{ r.opp }}</button><span class="chev" aria-hidden="true">›</span>} @else {{{ r.opp }}}@if (r.seg) {<span class="pill pill-sub">{{ r.seg }}</span>}</td>
             <td role="cell" data-l="Tipo"><span class="pill" [style.border-color]="r.pvp ? 'var(--info)' : null" [style.color]="r.pvp ? 'var(--link)' : null">{{ r.type }}</span>@if (r.opening) {<span class="pill pill-sub">{{ r.opening }}</span>}@if (r.phase) {<span class="pill pill-sub">{{ r.phase }}</span>}</td>
             @if (showElo()) {<td role="cell" data-l="ELO">{{ r.elo }}</td>}
             <td role="cell" data-l="Color">{{ r.color }}</td>
             <td role="cell" data-l="Resultado"><span [class]="r.res.cls">{{ r.res.label }}</span></td>
-            <td role="cell" data-l="Fin"><span class="pill" [style.opacity]="r.end.dim ? .4 : null">{{ r.end.label }}</span></td>
+            <td role="cell" data-l="Fin">@if (!r.end.dim) {<span class="pill">{{ r.end.label }}</span>}</td>
             <td role="cell" data-l="Rev.">{{ r.reviewed }}</td>
           </tr>
         }
@@ -150,20 +149,7 @@ export class MatchesTable {
 
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   private readonly injector = inject(Injector);
-  /** Said when a row without stored moves is tapped: 4 s, or until the next filter change. */
-  protected readonly notice = signal('');
-  private noticeTimer: ReturnType<typeof setTimeout> | undefined;
-
-  constructor() {
-    this.m.want();
-    effect((onCleanup) => { this.m.filters(); this.m.offset(); this.notice.set(''); onCleanup(() => clearTimeout(this.noticeTimer)); });
-  }
-
-  protected tellNoMoves(): void {
-    this.notice.set('Esta partida no tiene jugadas guardadas.');
-    clearTimeout(this.noticeTimer);
-    this.noticeTimer = setTimeout(() => this.notice.set(''), 4000);
-  }
+  constructor() { this.m.want(); }
 
   /** The button leaves the page when the full list opens, so focus goes to the first filter. */
   protected expand(): void {

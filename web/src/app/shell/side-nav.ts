@@ -6,7 +6,7 @@ import { currentSection } from './section';
 // The sidebar of the desktop layout; phones use the tab bar (tab-bar.ts). Groups and items as the legacy side nav (src/frontend.ts:15-35).
 const GROUPS = [
   { label: 'Resumen', items: [{ path: 'overview', label: 'Hoy' }, { path: 'changes', label: 'Qué cambió' }] },
-  { label: 'Dominios', items: [{ path: 'chess', label: 'Ajedrez' }, { path: 'languages', label: 'Idiomas' }, { path: 'games', label: 'LinkedIn Games' }] },
+  { label: 'Dominios', items: [{ path: 'chess', label: 'Ajedrez' }, { path: 'languages', label: 'Idiomas' }, { path: 'games', label: 'Games' }] },
 ];
 // Attribute selector: the host is the <nav class="side"> itself, so the .shell grid and sticky rules apply as in legacy.
 @Component({
@@ -26,7 +26,7 @@ const GROUPS = [
       }
       <div class="side-group">Cuenta</div>
       <button id="syncBtn" class="btn btn-p side-sync" type="button" (click)="sync.start()" [disabled]="sync.busy()"
-        aria-describedby="syncScopeHint" title="Sincroniza Ajedrez e Idiomas. LinkedIn Games es registro manual.">{{ sync.lastSyncLabel() }}</button>
+        aria-describedby="syncScopeHint" title="Sincroniza Ajedrez e Idiomas. Games es registro manual.">{{ sync.lastSyncLabel() }}</button>
       <div class="muted side-note" id="syncScopeHint">Ajedrez e Idiomas se sincronizan · Games es manual</div>
       <small class="muted side-note" aria-live="polite">{{ sync.note() }}</small>
       <a class="side-item" routerLink="/settings" routerLinkActive="active" ariaCurrentWhenActive="page">Configuración</a>

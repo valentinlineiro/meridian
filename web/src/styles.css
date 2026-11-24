@@ -581,3 +581,15 @@ app-rate-rows,app-points-bars{display:block}app-rate-rows+app-rate-rows{margin-t
 .lg-row-level{font-size:var(--fs-h);font-weight:800;font-variant-numeric:tabular-nums}
 .lg-row .progress-bar{display:block}.lg-row .pf-info{display:block;height:100%}
 .lg-row-meta{font-size:max(var(--fs-xs),12px);font-variant-numeric:tabular-nums}
+
+/* Notebook: a folded "Ver detalle" is a ruled row with a chevron, not a card; figures line up in columns. */
+details.card:not(.evcard){background:none;border:0;border-top:1px solid var(--line-strong);border-bottom:1px solid var(--line);border-radius:0;padding:0}
+details.card>summary.dsum-main{list-style:none;justify-content:space-between;gap:12px;padding:0 2px}
+details.card>summary.dsum-main::-webkit-details-marker{display:none}
+details.card>summary.dsum-main::after{content:"";flex:none;width:8px;height:8px;border:solid var(--muted);border-width:0 2px 2px 0;transform:rotate(45deg);transition:transform .15s ease-out}
+details.card[open]>summary.dsum-main::after{transform:rotate(225deg)}
+details.card[open]>summary.dsum-main{border-bottom:1px solid var(--line);margin-bottom:12px}
+details.card>summary.dsum-main:focus-visible{outline:2px solid var(--link);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){details.card>summary.dsum-main::after{transition:none}}
+.hc-big,.kpi b,.hc-line,.hc-sub,.cg-text,.lg-row-meta,.pill,td{font-variant-numeric:tabular-nums}
+.cg-text{font-size:var(--fs-md)}

@@ -109,8 +109,8 @@
 </section>
 <ng-template #row let-r>
   <button type="button" class="lg-row card" data-umami-event="languages-course-open" [id]="'langRow-' + r.id" (click)="openDetail(r.id)">
-    <span class="lg-row-head"><span class="lg-flag" aria-hidden="true">{{ r.flag }}</span><b class="lg-row-title">{{ r.title }}</b><span class="lg-row-level" [class.muted]="!r.level"><span class="sr-only">{{ r.level ? 'Nivel ' : 'Sin nivel ' }}</span>{{ r.level ?? '—' }}</span></span>
+    <span class="lg-row-head"><span class="lg-flag" aria-hidden="true">{{ r.flag }}</span><b class="lg-row-title">{{ r.title }}</b>@if (r.level) { <span class="lg-row-level"><span class="sr-only">Nivel </span>{{ r.level }}</span> }</span>
     @if (r.pct !== null) { <span class="progress-bar"><span class="pf-info" [style.width.%]="r.pct"></span></span> }
-    <span class="lg-row-meta muted">{{ r.pctText }} · {{ r.units }}@if (r.change) { · {{ r.change }} } · {{ r.xp }}</span>
+    <span class="lg-row-meta muted">@if (r.pctText) {{{ r.pctText }} · }{{ r.units }}@if (r.change) { · {{ r.change }} } · {{ r.xp }}</span>
   </button>
 </ng-template>

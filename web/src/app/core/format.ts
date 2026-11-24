@@ -17,7 +17,7 @@ export const fmtDate = (d: string | null | undefined): string => {
 export const relDate = (iso: string, now = Date.now()): string => {
   if (!iso) return '—';
   const days = Math.floor((now - new Date(iso).getTime()) / 864e5);
-  return days <= 0 ? 'hoy' : days === 1 ? 'ayer' : `hace ${days}d`;
+  return days <= 0 ? 'hoy' : days === 1 ? 'ayer' : `hace ${days} días`;
 };
 
 export const pc1 = (n: number): string => `${n.toFixed(1).replace('.', ',')} %`;

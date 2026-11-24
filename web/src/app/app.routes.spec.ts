@@ -56,9 +56,9 @@ describe('App routes', () => {
   it('shouldTitleTheRouteWithTheGameName', async () => {
     const harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/games/queens');
-    expect(document.title).toBe('Queens · LinkedIn Games · Meridian');
+    expect(document.title).toBe('Queens · Games · Meridian');
     await harness.navigateByUrl('/games');
-    expect(document.title).toBe('LinkedIn Games · Meridian');
+    expect(document.title).toBe('Games · Meridian');
   });
 
   // tests/dashboardRoutes shouldServeDashboardWhenRequestingTabPath /profile (client side): the path stays, the chess view opens.

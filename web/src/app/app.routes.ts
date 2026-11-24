@@ -21,7 +21,7 @@ const games: UrlMatcher = (segs) =>
     ? { consumed: segs, posParams: (segs[1] ? { game: segs[1] } : {}) as Record<string, UrlSegment> } : null;
 const gamesTitle: ResolveFn<string> = (route) => {
   const g = route.params['game'];
-  return g ? `${gameName(g)} · LinkedIn Games · Meridian` : 'LinkedIn Games · Meridian';
+  return g ? `${gameName(g)} · Games · Meridian` : 'Games · Meridian';
 };
 
 export const routes: Routes = [

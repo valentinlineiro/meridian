@@ -35,7 +35,7 @@ describe('format', () => {
       expect(relDate('')).toBe('—');
       expect(relDate('2026-11-06T01:00:00Z')).toBe('hoy');
       expect(relDate('2026-11-05T01:00:00Z')).toBe('ayer');
-      expect(relDate('2026-11-01T12:00:00Z')).toBe('hace 5d');
+      expect(relDate('2026-11-01T12:00:00Z')).toBe('hace 5 días');
     } finally {
       vi.useRealTimers();
     }

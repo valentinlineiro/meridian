@@ -83,7 +83,7 @@ test.describe('Frontend E2E Integration Suite', () => {
     // 3. Direct navigate /games
     await page.goto('/games');
     await expect(page).toHaveURL(/\/games/);
-    await expect(page).toHaveTitle('LinkedIn Games · Meridian');
+    await expect(page).toHaveTitle('Games · Meridian');
     await page.reload();
     await expect(page).toHaveURL(/\/games/);
   });
@@ -143,9 +143,9 @@ test.describe('Frontend E2E Integration Suite', () => {
     await expect(page.locator('a.side-item.active')).toHaveText('Ajedrez');
 
     // Navigate to LinkedIn Games
-    await page.click('a.side-item:has-text("LinkedIn Games")');
+    await page.click('a.side-item:has-text("Games")');
     await expect(page).toHaveURL(/\/games/);
-    await expect(page.locator('a.side-item.active')).toHaveText('LinkedIn Games');
+    await expect(page.locator('a.side-item.active')).toHaveText('Games');
 
     // Browser back -> Ajedrez
     await page.goBack();
@@ -155,7 +155,7 @@ test.describe('Frontend E2E Integration Suite', () => {
     // Browser forward -> LinkedIn Games
     await page.goForward();
     await expect(page).toHaveURL(/\/games/);
-    await expect(page.locator('a.side-item.active')).toHaveText('LinkedIn Games');
+    await expect(page.locator('a.side-item.active')).toHaveText('Games');
   });
 
   test('shouldSupportKeyboardActivationOnMatchRowsAndNavigateMoveButtons', async ({ page }) => {

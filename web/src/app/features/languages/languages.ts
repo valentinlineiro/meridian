@@ -7,6 +7,7 @@ import { catchError, forkJoin, map, Observable, of, switchMap } from 'rxjs';
 import { ApiClient } from '../../core/api-client';
 import { Course, CourseDetail, es, Langs, resolveSelectedCourseId, SELECTED_COURSE_KEY, XpDay } from '../../core/courses';
 import { list, safe } from '../../core/guard';
+import { calendarDaysAgo, isStale } from '../../core/xp-week';
 import { Choice, Segmented } from '../../shared/segmented';
 import { CourseDetailView } from './course-detail';
 import {
@@ -78,6 +79,12 @@ export class Languages {
     if (!d.xp) return { text: NA };
     const days = Number(this.period()), s = periodSummary(d.xp, days, new Date());
     if (!d.xp.length) return { text: 'Sin actividad registrada.' };
+    // stale data: the period is measured against today, so a 0 here is "not observed", not "no activity"; no delta, say what we last saw
+    const at = d.langs.updatedAt;
+    if (at && isStale(at, Date.now())) {
+      const ago = calendarDaysAgo(at, Date.now());
+      return { text: ago >= days ? `Sin datos nuevos en los últimos ${days} días.` : `Últimos ${days} días, toda la cuenta: ${es(s.xp)} XP · ${s.activeDays} ${s.activeDays === 1 ? 'día' : 'días'} con actividad` };
+    }
     return { text: `Últimos ${days} días, toda la cuenta: ${es(s.xp)} XP · ${s.activeDays} ${s.activeDays === 1 ? 'día' : 'días'} con actividad`
       + (s.delta === null ? '' : ` · ${s.delta > 0 ? '+' : s.delta < 0 ? '−' : ''}${Math.abs(Math.round(s.delta))} % frente a los ${days} anteriores`) };
   });
