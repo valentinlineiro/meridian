@@ -365,6 +365,7 @@ app-tab-bar{display:none}
 .gc-name{display:grid;justify-items:start;gap:4px}
 .gc-n{display:grid;justify-items:end}.gc-big{font-size:var(--fs-h);font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums}.gc-cap{font-size:var(--fs-xs);text-align:right}
 .gc .gbars{height:40px;gap:2px}.gc-weak .gbars{opacity:.55}
+.gc-delta,.gc-beat{grid-column:1/-1;font-size:max(var(--fs-xs),12px)}
 .gc-why{grid-column:1/-1;font-size:max(var(--fs-xs),12px)} /* what the pill compares: the trend over time, not the number above */
 .gbars{display:grid;grid-template-columns:repeat(14,minmax(0,1fr));gap:3px;height:56px;position:relative}
 .gbars::before{content:"";position:absolute;left:0;right:0;top:50%;border-top:1px dashed var(--selected-line)}

@@ -5,7 +5,6 @@ import { catchError, forkJoin, Observable, of } from 'rxjs';
 import { ApiClient } from '../../core/api-client';
 import { safe } from '../../core/guard';
 import { GameReport } from './game-report';
-import { GamesChart } from './games-chart';
 import { GamesRegister } from '../../shared/games-register/games-register';
 import { ErrorBlock } from '../../shared/error-block';
 import { Help } from '../../shared/help';
@@ -13,7 +12,7 @@ import { ResultBars } from '../../shared/result-bars';
 import { Section } from '../../shared/section';
 import { Segmented } from '../../shared/segmented';
 import { VerdictPill } from '../../shared/verdict';
-import { Day, defaultTrajGame, GAME_NAMES, gameName, difficultyGrid, gamesHero, overview, summaryRows, localToday, lossRows, Range, RANGES, Summary, trajectory } from './games.model';
+import { Day, GAME_NAMES, gameName, gamesHero, overview, summaryRows, localToday, lossRows, Range, RANGES, Summary } from './games.model';
 
 // Port of the LinkedIn Games tab (src/frontend.ts:489–520, src/dashboard.client.js:1787–1971).
 const orNull = <T>(o: Observable<T>) => o.pipe(catchError(() => of(null)));
@@ -22,7 +21,7 @@ const HERO_IDLE = { since: '', meta: '—', days: '—' };
 
 @Component({
   selector: 'app-games',
-  imports: [ErrorBlock, GameReport, GamesChart, GamesRegister, Help, ResultBars, RouterLink, Section, Segmented, VerdictPill],
+  imports: [ErrorBlock, GameReport, GamesRegister, Help, ResultBars, RouterLink, Section, Segmented, VerdictPill],
   templateUrl: './games.html',
 })
 export class Games {
@@ -41,8 +40,6 @@ export class Games {
     void this.router.navigate([], { queryParams: { r: k === '28' ? null : k }, queryParamsHandling: 'merge' });
   }
   protected readonly gameName = gameName;
-  /** The game the user picked for the chart; one that is not in the summary falls back to the most observed. */
-  protected readonly trajPick = signal<string | null>(null);
 
   // Summary and today's record, each failing on its own; reload() (after a save) cancels a request still in flight.
   protected readonly data = rxResource({
@@ -67,9 +64,6 @@ export class Games {
   protected saved(note: string): void { this.saveNote.set(note); this.draftWaiting.set(false); this.data.reload(); }
   private draftChecked = false;
   protected readonly draftWaiting = signal(false);
-  /** The games just saved: their ledger rows flash for a moment, so the change is seen where it happened. */
-  protected readonly flashed = signal<string[]>([]);
-  protected flash(keys: string[]): void { this.flashed.set(keys); setTimeout(() => this.flashed.set([]), 4000); }
   constructor() {
     // A sheet interrupted by a login redirect or a reload leaves a "Continuar" button, once today's record has been read; it never opens by itself.
     effect(() => {
@@ -99,17 +93,6 @@ export class Games {
     const done = this.recorded() ?? new Set<string>();
     return Object.keys(GAME_NAMES).map((k) => ({ k, done: done.has(k) }));
   });
-  /** One row per game: today's time, "Sin registrar", or "No se pudo leer" when the day could not be read (unknown is never said as unrecorded). */
-  protected readonly today = computed(() => {
-    if (!this.summary()) return [];
-    const day = this.dayGames() as Record<string, { score?: string | null }> | null;
-    return Object.keys(GAME_NAMES).map((k) => {
-      const name = gameName(k), rec = day?.[k];
-      const state = !day ? 'unknown' : rec ? 'done' : 'todo';
-      const text = state === 'unknown' ? 'No se pudo leer' : rec ? rec.score || 'Solo media' : 'Registrar';
-      return { k, name, state, text, aria: state === 'done' ? `${name}, registrado ${text}. Editar` : state === 'todo' ? `${name}, sin registrar. Registrar` : `${name}, no se pudo leer hoy. Abrir` };
-    });
-  });
   protected readonly noneDone = computed(() => this.todayGames().every((g) => !g.done));
   protected readonly allDone = computed(() => this.todayGames().length > 0 && this.todayGames().every((g) => g.done));
   /** "Hoy · 2 registrados" (never "N de 6" or a count of what is left: a log is not a to-do list); just "Hoy" while nothing is logged or the day could not be read: unknown is never said as zero. */
@@ -122,7 +105,6 @@ export class Games {
     return n === 0 ? 'Hoy' : left ? `Hoy · ${n} registrado${n === 1 ? '' : 's'}` : 'Hoy · todo registrado';
   });
   protected readonly loss = computed(() => { const s = this.summary(); return s ? safe(() => lossRows(s) ?? null, null) : undefined; });
-  protected readonly diff = computed(() => { const s = this.summary(); return s ? safe(() => difficultyGrid(s) ?? null, null) : undefined; });
   /** Cards keep the register's order, so a game is always in the same place; the overview sentence still names the worst first. */
   protected readonly rows = computed(() => {
     const s = this.summary(), range = this.range(), order = Object.keys(GAME_NAMES);
@@ -133,12 +115,4 @@ export class Games {
     }), []) : [];
   });
   protected readonly overview = computed(() => safe(() => overview(this.rows()), null));
-  /** undefined: nothing to draw (loading, failed, no games); null: the trajectory could not be read. */
-  protected readonly traj = computed(() => {
-    const s = this.summary(), range = this.range(), pick = this.trajPick();
-    if (!s || !Object.keys(s.games).length) return undefined;
-    const keys = Object.keys(s.games);
-    const game = pick && keys.includes(pick) ? pick : safe(() => defaultTrajGame(s), keys[0]);
-    return { game, options: keys.map((k) => ({ k, l: gameName(k) })), view: safe(() => trajectory(s, game, range), null) };
-  });
 }

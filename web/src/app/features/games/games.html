@@ -4,13 +4,13 @@
     <h1>{{ gameName(g) }}</h1>
     @if (summary() !== undefined) {
       <button id="gameRegisterOpen" type="button" class="btn btn-g" (click)="regG.open(g)">Registrar {{ gameName(g) }} hoy</button>
-      <app-games-register #regG [day]="dayGames()" (saved)="saved($event)" (savedGames)="flash($event)" (reread)="data.reload()" />
+      <app-games-register #regG [day]="dayGames()" (saved)="saved($event)" (reread)="data.reload()" />
     }
     @if (summary() === null) {
       <app-error-block message="No pudimos cargar tus juegos." [loading]="data.isLoading()" (retry)="data.reload()" />
     } @else if (summary(); as s) {
       @if (s.games[g]) {
-        <app-segmented groupId="gamesRange" label="Periodo de análisis" caption="Periodo" idPrefix="gr-" [options]="ranges" [value]="range()" (picked)="pickRange($event)" />
+        <app-segmented groupId="gamesRange" label="Periodo de análisis" caption="Periodo" idPrefix="gr-" event="games-period" [options]="ranges" [value]="range()" (picked)="pickRange($event)" />
         <app-game-report [summary]="s" [game]="g" [range]="range()" />
       } @else {
         <p class="muted">Aún sin partidas registradas de {{ gameName(g) }}.</p>
@@ -22,11 +22,6 @@
   @let h = hero();
   <div class="hero-card gh" id="gamesHero">
     <div class="gh-head"><h2 id="gamesHeroToday">{{ todayTitle() }}</h2>@if (h.since) {<span id="gamesHeroSince" class="pill">{{ h.since }}</span>}</div>
-    <ul class="gt" id="gamesToday">
-      @for (t of today(); track t.k) {
-        <li><button type="button" class="btn btn-g gt-row" [class.gt-flash]="flashed().includes(t.k)" [id]="'gamesToday-' + t.k" [attr.aria-label]="t.aria" (click)="reg.open(t.k)"><span class="gt-name">{{ t.name }}</span><span [class]="'gt-state' + (t.state === 'todo' ? ' gt-todo' : '')">{{ t.text }}</span></button></li>
-      }
-    </ul>
     @if (summary() === undefined) { <p class="muted u-mt-14" role="status">Cargando tus juegos…</p> }
     @else {
       <div class="gh-actions u-mt-14">
@@ -35,17 +30,19 @@
       </div>
     }
     <div id="gamesNote" role="status">{{ saveNote() || note() }}</div>
-    <app-games-register #reg [day]="dayGames()" (saved)="saved($event)" (savedGames)="flash($event)" (reread)="data.reload()" />
+    <app-games-register #reg [day]="dayGames()" (saved)="saved($event)" (reread)="data.reload()" />
   </div>
-  <app-segmented groupId="gamesRange" label="Periodo de análisis" caption="Periodo" idPrefix="gr-" [options]="ranges" [value]="range()" (picked)="pickRange($event)" />
+  <app-segmented groupId="gamesRange" label="Periodo de análisis" caption="Periodo" idPrefix="gr-" event="games-period" [options]="ranges" [value]="range()" (picked)="pickRange($event)" />
   <app-section title="Tus juegos" sectionId="cg-games-now">
     @if (overview(); as o) { <p class="gc-sentence" id="gamesOverview"><span id="gamesOverviewSentence">{{ o.sentence }}</span></p> }
     <div id="gamesNow" class="gcs">
       @for (r of rows(); track r.k) {
-        <a class="gc card" [class.gc-weak]="r.verdict.state === 'few-data' || r.verdict.state === 'no-signal'" [routerLink]="['/games', r.k]">
+        <a class="gc card" data-umami-event="games-open" [class.gc-weak]="r.verdict.state === 'few-data' || r.verdict.state === 'no-signal'" [routerLink]="['/games', r.k]">
           <span class="gc-name"><b>{{ r.name }}</b><span class="verdict-tr"><app-verdict [verdict]="r.verdict" /></span></span>
           <span class="gc-n"><span class="gc-big">{{ r.big }}</span><span class="gc-cap muted">{{ r.cap }}</span></span>
           <app-result-bars [data]="r.bars" />
+          @if (r.delta) { <span class="gc-delta muted">{{ r.delta }}</span> }
+          @if (r.beat) { <span class="gc-beat muted">{{ r.beat }}</span> }
           <span class="gc-why muted">{{ r.verdict.sentence }}</span>
         </a>
       }
@@ -55,7 +52,8 @@
       <p>«Estable»: con estos datos no hay un cambio medible. «Pocos datos»: faltan partidas para valorar.</p>
     </app-help>
   </app-section>
-  <app-section title="Por día de la semana" sectionId="cg-games-loss" [open]="false">
+  <details id="gamesDetail" class="card u-mt-12">
+    <summary class="dsum dsum-main">Ver detalle: por día de la semana</summary>
     @if (loss(); as l) {
       <p class="loss-note" id="gamesLossNote">{{ l.sentence }}</p>
       <div class="tblwrap" tabindex="0" role="region" aria-label="Derrotas por juego y día de la semana (desplazable)"><table class="gtable gloss" id="gamesLoss"><caption class="sr-only">Porcentaje de partidas en las que no le ganas a la media, por juego y día de la semana. Un guion es que hay pocas partidas.</caption>
@@ -67,31 +65,7 @@
       <p>Cada casilla es la parte de las partidas de ese juego y día en las que no le ganaste a la media. Solo se muestran con 8 partidas o más. El número pequeño es cuántas partidas hay detrás.</p>
       <p>«Por poco»: tu tiempo estuvo menos de un 15 % por encima de la media. Entre semana la media es mucho más rápida, así que perder un lunes no es lo mismo que perder un domingo.</p>
     </app-help>
-  </app-section>
-  <app-section title="Más detalle" sectionId="cg-games-more" [open]="false">
-  <app-section title="Trayectoria" sectionId="cg-games-traj">
-    @let t = traj();
-    <label class="muted" for="gamesTrajGame">Juego</label> <select id="gamesTrajGame" (change)="trajPick.set($any($event.target).value)">@for (o of t?.options; track o.k) {<option [value]="o.k" [selected]="o.k === t?.game">{{ o.l }}</option>}</select>
-    <div id="gamesChart" class="card">@if (t?.view; as v) {<app-games-chart [buckets]="v.buckets" />} @else if (t && t.view === null) {<div class="muted">No disponible</div>}</div>
-    <p class="muted" id="gamesChartNote">{{ t?.view?.note }}</p>
-    <app-help label="Ver los datos del gráfico (tabla)" helpId="gamesDataDetails">
-      <div class="tblwrap" tabindex="0" role="region" aria-label="Datos del gráfico (desplazable)"><table class="gtable" id="gamesDataTable" aria-describedby="gamesDataCaption"><caption id="gamesDataCaption" class="sr-only">{{ t?.view?.caption }}</caption><thead><tr><th scope="col">Periodo</th><th scope="col">Velocidad (veces la media)</th><th scope="col">Le ganas a la media</th><th scope="col">Partidas</th></tr></thead>
-        <tbody id="gamesDataRows">@for (r of t?.view?.rows; track $index) {<tr><th scope="row">{{ r[0] }}</th><td class="num">{{ r[1] }}</td><td class="num">{{ r[2] }}</td><td class="num">{{ r[3] }}</td></tr>}</tbody></table></div>
-    </app-help>
-  </app-section>
-  <app-section title="Dificultad de los últimos días" sectionId="cg-games-diff" [open]="false">
-    @if (diff(); as d) {
-      <p class="muted" id="gamesDiffNote">{{ d.sentence || 'Aún no hay días clasificados.' }}</p>
-      <div class="gdiff" id="gamesDiff" role="img" [attr.aria-label]="d.sentence">
-        @for (h of ['L','M','X','J','V','S','D']; track $index) {<span class="gdh" aria-hidden="true">{{ h }}</span>}
-        @for (c of d.cells; track c.date) {<span [class]="'gd gd-' + (c.level ?? 'none')" [attr.title]="c.text">{{ c.day }}</span>}
-      </div>
-    } @else if (diff() === null) {<div class="muted">No disponible</div>}
-    <app-help label="Cómo se decide">
-      <p>Un día es «duro» si la media de LinkedIn fue de las más lentas para ese juego y ese día de la semana (el tercio más lento de tu histórico), y «fácil» si fue de las más rápidas. El día entero toma el nivel que comparten más juegos; si empatan, «normal». Es solo contexto: no cambia ninguna cifra.</p>
-    </app-help>
-  </app-section>
-  </app-section>
+  </details>
   <div class="gh-foot muted"><span id="gamesHeroDays">{{ h.days }}</span><span id="gamesHeroMeta">{{ h.meta }}</span><a id="gamesExport" data-umami-event="games-export" href="/api/me/linkedin-games/export.csv" download>Descargar resultados (CSV)</a></div>
   }
 </section>
