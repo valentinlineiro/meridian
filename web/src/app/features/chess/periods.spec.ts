@@ -1,4 +1,4 @@
-import { eloTrend, MIN_GAMES, PERIODS, rankPoints, sliceWeeks, sumTally, winRate } from './periods';
+import { eloTrend, MIN_GAMES, PERIODS, periodSummary, rankPoints, sliceWeeks, sumTally, winRate } from './periods';
 import { Tally, WeekBucket } from './weekly.model';
 
 const T = (w = 0, d = 0, l = 0, u = 0, disconnections = 0): Tally => ({ w, d, l, u, disconnections });
@@ -129,5 +129,23 @@ describe('eloTrend', () => {
   it('shouldReturnNullsWhenNoWeekHasElo', () => {
     expect(eloTrend([elo('2026-11-16', null)], [elo('2026-11-09', null)])).toEqual({ now: null, delta: null });
     expect(eloTrend([], [])).toEqual({ now: null, delta: null });
+  });
+});
+
+describe('periodSummary', () => {
+  it('shouldMeasureTheWinRateAgainstThePreviousPeriodWhenBothHaveGames', () => {
+    const cur = [wk('2026-11-16', { white: T(8, 0, 2) })], prev = [wk('2026-10-05', { white: T(6, 0, 4) })];
+    const s = periodSummary(cur, prev);
+    expect(s.n).toBe(10);
+    expect(s.rate).toBeCloseTo(0.8, 5);
+    expect(s.delta).toBeCloseTo(20, 5); // percentage points
+  });
+
+  it('shouldReturnNullDeltaWhenThePreviousPeriodHasNoDecidedGames', () => {
+    expect(periodSummary([wk('2026-11-16', { white: T(8, 0, 2) })], []).delta).toBeNull();
+  });
+
+  it('shouldReturnNullRateWhenThePeriodHasNoDecidedGames', () => {
+    expect(periodSummary([], [wk('2026-10-05', { white: T(6, 0, 4) })])).toEqual({ n: 0, rate: null, delta: null });
   });
 });

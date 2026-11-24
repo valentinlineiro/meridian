@@ -12,7 +12,7 @@ const signed = (delta: number) => `${delta > 0 ? '+' : delta < 0 ? '−' : ''}${
 @Component({
   selector: 'app-points-bars',
   template: `
-    <h3 class="rate-title">{{ title() }}</h3>
+    @if (title()) { <h3 class="rate-title">{{ title() }}</h3> }
     @if (!points().length) {
       <p class="muted">{{ empty() }}</p>
     } @else {
@@ -32,11 +32,13 @@ export class PointsBars {
   readonly title = input.required<string>();
   readonly points = input.required<readonly Point[]>();
   readonly empty = input.required<string>();
+  /** The largest |delta| the bars are scaled to; lists shown in pieces pass one scale so the pieces stay comparable. */
+  readonly scale = input<number>();
   protected readonly pct = pct;
   protected readonly games = games;
   protected readonly signed = signed;
   protected readonly rows = computed(() => {
-    const ps = this.points(), max = Math.max(1, ...ps.map((p) => Math.abs(p.delta)));
+    const ps = this.points(), max = this.scale() ?? Math.max(1, ...ps.map((p) => Math.abs(p.delta)));
     return ps.map((p) => { const w = Math.abs(p.delta) / max * 50; return { p, w, left: p.delta >= 0 ? 50 : 50 - w }; });
   });
 }

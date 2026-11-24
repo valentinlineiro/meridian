@@ -5,18 +5,20 @@ import { ApiClient } from '../../core/api-client';
 import { fmtDate } from '../../core/format';
 import { StatsService } from '../../core/stats.service';
 import { ErrorBlock } from '../../shared/error-block';
+import { Help } from '../../shared/help';
 import { Segmented } from '../../shared/segmented';
 import { Sparkline } from '../../shared/sparkline';
 import { RateRows, PointsBars } from './components/rate-bars';
-import { eloTrend, PERIODS, PeriodKey, Point, rankPoints, sliceWeeks, sumTally, winRate } from './periods';
+import { eloTrend, PERIODS, periodSummary, PeriodKey, Point, rankPoints, sliceWeeks, sumTally, winRate } from './periods';
 import { Weekly } from './weekly.model';
 
 const OPENINGS_SHOWN = 8;
+const POINTS_SHOWN = 3;
 
 /** Ajedrez by period: the ELO and its trend, strengths and weaknesses, colour, openings and long games — all from one weekly request. */
 @Component({
   selector: 'app-chess-periods',
-  imports: [Segmented, Sparkline, PointsBars, RateRows, ErrorBlock],
+  imports: [Segmented, Sparkline, PointsBars, RateRows, ErrorBlock, Help],
   template: `
     <section id="chessPeriods" aria-labelledby="chessPeriodsH">
       <h2 id="chessPeriodsH" class="sr-only">Tu ajedrez por periodos</h2>
@@ -34,6 +36,9 @@ const OPENINGS_SHOWN = 8;
             <span id="chessPeriodElo" class="hc-big">{{ elo() ?? '—' }}</span><span class="muted u-fs-sm">ELO</span>
             @if (trend().delta !== null) { <span id="chessPeriodDelta" class="u-fwt-700">{{ delta() }}</span><span class="muted u-fs-sm">{{ deltaWhy() }}</span> }
           </div>
+          @if (summary().rate !== null) {
+            <p id="chessSummary" class="u-mt-8"><b>{{ summaryRate() }} de victorias</b>@if (summaryDelta(); as d) { <span class="muted"> · {{ d }}</span> }</p>
+          }
           @if (eloPoints().length === 1) {
             <p class="muted u-mt-8">Una sola lectura de ELO en este periodo: la tendencia aparecerá con la siguiente.</p>
           } @else if (eloPoints().length > 1) {
@@ -56,22 +61,40 @@ const OPENINGS_SHOWN = 8;
         @if (games()) {
           <div class="card u-mt-12" id="chessStrengths">
             <h2>Puntos fuertes y débiles</h2>
-            <p class="muted u-fs-sm">Frente a tu porcentaje medio de victorias del periodo ({{ baseline() }}). Solo se señalan diferencias claras (intervalo de confianza del 95 %) con {{ min }} partidas o más.</p>
+            <p class="muted u-fs-sm">Frente a tu porcentaje medio de victorias del periodo ({{ baseline() }}). Solo se señalan diferencias que no parecen casualidad, con {{ min }} partidas o más.</p>
+            <app-help label="Cómo se decide" helpId="chessStrengthsHelp">Un punto se señala solo si el intervalo de confianza del 95 % de su porcentaje queda entero por encima o por debajo de tu media del periodo. Con diez partidas, +4 puntos puede ser casualidad.</app-help>
             <div class="grid2">
-              <app-points-bars title="Puntos fuertes" [points]="ranked().strong" empty="Ninguna diferencia clara con tu media." />
-              <app-points-bars title="Puntos débiles" [points]="ranked().weak" empty="Ninguna diferencia clara con tu media." />
+              <div>
+                <app-points-bars id="chessStrongTop" title="Puntos fuertes" [points]="strongSplit().top" [scale]="scale()" empty="Ninguna diferencia clara con tu media." />
+                @if (strongSplit().rest.length) {
+                  <details id="chessStrongRest" class="u-mt-6"><summary class="dsum">Otros {{ strongSplit().rest.length }} puntos fuertes</summary>
+                    <app-points-bars title="" [points]="strongSplit().rest" [scale]="scale()" empty="" />
+                  </details>
+                }
+              </div>
+              <div>
+                <app-points-bars id="chessWeakTop" title="Puntos débiles" [points]="weakSplit().top" [scale]="scale()" empty="Ninguna diferencia clara con tu media." />
+                @if (weakSplit().rest.length) {
+                  <details id="chessWeakRest" class="u-mt-6"><summary class="dsum">Otros {{ weakSplit().rest.length }} puntos débiles</summary>
+                    <app-points-bars title="" [points]="weakSplit().rest" [scale]="scale()" empty="" />
+                  </details>
+                }
+              </div>
             </div>
           </div>
-          <div class="card u-mt-12" id="chessColorOpenings">
-            <app-rate-rows title="Por color" [points]="byKind('color')" empty="Sin partidas con color." />
-            <app-rate-rows id="chessOpeningsTop" title="Aperturas" [points]="openingsSplit().top" empty="Sin aperturas identificadas en este periodo." />
-            @if (openingsSplit().rest.length) {
-              <details id="chessOpeningsRest" class="u-mt-6"><summary class="dsum">Otras {{ openingsSplit().rest.length }} aperturas, menos jugadas</summary>
-                <app-rate-rows title="" [points]="openingsSplit().rest" empty="" />
-              </details>
-            }
-            <app-rate-rows id="chessLong" title="Partidas largas" [points]="longRows()" empty="Sin partidas largas en este periodo." />
-          </div>
+          <details id="chessDetail" class="card u-mt-12">
+            <summary class="dsum dsum-main">Ver detalle: color, aperturas y partidas largas</summary>
+            <div id="chessColorOpenings">
+              <app-rate-rows title="Por color" [points]="byKind('color')" empty="Sin partidas con color." />
+              <app-rate-rows id="chessOpeningsTop" title="Aperturas" [points]="openingsSplit().top" empty="Sin aperturas identificadas en este periodo." />
+              @if (openingsSplit().rest.length) {
+                <details id="chessOpeningsRest" class="u-mt-6"><summary class="dsum">Otras {{ openingsSplit().rest.length }} aperturas, menos jugadas</summary>
+                  <app-rate-rows title="" [points]="openingsSplit().rest" empty="" />
+                </details>
+              }
+              <app-rate-rows id="chessLong" title="Partidas largas" [points]="longRows()" empty="Sin partidas largas en este periodo." />
+            </div>
+          </details>
         }
       }
     </section>
@@ -108,6 +131,13 @@ export class ChessPeriods {
     return first && start && start < first ? first : null;
   });
   protected readonly ranked = computed(() => rankPoints(this.slice().current));
+  protected readonly summary = computed(() => periodSummary(this.slice().current, this.slice().previous));
+  protected readonly summaryRate = computed(() => `${Math.round((this.summary().rate ?? 0) * 100)} %`);
+  protected readonly summaryDelta = computed(() => { const d = this.summary().delta; if (d === null) return null; const r = Math.round(d); return r === 0 ? 'igual que el periodo anterior' : `${r > 0 ? '+' : '−'}${Math.abs(r)} pts frente al periodo anterior`; });
+  /** One bar scale for strengths and weaknesses, so a folded row is never drawn longer than a visible one that beat it. */
+  protected readonly scale = computed(() => Math.max(1, ...[...this.ranked().strong, ...this.ranked().weak].map((p) => Math.abs(p.delta))));
+  protected readonly strongSplit = computed(() => ({ top: this.ranked().strong.slice(0, POINTS_SHOWN), rest: this.ranked().strong.slice(POINTS_SHOWN) }));
+  protected readonly weakSplit = computed(() => ({ top: this.ranked().weak.slice(0, POINTS_SHOWN), rest: this.ranked().weak.slice(POINTS_SHOWN) }));
   protected byKind(kind: Point['kind']): Point[] { return this.ranked().all.filter((p) => p.kind === kind).sort((a, b) => b.rate - a.rate); }
   /** The eight most played openings (they carry the evidence), still ordered by win rate; the rarer ones fold away. */
   protected readonly openingsSplit = computed(() => {

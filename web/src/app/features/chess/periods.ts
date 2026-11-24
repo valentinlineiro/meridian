@@ -40,6 +40,12 @@ export function winRate(t: Tally, competitive = false): { n: number; rate: numbe
   return { n, rate: n > 0 ? t.w / n : null };
 }
 
+/** The period's competitive win rate and its change in percentage points against the previous period (null when either has no decided games). */
+export function periodSummary(current: readonly WeekBucket[], previous: readonly WeekBucket[]): { n: number; rate: number | null; delta: number | null } {
+  const cur = winRate(sumTally(current.map((w) => w.total)), true), prev = winRate(sumTally(previous.map((w) => w.total)), true);
+  return { n: cur.n, rate: cur.rate, delta: cur.rate !== null && prev.rate !== null ? (cur.rate - prev.rate) * 100 : null };
+}
+
 export interface Point { kind: 'color' | 'opening' | 'long'; label: string; n: number; rate: number; delta: number }
 
 const COLOR_LABEL: Record<string, string> = { white: 'Con blancas', black: 'Con negras' };

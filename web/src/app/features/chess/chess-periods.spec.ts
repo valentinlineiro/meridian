@@ -140,4 +140,50 @@ describe('ChessPeriods', () => {
     expect(el.textContent).toContain('No pudimos cargar');
     expect(el.querySelector('button')).toBeTruthy();
   });
+
+  it('shouldSummariseThePeriodInOneLineWithTheChangeAgainstThePreviousOne', async () => {
+    const el = await mount({ weeks: [week(15, 5, 5, null), week(0, 8, 2, 925)], undated: { games: 0, ...T() } });
+    const t = el.querySelector('#chessSummary')!.textContent!.replace(/\s+/g, ' ');
+    expect(t).toContain('80 % de victorias');
+    expect(t).toContain('+30 pts frente al periodo anterior');
+  });
+
+  it('shouldKeepTheSummaryWithoutAChangeWhenThereIsNoPreviousPeriod', async () => {
+    const el = await mount({ weeks: [week(0, 8, 2, 925)], undated: { games: 0, ...T() } });
+    const t = el.querySelector('#chessSummary')!.textContent!;
+    expect(t).toContain('80 % de victorias');
+    expect(t).not.toContain('frente al periodo anterior');
+  });
+
+  it('shouldFoldColourOpeningsAndLongGamesIntoOneClosedDetailWhenShowingTheStrengths', async () => {
+    const el = await mount({ weeks: [week(0, 8, 2, 925)], undated: { games: 0, ...T() } });
+    const d = el.querySelector('details#chessDetail') as HTMLDetailsElement;
+    expect(d.open).toBe(false);
+    expect(d.querySelector('#chessColorOpenings')).not.toBeNull();
+    expect(el.querySelector('#chessStrengths')!.closest('details')).toBeNull(); // the summary stays in view
+  });
+
+  it('shouldShowAtMostThreeWeaknessesAndFoldTheRestWhenThereAreMore', async () => {
+    const fam = Object.fromEntries(['A', 'B', 'C', 'D', 'E'].map((k) => [k, T(10, 0, 90)]));
+    const w = { week: monday(0), games: 600, total: T(300, 0, 300), byColor: { white: T(150, 0, 150), black: T(150, 0, 150) }, byFamily: { ...fam, Z: T(200, 0, 0) }, byPhase: {}, eloEnd: null };
+    const el = await mount({ weeks: [w], undated: { games: 0, ...T() } });
+    const weak = el.querySelectorAll('#chessWeakTop li');
+    expect(weak).toHaveLength(3);
+    expect(el.querySelectorAll('#chessWeakRest li')).toHaveLength(2);
+    expect(el.querySelector('#chessWeakRest summary')!.textContent).toContain('2');
+  });
+
+  it('shouldExplainTheClearDifferenceRuleInPlainWordsAndKeepTheStatisticsFolded', async () => {
+    const el = await mount({ weeks: [week(0, 8, 2, 925)], undated: { games: 0, ...T() } });
+    const head = el.querySelector('#chessStrengths > p')!.textContent!;
+    expect(head).not.toContain('intervalo de confianza');
+    expect(el.querySelector('#chessStrengthsHelp')!.textContent).toContain('intervalo de confianza');
+  });
+
+  it('shouldSaySameAsThePreviousPeriodWhenTheChangeRoundsToZero', async () => {
+    const el = await mount({ weeks: [week(15, 8, 2, null), week(0, 8, 2, 925)], undated: { games: 0, ...T() } });
+    const t = el.querySelector('#chessSummary')!.textContent!.replace(/\s+/g, ' ');
+    expect(t).toContain('igual que el periodo anterior');
+    expect(t).not.toContain('0 pts');
+  });
 });
