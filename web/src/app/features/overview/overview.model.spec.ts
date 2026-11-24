@@ -12,22 +12,22 @@ describe('syncChip: when the data was synced, in calendar days', () => {
   const at = (day: number, h: number, min = 0) => new Date(2026, 10, day, h, min).toISOString(); // 10 nov 2026 local = today
   const now = new Date(2026, 10, 10, 10, 0).getTime();
   it('shouldSayTodayForTheSameCalendarDay', () => {
-    expect(syncChip(at(10, 0, 30), now)).toEqual({ text: 'datos de hoy', stale: false });
+    expect(syncChip(at(10, 0, 30), now)).toEqual({ text: 'sincronizado hoy', stale: false });
   });
   it('shouldSayYesterdayForTheCalendarDayBeforeEvenWhenItWasLessThan24HoursAgo', () => {
-    expect(syncChip(at(9, 23, 30), now)).toEqual({ text: 'datos de ayer', stale: false }); // 10.5 hours ago, but yesterday
-    expect(syncChip(at(9, 10, 1), now)).toEqual({ text: 'datos de ayer', stale: false });
+    expect(syncChip(at(9, 23, 30), now)).toEqual({ text: 'sincronizado ayer', stale: false }); // 10.5 hours ago, but yesterday
+    expect(syncChip(at(9, 10, 1), now)).toEqual({ text: 'sincronizado ayer', stale: false });
   });
   it('shouldCountCalendarDaysWhenOlder', () => {
-    expect(syncChip(at(8, 12), now)).toEqual({ text: 'datos de hace 2 días', stale: false });
-    expect(syncChip(at(5, 12), now)).toEqual({ text: 'datos de hace 5 días', stale: true });
+    expect(syncChip(at(8, 12), now)).toEqual({ text: 'sincronizado hace 2 días', stale: false });
+    expect(syncChip(at(5, 12), now)).toEqual({ text: 'sincronizado hace 5 días', stale: true });
   });
   it('shouldKeepTheFreshnessRuleOfTwoDaysUntouched', () => {
     expect(syncChip(new Date(now - 2 * 864e5).toISOString(), now)?.stale).toBe(false);
     expect(syncChip(new Date(now - 2 * 864e5 - 60_000).toISOString(), now)?.stale).toBe(true);
   });
   it('shouldSayTodayForATimestampInTheFuture', () => {
-    expect(syncChip(at(10, 23), now)?.text).toBe('datos de hoy'); // clock skew
+    expect(syncChip(at(10, 23), now)?.text).toBe('sincronizado hoy'); // clock skew
   });
   it('shouldSayNothingWithoutADate', () => {
     expect(syncChip(null, now)).toBeNull();
@@ -67,7 +67,13 @@ describe('chessRow', () => {
   it('shouldSayNoClearChangeWhenTheIntervalIncludesZero', () => {
     const r = chessRow({ ...base, recent: recent({ diff: 0.06, lower: -0.08, upper: 0.2 }) });
     expect(r.verdict).toMatchObject({ state: 'no-signal' });
-    expect(r.form).toContain('(entre −8,0 y +20,0) frente a las anteriores · sin evidencia suficiente'); // the note closes the sentence
+    expect(r.form).toContain('sin diferencia clara frente a las anteriores');
+    expect(r.form).not.toContain('entre'); // an interval that spans 0 prints no number
+  });
+  it('shouldGiveTheDateOfTheNewestGameApartFromTheSync', () => {
+    const t = Date.parse('2026-09-30T10:00:00Z') / 1000;
+    expect(chessRow({ ...base, recent: recent(null), matches: [{ played_at: t - 86400 }, { played_at: t }] }).lastGame).toMatch(/^Última partida: 30 sep/);
+    expect(chessRow({ ...base, recent: recent(null), matches: [] }).lastGame).toBeNull();
   });
   it('shouldSayFewDataWhenThereAreNoGamesBeforeTheWindow', () => {
     expect(chessRow({ ...base, recent: recent(null) }).verdict).toMatchObject({ state: 'few-data' });

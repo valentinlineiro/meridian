@@ -151,7 +151,7 @@ describe('Overview', () => {
       api['/api/languages/xp'] = { summaries: [...xpRows(7, 1, 271, { updatedAt: iso(10 * DAY) }), ...xpRows(35, 8, 343, { updatedAt: iso(10 * DAY) })] };
       const el = await open(api);
       expect(text(el, 'overviewLangBig')).toBe('1897');
-      expect(text(el, 'overviewLangFresh')).toBe('datos de hoy');
+      expect(text(el, 'overviewLangFresh')).toBe('sincronizado hoy');
     });
 
     it('shouldSayTheyAreNotSyncedWhenThereIsNoSyncDate', async () => {
@@ -167,13 +167,13 @@ describe('Overview', () => {
     it('shouldFlagTheChessDataAsOldWhenTheLastReadingIsOlderThanTwoDays', async () => {
       const api = fullApi();
       (api['/api/stats/bundle'] as { timeline: object }).timeline = { snapshots: [{ createdAt: iso(40 * DAY), elo: 850 }, { createdAt: iso(5 * DAY), elo: 900 }] };
-      expect(text(await open(api), 'overviewChessFresh')).toBe('datos de hace 5 días');
+      expect(text(await open(api), 'overviewChessFresh')).toBe('sincronizado hace 5 días');
     });
 
     it('shouldDateTheChessDataByTheLastSnapshotWithEloWhenAnotherSourceSyncedLater', async () => {
       const api = fullApi();
       (api['/api/stats/bundle'] as { timeline: object }).timeline = { snapshots: [{ createdAt: iso(40 * DAY), elo: 850 }, { createdAt: iso(10 * DAY), elo: 900 }, { createdAt: iso(1 * DAY), elo: null }] };
-      expect(text(await open(api), 'overviewChessFresh')).toBe('datos de hace 10 días');
+      expect(text(await open(api), 'overviewChessFresh')).toBe('sincronizado hace 10 días');
     });
 
     it('shouldReadEachStatsRouteWhenTheBundleRouteIsMissing', async () => {

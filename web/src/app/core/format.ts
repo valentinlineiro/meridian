@@ -16,7 +16,7 @@ export const fmtDate = (d: string | null | undefined): string => {
 
 export const relDate = (iso: string, now = Date.now()): string => {
   if (!iso) return '—';
-  const days = Math.floor((now - new Date(iso).getTime()) / 864e5);
+  const t = new Date(iso), n = new Date(now), days = Math.max(0, Math.round((Date.UTC(n.getFullYear(), n.getMonth(), n.getDate()) - Date.UTC(t.getFullYear(), t.getMonth(), t.getDate())) / 864e5));
   return days <= 0 ? 'hoy' : days === 1 ? 'ayer' : `hace ${days} días`;
 };
 

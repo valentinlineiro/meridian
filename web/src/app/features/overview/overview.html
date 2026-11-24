@@ -25,6 +25,7 @@
       @if (c && c.trend.length > 1) {<m-sparkline [points]="c.trend" />}
       @if (c?.verdict; as vd) {<p class="hc-line" id="overviewChessSentence">{{ vd.sentence }}</p>}
       <p [class]="c?.verdict ? 'muted hc-sub' : 'hc-line'" id="overviewChessForm">{{ c?.form ?? '—' }}</p>
+      @if (c?.lastGame; as lg) {<p class="muted hc-sub" id="overviewChessLast">{{ lg }}</p>}
     </a>
 
     <a class="hc card" id="overviewLangRow" routerLink="/languages">

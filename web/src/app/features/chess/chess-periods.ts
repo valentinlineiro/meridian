@@ -157,7 +157,7 @@ export class ChessPeriods {
   protected readonly ranked = computed(() => rankPoints(this.slice().current));
   protected readonly summary = computed(() => periodSummary(this.slice().current, this.slice().previous));
   /** How old the data behind the figures is, said where the figures are (a stale pill past two days, never a stale number read as current). */
-  protected readonly age = computed(() => { const at = this.weekly.value()?.syncedAt; return at ? { text: 'datos de ' + agoLabel(at), stale: isStale(at, Date.now()) } : null; });
+  protected readonly age = computed(() => { const at = this.weekly.value()?.syncedAt; return at ? { text: 'sincronizado ' + agoLabel(at), stale: isStale(at, Date.now()) } : null; });
   protected readonly periodLabel = computed(() => PERIODS.find((p) => p.k === this.period())?.l.toLowerCase() ?? '');
   protected readonly summaryRate = computed(() => `${Math.round((this.summary().rate ?? 0) * 100)} %`);
   protected readonly summaryDelta = computed(() => { const d = this.summary().delta; if (d === null) return null; const r = Math.round(d); return r === 0 ? 'igual que el periodo anterior' : `${r > 0 ? '+' : '−'}${Math.abs(r)} pts frente al periodo anterior`; });
