@@ -4,7 +4,6 @@ import { HttpTestingController, provideHttpClientTesting, TestRequest } from '@a
 import { provideRouter, Router } from '@angular/router';
 import { Games } from './games';
 import { chartGeometry } from './games-chart';
-import { speedWords } from '../../core/words';
 
 // Port of tests/frontendGames.test.ts (the vm sandbox becomes component tests). Each legacy `it` keeps its name.
 const blk = (o: Record<string, any> = {}) => ({
@@ -214,31 +213,25 @@ describe('Games', () => {
       expect(text('gamesHeroToday')).toBe('Hoy · 2 registrados');
     });
 
-    it('shouldListTheSixGamesWithTodaysTimeOrRegistrar', async () => {
-      await open({ zip: game() }, { ok: true, day: { games: { zip: { score: '0:08' }, tango: { avg: '0:20' } } } });
-      const rows = [...el.querySelectorAll('#gamesToday button')].map((b) => [b.querySelector('.gt-name')!.textContent, b.querySelector('.gt-state')!.textContent]);
-      expect(rows).toEqual([['Zip', '0:08'], ['Tango', 'Solo media'], ['Queens', 'Registrar'], ['Mini Sudoku', 'Registrar'], ['Patches', 'Registrar'], ['Wend', 'Registrar']]);
-      expect(el.querySelector('#gamesToday-queens')!.getAttribute('aria-label')).toBe('Queens, sin registrar. Registrar');
-      expect(el.querySelector('#gamesToday-zip')!.getAttribute('aria-label')).toBe('Zip, registrado 0:08. Editar');
+    it('shouldKeepTheRegisterToOneLineAndAButtonWithNoPerGameRowsWhenTheHubLoads', async () => {
+      await open({ zip: game() }, { ok: true, day: { games: { zip: { score: '0:08' } } } });
+      expect(el.querySelector('#gamesToday')).toBeNull();
+      expect(el.querySelector('[id^="gamesToday-"]')).toBeNull();
+      expect(text('gamesHeroToday')).toBe('Hoy · 1 registrado');
+      expect(el.querySelector('#gamesRegisterOpen')).not.toBeNull();
     });
 
-    it('shouldNotSaySinRegistrarWhenTodayCouldNotBeRead', async () => {
+    it('shouldKeepTheButtonWhenTodayCouldNotBeRead', async () => {
       await open({ zip: game() }, FAIL);
-      expect(el.querySelector('#gamesToday-zip .gt-state')!.textContent).toBe('No se pudo leer');
-      expect(el.querySelector('#gamesToday')!.textContent).not.toContain('Registrar');
-    });
-
-    it('shouldOpenTheSheetOnTheGameOfTheRowTapped', async () => {
-      await open({ zip: game() });
-      await click('#gamesToday-queens');
-      expect(el.querySelector('dialog')!.hasAttribute('open')).toBe(true);
-      expect(document.activeElement!.id).toBe('lgReg-queens-score');
+      expect(text('gamesHeroToday')).toBe('Hoy');
+      expect(el.querySelector('#gamesRegisterOpen')).not.toBeNull();
+      expect(el.textContent).not.toContain('Sin registrar');
     });
 
     it('shouldPutTodayBeforeTheTrendOfTheGames', async () => {
       await open({ zip: game() });
       const before = (a: string, b: string) => el.querySelector(a)!.compareDocumentPosition(el.querySelector(b)!) & Node.DOCUMENT_POSITION_FOLLOWING;
-      expect(before('#gamesToday', '#gamesOverview')).toBeTruthy();
+      expect(before('#gamesHeroToday', '#gamesOverview')).toBeTruthy();
       expect(before('#gamesOverview', '#gamesNow')).toBeTruthy();
     });
 
@@ -281,14 +274,6 @@ describe('Games', () => {
       await open({ wend: game(), zip: game(), queens: game() });
       const names = [...el.querySelectorAll('#gamesNow .gc-name b')].map((b) => b.textContent);
       expect(names).toEqual(['Zip', 'Queens', 'Wend']);
-    });
-
-    it('shouldFlashTheLedgerRowOfAGameJustSaved', async () => {
-      await open({ zip: game() }, { ok: true, day: { games: { zip: { score: '0:08' } } } });
-      (fixture.componentInstance as any).flash(['zip']);
-      await tick();
-      expect(el.querySelector('#gamesToday-zip')!.classList.contains('gt-flash')).toBe(true);
-      expect(el.querySelector('#gamesToday-tango')!.classList.contains('gt-flash')).toBe(false);
     });
 
     it('shouldOfferToContinueAWaitingDraftInsteadOfOpeningTheSheet', async () => {
@@ -383,11 +368,10 @@ describe('Games', () => {
       expect(el.querySelector('#gr-28')!.getAttribute('aria-pressed')).toBe('false');
     });
 
-    it('shouldExposeAccessibleControlsForPeriodAndChart', async () => {
+    it('shouldExposeAccessibleControlsForThePeriod', async () => {
       await open({ zip: game() });
       expect(el.querySelector('[role="group"][aria-label="Periodo de análisis"]')).not.toBeNull();
       for (const k of ['7', '28', '90', 'all']) expect(el.querySelector(`#gr-${k}[aria-pressed]`)).not.toBeNull();
-      expect(el.querySelector('label.muted[for="gamesTrajGame"]')).not.toBeNull();
       expect(el.textContent).not.toMatch(/Todos \(agregado\)/);
     });
 
@@ -397,40 +381,7 @@ describe('Games', () => {
     });
   });
 
-  describe('games trajectory chart', () => {
-    const titles = () => [...el.querySelectorAll('#gamesChart svg title')].map((t) => t.textContent!);
-    const chooseGame = async (k: string) => {
-      const sel = el.querySelector<HTMLSelectElement>('#gamesTrajGame')!;
-      sel.value = k; sel.dispatchEvent(new Event('change')); await tick();
-    };
-
-    it('shouldDrawBothSeriesWithTheSampleSizeBarsOnTheSameAxis', async () => {
-      await open({ zip: game() });
-      const svg = el.querySelector('#gamesChart svg')!;
-      expect(svg.querySelectorAll('circle[fill="var(--link)"]').length).toBeGreaterThan(0); // efficiency
-      expect(svg.querySelectorAll('circle[fill="var(--ok)"]').length).toBeGreaterThan(0); // beats the average
-      expect(svg.querySelectorAll('rect')).toHaveLength(2); // bars only where n > 0
-      expect(titles()).toContain('2026-11-01 · 2 partidas · frente a la media: un poco más rápido');
-      expect(svg.textContent).toContain('todos'); // beat strip axis, in words
-      expect(svg.getAttribute('aria-label')).toContain('Los mismos datos están en la tabla siguiente.');
-    });
-
-    it('shouldLeaveAVisibleGapInsteadOfDrawingAPointForABucketWithoutObservations', async () => {
-      await open({ zip: game() });
-      const svg = el.querySelector('#gamesChart svg')!;
-      expect(svg.querySelectorAll('circle')).toHaveLength(4); // 2 buckets with data × 2 series
-      expect(titles().some((t) => t.startsWith('2026-10-31 ·'))).toBe(false); // neither point nor bar
-      expect(svg.querySelectorAll('polyline')).toHaveLength(0); // the gap splits the line: isolated points stay points
-    });
-
-    it('shouldDrawTheRawValuesWithoutSmoothing', async () => {
-      const t = [{ start: 'a', n: 1, eff: 1.5, beat: 1 }, { start: 'b', n: 1, eff: 3, beat: 0 }, { start: 'c', n: 1, eff: 2, beat: 1 }];
-      await open({ zip: game({ trajectory: { '7': t, '28': t, '90': t, all: t } }) });
-      for (const v of ['a · 1 partida · frente a la media: bastante más rápido', 'b · 1 partida · frente a la media: mucho más rápido', 'c · 1 partida · frente a la media: el doble de rápido']) expect(titles()).toContain(v);
-      expect(el.querySelectorAll('#gamesChart polyline')).toHaveLength(2);
-      expect(el.querySelector('#gamesChart polyline')!.getAttribute('points')).toBe('40.0,55.0 176.0,10.0 312.0,40.0');
-    });
-
+  describe('chart geometry', () => {
     it('shouldNotStackTheLowestWordOnTopOfMediaWhenNoDayWasBelowTheAverage', () => {
       const above = chartGeometry([{ start: 'a', n: 1, eff: 1.5, beat: 1 }, { start: 'b', n: 1, eff: 3, beat: 0 }])!;
       expect(above.showLo).toBe(false); // the lowest point IS the average line: one label, "media"
@@ -448,120 +399,8 @@ describe('Games', () => {
       expect(g.xr).toBe(892);
       expect(g.eff.dots.map((d) => d.cx)).toEqual(['40.0', '892.0']);
     });
-
-    it('shouldChartOneGameAtATimeAndOfferNoAggregate', async () => {
-      await open({ zip: game({ n: 170 }), tango: game({ trajectory: { '7': [], '28': [{ start: '2026-11-01', n: 1, eff: 1.1, beat: 1 }], '90': [], all: [] } }) });
-      expect([...el.querySelectorAll('#gamesTrajGame option')].map((o) => o.textContent)).toEqual(['Zip', 'Tango']);
-      expect(el.querySelector<HTMLSelectElement>('#gamesTrajGame')!.value).toBe('zip'); // the game with the most observations
-      await chooseGame('tango');
-      expect(titles().some((t) => t.startsWith('2026-11-01 · 1 partida'))).toBe(true);
-      expect(el.querySelector<HTMLSelectElement>('#gamesTrajGame')!.value).toBe('tango');
-      http.verify(); // switching game asks nothing
-    });
-
-    it('shouldExplainWhatTheChartShowsAndNameTheBucketSize', async () => {
-      await open({ zip: game() });
-      expect(text('gamesChartNote')).toMatch(/Cifras de las últimas 4 semanas, un punto por día, sin suavizar/);
-      await setRange('90');
-      expect(text('gamesChartNote')).toMatch(/Cifras de los últimos 3 meses, un punto por semana \(lunes\), sin suavizar/);
-    });
-
-    it('shouldSayThereAreNoObservationsWhenNoBucketHasData', async () => {
-      const t = [{ start: '2026-11-01', n: 0, eff: null, beat: null }];
-      await open({ zip: game({ trajectory: { '7': t, '28': t, '90': t, all: t } }) });
-      expect(text('gamesChart')).toContain('Sin observaciones con media');
-    });
-
-    it.each([
-      ['eff', { start: '2026-11-01', n: 2, eff: 'x', beat: 0.5 }],
-      ['beat', { start: '2026-11-01', n: 2, eff: 1.1, beat: 'x' }],
-      ['n', { start: '2026-11-01', n: 'x', eff: 1.1, beat: 0.5 }],
-    ])('shouldShowTheChartAsUnavailableInsteadOfDrawingNaNWhenABucket%sIsNotANumber', async (_, bad) => {
-      const t = [traj[0], bad];
-      await open({ zip: game({ trajectory: { '7': t, '28': t, '90': t, all: t } }), tango: game() });
-      expect(text('gamesChart')).toBe('No disponible');
-      expect(el.querySelector('#gamesChart svg')).toBeNull();
-      expect([...el.querySelectorAll('#gamesChart *')].some((n) => [...n.attributes].some((a) => a.value.includes('NaN')))).toBe(false);
-    });
-
-    it('shouldShowTheTrajectoryAsUnavailableWhenItIsMalformedWhileTheTableStillRenders', async () => {
-      await open({ zip: game({ trajectory: { '28': 'x' } }) });
-      expect(text('gamesChart')).toBe('No disponible');
-      expect(el.querySelectorAll('#gamesDataRows tr')).toHaveLength(0);
-      expect(el.querySelector('#gamesChart svg')).toBeNull();
-    });
   });
-
-  describe('games trajectory data table', () => {
-    const dataRows = () => [...el.querySelectorAll('#gamesDataRows tr')].map((tr) => [...tr.children].map((c) => c.textContent));
-    const chooseGame = async (k: string) => {
-      const sel = el.querySelector<HTMLSelectElement>('#gamesTrajGame')!;
-      sel.value = k; sel.dispatchEvent(new Event('change')); await tick();
-    };
-
-    it('shouldListOneRowPerBucketWithPeriodSpeedBeatRateAndGames', async () => {
-      await open({ zip: game() });
-      expect(dataRows()).toEqual([
-        ['2026-10-30', '×1,2', '100 %', '1'],
-        ['2026-10-31', '—', '—', '0'], // the gap stays a row, with n = 0
-        ['2026-11-01', '×1,1', '50 %', '2'],
-      ]);
-      expect(el.querySelector('#gamesDataRows th')!.getAttribute('scope')).toBe('row');
-    });
-
-    it('shouldCarryTheSameValuesAsTheDrawnSeries', async () => {
-      const t = [{ start: '2026-10-20', n: 3, eff: 1.234, beat: 2 / 3 }, { start: '2026-10-21', n: 0, eff: null, beat: null }, { start: '2026-10-22', n: 5, eff: 2.5, beat: 0.8 }];
-      await open({ zip: game({ trajectory: { '7': t, '28': t, '90': t, all: t } }) });
-      const tl = [...el.querySelectorAll('#gamesChart svg title')].map((x) => x.textContent!), rows = dataRows();
-      t.forEach((b, i) => {
-        const [, eff, beat, n] = rows[i];
-        expect(n).toBe(String(b.n));
-        if (b.n === 0) {
-          expect([eff, beat]).toEqual(['—', '—']);
-          expect(tl.some((x) => x.startsWith(b.start + ' ·'))).toBe(false);
-        } else {
-          const games = b.n === 1 ? '1 partida' : `${b.n} partidas`;
-          expect(tl).toContain(`${b.start} · ${games} · frente a la media: ${speedWords(b.eff)}`);
-          expect(tl).toContain(`${b.start} · ${games} · le ganas a la media en el ${beat}`);
-        }
-      });
-      expect(rows.map((r) => r[0])).toEqual(t.map((b) => b.start));
-    });
-
-    it('shouldLabelWeeklyBucketsAsWeeksAndFollowThePeriodAndTheGame', async () => {
-      const wk = [{ start: '2026-10-26', n: 4, eff: 2, beat: 0.75 }];
-      await open({ zip: game({ n: 170 }), tango: game({ trajectory: { '7': traj, '28': traj, '90': wk, all: wk } }) });
-      await chooseGame('tango');
-      await setRange('90');
-      expect(dataRows()).toEqual([['Semana del 2026-10-26', '×2', '75 %', '4']]);
-      expect(text('gamesDataCaption')).toBe('Datos de la trayectoria de Tango, los últimos 3 meses: un valor por semana.');
-      await setRange('7');
-      expect(text('gamesDataCaption')).toMatch(/un valor por día\.$/);
-      expect(dataRows()).toHaveLength(3);
-    });
-
-    it('shouldClearTheTableWhenThereIsNoData', async () => {
-      await open({ zip: game() });
-      expect(dataRows()).toHaveLength(3);
-      (fixture.componentInstance as any).data.reload();
-      await tick();
-      await answer({ ok: true, summary: { days: 0, from: null, to: null, playStreak: { current: 0, max: 0 }, games: {} } });
-      expect(dataRows()).toHaveLength(0);
-      expect(text('gamesChart')).toBe('');
-      expect(text('gamesChartNote')).toBe('');
-    });
-
-    it('shouldOfferTheTableInsideADetailsWithAccessibleStructureAndPointTheChartToIt', async () => {
-      await open({ zip: game() });
-      const block = el.querySelector('#gamesDataDetails')!;
-      expect(block.querySelector('summary')!.textContent).toBe('Ver los datos del gráfico (tabla)');
-      expect(block.querySelector('caption#gamesDataCaption.sr-only')).not.toBeNull();
-      expect(block.querySelector('table')!.getAttribute('aria-describedby')).toBe('gamesDataCaption');
-      expect(block.querySelectorAll('thead th[scope="col"]')).toHaveLength(4);
-      expect(el.querySelector('#gamesChart svg')!.getAttribute('aria-label')).toContain('Los mismos datos están en la tabla siguiente.');
-    });
-  });
-  describe('adjusted form, loss map and difficulty', () => {
+  describe('loss map', () => {
     it('shouldNameTheWorstWeekdayOnlyWhenItHasEnoughGames', async () => {
       await open({ queens: game() });
       expect(text('gamesLossNote')).toBe('Donde más pierdes: Queens los lunes (70 %, 10 partidas).');
@@ -583,18 +422,6 @@ describe('Games', () => {
       await open({ zip: few });
       expect(text('gamesLossNote')).toContain('Aún no hay ningún día');
     });
-
-    it('shouldDrawTheLastFourWeeksOfDifficultyMondayFirst', async () => {
-      const difficulty = [{ date: '2026-11-02', level: 'duro' }, { date: '2026-11-03', level: 'facil' }];
-      await open({ zip: game() }, undefined, { difficulty });
-      const cells = [...el.querySelectorAll('#gamesDiff .gd')];
-      expect(cells).toHaveLength(28);
-      expect(cells[21].className).toContain('gd-duro'); // Monday 2 Nov is the first day of the last week
-      expect(cells[22].className).toContain('gd-facil');
-      expect(cells[0].className).toContain('gd-none');
-      expect(text('gamesDiffNote')).toBe('En estas 4 semanas: 1 días fáciles, 0 normales y 1 duros.');
-    });
-
   });
   describe('how you are doing (the overview card)', () => {
     const down = game({ interpretation: interp({ label: 'deterioro', reason: 'sostenido', candidate: 'deterioro', previousCandidate: 'deterioro' }) });
@@ -627,7 +454,27 @@ describe('Games', () => {
       expect(zip.querySelector('.gc-big')!.textContent!.trim()).toBe('+13 %');
       expect(zip.querySelector('.gc-cap')!.textContent!.trim()).toBe('más rápido que la media');
       expect(zip.textContent).toContain('Estable');
-      expect(zip.querySelector('.gc-line, .gc-delta')).toBeNull(); // the sentence and the change live in the report
+    });
+
+    it('shouldShowTheChangeAgainstThePreviousPeriodOnEachCard', async () => {
+      await open({ zip: game() });
+      expect(rowOf('Zip').querySelector('.gc-delta')!.textContent!.trim()).toBe('−13 % frente al periodo anterior');
+    });
+
+    it('shouldShowHowOftenYouBeatTheAverageOnEachCard', async () => {
+      await open({ zip: game() });
+      expect(rowOf('Zip').querySelector('.gc-beat')!.textContent!.trim()).toBe('Le ganas a la media en el 65 % de las partidas');
+    });
+
+    it('shouldNotShowTheBeatRateWhenThereIsTooLittleData', async () => {
+      await open({ tango: game({ interpretation: interp({ label: 'insuficiente', reason: 'pocos_datos' }), windows: { ...game().windows, '28': { ...win28(), eff: { median: 1.2, nEff: 4 } } } }) });
+      expect(rowOf('Tango').querySelector('.gc-beat')).toBeNull();
+    });
+
+    it('shouldTagThePeriodChooserAndEachCardForUmami', async () => {
+      await open({ zip: game() });
+      expect(el.querySelector('#gr-28')!.getAttribute('data-umami-event')).toBe('games-period');
+      expect(rowOf('Zip').getAttribute('data-umami-event')).toBe('games-open');
     });
 
     it('shouldKeepOneComparisonOnTheCardAndExplainTheLabelInTheHelp', async () => {
@@ -684,11 +531,17 @@ describe('Games', () => {
       expect(el.querySelector('#gamesNow .dot, #gamesNow .spark, #gamesNow .grow-tag')).toBeNull();
     });
 
-    it('shouldKeepTheChartOneClickAwayUnderMoreDetail', async () => {
+    it('shouldFoldTheWeekdayMapIntoOneClosedDetail', async () => {
       await open({ zip: game() });
-      const more = el.querySelector<HTMLDetailsElement>('#cg-games-more')!;
-      expect(more.open).toBe(false);
-      expect(more.querySelector('#gamesChart')).not.toBeNull();
+      const d = el.querySelector<HTMLDetailsElement>('details#gamesDetail')!;
+      expect(d.open).toBe(false);
+      expect(d.querySelector('#gamesLoss')).not.toBeNull();
+      expect(d.querySelector('summary')!.textContent).toContain('por día de la semana');
+    });
+
+    it('shouldNotOfferTheTrajectoryOrTheDifficultyOnTheHub', async () => {
+      await open({ zip: game() });
+      for (const id of ['gamesChart', 'gamesDiff', 'gamesTrajGame', 'cg-games-more', 'gamesDataTable']) expect(el.querySelector('#' + id)).toBeNull();
     });
 
     it('shouldDropOnlyTheRowOfAMalformedGame', async () => {

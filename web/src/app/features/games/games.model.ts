@@ -112,7 +112,6 @@ export function gamesHero(s: Summary, now = Date.now()) {
   return { since: s.to ? 'Último registro: ' + shortDate(s.to, now) : '', meta: 'registro manual', days };
 }
 
-/** The game charted by default: the one with the most observations (first on a tie). */
 export const defaultTrajGame = (s: Summary): string => Object.keys(s.games).sort((a, b) => s.games[b].n - s.games[a].n)[0];
 
 export function trajectory(s: Summary, game: string, range: Range) {
@@ -127,23 +126,6 @@ export function trajectory(s: Summary, game: string, range: Range) {
     rows: b.map((p) => [(weekly ? 'Semana del ' : '') + p.start, p.eff == null ? '—' : effText(p.eff), p.beat == null ? '—' : gpct(p.beat), String(p.n)]),
     note: 'Cifras de ' + RANGE_NAMES[range] + ', un punto por ' + (weekly ? 'semana (lunes)' : 'día') + ', sin suavizar. Línea azul: cuánto más rápido que la media vas (la línea de puntos es la media). Línea verde: la parte de los días que le ganas a la media. Barras: partidas de cada ' + (weekly ? 'semana' : 'día') + '; un hueco es un periodo sin partidas.',
   };
-}
-
-const LEVEL_TEXT: Record<Level, string> = { facil: 'fácil', normal: 'normal', duro: 'duro' };
-/** Last four whole weeks (Monday first) up to the last recorded day; a day without a level is a blank cell. */
-export function difficultyGrid(s: Summary) {
-  const list = s.difficulty ?? [];
-  if (!list.length) return undefined;
-  const by = new Map(list.map((d) => [d.date, d.level]));
-  const last = new Date(list[list.length - 1].date + 'T00:00:00Z');
-  const monday = new Date(last.getTime() - ((last.getUTCDay() + 6) % 7) * 86_400_000 - 21 * 86_400_000);
-  const cells = Array.from({ length: 28 }, (_, i) => {
-    const d = new Date(monday.getTime() + i * 86_400_000), iso = d.toISOString().slice(0, 10), level = by.get(iso) ?? null;
-    return { date: iso, day: d.getUTCDate(), level, text: level ? fmtDate(iso) + ': día ' + LEVEL_TEXT[level] : fmtDate(iso) + ': sin clasificar' };
-  });
-  const rated = cells.filter((c) => c.level);
-  const hard = rated.filter((c) => c.level === 'duro').length, easy = rated.filter((c) => c.level === 'facil').length;
-  return { cells, sentence: rated.length ? `En estas 4 semanas: ${easy} días fáciles, ${rated.length - easy - hard} normales y ${hard} duros.` : '' };
 }
 
 /** A weekday with fewer results than this is not coloured nor named. */
@@ -166,12 +148,15 @@ export function lossRows(s: Summary) {
   return { rows, days: DAYS.map((d) => d.slice(0, 3)), sentence: w ? `Donde más pierdes: ${gameName(w.k)} los ${DAYS[w.c.dow]} (${gpct(w.c.rate)}, ${w.c.n} partidas).` : 'Aún no hay ningún día con partidas suficientes para decir dónde pierdes más.' };
 }
 
-/** The first look: per game a verdict, the speed against the average as one big number and the last 14 results as bars. The sentence and the change live in the report. */
+/** The first look: per game a verdict, the speed against the average as one big number, the change against the previous period, how often the average is beaten, and the last 14 results as bars. */
 export function summaryRows(s: Summary, range: Range) {
   return cardOrder(s).flatMap((k) => { try { return [row(k)]; } catch { return []; } }); // a malformed game drops its own row only
   function row(k: string) {
     const x = s.games[k]!;
-    return { k, name: gameName(k), verdict: verdictOf(x), bars: resultBars(x.series), ...figures(x, range) };
+    const verdict = verdictOf(x), rate = x.windows[range].beat.rate;
+    // with too little data the card shows the game count only: no percentage beside "Pocos datos"
+    const beat = verdict.state === 'few-data' || rate == null ? '' : `Le ganas a la media en el ${Math.round(rate * 100)} % de las partidas`;
+    return { k, name: gameName(k), verdict, bars: resultBars(x.series), beat, ...figures(x, range) };
   }
 }
 
