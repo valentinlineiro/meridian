@@ -33,7 +33,10 @@ export class MatchesService {
   readonly pageSize = computed(() => this.compact() ? 10 : 50);
 
   private readonly request = signal<Params>({ limit: 10, offset: 0 });
-  private readonly page_ = rxResource<MatchPage, Params>({ params: () => this.request(), stream: ({ params }) => this.api.get<MatchPage>('/api/matches', params) });
+  /** The list is fetched once something shows it, not when the service is built: the game viewer and the profile build it too. */
+  private readonly wanted = signal(false);
+  want(): void { this.wanted.set(true); }
+  private readonly page_ = rxResource<MatchPage, Params | undefined>({ params: () => this.wanted() ? this.request() : undefined, stream: ({ params }) => this.api.get<MatchPage>('/api/matches', params) });
   private readonly body = computed(() => this.page_.hasValue() ? this.page_.value() : null);
   readonly rows = computed<MatchRow[]>(() => { const r = this.body()?.rows; return Array.isArray(r) ? r.filter((m) => m && typeof m === 'object') : []; });
   readonly total = computed(() => this.body()?.total || 0);
@@ -147,6 +150,7 @@ export class MatchesService {
     if (f.end) p['endCondition'] = f.end;
     if (f.phase) p['phase'] = f.phase;
     if (f.opening) p['opening'] = f.opening;
+    this.wanted.set(true);
     this.request.set(p);
   }
 }

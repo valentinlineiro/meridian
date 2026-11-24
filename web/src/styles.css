@@ -557,3 +557,15 @@ h2.lg-detail-title{margin:0;font-size:var(--fs-h);letter-spacing:0;text-transfor
 a:focus-visible,summary:focus-visible{outline:2px solid var(--link);outline-offset:2px}
 .side-item:focus-visible{outline-offset:-2px}
 .gh-head{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
+
+/* Ajedrez por periodos: rows of a rate (or a difference) with the numbers written out; the bars only repeat them */
+.rate-title{margin:14px 0 6px;font-size:var(--fs-lg);color:var(--text-2)}
+.rate-list{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.rate-row{display:grid;grid-template-columns:minmax(7rem,10rem) minmax(0,1fr);gap:4px 12px;align-items:center}
+.rate-label{color:var(--text);overflow-wrap:anywhere}
+.rate-text{grid-column:1/-1;color:var(--muted);font-size:var(--fs-md)}.rate-text b{color:var(--text)}
+.rate-few .rate-bar{opacity:.5}
+.pb-track{position:relative;height:8px;background:var(--line);border-radius:var(--r-pill);overflow:hidden}
+.pb-track::after{content:"";position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--line-ui)}
+.pb-fill{position:absolute;top:0;bottom:0;min-width:2px}.pb-up{background:var(--ok)}.pb-down{background:var(--err)}
+app-rate-rows,app-points-bars{display:block}app-rate-rows+app-rate-rows{margin-top:10px}

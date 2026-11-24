@@ -9,6 +9,12 @@ import { GAME_NAMES, gameName } from './core/words';
 const languages: UrlMatcher = (segs) =>
   segs[0]?.path === 'languages' && segs.length <= 2 ? { consumed: segs, posParams: (segs[1] ? { courseId: segs[1] } : {}) as Record<string, UrlSegment> } : null;
 
+/** /chess and /chess/partidas are ONE route (the games list is a mode of Ajedrez); any other second segment falls to NotFound. */
+export const chessMatcher: UrlMatcher = (segs) =>
+  segs[0]?.path === 'chess' && (segs.length === 1 || (segs.length === 2 && segs[1]!.path === 'partidas'))
+    ? { consumed: segs, posParams: (segs[1] ? { view: segs[1] } : {}) as Record<string, UrlSegment> } : null;
+const chessTitle: ResolveFn<string> = (route) => route.params['view'] ? 'Partidas · Ajedrez · Meridian' : 'Ajedrez · Meridian';
+
 /** /games and /games/:game are ONE route (the report is a mode of Games, as a course is of Idiomas); an unknown key falls to the redirect below. */
 const games: UrlMatcher = (segs) =>
   segs[0]?.path === 'games' && (segs.length === 1 || (segs.length === 2 && segs[1]!.path in GAME_NAMES))
@@ -25,7 +31,7 @@ export const routes: Routes = [
   { path: 'changes', title: 'Qué cambió · Meridian', loadComponent: () => import('./features/changes/changes').then((m) => m.Changes) },
   // Trayectoria is the "Todo el historial" period of Qué cambió; old links and bookmarks land there.
   { path: 'trajectory', pathMatch: 'full', redirectTo: () => inject(Router).parseUrl('/changes?w=historial') },
-  { path: 'chess', title: 'Ajedrez · Meridian', loadComponent: () => import('./features/chess/chess').then((m) => m.Chess) },
+  { matcher: chessMatcher, title: chessTitle, loadComponent: () => import('./features/chess/chess').then((m) => m.Chess) },
   { matcher: languages, title: 'Idiomas · Meridian', loadComponent: () => import('./features/languages/languages').then((m) => m.Languages) },
   { matcher: games, title: gamesTitle, loadComponent: () => import('./features/games/games').then((m) => m.Games) },
   { path: 'games/:other', redirectTo: 'games' },
