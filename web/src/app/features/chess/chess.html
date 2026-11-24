@@ -3,6 +3,7 @@
 @let x = v();
 <section id="chessTab">
   <h1 class="sr-only">Ajedrez</h1>
+  <app-chess-periods />
   @if (loadingFirst()) {
     <span class="sr-only" role="status">Cargando tu ajedrez</span>
     <div class="hero-card" aria-hidden="true"><i class="sk sk-t"></i><i class="sk sk-n"></i><i class="sk"></i></div>

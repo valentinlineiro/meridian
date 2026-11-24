@@ -73,3 +73,16 @@ export function rankPoints(current: readonly WeekBucket[]): { strong: Point[]; w
   out.weak.sort((a, b) => a.delta - b.delta);
   return out;
 }
+
+/**
+ * The ELO a period ends on and how far it moved. The change is measured from where the previous period ended; with no previous
+ * period (or none with ELO) it is measured from the first ELO of the period itself. Weeks without ELO are skipped.
+ */
+export function eloTrend(current: readonly WeekBucket[], previous: readonly WeekBucket[]): { now: number | null; delta: number | null } {
+  const known = (ws: readonly WeekBucket[]) => ws.map((w) => w.eloEnd).filter((e): e is number => e != null);
+  const cur = known(current), prev = known(previous);
+  if (!cur.length) return { now: null, delta: null };
+  const now = cur[cur.length - 1]!;
+  const start = prev.length ? prev[prev.length - 1]! : cur.length > 1 ? cur[0]! : null;
+  return { now, delta: start == null ? null : now - start };
+}

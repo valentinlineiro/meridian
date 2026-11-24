@@ -55,6 +55,13 @@ describe("foldWeekly", () => {
     expect(Object.keys(weeks[0]!.byPhase)).toEqual(["unknown"]);
   });
 
+  it("shouldCreateAnEloOnlyWeekWhenAnEloFallsInAWeekWithoutGames", () => {
+    const { weeks } = foldWeekly([row({ week: "2026-11-09" })], new Map([["2026-11-16", 905], ["2026-11-09", 880]]));
+    expect(weeks.map((w) => [w.week, w.games, w.eloEnd])).toEqual([["2026-11-09", 1, 880], ["2026-11-16", 0, 905]]);
+    expect(weeks[1]!.total).toEqual({ w: 0, d: 0, l: 0, u: 0, disconnections: 0 });
+    expect(weeks[1]!.byColor).toEqual({});
+  });
+
   it("shouldReturnEmptyWeeksAndZeroUndatedWhenThereAreNoRows", () => {
     expect(foldWeekly([], NO_ELO)).toEqual({ weeks: [], undated: { games: 0, w: 0, d: 0, l: 0, u: 0, disconnections: 0 } });
   });

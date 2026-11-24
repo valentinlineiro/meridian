@@ -1,4 +1,4 @@
-import { MIN_GAMES, PERIODS, rankPoints, sliceWeeks, sumTally, winRate } from './periods';
+import { eloTrend, MIN_GAMES, PERIODS, rankPoints, sliceWeeks, sumTally, winRate } from './periods';
 import { Tally, WeekBucket } from './weekly.model';
 
 const T = (w = 0, d = 0, l = 0, u = 0, disconnections = 0): Tally => ({ w, d, l, u, disconnections });
@@ -83,5 +83,27 @@ describe('rankPoints', () => {
 
   it('shouldReturnNothingWhenThePeriodHasNoDecidedGames', () => {
     expect(rankPoints([])).toEqual({ strong: [], weak: [], sparse: [] });
+  });
+});
+
+describe('eloTrend', () => {
+  const elo = (week: string, eloEnd: number | null): WeekBucket => ({ ...wk(week), eloEnd });
+
+  it('shouldMeasureTheDeltaFromTheEndOfThePreviousPeriodWhenBothAreKnown', () => {
+    const out = eloTrend([elo('2026-11-09', 910), elo('2026-11-16', 925)], [elo('2026-10-26', 880), elo('2026-11-02', 900)]);
+    expect(out).toEqual({ now: 925, delta: 25 });
+  });
+
+  it('shouldFallBackToTheFirstEloOfThePeriodWhenThereIsNoPrevious', () => {
+    expect(eloTrend([elo('2026-11-02', 900), elo('2026-11-09', null), elo('2026-11-16', 925)], [])).toEqual({ now: 925, delta: 25 });
+  });
+
+  it('shouldReturnNullDeltaWhenOnlyOneEloPointExists', () => {
+    expect(eloTrend([elo('2026-11-16', 925)], [])).toEqual({ now: 925, delta: null });
+  });
+
+  it('shouldReturnNullsWhenNoWeekHasElo', () => {
+    expect(eloTrend([elo('2026-11-16', null)], [elo('2026-11-09', null)])).toEqual({ now: null, delta: null });
+    expect(eloTrend([], [])).toEqual({ now: null, delta: null });
   });
 });

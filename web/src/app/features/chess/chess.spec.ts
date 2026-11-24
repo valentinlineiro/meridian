@@ -49,6 +49,7 @@ export const chessApi = (over: Api = {}): Api => {
     '/api/stats/threats': THREATS,
     '/api/stats/recent': { limit: 50, games: 50, wins: 25, losses: 20, draws: 5, winRate: 0.5, winRateCi: { lower: 0.36, upper: 0.64 }, scoreRate: 0.55, delta: { diff: 0.025, lower: -0.23, upper: 0.254 },
       before: { games: 50, wins: 25, losses: 25, draws: 0, winRate: 0.5, winRateCi: { lower: 0.4, upper: 0.7 }, scoreRate: 0.5 } },
+    '/api/stats/weekly': { weeks: [], undated: { games: 0, w: 0, d: 0, l: 0, u: 0, disconnections: 0 } },
     '/api/stats/profile': { analysed: 0, pending: 3, all: null, blocks: [], review: { worst: [], best: [] } },
     '/api/trajectory': { evaluations: [{ id: 'CHESS_COLOR_ASYMMETRY_LONGITUDINAL', status: 'not_emitted', criteria: { minDiffPp: 15 }, metrics: {} }] },
     '/api/matches': { rows: [], total: 0 },
@@ -218,7 +219,7 @@ describe('Chess', () => {
       await t.harness.navigateByUrl('/chess');
       expect(t.el().querySelector('#chessHeroElo')).toBeNull(); // no dashes that read as values
       expect(t.el().querySelector('#chessTab .sk')).not.toBeNull();
-      expect(t.el().querySelector('#chessTab [role=status].sr-only')!.textContent).toBe('Cargando tu ajedrez');
+      expect(t.el().querySelector('#chessTab > [role=status].sr-only')!.textContent).toBe('Cargando tu ajedrez');
       expect(t.text('kpis')).toBe('');
       expect(t.el().querySelector('#chessTab > p.muted')).toBeNull(); // the long-wait line comes after 3 s
     });

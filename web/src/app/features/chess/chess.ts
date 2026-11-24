@@ -12,6 +12,7 @@ import { Section } from '../../shared/section';
 import { Segmented } from '../../shared/segmented';
 import { Donut } from '../../shared/donut';
 import { EloPoint, Sparkline } from '../../shared/sparkline';
+import { ChessPeriods } from './chess-periods';
 import { Compare } from './components/compare';
 import { MatchesService } from './services/matches.service';
 import { MatchesTable } from './components/matches-table';
@@ -185,7 +186,7 @@ function view(d: ChessData) {
 
 @Component({
   selector: 'app-chess',
-  imports: [ErrorBlock, Kpi, Section, Segmented, Donut, Sparkline, Compare, MatchesTable, MatchDetailModal, OpeningsBlock, ReviewSuggestion, EngineProfile],
+  imports: [ChessPeriods, ErrorBlock, Kpi, Section, Segmented, Donut, Sparkline, Compare, MatchesTable, MatchDetailModal, OpeningsBlock, ReviewSuggestion, EngineProfile],
   providers: [MatchesService],
   templateUrl: './chess.html',
 })

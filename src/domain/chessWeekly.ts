@@ -47,6 +47,10 @@ export function foldWeekly(rows: readonly WeeklyRow[], eloByWeek: ReadonlyMap<st
     bump(b.byFamily, r.family, kind, disc, r.n);
     bump(b.byPhase, r.phase, kind, disc, r.n);
   }
+  // An ELO read in a week without games still belongs on the line (bots carry no elo_after, a sync can land on a quiet week).
+  for (const [week, elo] of eloByWeek) {
+    if (!byWeek.has(week)) byWeek.set(week, { week, games: 0, total: empty(), byColor: {}, byFamily: {}, byPhase: {}, eloEnd: elo });
+  }
   return { weeks: [...byWeek.values()].sort((a, b) => a.week.localeCompare(b.week)), undated };
 }
 
