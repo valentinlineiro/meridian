@@ -19,6 +19,7 @@
   <app-section sectionId="chessEngineProfileDetails" title="Tu perfil de jugador" meta="análisis de motor (Stockfish)" [open]="false" #engineDetails>
     <div id="chessEngineProfileContent"><app-engine-profile [profile]="profile()" [cut]="cut()" [loading]="profileLoading()" (cutChange)="setCut($event)" (retry)="retryProfile()" /></div>
   </app-section>
+  @if (legacy) {
   <div id="chessLegacy" hidden>
   @if (loadingFirst()) {
     <span class="sr-only" role="status">Cargando tu ajedrez</span>
@@ -141,6 +142,7 @@
   </app-section>
   }
   </div>
+  }
   }
 </section>
 <app-match-detail-modal />

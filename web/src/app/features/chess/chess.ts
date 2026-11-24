@@ -1,4 +1,4 @@
-import { afterNextRender, Component, computed, DestroyRef, effect, inject, input, Injector, linkedSignal, signal, viewChild } from '@angular/core';
+import { afterNextRender, Component, computed, DestroyRef, effect, inject, InjectionToken, input, Injector, linkedSignal, signal, viewChild } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { catchError, finalize, forkJoin, map, Observable, of } from 'rxjs';
@@ -183,6 +183,12 @@ function view(d: ChessData) {
   };
 }
 
+/**
+ * The old hero and «Estadísticas» blocks. Off in production: they are hidden anyway, and rendering them means fetching a dozen stats
+ * for DOM nobody sees (the D1 budget is the scarce thing). Tests that exercise those blocks turn it on.
+ */
+export const CHESS_LEGACY = new InjectionToken<boolean>('CHESS_LEGACY', { factory: () => false });
+
 @Component({
   selector: 'app-chess',
   imports: [ChessPeriods, RouterLink, ErrorBlock, Kpi, Section, Segmented, Donut, Sparkline, Compare, MatchesTable, MatchDetailModal, OpeningsBlock, ReviewSuggestion, EngineProfile],
@@ -194,7 +200,12 @@ export class Chess {
   private readonly stats = inject(StatsService);
 
   // summary is essential (an error with a retry); every other card degrades on its own to "No disponible".
-  protected readonly data = rxResource<ChessData, unknown>({ stream: () => this.load() });
+  protected readonly legacy = inject(CHESS_LEGACY);
+  // Without the legacy blocks the periods view needs none of this, and the games list needs only the openings for its filter.
+  protected readonly data = rxResource<ChessData, boolean>({
+    params: () => this.legacy || this.isGames(),
+    stream: ({ params: games }) => this.legacy ? this.load() : games ? this.loadOpenings() : of({} as ChessData),
+  });
   /** A block retried on its own (openings, phases, mates, threats) lands here; a new page load clears it. */
   private readonly patch = linkedSignal<ChessData | undefined, Partial<ChessData>>({ source: () => this.data.hasValue() ? this.data.value() : undefined, computation: () => ({}) });
   protected readonly retrying = signal<ReadonlySet<string>>(new Set());
@@ -202,7 +213,7 @@ export class Chess {
   // A body the view cannot read fails the load like a failed summary (legacy: the same catch), never a blank page.
   private readonly viewed = computed(() => {
     const d = this.d();
-    if (!d) return null;
+    if (!d || !this.legacy) return null;
     try { return { ...view(d), hero: hero(d, false) }; } catch (e) { console.error(e); return 'unreadable' as const; }
   });
   protected readonly v = computed(() => { const x = this.viewed(); return x === 'unreadable' ? null : x; });
@@ -267,7 +278,7 @@ export class Chess {
 
 
   constructor() {
-    effect(() => this.stats.chessUpdated.set(this.v()?.syncMeta ?? ''));
+    effect(() => { if (this.legacy) this.stats.chessUpdated.set(this.v()?.syncMeta ?? ''); }); // otherwise the periods view publishes it
     effect((onCleanup) => {
       if (!this.loadingFirst()) return;
       const t = setTimeout(() => this.slow.set(true), 3000);
@@ -314,10 +325,15 @@ export class Chess {
   private within(block: Section): void { this.cgStats().expand(); block.reveal(); }
 
   private show(k: string | undefined): void {
+    if (this.isGames() || (!this.legacy && k !== 'partidas')) return; // those blocks are not rendered here
     if (k === 'comparativa') this.within(this.cgComp());
     else if (k === 'aperturas') this.within(this.cgOpen());
     else if (k === 'evolucion') this.within(this.cgEvo());
     else if (k === 'partidas') void this.router.navigate(['/chess', 'partidas'], { replaceUrl: true }); // old ?s=partidas links
+  }
+
+  private loadOpenings(): Observable<ChessData> {
+    return orNull(this.api.get<Openings>('/api/stats/openings')).pipe(map((op) => ({ op }) as ChessData));
   }
 
   private load(): Observable<ChessData> {

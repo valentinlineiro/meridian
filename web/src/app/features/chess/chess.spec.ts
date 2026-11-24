@@ -5,7 +5,7 @@ import { HttpTestingController, provideHttpClientTesting, TestRequest } from '@a
 import { provideRouter, Router, UrlSegment, withComponentInputBinding } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { StatsService } from '../../core/stats.service';
-import { Chess } from './chess';
+import { CHESS_LEGACY, Chess } from './chess';
 import { Compare } from './components/compare';
 import { MatchesService } from './services/matches.service';
 import { EngineProfile, Profile } from './components/engine-profile';
@@ -62,10 +62,10 @@ export const chessApi = (over: Api = {}): Api => {
 @Component({ template: '' })
 class Elsewhere {}
 
-export const setupChess = async () => {
+export const setupChess = async (opts: { legacy?: boolean } = {}) => {
   localStorage.clear();
   TestBed.configureTestingModule({
-    providers: [provideRouter([{ matcher: chessMatcher, component: Chess }, routes.find((r) => r.path === 'profile')!, { path: ':other', component: Elsewhere }], withComponentInputBinding()), provideHttpClient(), provideHttpClientTesting()],
+    providers: [{ provide: CHESS_LEGACY, useValue: opts.legacy ?? true }, provideRouter([{ matcher: chessMatcher, component: Chess }, routes.find((r) => r.path === 'profile')!, { path: ':other', component: Elsewhere }], withComponentInputBinding()), provideHttpClient(), provideHttpClientTesting()],
   });
   const http = TestBed.inject(HttpTestingController);
   const harness = await RouterTestingHarness.create();
@@ -1150,6 +1150,32 @@ describe('Ajedrez: the games list lives in /chess/partidas', () => {
     expect(chessMatcher(seg('chess', 'otra'), null as never, null as never)).toBeNull();
     expect(chessMatcher(seg('chess', 'partidas', 'x'), null as never, null as never)).toBeNull();
     expect(chessMatcher(seg('games'), null as never, null as never)).toBeNull();
+  });
+
+  describe('without the legacy blocks (what production ships)', () => {
+    let t: Awaited<ReturnType<typeof setupChess>>;
+    beforeEach(async () => { t = await setupChess({ legacy: false }); });
+    const asked = () => t.pending().map((r) => r.request.url);
+
+    it('shouldAskOnlyForTheWeeklyAndTheProfileWhenOnChess', async () => {
+      await t.harness.navigateByUrl('/chess');
+      expect(asked().sort()).toEqual(['/api/stats/profile', '/api/stats/weekly']);
+    });
+
+    it('shouldAskForTheOpeningsButNotTheOldBundleWhenOnChessPartidas', async () => {
+      await t.harness.navigateByUrl('/chess/partidas');
+      const urls = asked();
+      expect(urls).toContain('/api/stats/openings');
+      expect(urls).toContain('/api/matches'); // the list is on screen here
+      for (const gone of ['/api/stats/bundle', '/api/stats/summary', '/api/stats/timeline', '/api/stats/recent', '/api/stats/phases', '/api/stats/weekly'])
+        expect(urls, gone).not.toContain(gone);
+    });
+
+    it('shouldNotRenderTheLegacyBlockWhenItIsOff', async () => {
+      await t.open(chessApi());
+      expect(t.el().querySelector('#chessLegacy')).toBeNull();
+      expect(t.el().querySelector('#chessEngineProfileDetails')).not.toBeNull();
+    });
   });
 
   describe('views', () => {

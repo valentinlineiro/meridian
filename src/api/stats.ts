@@ -481,7 +481,11 @@ export async function handleStatsWeekly(db: D1Database, url: URL): Promise<Respo
   `)).all<{ week: string; elo_after: number }>()).results ?? []);
   for (const c of closing) elo.set(c.week, Number(c.elo_after));
 
-  return json(foldWeekly(rows, elo));
+  // When the latest chess snapshot landed: the page's "actualizado" label, so the page needs no other stats request for it.
+  const syncedAt = (await bind(db.prepare(`SELECT MAX(created_at) AS at FROM snapshots WHERE source = '${CHESS_SOURCE}' ${userId ? "AND user_id = ?" : ""}`))
+    .first<{ at: string | null }>())?.at ?? null;
+
+  return json({ ...foldWeekly(rows, elo), syncedAt });
 }
 
 // How many past syncs to scan for other courses' last-known Path. Bounded: each row keeps levels only

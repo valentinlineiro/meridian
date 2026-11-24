@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { StatsService } from '../../core/stats.service';
 import { ChessPeriods } from './chess-periods';
 import { Tally, Weekly } from './weekly.model';
 
@@ -56,6 +57,35 @@ describe('ChessPeriods', () => {
     const rows = [...el.querySelectorAll('#chessEloTable tbody tr')].map((r) => r.textContent!.replace(/\s+/g, ' ').trim());
     expect(rows).toHaveLength(2);
     expect(rows[1]).toContain('925');
+  });
+
+  it('shouldKeepARowAtThePeriodAverageInPorColorWhenItsDeltaIsZero', async () => {
+    const w = { week: monday(0), games: 20, total: T(10, 0, 10), byColor: { white: T(5, 0, 5), black: T(5, 0, 5) }, byFamily: { Italiana: T(10, 0, 10) }, byPhase: {}, eloEnd: null };
+    const el = await mount({ weeks: [w], undated: { games: 0, ...T() } });
+    const rows = [...el.querySelectorAll('#chessColorOpenings li')].map((r) => r.textContent!.replace(/\s+/g, ' '));
+    expect(rows.some((r) => r.includes('Con blancas'))).toBe(true);
+    expect(rows.some((r) => r.includes('Con negras'))).toBe(true);
+    expect(rows.some((r) => r.includes('Italiana'))).toBe(true); // the only family played always equals the average
+  });
+
+  it('shouldPublishTheSyncTimeInTheHeaderWhenWeeklyCarriesIt', async () => {
+    await mount({ weeks: [week(0, 8, 2, 925)], undated: { games: 0, ...T() }, syncedAt: '2026-11-19T10:00:00Z' });
+    expect(TestBed.inject(StatsService).chessUpdated()).toBe('Ajedrez · actualizado 2026-11-19');
+  });
+
+  it('shouldLeaveTheHeaderAloneWhenWeeklyHasNoSyncTime', async () => {
+    await mount({ weeks: [week(0, 8, 2, 925)], undated: { games: 0, ...T() }, syncedAt: null });
+    expect(TestBed.inject(StatsService).chessUpdated()).toBe('');
+  });
+
+  it('shouldMentionTheGamesWithoutADateWhenAnyExist', async () => {
+    const el = await mount({ weeks: [week(0, 8, 2, 925)], undated: { games: 40, ...T(20, 0, 20) } });
+    expect(el.textContent).toContain('40 partidas sin fecha');
+  });
+
+  it('shouldNotMentionUndatedGamesWhenThereAreNone', async () => {
+    const el = await mount({ weeks: [week(0, 8, 2, 925)], undated: { games: 0, ...T() } });
+    expect(el.textContent).not.toContain('sin fecha');
   });
 
   it('shouldSayNoPeriodDataWhenThePeriodHasNoGamesButOlderWeeksExist', async () => {

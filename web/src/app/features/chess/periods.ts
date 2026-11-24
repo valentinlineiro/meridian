@@ -46,8 +46,9 @@ const COLOR_LABEL: Record<string, string> = { white: 'Con blancas', black: 'Con 
 const LONG_LABEL = 'Partidas largas (más de 80 jugadas)';
 
 /** Strengths and weaknesses of a period: each point against the period's own competitive win rate (delta in percentage points). */
-export function rankPoints(current: readonly WeekBucket[]): { strong: Point[]; weak: Point[]; sparse: Point[] } {
-  const out = { strong: [] as Point[], weak: [] as Point[], sparse: [] as Point[] };
+/** `all` has every point with a rate, ranked or not: one exactly at the period average is neither strong nor weak but still belongs in its own block. */
+export function rankPoints(current: readonly WeekBucket[]): { strong: Point[]; weak: Point[]; sparse: Point[]; all: Point[] } {
+  const out = { strong: [] as Point[], weak: [] as Point[], sparse: [] as Point[], all: [] as Point[] };
   const base = winRate(sumTally(current.map((w) => w.total)), true).rate;
   if (base === null) return out;
 
@@ -65,6 +66,7 @@ export function rankPoints(current: readonly WeekBucket[]): { strong: Point[]; w
     const { n, rate } = winRate(t, true);
     if (rate === null) continue;
     const p: Point = { kind, label, n, rate, delta: (rate - base) * 100 };
+    out.all.push(p);
     if (n < MIN_GAMES) out.sparse.push(p);
     else if (p.delta > 0) out.strong.push(p);
     else if (p.delta < 0) out.weak.push(p);

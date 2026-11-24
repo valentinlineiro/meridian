@@ -81,8 +81,20 @@ describe('rankPoints', () => {
     expect(out.sparse.find((p) => p.kind === 'long')!.rate).toBe(1);
   });
 
+  it('shouldKeepAPointAtThePeriodAverageInTheFullListWhenItsDeltaIsZero', () => {
+    const out = rankPoints([wk('2026-11-16', { white: T(5, 0, 5), black: T(5, 0, 5) })]);
+    expect([...out.strong, ...out.weak]).toEqual([]); // at the average: neither strong nor weak
+    expect(out.all.map((p) => p.label).sort()).toEqual(['Con blancas', 'Con negras']);
+    expect(out.all.every((p) => p.delta === 0)).toBe(true);
+  });
+
+  it('shouldListEveryPointInTheFullListIncludingSparseWhenRanking', () => {
+    const out = rankPoints([wk('2026-11-16', { white: T(9, 0, 1), black: T(1, 0, 2) })]);
+    expect(out.all.map((p) => p.label).sort()).toEqual(['Con blancas', 'Con negras']);
+  });
+
   it('shouldReturnNothingWhenThePeriodHasNoDecidedGames', () => {
-    expect(rankPoints([])).toEqual({ strong: [], weak: [], sparse: [] });
+    expect(rankPoints([])).toEqual({ strong: [], weak: [], sparse: [], all: [] });
   });
 });
 

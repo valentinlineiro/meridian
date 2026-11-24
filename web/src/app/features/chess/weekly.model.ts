@@ -9,4 +9,5 @@ export interface WeekBucket {
   eloEnd: number | null;
 }
 
-export interface Weekly { weeks: WeekBucket[]; undated: Tally & { games: number } }
+/** `syncedAt`: when the latest chess snapshot landed (ISO), for the "actualizado" label; null when there is none. */
+export interface Weekly { weeks: WeekBucket[]; undated: Tally & { games: number }; syncedAt?: string | null }

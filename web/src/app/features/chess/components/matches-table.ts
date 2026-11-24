@@ -155,6 +155,7 @@ export class MatchesTable {
   private noticeTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor() {
+    this.m.want();
     effect((onCleanup) => { this.m.filters(); this.m.offset(); this.notice.set(''); onCleanup(() => clearTimeout(this.noticeTimer)); });
   }
 

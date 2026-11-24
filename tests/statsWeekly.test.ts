@@ -3,6 +3,7 @@ import { createRequire } from "node:module";
 import { readFileSync } from "node:fs";
 import { handleStats } from "../src/api/stats.ts";
 import type { Weekly } from "../src/domain/chessWeekly.ts";
+type Reply = Weekly & { syncedAt: string | null };
 const { DatabaseSync } = createRequire(import.meta.url)("node:sqlite");
 
 const MIGRATIONS = ["0001_init", "0005_played_at", "0006_match_details", "0007_openings_and_phases", "0017_opening_family_mate_type"];
@@ -38,7 +39,7 @@ function snapshot(db: any, id: string, createdAt: string, elo: number, user = "u
     VALUES (?, ?, 'duolingo-chess', ?, ?, 0, 0, ?, 0)`).run(id, createdAt, user, JSON.stringify({ eloRating: elo }), id);
 }
 const get = async (d1: any, qs = "userId=u1") =>
-  (await (await handleStats(d1, "weekly", new URL(`http://x/api/stats/weekly?${qs}`))).json()) as Weekly;
+  (await (await handleStats(d1, "weekly", new URL(`http://x/api/stats/weekly?${qs}`))).json()) as Reply;
 
 describe("GET /api/stats/weekly", () => {
   it("shouldReturnOneBucketPerMondayUtcWhenGamesSpanSeveralDays", async () => {
@@ -84,6 +85,19 @@ describe("GET /api/stats/weekly", () => {
     snapshot(db, "s2", "2026-11-20T10:00:00Z", 905);
     snapshot(db, "s3", "2026-11-17T10:00:00Z", 1400, "u2");
     expect((await get(d1)).weeks[0]!.eloEnd).toBe(905);
+  });
+
+  it("shouldReturnTheLatestChessSnapshotTimeOfTheUserWhenSnapshotsExist", async () => {
+    const { db, d1 } = createDb();
+    snapshot(db, "s1", "2026-11-10T10:00:00Z", 880);
+    snapshot(db, "s2", "2026-11-19T10:00:00Z", 905);
+    snapshot(db, "s3", "2026-11-22T10:00:00Z", 1400, "u2");
+    expect((await get(d1)).syncedAt).toBe("2026-11-19T10:00:00Z");
+  });
+
+  it("shouldReturnNullSyncedAtWhenThereAreNoSnapshots", async () => {
+    const { d1 } = createDb();
+    expect((await get(d1)).syncedAt).toBeNull();
   });
 
   it("shouldCountDisconnectionLossesApartWhenEndConditionIsDisconnection", async () => {
