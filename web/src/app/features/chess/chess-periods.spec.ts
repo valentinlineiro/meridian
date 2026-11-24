@@ -3,7 +3,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { StatsService } from '../../core/stats.service';
 import { ChessPeriods } from './chess-periods';
-import { Tally, Weekly } from './weekly.model';
+import { Tally, WeekBucket, Weekly } from './weekly.model';
 
 const T = (w = 0, d = 0, l = 0): Tally => ({ w, d, l, u: 0, disconnections: 0 });
 const monday = (back: number) => { const d = new Date(); d.setUTCHours(0, 0, 0, 0); d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7) - back * 7); return d.toISOString().slice(0, 10); };
@@ -66,6 +66,32 @@ describe('ChessPeriods', () => {
     expect(rows.some((r) => r.includes('Con blancas'))).toBe(true);
     expect(rows.some((r) => r.includes('Con negras'))).toBe(true);
     expect(rows.some((r) => r.includes('Italiana'))).toBe(true); // the only family played always equals the average
+  });
+
+  const families = (k: number) => Object.fromEntries(Array.from({ length: k }, (_, i) => [`Ap${i + 1}`, T(10 + i * 2, 0, 5)])); // higher index = more played
+  const wide = (byFamily: Record<string, Tally>, endgame?: Tally): WeekBucket => ({ week: monday(0), games: 300, total: T(150, 0, 150), byColor: { white: T(75, 0, 75), black: T(75, 0, 75) }, byFamily, byPhase: endgame ? { endgame } : {}, eloEnd: null });
+
+  it('shouldShowTheEightMostPlayedOpeningsAndFoldTheRestWhenThereAreMoreThanEight', async () => {
+    const el = await mount({ weeks: [wide(families(12))], undated: { games: 0, ...T() } });
+    const top = [...el.querySelectorAll('#chessOpeningsTop li .rate-label')].map((l) => l.textContent!.trim());
+    expect(top).toHaveLength(8);
+    expect(top).not.toContain('Ap1'); // the four least played go to the fold
+    expect(top).toContain('Ap12');
+    expect(el.querySelectorAll('#chessOpeningsRest li')).toHaveLength(4);
+    expect(el.querySelector('#chessOpeningsRest summary')!.textContent).toContain('4');
+  });
+
+  it('shouldNotFoldAnythingWhenThereAreEightOrFewerOpenings', async () => {
+    const el = await mount({ weeks: [wide(families(8))], undated: { games: 0, ...T() } });
+    expect(el.querySelectorAll('#chessOpeningsTop li')).toHaveLength(8);
+    expect(el.querySelector('#chessOpeningsRest')).toBeNull();
+  });
+
+  it('shouldLabelTheLongGamesRowWithTheDefinitionNotWithTheBlockTitleWhenShowingIt', async () => {
+    const el = await mount({ weeks: [wide(families(2), T(20, 0, 5))], undated: { games: 0, ...T() } });
+    const row = el.querySelector('#chessLong li')!;
+    expect(row.querySelector('.rate-label')!.textContent!.trim()).toBe('Más de 80 jugadas');
+    expect(el.querySelector('#chessLong h3')!.textContent!.trim()).toBe('Partidas largas');
   });
 
   it('shouldSayNoClearDifferenceWhenNothingStandsOutFromTheAverage', async () => {

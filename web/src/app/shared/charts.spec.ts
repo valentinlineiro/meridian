@@ -70,8 +70,15 @@ describe('m-sparkline', () => {
     const [area, line] = [...el.querySelectorAll('path')];
     expect(line.getAttribute('d')).toBe('M10.0 80.0 L260.0 10.0 L510.0 45.0');
     expect(area.getAttribute('d')).toBe('M10.0 80.0 L260.0 10.0 L510.0 45.0 L510.0 80 L10.0 80 Z');
-    expect([...el.querySelectorAll('text')].map((t) => t.textContent)).toEqual(['920', '900']);
+    expect([...el.querySelectorAll('.sp-lbl')].map((t) => t.textContent)).toEqual(['920', '900']);
     expect(el.querySelector('.muted')!.textContent).toBe('1 nov3 nov');
+  });
+
+  it('shouldNeverDrawTheRangeAsSvgTextBecauseItScalesWithTheWidth', async () => {
+    // svg text in a 520-unit viewBox rendered at 6.6px on a phone and 19px on a desktop
+    const el = await render(Sparkline, { points: [{ date: '2026-11-01', elo: 900 }, { date: '2026-11-02', elo: 920 }] });
+    expect(el.querySelectorAll('svg text')).toHaveLength(0);
+    expect(el.querySelectorAll('.sp-lbl')).toHaveLength(2);
   });
 
   it('shouldKeepAllLineCoordinatesWithinVisibleArea', async () => {

@@ -569,3 +569,4 @@ a:focus-visible,summary:focus-visible{outline:2px solid var(--link);outline-offs
 .pb-track::after{content:"";position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--line-ui)}
 .pb-fill{position:absolute;top:0;bottom:0;min-width:2px}.pb-up{background:var(--ok)}.pb-down{background:var(--err)}
 app-rate-rows,app-points-bars{display:block}app-rate-rows+app-rate-rows{margin-top:10px}
+.sp-wrap{position:relative}.sp-lbl{position:absolute;left:2px;font-size:var(--fs-sm);line-height:1;color:var(--muted);font-variant-numeric:tabular-nums;pointer-events:none}.sp-max{top:0}.sp-min{bottom:0}
