@@ -108,3 +108,14 @@ En la primera entrega se oculta, no se borra: racha y barra del héroe, banner d
 - Verificar con datos reales (requiere una concesión de lectura del dueño) cuántas partidas tienen `elo_after` y `played_at`, y si la serie semanal de ELO tiene huecos.
 - Tipo de final: pospuesto, no hay datos.
 - Si el rendimiento por apertura por semana pesa demasiado, agregar por mes en el periodo "todo".
+
+## Cambios tras medir producción (2026-11-24)
+
+Lectura de solo lectura con la concesión del dueño: 1771 partidas, todas con fecha, apertura y fase; `elo_after` vacío en las 1771; 108 instantáneas de ELO desde el 23 de septiembre.
+
+- **El ELO semanal sale solo de las instantáneas.** `elo_after` ya no se lee: no aportaba nada y costaba 3.544 filas leídas por visita.
+- **Las aperturas se devuelven con su nombre** (`OPENING_FAMILY_LABELS`), no con la clave (`four_knights`).
+- **"Fuerte" o "débil" exige una diferencia clara:** el intervalo de Wilson del 95 % debe quedar entero a un lado de la media del periodo. Con diez partidas, +4 puntos es ruido. Los demás puntos siguen en su bloque, sin etiqueta.
+- **La página dice desde cuándo hay lecturas de ELO** cuando el periodo llega más atrás.
+- Las partidas sin fecha se nombran bajo el recuento y no entran en "Todo" (su tally no tiene desglose por color).
+- El perfil del motor no sigue el periodo: su `since` es una partida de corte, no una fecha.

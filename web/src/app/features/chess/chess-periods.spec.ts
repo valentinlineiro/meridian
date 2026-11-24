@@ -68,6 +68,22 @@ describe('ChessPeriods', () => {
     expect(rows.some((r) => r.includes('Italiana'))).toBe(true); // the only family played always equals the average
   });
 
+  it('shouldSayNoClearDifferenceWhenNothingStandsOutFromTheAverage', async () => {
+    const w = { week: monday(0), games: 40, total: T(20, 0, 20), byColor: { white: T(10, 0, 10), black: T(10, 0, 10) }, byFamily: { Italiana: T(10, 0, 10), Siciliana: T(10, 0, 10) }, byPhase: {}, eloEnd: null };
+    const el = await mount({ weeks: [w], undated: { games: 0, ...T() } });
+    expect(el.querySelector('#chessStrengths')!.textContent).toContain('Ninguna diferencia clara');
+  });
+
+  it('shouldSayWhereTheEloReadingsStartWhenTheyDoNotCoverThePeriod', async () => {
+    const el = await mount({ weeks: [week(8, 5, 5, null), week(2, 5, 5, 900), week(0, 8, 2, 925)], undated: { games: 0, ...T() } });
+    expect(el.querySelector('#chessEloSince')!.textContent).toContain('desde la semana del');
+  });
+
+  it('shouldNotSayWhereTheEloStartsWhenTheReadingsCoverThePeriod', async () => {
+    const el = await mount({ weeks: [week(2, 5, 5, 900), week(0, 8, 2, 925)], undated: { games: 0, ...T() } });
+    expect(el.querySelector('#chessEloSince')).toBeNull();
+  });
+
   it('shouldPublishTheSyncTimeInTheHeaderWhenWeeklyCarriesIt', async () => {
     await mount({ weeks: [week(0, 8, 2, 925)], undated: { games: 0, ...T() }, syncedAt: '2026-11-19T10:00:00Z' });
     expect(TestBed.inject(StatsService).chessUpdated()).toBe('Ajedrez · actualizado 2026-11-19');

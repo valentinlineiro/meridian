@@ -45,7 +45,14 @@ export interface Point { kind: 'color' | 'opening' | 'long'; label: string; n: n
 const COLOR_LABEL: Record<string, string> = { white: 'Con blancas', black: 'Con negras' };
 const LONG_LABEL = 'Partidas largas (más de 80 jugadas)';
 
-/** Strengths and weaknesses of a period: each point against the period's own competitive win rate (delta in percentage points). */
+/** Wilson 95 % interval of wins/n (the formula of src/domain/proportion.ts), as fractions. */
+function wilsonInterval(wins: number, n: number): { lower: number; upper: number } {
+  const z2 = 1.96 * 1.96, p = wins / n, k = 1 + z2 / n, centre = (p + z2 / (2 * n)) / k;
+  const half = (1.96 * Math.sqrt(p * (1 - p) / n + z2 / (4 * n * n))) / k;
+  return { lower: wins === 0 ? 0 : Math.max(0, centre - half), upper: wins === n ? 1 : Math.min(1, centre + half) };
+}
+
+/** Strengths and weaknesses of a period: each point against the period's own competitive win rate (delta in percentage points), called out only when the difference is clear. */
 /** `all` has every point with a rate, ranked or not: one exactly at the period average is neither strong nor weak but still belongs in its own block. */
 export function rankPoints(current: readonly WeekBucket[]): { strong: Point[]; weak: Point[]; sparse: Point[]; all: Point[] } {
   const out = { strong: [] as Point[], weak: [] as Point[], sparse: [] as Point[], all: [] as Point[] };
@@ -67,9 +74,11 @@ export function rankPoints(current: readonly WeekBucket[]): { strong: Point[]; w
     if (rate === null) continue;
     const p: Point = { kind, label, n, rate, delta: (rate - base) * 100 };
     out.all.push(p);
-    if (n < MIN_GAMES) out.sparse.push(p);
-    else if (p.delta > 0) out.strong.push(p);
-    else if (p.delta < 0) out.weak.push(p);
+    if (n < MIN_GAMES) { out.sparse.push(p); continue; }
+    // Strong or weak only when the whole interval sits on one side of the period average; +4 points on ten games is noise.
+    const ci = wilsonInterval(t.w, n);
+    if (ci.lower > base) out.strong.push(p);
+    else if (ci.upper < base) out.weak.push(p);
   }
   out.strong.sort((a, b) => b.delta - a.delta);
   out.weak.sort((a, b) => a.delta - b.delta);

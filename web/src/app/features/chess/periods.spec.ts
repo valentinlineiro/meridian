@@ -62,16 +62,28 @@ describe('rankPoints', () => {
     expect(MIN_GAMES).toBe(8);
     const out = rankPoints([wk('2026-11-16', { white: T(7, 0, 3), black: T(0, 0, 4) })]);
     expect(out.sparse.map((p) => p.label)).toEqual(['Con negras']);
-    expect([...out.strong, ...out.weak].map((p) => p.label)).toEqual(['Con blancas']);
+    expect(out.all.map((p) => p.label).sort()).toEqual(['Con blancas', 'Con negras']);
   });
 
   it('shouldOrderStrongDescendingAndWeakAscendingByDelta', () => {
     const fam = (w: number, l: number) => T(w, 0, l);
-    const out = rankPoints([wk('2026-11-16', { white: T(10, 0, 10), families: { A: fam(9, 1), B: fam(7, 3), C: fam(3, 7), D: fam(1, 9) } })]);
+    const out = rankPoints([wk('2026-11-16', { white: T(200, 0, 200), families: { A: fam(90, 10), B: fam(70, 30), C: fam(30, 70), D: fam(10, 90) } })]);
     expect(out.strong.map((p) => p.label)).toEqual(['A', 'B']);
     expect(out.weak.map((p) => p.label)).toEqual(['D', 'C']);
     expect(out.strong[0]!.delta).toBeCloseTo(40, 5); // 90 % vs the 50 % period average
     expect(out.weak[0]!.delta).toBeCloseTo(-40, 5);
+  });
+
+  it('shouldNotCallAPointStrongWhenItsIntervalIncludesThePeriodAverage', () => {
+    // 8/10 against a 76 % average is +4 points on ten games: noise, not a strength (real case: four_knights, 30 days)
+    const out = rankPoints([wk('2026-11-16', { white: T(76, 0, 24), families: { Noise: T(8, 0, 2), Clear: T(95, 0, 5) } })]);
+    expect(out.strong.map((p) => p.label)).toEqual(['Clear']);
+    expect(out.all.map((p) => p.label)).toContain('Noise'); // still listed in its own block
+  });
+
+  it('shouldNotCallAPointWeakWhenItsIntervalIncludesThePeriodAverage', () => {
+    const out = rankPoints([wk('2026-11-16', { white: T(60, 0, 40), families: { Noise: T(5, 0, 5), Clear: T(15, 0, 85) } })]);
+    expect(out.weak.map((p) => p.label)).toEqual(['Clear']);
   });
 
   it('shouldKeepDisconnectionLossesOutOfTheRateWhenRanking', () => {

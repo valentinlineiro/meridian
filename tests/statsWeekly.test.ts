@@ -70,15 +70,7 @@ describe("GET /api/stats/weekly", () => {
     expect(out.undated).toEqual({ games: 2, w: 1, d: 0, l: 1, u: 0, disconnections: 0 });
   });
 
-  it("shouldAttachLatestEloAfterOfTheWeekWhenKnown", async () => {
-    const { db, d1 } = createDb();
-    game(db, { at: utc("2026-11-16T08:00:00Z"), eloAfter: 900 });
-    game(db, { at: utc("2026-11-18T08:00:00Z"), eloAfter: 925 });
-    game(db, { at: utc("2026-11-19T08:00:00Z") }); // no elo_after: must not hide 925
-    expect((await get(d1)).weeks[0]!.eloEnd).toBe(925);
-  });
-
-  it("shouldFallBackToSnapshotEloWhenNoEloAfterInTheWeek", async () => {
+  it("shouldTakeTheEloOfTheWeekFromTheLastChessSnapshotOfThatWeek", async () => {
     const { db, d1 } = createDb();
     game(db, { at: utc("2026-11-17T08:00:00Z") });
     snapshot(db, "s1", "2026-11-16T10:00:00Z", 880);
@@ -112,6 +104,23 @@ describe("GET /api/stats/weekly", () => {
     game(db, { at: utc("2026-11-17T10:00:00Z"), color: "White" });
     game(db, { at: utc("2026-11-17T11:00:00Z"), color: "white" });
     expect(Object.keys((await get(d1)).weeks[0]!.byColor)).toEqual(["white"]);
+  });
+
+  it("shouldNeverReadEloAfterWhenBuildingTheWeeks", async () => {
+    // production has elo_after empty on every row: reading it cost 3.5k rows for nothing
+    const { db, d1, prepared } = createDb();
+    game(db, { at: utc("2026-11-17T10:00:00Z"), eloAfter: 925 });
+    snapshot(db, "s1", "2026-11-18T10:00:00Z", 880);
+    expect((await get(d1)).weeks[0]!.eloEnd).toBe(880); // the snapshot, not elo_after
+    for (const sql of prepared) expect(sql).not.toMatch(/elo_after|ROW_NUMBER/i);
+  });
+
+  it("shouldReturnOpeningNamesWhenTheFamilyHasALabel", async () => {
+    const { db, d1 } = createDb();
+    game(db, { at: utc("2026-11-17T10:00:00Z"), family: "sicilian" });
+    game(db, { at: utc("2026-11-17T11:00:00Z"), family: "four_knights" });
+    game(db, { at: utc("2026-11-17T12:00:00Z"), family: "some_new_key" });
+    expect(Object.keys((await get(d1)).weeks[0]!.byFamily).sort()).toEqual(["Cuatro Caballos", "Siciliana", "some_new_key"]);
   });
 
   it("shouldIssueOnlyGroupedQueriesWhenCalled", async () => {

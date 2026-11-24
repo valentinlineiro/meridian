@@ -4,13 +4,13 @@ import { newcombeDiff } from "../domain/proportion.ts";
 import { summarizeLang } from "../analytics/lang.ts";
 import { buildCourseProgressHistory } from "../analytics/courseHistory.ts";
 import { classifyOpponentSegment, OPPONENT_SEGMENT_LABELS, type OpponentSegment } from "../analytics/opponent.ts";
-import { OPENING_FAMILY_LABELS } from "../domain/openingFamily.ts";
 import { MATE_TYPE_LABELS } from "../domain/mateType.ts";
 import { readMateThreats, type MateThreatsOk, type ThreatPhase } from "../domain/mateThreats.ts";
 import { median } from "../analytics/median.ts";
 import { handleStatsProfile } from "./profileStats.ts";
 import { PHASE_META, type PhaseKey } from "../analytics/phases.ts";
 import { foldWeekly, mondayOf, type WeeklyRow } from "../domain/chessWeekly.ts";
+import { OPENING_FAMILY_LABELS } from "../domain/openingFamily.ts";
 
 export interface OpeningStat {
   key: string;
@@ -465,27 +465,20 @@ export async function handleStatsWeekly(db: D1Database, url: URL): Promise<Respo
     GROUP BY 1, 2, 3, 4, 5, 6, 7
   `)).all<WeeklyRow>()).results ?? []) as WeeklyRow[];
 
-  // The ELO closing each week: the last elo_after of the week, else the last chess snapshot of that week.
+  // The ELO closing each week: the last chess snapshot of that week (elo_after is empty on every production row, so it is not read).
   const elo = new Map<string, number>();
   for (const s of await snapshotElos(db, userId)) {
     const wk = s.elo == null ? null : mondayOf(String(s.created_at));
     if (wk) elo.set(wk, Number(s.elo)); // ascending by created_at: the last one wins
   }
-  const closing = ((await bind(db.prepare(`
-    SELECT week, elo_after FROM (
-      SELECT ${WEEK_SQL} AS week, md.elo_after AS elo_after,
-             ROW_NUMBER() OVER (PARTITION BY ${WEEK_SQL} ORDER BY m.played_at DESC, m.rowid DESC) AS rn
-      FROM matches m JOIN match_details md ON md.match_id = m.match_id
-      WHERE m.played_at IS NOT NULL AND md.elo_after IS NOT NULL ${userId ? "AND m.user_id = ?" : ""}
-    ) WHERE rn = 1
-  `)).all<{ week: string; elo_after: number }>()).results ?? []);
-  for (const c of closing) elo.set(c.week, Number(c.elo_after));
 
   // When the latest chess snapshot landed: the page's "actualizado" label, so the page needs no other stats request for it.
   const syncedAt = (await bind(db.prepare(`SELECT MAX(created_at) AS at FROM snapshots WHERE source = '${CHESS_SOURCE}' ${userId ? "AND user_id = ?" : ""}`))
     .first<{ at: string | null }>())?.at ?? null;
 
-  return json({ ...foldWeekly(rows, elo), syncedAt });
+  // Families are stored as keys (four_knights); the page shows names.
+  const named = rows.map((r) => ({ ...r, family: r.family == null ? null : OPENING_FAMILY_LABELS[r.family] ?? r.family }));
+  return json({ ...foldWeekly(named, elo), syncedAt });
 }
 
 // How many past syncs to scan for other courses' last-known Path. Bounded: each row keeps levels only

@@ -36,6 +36,7 @@ import { Weekly } from './weekly.model';
             <p class="muted u-mt-8">Una sola lectura de ELO en este periodo: la tendencia aparecerá con la siguiente.</p>
           } @else if (eloPoints().length > 1) {
             <div class="u-mt-8"><m-sparkline [points]="eloPoints()" /></div>
+            @if (eloSince(); as since) { <p id="chessEloSince" class="muted u-fs-sm">ELO observado en las sincronizaciones desde la semana del {{ fmtDate(since) }}; antes no hay lecturas.</p> }
             <details class="u-mt-8"><summary class="dsum">Datos de la gráfica</summary>
               <table id="chessEloTable" class="u-mt-6"><caption class="sr-only">ELO al cierre de cada semana</caption>
                 <thead><tr><th scope="col">Semana del</th><th scope="col">ELO</th></tr></thead>
@@ -53,10 +54,10 @@ import { Weekly } from './weekly.model';
         @if (games()) {
           <div class="card u-mt-12" id="chessStrengths">
             <h2>Puntos fuertes y débiles</h2>
-            <p class="muted u-fs-sm">Frente a tu porcentaje medio de victorias del periodo ({{ baseline() }}). Solo con {{ min }} partidas o más.</p>
+            <p class="muted u-fs-sm">Frente a tu porcentaje medio de victorias del periodo ({{ baseline() }}). Solo se señalan diferencias claras (intervalo de confianza del 95 %) con {{ min }} partidas o más.</p>
             <div class="grid2">
-              <app-points-bars title="Puntos fuertes" [points]="ranked().strong" empty="Nada destaca todavía." />
-              <app-points-bars title="Puntos débiles" [points]="ranked().weak" empty="Nada destaca todavía." />
+              <app-points-bars title="Puntos fuertes" [points]="ranked().strong" empty="Ninguna diferencia clara con tu media." />
+              <app-points-bars title="Puntos débiles" [points]="ranked().weak" empty="Ninguna diferencia clara con tu media." />
             </div>
           </div>
           <div class="card u-mt-12" id="chessColorOpenings">
@@ -93,6 +94,12 @@ export class ChessPeriods {
   protected readonly delta = computed(() => { const d = this.trend().delta ?? 0; return `${d > 0 ? '+' : d < 0 ? '−' : ''}${Math.abs(d)}`; });
   protected readonly deltaWhy = computed(() => this.slice().previous.some((w) => w.eloEnd != null) ? 'frente al cierre del periodo anterior' : 'desde la primera lectura del periodo');
   protected readonly eloPoints = computed(() => this.slice().current.filter((w) => w.eloEnd != null).map((w) => ({ date: w.week, elo: w.eloEnd as number })));
+  /** The first week with an ELO reading when the period reaches back before it (readings only exist since the first sync). */
+  protected readonly eloSince = computed(() => {
+    const first = this.all().weeks.find((w) => w.eloEnd != null)?.week;
+    const start = this.slice().current[0]?.week;
+    return first && start && start < first ? first : null;
+  });
   protected readonly ranked = computed(() => rankPoints(this.slice().current));
   protected byKind(kind: Point['kind']): Point[] { return this.ranked().all.filter((p) => p.kind === kind).sort((a, b) => b.rate - a.rate); }
   protected readonly openings = computed(() => this.byKind('opening'));
