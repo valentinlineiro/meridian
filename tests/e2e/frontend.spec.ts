@@ -119,6 +119,7 @@ test.describe('Frontend E2E Integration Suite', () => {
     await page.fill('input[name="email"]', 'owner@localhost');
     await page.fill('input[name="password"]', 'local-dev-password-123');
     await page.click('button[type="submit"]');
+    await expect(page).toHaveURL(/\/chess\/partidas$/); // the login redirect has landed: only then reload
     await page.reload();
     await expect(page).toHaveURL(/\/chess\/partidas$/);
     await expect(page).toHaveTitle('Partidas · Ajedrez · Meridian');
