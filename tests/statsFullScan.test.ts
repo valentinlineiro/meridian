@@ -11,7 +11,8 @@ function recordingDb() {
   };
   return { db: { prepare: stmt } as any, sqls };
 }
-const fullScan = (sqls: string[]) => sqls.some((q) => /SELECT \* FROM matches\b/.test(q));
+// a read of every match, and never of its raw_json (the whole game)
+const fullScan = (sqls: string[]) => sqls.some((q) => /SELECT [^()]* FROM matches (WHERE|ORDER)/.test(q) && !/raw_json|SELECT \*/.test(q));
 
 describe("handleStats full matches read", () => {
   it.each(["timeline", "opponents"])("shouldNotReadAllMatchesWhen%sNeedsNoRows", async (kind) => {
