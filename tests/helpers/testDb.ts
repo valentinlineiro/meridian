@@ -27,6 +27,7 @@ export function setupTestDb(): TestDbInstance {
     "0014_course_path_state.sql",
     "0017_opening_family_mate_type.sql",
     "0018_mate_threats.sql",
+    "0020_snapshot_elo.sql",
   ];
 
   for (const file of migrationFiles) {

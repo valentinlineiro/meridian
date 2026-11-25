@@ -44,26 +44,22 @@ export interface PhaseStat {
   competitive: { games: number; wins: number; losses: number; draws: number; unknown: number; decided: number; winRate: number | null; winRateCi: { lower: number; upper: number } | null; scoreRate: number | null };
 }
 
+// Only what the bodies read (never raw_json, the whole game): the same columns the bundle selects.
+const MATCH_COLS = "result, outcome, opponent_elo, opponent_type, user_color, reviewed";
+
 async function allMatches(db: D1Database, userId: string | null) {
   const q = userId
-    ? "SELECT * FROM matches WHERE user_id=? ORDER BY COALESCE(played_at, 0) ASC, rowid ASC"
-    : "SELECT * FROM matches ORDER BY COALESCE(played_at, 0) ASC, rowid ASC";
+    ? `SELECT ${MATCH_COLS} FROM matches WHERE user_id=? ORDER BY COALESCE(played_at, 0) ASC, rowid ASC`
+    : `SELECT ${MATCH_COLS} FROM matches ORDER BY COALESCE(played_at, 0) ASC, rowid ASC`;
   const stmt = userId ? db.prepare(q).bind(userId) : db.prepare(q);
   return (await stmt.all<any>()).results ?? [];
 }
 
 async function getMatchPopulation(db: D1Database, userId: string | null): Promise<{ hydrated: number; totalMatches: number }> {
-  const totalMatchesStmt = userId
-    ? db.prepare("SELECT COUNT(*) as c FROM matches WHERE user_id = ?").bind(userId)
-    : db.prepare("SELECT COUNT(*) as c FROM matches");
-  const totalMatches = (await totalMatchesStmt.first<{ c: number }>())?.c ?? 0;
-
-  const hydratedStmt = userId
-    ? db.prepare("SELECT COUNT(*) as c FROM match_details WHERE user_id = ?").bind(userId)
-    : db.prepare("SELECT COUNT(*) as c FROM match_details");
-  const hydrated = (await hydratedStmt.first<{ c: number }>())?.c ?? 0;
-
-  return { hydrated, totalMatches };
+  const w = userId ? " WHERE user_id = ?" : "";
+  const stmt = db.prepare(`SELECT (SELECT COUNT(*) FROM matches${w}) AS total, (SELECT COUNT(*) FROM match_details${w}) AS hydrated`);
+  const r = await (userId ? stmt.bind(userId, userId) : stmt).first<{ total: number; hydrated: number }>();
+  return { hydrated: r?.hydrated ?? 0, totalMatches: r?.total ?? 0 };
 }
 
 // Groups rows by `key` and tallies each group with `summarize`, the one result classifier and denominator shared by every route.
@@ -195,10 +191,10 @@ function timelineBody(snaps: { id: unknown; created_at: unknown; elo: unknown }[
   return { snapshots: snaps.map((s) => ({ id: s.id, createdAt: s.created_at, elo: num(s.elo) })), note: "ELO is snapshot-observed (page/snapshot level), not verified per-match ELO." };
 }
 
-// The ELO lives only in chess snapshots (~430 KB each). Language snapshots (~1,400 of ~72 KB) never carry one, so CASE keeps SQLite from
-// parsing them (≈100 MB of JSON per call, ~590 ms in production); every snapshot is still listed, with elo null where there is none.
+// The ELO is read from `snapshots.elo`, written at ingest (migration 0020): no snapshot body is parsed. It is NULL for every non-chess snapshot,
+// which are still all listed.
 const CHESS_SOURCE = "duolingo-chess";
-const SNAPSHOT_ELO_SQL = `SELECT id, created_at, CASE WHEN source = '${CHESS_SOURCE}' THEN json_extract(raw_json, '$.eloRating') END as elo FROM snapshots`;
+const SNAPSHOT_ELO_SQL = `SELECT id, created_at, elo FROM snapshots`;
 
 async function snapshotElos(db: D1Database, userId: string | null): Promise<{ id: unknown; created_at: unknown; elo: unknown }[]> {
   const stmt = userId
@@ -229,8 +225,8 @@ export async function handleStats(db: D1Database, kind: string, url: URL): Promi
     case "summary": {
       const rows = await allMatches(db, userId);
       const eloStmt = userId
-        ? db.prepare(`SELECT json_extract(raw_json, '$.eloRating') as elo FROM snapshots WHERE source = '${CHESS_SOURCE}' AND user_id=? AND json_extract(raw_json, '$.eloRating') IS NOT NULL ORDER BY created_at ASC`).bind(userId)
-        : db.prepare(`SELECT json_extract(raw_json, '$.eloRating') as elo FROM snapshots WHERE source = '${CHESS_SOURCE}' AND json_extract(raw_json, '$.eloRating') IS NOT NULL ORDER BY created_at ASC`);
+        ? db.prepare(`SELECT elo FROM snapshots WHERE source = '${CHESS_SOURCE}' AND user_id=? AND elo IS NOT NULL ORDER BY created_at ASC`).bind(userId)
+        : db.prepare(`SELECT elo FROM snapshots WHERE source = '${CHESS_SOURCE}' AND elo IS NOT NULL ORDER BY created_at ASC`);
       return json(summaryBody(rows, (await eloStmt.all<any>()).results ?? []));
     }
     case "results": {
@@ -540,32 +536,26 @@ export async function handleMatches(db: D1Database, url: URL): Promise<Response>
   const oppSegment = url.searchParams.get("opponentSegment");
   const where = conds.length ? "WHERE " + conds.join(" AND ") : "";
 
+  const PAGE_COLS = `m.match_id, m.opponent_name, m.opponent_type, m.opponent_elo, m.user_color, m.result, m.outcome, m.reviewed, m.first_seen_at, m.played_at,
+       md.end_condition, md.opponent_id, md.opening_key, md.opening_family, md.mate_type, md.phase_key, md.ply_count,
+       ${MISSED_THREATS_SQL} AS mate_threats_missed`;
+  const FROM = "FROM matches m LEFT JOIN match_details md ON m.match_id = md.match_id";
+
   if (oppSegment) {
-    const candidateRows = ((await db.prepare(
-      `SELECT 
-         m.match_id, m.opponent_name, m.opponent_type, m.opponent_elo, m.user_color, m.result, m.outcome, m.reviewed, m.first_seen_at, m.played_at,
-         md.end_condition, md.opponent_id, md.opening_key, md.opening_family, md.mate_type, md.phase_key, md.ply_count,
-         ${MISSED_THREATS_SQL} AS mate_threats_missed
-       FROM matches m
-       LEFT JOIN match_details md ON m.match_id = md.match_id
-       ${where}
-       ORDER BY COALESCE(m.played_at, 0) DESC, m.rowid DESC`
+    // The segment is decided in JS, so every candidate is read, but only the three columns that decide it. The page's full rows
+    // (with the mate-threat JSON extract) are read afterwards for the at most `limit` games shown.
+    const candidates = ((await db.prepare(
+      `SELECT m.match_id, md.opponent_id, m.opponent_type ${FROM} ${where} ORDER BY COALESCE(m.played_at, 0) DESC, m.rowid DESC`
     ).bind(...args).all()).results ?? []) as any[];
-
-    const matchedRows: any[] = [];
-    for (const r of candidateRows) {
-      const seg = classifyOpponentSegment(r.opponent_id, r.opponent_type);
-      if (seg === oppSegment) {
-        matchedRows.push({
-          ...withLabels(r),
-          opponent_segment: seg,
-        });
-      }
-    }
-
-    const total = matchedRows.length;
-    const rows = matchedRows.slice(offset, offset + limit);
-    return json({ total, limit, offset, rows });
+    const matched = candidates.filter((r) => classifyOpponentSegment(r.opponent_id, r.opponent_type) === oppSegment);
+    const ids = matched.slice(offset, offset + limit).map((r) => r.match_id as string);
+    const byId = new Map<string, any>();
+    const chunks: string[][] = [];
+    for (let i = 0; i < ids.length; i += 50) chunks.push(ids.slice(i, i + 50)); // D1 allows 100 bound parameters per statement
+    for (const res of await Promise.all(chunks.map((c) => db.prepare(`SELECT ${PAGE_COLS} ${FROM} WHERE m.match_id IN (${c.map(() => "?").join(",")})`).bind(...c).all())))
+      for (const r of (res.results ?? []) as any[]) byId.set(r.match_id, r);
+    const rows = ids.flatMap((id) => { const r = byId.get(id); return r ? [{ ...withLabels(r), opponent_segment: oppSegment }] : []; });
+    return json({ total: matched.length, limit, offset, rows });
   }
 
   const total = (await db.prepare(`
@@ -576,10 +566,7 @@ export async function handleMatches(db: D1Database, url: URL): Promise<Response>
   `).bind(...args).first<{ c: number }>())?.c ?? 0;
 
   const rawRows = ((await db.prepare(
-    `SELECT 
-       m.match_id, m.opponent_name, m.opponent_type, m.opponent_elo, m.user_color, m.result, m.outcome, m.reviewed, m.first_seen_at, m.played_at,
-       md.end_condition, md.opponent_id, md.opening_key, md.opening_family, md.mate_type, md.phase_key, md.ply_count,
-         ${MISSED_THREATS_SQL} AS mate_threats_missed
+    `SELECT ${PAGE_COLS}
      FROM matches m
      LEFT JOIN match_details md ON m.match_id = md.match_id
      ${where}

@@ -71,8 +71,8 @@ function section(r: Record<string, unknown>, decisiveMoves: number[], competitiv
   };
 }
 
-const SECTION_SELECT = `
-  SELECT COUNT(*) AS games, SUM(moves) AS moves, SUM(loss) AS loss,
+const SECTION_COLS = `
+  COUNT(*) AS games, SUM(moves) AS moves, SUM(loss) AS loss,
     SUM(o_m) AS o_m, SUM(o_s) AS o_s, SUM(m_m) AS m_m, SUM(m_s) AS m_s, SUM(e_m) AS e_m, SUM(e_s) AS e_s,
     SUM(color = 'white') AS w_g, SUM(CASE WHEN color = 'white' THEN moves END) AS w_m, SUM(CASE WHEN color = 'white' THEN serious END) AS w_s,
     SUM(color = 'black') AS b_g, SUM(CASE WHEN color = 'black' THEN moves END) AS b_m, SUM(CASE WHEN color = 'black' THEN serious END) AS b_s,
@@ -81,8 +81,14 @@ const SECTION_SELECT = `
     SUM(result = 'loss' AND ${DISC} AND dec <= 20) AS disc_open, SUM(result = 'loss' AND ${DISC} AND dec > 20 AND dec <= 60) AS disc_mid, SUM(result = 'loss' AND ${DISC} AND dec > 60) AS disc_end,
     SUM(result = 'loss' AND dec <= 20) AS d_open, SUM(result = 'loss' AND dec > 20 AND dec <= 60) AS d_mid, SUM(result = 'loss' AND dec > 60) AS d_end,
     SUM(adv = 1) AS adv_g, SUM(adv = 1 AND result = 'win') AS adv_w, SUM(adv = 1 AND result = 'draw') AS adv_d, SUM(adv = 1 AND result = 'loss') AS adv_l,
-    SUM(dis = 1) AS dis_g, SUM(dis = 1 AND result = 'win') AS dis_w, SUM(dis = 1 AND result = 'draw') AS dis_d, SUM(dis = 1 AND result = 'loss') AS dis_l
-  FROM c WHERE state = 'ok'`;
+    SUM(dis = 1) AS dis_g, SUM(dis = 1 AND result = 'win') AS dis_w, SUM(dis = 1 AND result = 'draw') AS dis_d, SUM(dis = 1 AND result = 'loss') AS dis_l`;
+
+// The sections (all games, before the cut, after the cut) in ONE pass over `c`: each game joins the segments it belongs to, and the aggregate groups by segment.
+// A game before/after the cut needs a date; the cut game itself is on the "before" side (games are ordered by (t, rid)).
+const SEGMENTS = (cut: boolean) => cut ? "(SELECT 'all' AS g UNION ALL SELECT 'before' UNION ALL SELECT 'after') s" : "(SELECT 'all' AS g) s";
+const IN_SEGMENT = (cut: boolean) => cut
+  ? "(s.g = 'all' OR (played_at IS NOT NULL AND ((s.g = 'before' AND (t < ? OR (t = ? AND rid <= ?))) OR (s.g = 'after' AND (t > ? OR (t = ? AND rid > ?))))))"
+  : "1";
 
 export async function handleStatsProfile(db: D1Database, url: URL): Promise<Response> {
   const userId = url.searchParams.get("userId");
@@ -90,15 +96,6 @@ export async function handleStatsProfile(db: D1Database, url: URL): Promise<Resp
   const where = userId ? "WHERE m.user_id = ?" : "";
   const base = userId ? [userId] : [];
   const run = async <T>(sql: string, ...extra: unknown[]) => (await db.prepare(CTE(where) + sql).bind(...base, ...extra).all<T>()).results ?? [];
-  const sectionAt = async (cond: string, ...extra: unknown[]) => {
-    const [rows, dec, comp] = await Promise.all([
-      run<Record<string, unknown>>(SECTION_SELECT + cond, ...extra),
-      run<{ mv: number }>(`SELECT (dec + 1) / 2 AS mv FROM c WHERE state = 'ok' AND result = 'loss' AND dec IS NOT NULL${cond}`, ...extra),
-      run<{ mv: number }>(`SELECT (dec + 1) / 2 AS mv FROM c WHERE state = 'ok' AND result = 'loss' AND dec IS NOT NULL AND NOT COALESCE(${DISC}, 0)${cond}`, ...extra),
-    ]);
-    return section(rows[0] ?? {}, dec.map((d) => d.mv), comp.map((d) => d.mv));
-  };
-
   // The cut belongs to "before". Games are totally ordered by (played_at, rowid) — the same order as the trend blocks — so games sharing the cut's timestamp fall on the side their position says; undated games are in neither side. An unknown or undated cut is reported as null, never as an error.
   let since: { matchId: string; playedAt: number } | null = null;
   let cutRid = 0;
@@ -108,22 +105,30 @@ export async function handleStatsProfile(db: D1Database, url: URL): Promise<Resp
     if (cut) { since = { matchId: cut.match_id, playedAt: cut.played_at }; cutRid = cut.rid; }
   }
 
-  const reviewSql = (dir: "DESC" | "ASC") => `
-    SELECT match_id AS matchId, result, oname AS opponent, played_at AS playedAt, color, moves, serious, loss * 1.0 / moves AS acpl, dec AS decisivePly
-    FROM c WHERE state = 'ok' AND moves >= ${REVIEW_MIN} ORDER BY acpl ${dir}, match_id ASC LIMIT ${REVIEW_SIZE}`;
-  // Independent reads, issued together: D1 does the scanning, so waiting on them costs the Worker no CPU.
-  const [counts, all, before, after, blockRows, worst, best] = await Promise.all([
+  const cutArgs = since ? [since.playedAt, since.playedAt, cutRid, since.playedAt, since.playedAt, cutRid] : [];
+  const cut = since != null;
+  const inSeg = `FROM c, ${SEGMENTS(cut)} WHERE state = 'ok' AND ${IN_SEGMENT(cut)}`;
+  const review = (dir: "DESC" | "ASC") => `SELECT * FROM (
+    SELECT '${dir}' AS k, match_id AS matchId, result, oname AS opponent, played_at AS playedAt, color, moves, serious, loss * 1.0 / moves AS acpl, dec AS decisivePly
+    FROM c WHERE state = 'ok' AND moves >= ${REVIEW_MIN} ORDER BY acpl ${dir}, match_id ASC LIMIT ${REVIEW_SIZE})`;
+  // Five reads, each evaluating the per-game CTE once (it used to be 7, or 13 with a cut). Independent, so issued together: D1 does the scanning, so waiting costs the Worker no CPU.
+  const [counts, sections, decisive, blockRows, reviews] = await Promise.all([
     run<Record<string, unknown>>(`SELECT COUNT(*) AS total, SUM(state = 'ok') AS ok, SUM(state = 'pending') AS pending, SUM(state = 'no_detail') AS no_detail, SUM(state = 'invalid') AS invalid,
       SUM(state = 'unknown') AS unknown_v, SUM(otype = 'bot') AS bots FROM c`).then((r) => r[0]),
-    sectionAt(""),
-    since ? sectionAt(" AND played_at IS NOT NULL AND (t < ? OR (t = ? AND rid <= ?))", since.playedAt, since.playedAt, cutRid) : null,
-    since ? sectionAt(" AND played_at IS NOT NULL AND (t > ? OR (t = ? AND rid > ?))", since.playedAt, since.playedAt, cutRid) : null,
+    run<Record<string, unknown>>(`SELECT s.g AS g, ${SECTION_COLS} ${inSeg} GROUP BY s.g`, ...cutArgs),
+    run<{ g: string; mv: number; comp: number }>(`SELECT s.g AS g, (dec + 1) / 2 AS mv, NOT COALESCE(${DISC}, 0) AS comp ${inSeg} AND result = 'loss' AND dec IS NOT NULL`, ...cutArgs),
     run<Record<string, unknown>>(`
       SELECT (rn - 1) / ${BLOCK} AS b, COUNT(*) AS games, SUM(moves) AS moves, SUM(serious) AS serious, SUM(loss) AS loss
       FROM (SELECT moves, serious, loss, ROW_NUMBER() OVER (ORDER BY t, rid) AS rn FROM c WHERE state = 'ok') GROUP BY b ORDER BY b`),
-    run(reviewSql("DESC")),
-    run(reviewSql("ASC")),
+    run<Record<string, unknown>>(`${review("DESC")} UNION ALL ${review("ASC")}`),
   ]);
+  const sectionOf = (g: string) => {
+    const mine = decisive.filter((d) => d.g === g);
+    return section(sections.find((r) => r.g === g) ?? {}, mine.map((d) => d.mv), mine.filter((d) => d.comp).map((d) => d.mv));
+  };
+  const all = sectionOf("all"), before = since ? sectionOf("before") : null, after = since ? sectionOf("after") : null;
+  const strip = ({ k: _k, ...r }: Record<string, unknown>) => r;
+  const worst = reviews.filter((r) => r.k === "DESC").map(strip), best = reviews.filter((r) => r.k === "ASC").map(strip);
   const total = n(counts?.total), bots = n(counts?.bots);
 
   return json({

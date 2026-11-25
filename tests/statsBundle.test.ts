@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { handleStats } from "../src/api/stats.ts";
 const { DatabaseSync } = createRequire(import.meta.url)("node:sqlite");
 
-const MIGRATIONS = ["0001_init", "0005_played_at", "0006_match_details", "0007_openings_and_phases"];
+const MIGRATIONS = ["0001_init", "0005_played_at", "0006_match_details", "0007_openings_and_phases", "0020_snapshot_elo"];
 
 function createDb() {
   const db = new DatabaseSync(":memory:");
@@ -36,8 +36,8 @@ function match(db: any, o: { user?: string; playedAt?: number | null; result?: s
   }
 }
 function snapshot(db: any, i: number, o: { user?: string; raw: string }) {
-  db.prepare(`INSERT INTO snapshots (id, created_at, source, user_id, raw_json, games_count, pages_count, checksum, size_bytes)
-    VALUES (?, ?, 'duolingo-chess', ?, ?, 0, 0, ?, 0)`).run(`s${i}`, `2026-10-${String(i).padStart(2, "0")}T10:00:00Z`, o.user ?? "u1", o.raw, `c${i}`);
+  db.prepare(`INSERT INTO snapshots (id, created_at, source, user_id, raw_json, games_count, pages_count, checksum, size_bytes, elo)
+    VALUES (?, ?, 'duolingo-chess', ?, ?, 0, 0, ?, 0, ?)`).run(`s${i}`, `2026-10-${String(i).padStart(2, "0")}T10:00:00Z`, o.user ?? "u1", o.raw, `c${i}`, (() => { try { return JSON.parse(o.raw).eloRating ?? null; } catch { return null; } })());
 }
 
 function seed(db: any) {

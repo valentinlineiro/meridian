@@ -1,9 +1,9 @@
 import type { MatchRow } from "../types.ts";
 
 // `observations` (P2) are written in the same atomic batch, after the snapshot row.
-export async function insertSnapshot(db: D1Database, s: { id: string; createdAt: string; source: string; userId: string; rawJson: string; gamesCount: number; pagesCount: number; checksum: string; sizeBytes: number }, observations: D1PreparedStatement[] = []) {
-  const stmt = db.prepare("INSERT INTO snapshots (id, created_at, source, user_id, raw_json, games_count, pages_count, checksum, size_bytes) VALUES (?,?,?,?,?,?,?,?,?)")
-    .bind(s.id, s.createdAt, s.source, s.userId, s.rawJson, s.gamesCount, s.pagesCount, s.checksum, s.sizeBytes);
+export async function insertSnapshot(db: D1Database, s: { id: string; createdAt: string; source: string; userId: string; rawJson: string; gamesCount: number; pagesCount: number; checksum: string; sizeBytes: number; elo?: number | null }, observations: D1PreparedStatement[] = []) {
+  const stmt = db.prepare("INSERT INTO snapshots (id, created_at, source, user_id, raw_json, games_count, pages_count, checksum, size_bytes, elo) VALUES (?,?,?,?,?,?,?,?,?,?)")
+    .bind(s.id, s.createdAt, s.source, s.userId, s.rawJson, s.gamesCount, s.pagesCount, s.checksum, s.sizeBytes, s.elo ?? null);
   if (observations.length) await db.batch([stmt, ...observations]);
   else await stmt.run();
 }

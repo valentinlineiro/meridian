@@ -121,7 +121,7 @@ export async function ingestSnapshot(db: D1Database, args: IngestArgs): Promise<
   const { added } = await upsertMatches(db, items, id, now);
   const known = items.filter((i) => i.row.opponent_elo != null).length;
   await recordObservations(db, observeSchema(data), now);
-  await insertSnapshot(db, { id, createdAt: now, source, userId, rawJson, gamesCount: items.length, pagesCount: pages, checksum, sizeBytes: new TextEncoder().encode(rawJson).length },
+  await insertSnapshot(db, { id, createdAt: now, source, userId, rawJson, gamesCount: items.length, pagesCount: pages, checksum, sizeBytes: new TextEncoder().encode(rawJson).length, elo: typeof data?.eloRating === "number" ? data.eloRating : null },
     observationStatements(db, extractObservations(source, rawJson, { snapshotId: id, userId, observedAt: now })));
   return { snapshotId: id, deduplicated: false, pages, matchesReceived: items.length, newMatches: added, existingMatches: items.length - added, knownOpponentElo: known, unknownOpponentElo: items.length - known };
 }

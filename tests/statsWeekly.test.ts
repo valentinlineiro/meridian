@@ -6,7 +6,7 @@ import type { Weekly } from "../src/domain/chessWeekly.ts";
 type Reply = Weekly & { syncedAt: string | null };
 const { DatabaseSync } = createRequire(import.meta.url)("node:sqlite");
 
-const MIGRATIONS = ["0001_init", "0005_played_at", "0006_match_details", "0007_openings_and_phases", "0017_opening_family_mate_type"];
+const MIGRATIONS = ["0001_init", "0005_played_at", "0006_match_details", "0007_openings_and_phases", "0017_opening_family_mate_type", "0020_snapshot_elo"];
 
 function createDb() {
   const db = new DatabaseSync(":memory:");
@@ -35,8 +35,8 @@ function game(db: any, o: { user?: string; at: number | null; result?: string; c
     VALUES (?, ?, ?, 'done', '', '', ?, ?, ?)`).run(id, user, o.ec ?? "checkmate", o.family ?? "Italiana", o.phase ?? "middlegame", o.eloAfter ?? null);
 }
 function snapshot(db: any, id: string, createdAt: string, elo: number, user = "u1") {
-  db.prepare(`INSERT INTO snapshots (id, created_at, source, user_id, raw_json, games_count, pages_count, checksum, size_bytes)
-    VALUES (?, ?, 'duolingo-chess', ?, ?, 0, 0, ?, 0)`).run(id, createdAt, user, JSON.stringify({ eloRating: elo }), id);
+  db.prepare(`INSERT INTO snapshots (id, created_at, source, user_id, raw_json, games_count, pages_count, checksum, size_bytes, elo)
+    VALUES (?, ?, 'duolingo-chess', ?, ?, 0, 0, ?, 0, ?)`).run(id, createdAt, user, JSON.stringify({ eloRating: elo }), id, elo);
 }
 const get = async (d1: any, qs = "userId=u1") =>
   (await (await handleStats(d1, "weekly", new URL(`http://x/api/stats/weekly?${qs}`))).json()) as Reply;
