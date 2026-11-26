@@ -80,7 +80,7 @@ const dayLabel = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString
             <button id="lgRegDrop" type="button" class="btn btn-g" (click)="drop()">Descartar cambios</button>
           </div>
         }
-        <button id="lgRegSave" class="btn btn-p lgreg-save" type="submit" [disabled]="!canSave() || hasErrors()" aria-describedby="lgRegSaveHint">{{ saving() ? 'Guardando…' : hasErrors() ? 'Corrige ' + errorNames() : 'Guardar' }}</button>
+        <button id="lgRegSave" data-umami-event="games-save" class="btn btn-p lgreg-save" type="submit" [disabled]="!canSave() || hasErrors()" aria-describedby="lgRegSaveHint">{{ saving() ? 'Guardando…' : hasErrors() ? 'Corrige ' + errorNames() : 'Guardar' }}</button>
         <p id="lgRegSaveHint" class="muted u-fs-sm u-m-0">{{ canSave() || saving() ? '' : 'Escribe al menos un tiempo.' }}</p>
         </div>
       </form>

@@ -53,7 +53,7 @@
     </app-help>
   </app-section>
   <details id="gamesDetail" class="card u-mt-12">
-    <summary class="dsum dsum-main">Ver detalle: por día de la semana</summary>
+    <summary class="dsum dsum-main" data-umami-event="games-weekday">Ver detalle: por día de la semana</summary>
     @if (loss(); as l) {
       <p class="loss-note" id="gamesLossNote">{{ l.sentence }}</p>
       <div class="tblwrap" tabindex="0" role="region" aria-label="Derrotas por juego y día de la semana (desplazable)"><table class="gtable gloss" id="gamesLoss"><caption class="sr-only">Porcentaje de partidas en las que no le ganas a la media, por juego y día de la semana. Un guion es que hay pocas partidas.</caption>

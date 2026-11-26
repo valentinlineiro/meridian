@@ -32,7 +32,7 @@
 
 </div>
 
-<app-section title="Más detalle" sectionId="gameReportMore" [open]="false">
+<app-section title="Más detalle" event="report-more" sectionId="gameReportMore" [open]="false">
 <div class="hero-card" id="gameReportHero">
   @if (sentence().length) {<p class="grow-line" id="gameReportSentence">{{ sentence().join('. ') }}.</p>}
   <app-help label="Cómo se calcula">@for (l of how(); track $index) {<p>{{ l }}</p>}
@@ -43,7 +43,7 @@
   </app-help>
 </div>
 
-<app-section title="Cuándo" sectionId="gameReportWhen" [open]="false">
+<app-section title="Cuándo" event="report-when" sectionId="gameReportWhen" [open]="false">
 <div class="gr-charts">
 <div class="card" id="gameChartWeekdays">
   <div class="u-d-flex u-jc-space-between u-ai-baseline"><h2 class="u-m-0">Por día de la semana</h2><span class="muted u-fs-sm">le ganas a la media · todo el histórico</span></div>
@@ -84,7 +84,7 @@
 
 </app-section>
 
-<app-section title="Cómo de regular" sectionId="gameReportRegular" [open]="false">
+<app-section title="Cómo de regular" event="report-regular" sectionId="gameReportRegular" [open]="false">
 <app-section title="Regularidad" sectionId="gameReportRegularity">
   <div id="gameReportRange">
     @if (nr(); as r) {
@@ -115,7 +115,7 @@
 
 </app-section>
 
-<app-section title="Cuánto confiar" sectionId="gameReportTrust" [open]="false">
+<app-section title="Cuánto confiar" event="report-trust" sectionId="gameReportTrust" [open]="false">
 @if (!few()) {
   <app-section title="Evolución" sectionId="gameReportEvolution">
     @if (traj(); as t) {
