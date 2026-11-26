@@ -1,10 +1,6 @@
 <!-- Port of #chessEngineProfileContent (src/frontend.ts:236–255). -->
 @let x = v();
 @let a = x?.a;
-<div class="u-d-flex u-jc-space-between u-ai-baseline u-m-8-0-4">
-  <h2 class="u-m-0">Tu perfil de ajedrez</h2>
-  <span class="muted u-fs-xs">Calculado con Stockfish</span>
-</div>
 <p class="muted u-m-0-0-8-0" id="profileContext">{{ x?.context ?? 'Calculado con Stockfish sobre tus partidas guardadas.' }}</p>
 <div class="kpis" id="profileKpis">
   @if (failed()) {

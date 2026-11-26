@@ -54,6 +54,7 @@ describe('ChessPeriods', () => {
     const el = await mount({ weeks: [week(0, 8, 2, 925)], undated: { games: 0, ...T() } }, [{ result: 'win' }, { result: 'loss' }, { result: 'draw' }]);
     expect(el.querySelector('#chessLast5')!.textContent).toContain('Últimas 3 partidas');
     expect(el.querySelectorAll('#chessLast5 .pill')).toHaveLength(3);
+    expect(el.querySelector('#chessLast5')!.textContent).toMatch(/Victoria\s+Derrota\s+/); // pills are separated, not glued
   });
 
   it('shouldNotAskForTheLastGamesWhenTheEloHasATrend', async () => {

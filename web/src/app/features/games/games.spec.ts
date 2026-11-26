@@ -77,8 +77,14 @@ describe('Games', () => {
 
   describe('the card says what its pill compares', () => {
     it('shouldShowTheVerdictSentenceUnderEachGameRow', async () => {
-      await open({ queens: game() });
+      await open({ queens: game({ interpretation: interp({ label: 'deterioro' }) }) });
       expect(el.querySelector('#gamesNow .gc .gc-why')!.textContent!.trim().length).toBeGreaterThan(0);
+    });
+
+    it('shouldNotRepeatTheStableBadgeWithASentence', async () => {
+      await open({ queens: game() });
+      expect(el.querySelector('#gamesNow .gc')!.textContent).toContain('Estable');
+      expect(el.querySelector('#gamesNow .gc .gc-why')).toBeNull();
     });
   });
 
