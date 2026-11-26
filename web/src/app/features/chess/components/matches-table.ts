@@ -87,7 +87,7 @@ const CHIPS: { group: FilterGroup; label: string; options: { k: string; l: strin
     <table class="tbl" role="table"><thead><tr role="row"><th role="columnheader">Fecha</th><th role="columnheader">Rival</th><th role="columnheader">Tipo</th>@if (showElo()) {<th role="columnheader">ELO</th>}<th role="columnheader">Color</th><th role="columnheader">Resultado</th><th role="columnheader">Fin</th><th role="columnheader">Rev.</th></tr></thead>
       <tbody id="mb">
         @for (r of rows(); track (r.id ?? r.date + r.opp)) {
-          <tr role="row" [class.gamerow]="!!r.id" [attr.title]="r.id ? 'Ver partida' : null" (click)="r.id && m.open(r.id)">
+          <tr role="row" [class.gamerow]="!!r.id" [attr.data-umami-event]="r.id ? 'chess-game-open' : null" [attr.title]="r.id ? 'Ver partida' : null" (click)="r.id && m.open(r.id)">
             <td role="cell" data-l="Fecha" [attr.title]="r.fullDate">{{ r.date }}</td>
             <td role="cell" data-l="Rival">@if (r.id) {<button type="button" class="rowbtn" [attr.aria-label]="(r.named ? 'Ver partida vs ' + r.opp : 'Ver partida') + ', ' + r.date" (click)="$event.stopPropagation(); m.open(r.id)">{{ r.opp }}</button><span class="chev" aria-hidden="true">›</span>} @else {{{ r.opp }}}@if (r.seg) {<span class="pill pill-sub">{{ r.seg }}</span>}</td>
             <td role="cell" data-l="Tipo"><span class="pill" [style.border-color]="r.pvp ? 'var(--info)' : null" [style.color]="r.pvp ? 'var(--link)' : null">{{ r.type }}</span>@if (r.opening) {<span class="pill pill-sub">{{ r.opening }}</span>}@if (r.phase) {<span class="pill pill-sub">{{ r.phase }}</span>}</td>

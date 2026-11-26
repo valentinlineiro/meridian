@@ -83,6 +83,7 @@ describe('MatchesTable', () => {
 
   it('shouldOpenTheGameWhenARowOrItsButtonIsClicked', async () => {
     await answer();
+    expect(el.querySelector('#mb tr.gamerow')!.getAttribute('data-umami-event')).toBe('chess-game-open');
     await click('#mb tr.gamerow');
     expect(svc.openId()).toBe('m1');
     svc.openId.set(null);

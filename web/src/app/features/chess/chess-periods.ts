@@ -92,7 +92,7 @@ const POINTS_SHOWN = 3;
             <app-help label="Cómo se decide" helpId="chessStrengthsHelp">Un punto se señala solo si el intervalo de confianza del 95 % de su porcentaje queda entero por encima o por debajo de tu media del periodo, y con {{ min }} partidas o más. Con diez partidas, +4 puntos puede ser casualidad.</app-help>
           </div>
           <details id="chessDetail" class="card u-mt-12">
-            <summary class="dsum dsum-main">Ver detalle: color, aperturas y partidas largas</summary>
+            <summary class="dsum dsum-main" data-umami-event="chess-detail">Ver detalle: color, aperturas y partidas largas</summary>
             <div id="chessColorOpenings">
               <app-rate-rows title="Por color" [points]="byKind('color')" empty="Sin partidas con color." />
               <app-rate-rows id="chessOpeningsTop" title="Aperturas" [points]="openingsSplit().top" empty="Sin aperturas identificadas en este periodo." />
