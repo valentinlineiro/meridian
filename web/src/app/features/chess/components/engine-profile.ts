@@ -170,6 +170,7 @@ function view(b: Profile, cut: string) {
   selector: 'app-engine-profile',
   imports: [ErrorBlock, Kpi, NgTemplateOutlet],
   templateUrl: './engine-profile.html',
+  host: { class: 'prof' }, // card spacing lives under .prof in styles.css
 })
 export class EngineProfile {
   private readonly matches = inject(MatchesService);

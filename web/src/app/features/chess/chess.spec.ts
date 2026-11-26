@@ -1074,6 +1074,8 @@ describe('EngineProfile', () => {
   it('shouldSayUpFrontThatMostGamesAreAgainstBotsAndWhatIsLeftOut', async () => {
     await render(PROFILE);
     expect(text('profileContext')).toContain('98 % contra bots');
+    expect(el.classList).toContain('prof'); // the card spacing rules hang from this class
+    expect(el.textContent).not.toContain('Tu perfil de ajedrez'); // the section title already says it
     const note = text('profileNote');
     for (const s of ['3 partidas sin analizar', '1 no se pudo evaluar', '2 con un formato que este panel no entiende', 'sin margen de error']) expect(note).toContain(s);
   });

@@ -43,7 +43,7 @@
           <app-result-bars [data]="r.bars" />
           @if (r.delta) { <span class="gc-delta muted">{{ r.delta }}</span> }
           @if (r.beat) { <span class="gc-beat muted">{{ r.beat }}</span> }
-          <span class="gc-why muted">{{ r.verdict.sentence }}</span>
+          @if (r.verdict.state !== 'no-signal') { <span class="gc-why muted">{{ r.verdict.sentence }}</span> }
         </a>
       }
     </div>

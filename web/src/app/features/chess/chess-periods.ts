@@ -109,7 +109,7 @@ const POINTS_SHOWN = 3;
     </section>
     <ng-template #recent>
       @if (last5().length) {
-        <p id="chessLast5" class="u-mt-8"><span class="muted">Últimas {{ last5().length }} partidas </span>@for (r of last5(); track $index) {<span [class]="r.cls">{{ r.label }}</span> }</p>
+        <p id="chessLast5" class="u-mt-8"><span class="muted">Últimas {{ last5().length }} partidas </span>@for (r of last5(); track $index) {<span [class]="r.cls">{{ r.label }}</span>&ngsp;}</p>
       }
     </ng-template>
   `,

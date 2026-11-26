@@ -126,7 +126,7 @@ svg text{font-family:system-ui,sans-serif}
 .gm.err{text-decoration:underline;text-decoration-color:var(--err);text-decoration-thickness:2px;text-underline-offset:3px}
 .gamectl{display:flex;align-items:center;gap:10px}.gamectl #gPos{flex:1;text-align:center}
 
-.prof>*{margin-top:12px}.prof>h2,.prof>p.muted:first-of-type{margin-top:0}
+.prof{display:block}.prof>*{margin-top:12px}.prof>h2,.prof>p.muted:first-of-type{margin-top:0}
 .prof .kpis{margin:12px 0 0}.prof-verdict{font-size:var(--fs-lg);margin:12px 0 0;color:var(--text)}
 .prof-bar{display:flex;align-items:center;gap:8px;margin:7px 0;font-size:var(--fs-md)}
 .prof-bar>span:first-child{width:86px;color:var(--text-2)}.prof-bar .bar{flex:1}.prof-bar>b{width:44px;text-align:right}
